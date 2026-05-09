@@ -855,7 +855,7 @@ final class AppModel {
             if !workspace.isEmpty { return workspace }
             return session.title.isEmpty ? session.tool.displayName : session.title
         case .agentAction:
-            let action = session.currentToolName?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let action = session.displayCurrentToolName
             if let action, !action.isEmpty {
                 return "\(session.tool.displayName) · \(action)"
             }

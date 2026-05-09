@@ -235,4 +235,72 @@ struct AgentSessionPresentationTests {
         #expect(session.spotlightPromptLineText == "You: Also confirm the worktree status.")
         #expect(session.notificationHeaderPromptLineText == nil)
     }
+
+    @Test
+    func runningCodexSessionWithoutToolShowsThinkingBesidePrompt() {
+        let session = AgentSession(
+            id: "session-1",
+            title: "Codex · worktree",
+            tool: .codex,
+            origin: .live,
+            attachmentState: .attached,
+            phase: .running,
+            summary: "Thinking.",
+            updatedAt: Date(timeIntervalSince1970: 10_000),
+            codexMetadata: CodexSessionMetadata(
+                lastUserPrompt: "Align the Codex statuses."
+            )
+        )
+
+        #expect(session.spotlightPromptLineText == "You: Align the Codex statuses.")
+        #expect(session.spotlightActivityLineText == "Thinking")
+        #expect(session.displayCurrentToolName == nil)
+    }
+
+    @Test
+    func runningCodexSessionKeepsWriteStdinAsInput() {
+        let session = AgentSession(
+            id: "session-1",
+            title: "Codex · worktree",
+            tool: .codex,
+            origin: .live,
+            attachmentState: .attached,
+            phase: .running,
+            summary: "Running input.",
+            updatedAt: Date(timeIntervalSince1970: 10_000),
+            codexMetadata: CodexSessionMetadata(
+                lastUserPrompt: "Continue the command.",
+                currentTool: "write_stdin",
+                currentCommandPreview: "y"
+            )
+        )
+
+        #expect(session.spotlightActivityLineText == "Input y")
+        #expect(session.spotlightStatusLabel == "Live · Input")
+        #expect(session.displayCurrentToolName == "Input")
+    }
+
+    @Test
+    func runningCodexSessionDisplaysWebSearchAction() {
+        let session = AgentSession(
+            id: "session-1",
+            title: "Codex · worktree",
+            tool: .codex,
+            origin: .live,
+            attachmentState: .attached,
+            phase: .running,
+            summary: "Running web search.",
+            updatedAt: Date(timeIntervalSince1970: 10_000),
+            codexMetadata: CodexSessionMetadata(
+                lastUserPrompt: "Check the Codex repo.",
+                currentTool: "web_search",
+                currentCommandPreview: "Codex rollout ResponseItem"
+            )
+        )
+
+        #expect(session.spotlightActivityLineText == "Search Codex rollout ResponseItem")
+        #expect(session.spotlightStatusLabel == "Live · Search")
+        #expect(session.spotlightSecondaryText == "Running Search")
+        #expect(session.displayCurrentToolName == "Search")
+    }
 }

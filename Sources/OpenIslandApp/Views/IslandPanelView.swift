@@ -1752,7 +1752,7 @@ private struct IslandSessionRow: View {
         case "ExitPlanMode": return "Plan"
         case "apply_patch": return "Patch"
         case "write_stdin": return "Input"
-        case let value?: return value.capitalized
+        case let value?: return AgentSession.currentToolDisplayName(for: value)
         case nil: return "Command"
         }
     }

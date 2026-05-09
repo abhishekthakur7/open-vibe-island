@@ -58,8 +58,7 @@ extension AgentSession {
             return request.affectedPath.isEmpty ? nil : request.affectedPath
         }
 
-        if let currentTool = currentToolName?.trimmedForSurface,
-           !currentTool.isEmpty {
+        if let currentTool = displayCurrentToolName {
             return phase == .completed
                 ? summary
                 : "Running \(currentTool)"
@@ -75,12 +74,7 @@ extension AgentSession {
     }
 
     var spotlightCurrentToolLabel: String? {
-        guard let currentTool = currentToolName?.trimmedForSurface,
-              !currentTool.isEmpty else {
-            return nil
-        }
-
-        return currentTool
+        displayCurrentToolName
     }
 
     var spotlightTrackingLabel: String? {
@@ -219,7 +213,7 @@ extension AgentSession {
             if let activity = spotlightRunningActivityText {
                 return activity
             }
-            return spotlightPromptLineText == nil ? "Running" : "Input"
+            return spotlightPromptLineText == nil ? "Running" : "Thinking"
         case .waitingForApproval:
             return permissionRequest?.summary.trimmedForSurface ?? "Approval needed"
         case .waitingForAnswer:
@@ -318,7 +312,7 @@ extension AgentSession {
             return nil
         }
 
-        let label = currentToolDisplayName(for: currentTool)
+        let label = Self.currentToolDisplayName(for: currentTool)
         guard let preview = currentCommandPreviewText?.trimmedForSurface,
               !preview.isEmpty else {
             return label
@@ -327,7 +321,16 @@ extension AgentSession {
         return "\(label) \(preview)"
     }
 
-    private func currentToolDisplayName(for toolName: String) -> String {
+    var displayCurrentToolName: String? {
+        guard let currentTool = currentToolName?.trimmedForSurface,
+              !currentTool.isEmpty else {
+            return nil
+        }
+
+        return Self.currentToolDisplayName(for: currentTool)
+    }
+
+    static func currentToolDisplayName(for toolName: String) -> String {
         switch toolName {
         case "exec_command":
             return "Bash"
@@ -341,9 +344,37 @@ extension AgentSession {
             return "Patch"
         case "write_stdin":
             return "Input"
+        case "web_search", "tool_search":
+            return "Search"
+        case "image_generation", "view_image":
+            return "Image"
+        case "context_compaction":
+            return "Compact"
+        case "update_plan":
+            return "Plan"
+        case "request_user_input":
+            return "Question"
+        case "spawn_agent":
+            return "Subagent"
         default:
-            return toolName
+            return humanizedToolName(toolName)
         }
+    }
+
+    private static func humanizedToolName(_ toolName: String) -> String {
+        let trimmed = toolName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let withoutPrivatePrefix = String(trimmed.drop(while: { $0 == "_" }))
+        let pieces = withoutPrivatePrefix
+            .split(separator: "_", omittingEmptySubsequences: true)
+            .map { piece -> String in
+                let upper = piece.uppercased()
+                if ["API", "CI", "ID", "PR", "URL"].contains(upper) {
+                    return upper
+                }
+                return piece.prefix(1).uppercased() + piece.dropFirst().lowercased()
+            }
+        let label = pieces.joined(separator: " ")
+        return label.isEmpty ? toolName : label
     }
 
     private var initialPromptText: String? {
