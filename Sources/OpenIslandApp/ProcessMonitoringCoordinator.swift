@@ -45,6 +45,7 @@ final class ProcessMonitoringCoordinator {
     private var wasCodexAppRunning = false
 
     private static let startupPollInterval: TimeInterval = 2
+    private static let codexAppRunningProbeInterval: TimeInterval = 2
     private static let activePollInterval: TimeInterval = 60
     private static let idlePollInterval: TimeInterval = 300
     private static let cursorStalenessTimeout: TimeInterval = 600  // 10 minutes
@@ -58,6 +59,35 @@ final class ProcessMonitoringCoordinator {
         }
 
         return hasTrackedLiveSessions ? activePollInterval : idlePollInterval
+    }
+
+    static func monitoringWakeInterval(
+        isResolvingInitialLiveSessions: Bool,
+        hasTrackedLiveSessions: Bool
+    ) -> TimeInterval {
+        min(
+            codexAppRunningProbeInterval,
+            monitoringPollInterval(
+                isResolvingInitialLiveSessions: isResolvingInitialLiveSessions,
+                hasTrackedLiveSessions: hasTrackedLiveSessions
+            )
+        )
+    }
+
+    static func shouldPerformFullMonitorReconcile(
+        now: Date,
+        nextFullReconcileAt: Date,
+        isResolvingInitialLiveSessions: Bool,
+        hasTrackedLiveSessions: Bool,
+        hadTrackedLiveSessions: Bool
+    ) -> Bool {
+        if isResolvingInitialLiveSessions {
+            return true
+        }
+        if hasTrackedLiveSessions, !hadTrackedLiveSessions {
+            return true
+        }
+        return now >= nextFullReconcileAt
     }
 
     private var state: SessionState {
@@ -77,43 +107,78 @@ final class ProcessMonitoringCoordinator {
                 return
             }
 
+            var nextFullReconcileAt = Date.distantPast
+            var hadTrackedLiveSessions = false
+
             while !Task.isCancelled {
-                let discovery = self.activeAgentProcessDiscovery
-                let probe = self.terminalSessionAttachmentProbe
-                let resolver = self.terminalJumpTargetResolver
                 let liveSessions = self.state.sessions.filter(\.isTrackedLiveSession)
-                let shouldResolveTerminals = !liveSessions.isEmpty
-                let (snapshots, ghosttyAvail, terminalAvail, jumpTargets) = await Task.detached(priority: .utility) {
-                    let s = discovery.discover()
-                    let g: TerminalSessionAttachmentProbe.SnapshotAvailability<TerminalSessionAttachmentProbe.GhosttyTerminalSnapshot>
-                    let t: TerminalSessionAttachmentProbe.SnapshotAvailability<TerminalSessionAttachmentProbe.TerminalTabSnapshot>
-                    let j: [String: JumpTarget]
-
-                    if shouldResolveTerminals {
-                        g = probe.ghosttySnapshotAvailability()
-                        t = probe.terminalSnapshotAvailability()
-                        j = resolver.resolveJumpTargets(for: liveSessions, activeProcesses: s)
-                    } else {
-                        g = .available([], appIsRunning: false)
-                        t = .available([], appIsRunning: false)
-                        j = [:]
-                    }
-
-                    return (s, g, t, j)
-                }.value
-                self.reconcileSessionAttachments(
-                    activeProcesses: snapshots,
-                    ghosttyAvailability: ghosttyAvail,
-                    terminalAvailability: terminalAvail,
-                    preResolvedJumpTargets: jumpTargets
+                let hasTrackedLiveSessions = !liveSessions.isEmpty
+                let shouldRunFullReconcile = Self.shouldPerformFullMonitorReconcile(
+                    now: Date(),
+                    nextFullReconcileAt: nextFullReconcileAt,
+                    isResolvingInitialLiveSessions: self.isResolvingInitialLiveSessions,
+                    hasTrackedLiveSessions: hasTrackedLiveSessions,
+                    hadTrackedLiveSessions: hadTrackedLiveSessions
                 )
-                let pollInterval = Self.monitoringPollInterval(
+
+                if shouldRunFullReconcile {
+                    let discovery = self.activeAgentProcessDiscovery
+                    let probe = self.terminalSessionAttachmentProbe
+                    let resolver = self.terminalJumpTargetResolver
+                    let shouldResolveTerminals = hasTrackedLiveSessions
+                    let (snapshots, ghosttyAvail, terminalAvail, jumpTargets) = await Task.detached(priority: .utility) {
+                        let s = discovery.discover()
+                        let g: TerminalSessionAttachmentProbe.SnapshotAvailability<TerminalSessionAttachmentProbe.GhosttyTerminalSnapshot>
+                        let t: TerminalSessionAttachmentProbe.SnapshotAvailability<TerminalSessionAttachmentProbe.TerminalTabSnapshot>
+                        let j: [String: JumpTarget]
+
+                        if shouldResolveTerminals {
+                            g = probe.ghosttySnapshotAvailability()
+                            t = probe.terminalSnapshotAvailability()
+                            j = resolver.resolveJumpTargets(for: liveSessions, activeProcesses: s)
+                        } else {
+                            g = .available([], appIsRunning: false)
+                            t = .available([], appIsRunning: false)
+                            j = [:]
+                        }
+
+                        return (s, g, t, j)
+                    }.value
+                    self.reconcileSessionAttachments(
+                        activeProcesses: snapshots,
+                        ghosttyAvailability: ghosttyAvail,
+                        terminalAvailability: terminalAvail,
+                        preResolvedJumpTargets: jumpTargets
+                    )
+
+                    let pollInterval = Self.monitoringPollInterval(
+                        isResolvingInitialLiveSessions: self.isResolvingInitialLiveSessions,
+                        hasTrackedLiveSessions: self.state.sessions.contains(where: \.isTrackedLiveSession)
+                    )
+                    nextFullReconcileAt = Date().addingTimeInterval(pollInterval)
+                    hadTrackedLiveSessions = self.state.sessions.contains(where: \.isTrackedLiveSession)
+                } else {
+                    self.reconcileCodexAppRunningState()
+                    hadTrackedLiveSessions = hasTrackedLiveSessions
+                }
+
+                let wakeInterval = Self.monitoringWakeInterval(
                     isResolvingInitialLiveSessions: self.isResolvingInitialLiveSessions,
                     hasTrackedLiveSessions: self.state.sessions.contains(where: \.isTrackedLiveSession)
                 )
-                try? await Task.sleep(for: .milliseconds(Int(pollInterval * 1_000)))
+                try? await Task.sleep(for: .milliseconds(Int(wakeInterval * 1_000)))
             }
         }
+    }
+
+    @discardableResult
+    private func reconcileCodexAppRunningState() -> Bool {
+        let isCodexAppRunning = Self.isCodexDesktopAppRunning()
+        if isCodexAppRunning != wasCodexAppRunning {
+            wasCodexAppRunning = isCodexAppRunning
+            onCodexAppRunningChanged?(isCodexAppRunning)
+        }
+        return isCodexAppRunning
     }
 
     // MARK: - Reconciliation
@@ -151,11 +216,7 @@ final class ProcessMonitoringCoordinator {
         // return — we need to fire the callback on a brand-new Codex.app
         // launch even when no sessions exist yet, so the app-server
         // coordinator can connect and report threads.
-        let isCodexAppRunning = Self.isCodexDesktopAppRunning()
-        if isCodexAppRunning != wasCodexAppRunning {
-            wasCodexAppRunning = isCodexAppRunning
-            onCodexAppRunningChanged?(isCodexAppRunning)
-        }
+        let isCodexAppRunning = reconcileCodexAppRunningState()
         let sessions = local.sessions.filter(\.isTrackedLiveSession)
         guard !sessions.isEmpty else {
             // Flush local changes only if something actually changed.
