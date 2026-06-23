@@ -219,6 +219,40 @@ public final class CodexSessionStore: @unchecked Sendable {
     }
 }
 
+public enum CodexAppSessionReconciler {
+    /// Emits completion updates for Codex.app sessions stuck in `.running`
+    /// when their rollout transcript is missing — a common outcome when Codex
+    /// blocks on quota before writing `turn_complete`.
+    public static func stalledRunningEvents(
+        for sessions: [AgentSession],
+        fileManager: FileManager = .default,
+        now: Date = .now
+    ) -> [AgentEvent] {
+        sessions.compactMap { session -> AgentEvent? in
+            guard session.tool == .codex,
+                  session.phase == .running,
+                  session.isCodexAppSession || session.jumpTarget?.terminalApp == "Codex.app" else {
+                return nil
+            }
+
+            let transcriptPath = session.codexMetadata?.transcriptPath?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard !transcriptPath.isEmpty,
+                  fileManager.fileExists(atPath: transcriptPath) else {
+                return .activityUpdated(
+                    SessionActivityUpdated(
+                        sessionID: session.id,
+                        summary: "Turn stalled.",
+                        phase: .completed,
+                        timestamp: now
+                    )
+                )
+            }
+
+            return nil
+        }
+    }
+}
+
 public final class CodexRolloutDiscovery: @unchecked Sendable {
     private struct Candidate {
         var fileURL: URL
@@ -721,12 +755,80 @@ public enum CodexRolloutReducer {
             )
         case "context_compacted":
             applyThinking(to: &snapshot)
+        case "token_count":
+            applyRateLimitSignal(payload, to: &snapshot)
         default:
             break
         }
 
         if let timestamp {
             snapshot.updatedAt = timestamp
+        }
+    }
+
+    private static func applyRateLimitSignal(
+        _ payload: [String: Any],
+        to snapshot: inout CodexRolloutSnapshot
+    ) {
+        guard !snapshot.isCompleted else {
+            return
+        }
+
+        let rateLimits = (payload["info"] as? [String: Any])?["rate_limits"] as? [String: Any]
+            ?? payload["rate_limits"] as? [String: Any]
+        guard let rateLimits else {
+            return
+        }
+
+        if let reachedType = rateLimits["rate_limit_reached_type"] as? String,
+           !reachedType.isEmpty {
+            markRateLimitReached(on: &snapshot)
+            return
+        }
+
+        guard let primary = rateLimits["primary"] as? [String: Any],
+              let usedPercent = number(from: primary["used_percent"]),
+              usedPercent >= 100,
+              turnAwaitingAgentResponse(snapshot) else {
+            return
+        }
+
+        markRateLimitReached(on: &snapshot)
+    }
+
+    private static func turnAwaitingAgentResponse(_ snapshot: CodexRolloutSnapshot) -> Bool {
+        guard let summary = snapshot.summary?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !summary.isEmpty else {
+            return true
+        }
+
+        if summary.hasPrefix("Prompt:") {
+            return true
+        }
+
+        return summary == "Thinking."
+            || summary == "Codex started a new turn."
+    }
+
+    private static func markRateLimitReached(on snapshot: inout CodexRolloutSnapshot) {
+        snapshot.currentTool = nil
+        snapshot.currentCommandPreview = nil
+        snapshot.phase = .completed
+        snapshot.isCompleted = true
+        snapshot.isInterrupted = false
+        snapshot.summary = "Rate limit reached."
+    }
+
+    private static func number(from value: Any?) -> Double? {
+        switch value {
+        case let number as Double:
+            number
+        case let number as Int:
+            Double(number)
+        case let number as NSNumber:
+            number.doubleValue
+        default:
+            nil
         }
     }
 

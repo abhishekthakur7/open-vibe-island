@@ -623,6 +623,70 @@ struct CodexSessionTrackingTests {
     }
 
     @Test
+    func codexRolloutReducerMarksPrimaryRateLimitWhileAwaitingAgentResponse() {
+        let initialSnapshot = CodexRolloutReducer.snapshot(for: [
+            rolloutLine(
+                timestamp: "2026-04-02T04:03:44.500Z",
+                type: "event_msg",
+                payload: [
+                    "type": "user_message",
+                    "message": "Inspect the Grafana panel.",
+                ]
+            ),
+        ])
+        let limitedSnapshot = CodexRolloutReducer.snapshot(for: [
+            rolloutLine(
+                timestamp: "2026-04-02T04:03:44.500Z",
+                type: "event_msg",
+                payload: [
+                    "type": "user_message",
+                    "message": "Inspect the Grafana panel.",
+                ]
+            ),
+            rolloutLine(
+                timestamp: "2026-04-02T04:03:45.000Z",
+                type: "event_msg",
+                payload: [
+                    "type": "token_count",
+                    "info": [
+                        "rate_limits": [
+                            "primary": [
+                                "used_percent": 100.0,
+                                "window_minutes": 300,
+                            ],
+                        ],
+                    ],
+                ]
+            ),
+        ])
+
+        #expect(limitedSnapshot.phase == .completed)
+        #expect(limitedSnapshot.summary == "Rate limit reached.")
+        #expect(CodexAppSessionReconciler.stalledRunningEvents(for: [
+            AgentSession(
+                id: "codex-session-stalled",
+                title: "Codex · demo",
+                tool: .codex,
+                origin: .live,
+                attachmentState: .attached,
+                phase: .running,
+                summary: "Prompt: blocked turn",
+                updatedAt: .now,
+                jumpTarget: JumpTarget(
+                    terminalApp: "Codex.app",
+                    workspaceName: "demo",
+                    paneTitle: "Codex",
+                    workingDirectory: "/tmp/demo",
+                    codexThreadID: "codex-session-stalled"
+                ),
+                codexMetadata: CodexSessionMetadata(
+                    transcriptPath: "/tmp/missing-rollout.jsonl"
+                )
+            ),
+        ], fileManager: MissingTranscriptFileManager()).count == 1)
+    }
+
+    @Test
     func codexRolloutReducerPreservesInitialPromptAcrossLaterPrompts() {
         let snapshot = CodexRolloutReducer.snapshot(for: [
             rolloutLine(
@@ -1192,6 +1256,12 @@ struct CodexSessionTrackingTests {
         #expect(records.count == 1)
         #expect(records.first?.sessionID == "codex-session-trailing")
         #expect(records.first?.codexMetadata?.lastAssistantMessage == "Final line without newline.")
+    }
+}
+
+private final class MissingTranscriptFileManager: FileManager, @unchecked Sendable {
+    override func fileExists(atPath path: String) -> Bool {
+        false
     }
 }
 

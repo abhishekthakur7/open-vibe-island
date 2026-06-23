@@ -37,6 +37,9 @@ final class SessionDiscoveryCoordinator {
     var onStateChanged: (() -> Void)?
 
     @ObservationIgnored
+    var onAgentEvent: ((AgentEvent) -> Void)?
+
+    @ObservationIgnored
     private let codexSessionStore = CodexSessionStore()
 
     @ObservationIgnored
@@ -357,19 +360,21 @@ final class SessionDiscoveryCoordinator {
         return merged.isEmpty ? nil : merged
     }
 
+    @ObservationIgnored
+    private var lastCodexAppRescanDate: Date = .distantPast
+
+    @ObservationIgnored
+    private var lastCodexAppReconcileDate: Date = .distantPast
+
     // MARK: - Rollout tracking
 
     func refreshCodexRolloutTracking() {
+        reconcileStalledCodexAppSessionsIfNeeded()
+
         let targets = state.sessions.compactMap { session -> CodexRolloutWatchTarget? in
             guard session.tool == .codex,
                   let transcriptPath = session.codexMetadata?.transcriptPath,
                   !transcriptPath.isEmpty else {
-                return nil
-            }
-            // Codex.app sessions already get their lifecycle from hooks
-            // (and eventually app-server). The rollout watcher would
-            // duplicate completion notifications and is not needed.
-            if session.isCodexAppSession {
                 return nil
             }
 
@@ -382,10 +387,17 @@ final class SessionDiscoveryCoordinator {
         codexRolloutWatcher.sync(targets: targets)
     }
 
-    // MARK: - Codex.app periodic re-discovery
+    private func reconcileStalledCodexAppSessionsIfNeeded() {
+        let now = Date.now
+        guard now.timeIntervalSince(lastCodexAppReconcileDate) >= 5 else { return }
+        lastCodexAppReconcileDate = now
 
-    @ObservationIgnored
-    private var lastCodexAppRescanDate: Date = .distantPast
+        for event in CodexAppSessionReconciler.stalledRunningEvents(for: state.sessions, now: now) {
+            onAgentEvent?(event)
+        }
+    }
+
+    // MARK: - Codex.app periodic re-discovery
 
     /// Re-scan `~/.codex/sessions/` for rollout files not yet tracked.
     /// Called periodically when Codex.app is running as a fallback when
