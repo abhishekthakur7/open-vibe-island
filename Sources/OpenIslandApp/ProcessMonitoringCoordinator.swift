@@ -49,6 +49,7 @@ final class ProcessMonitoringCoordinator {
     private static let activePollInterval: TimeInterval = 60
     private static let idlePollInterval: TimeInterval = 300
     private static let cursorStalenessTimeout: TimeInterval = 600  // 10 minutes
+    private static let claudeDesktopStalenessTimeout: TimeInterval = 600  // 10 minutes
 
     static func monitoringPollInterval(
         isResolvingInitialLiveSessions: Bool,
@@ -493,6 +494,30 @@ final class ProcessMonitoringCoordinator {
                 if session.isSessionEnded { continue }
                 let isStale = session.phase == .completed
                     && session.updatedAt.addingTimeInterval(Self.cursorStalenessTimeout) < Date.now
+                if !isStale {
+                    aliveIDs.insert(session.id)
+                }
+            }
+        }
+
+        // Claude Desktop sessions: Claude Code launched by Claude.app ("local
+        // agent mode") runs as a TTY-less subprocess that ps/lsof discovery
+        // never sees, so the hook-managed liveness fallback in
+        // SessionState.markProcessLiveness would evict these sessions ~6s after
+        // they appear (#510).  Keep them alive while Claude.app is running, but
+        // let completed sessions expire after a staleness window — Claude
+        // Desktop has no per-conversation "closed" signal beyond the SessionEnd
+        // hook (mirrors the Cursor handling above).  The session is identified
+        // by the "Claude.app" terminalApp tag stamped by the hook.
+        let isClaudeDesktopRunning = Self.isClaudeDesktopAppRunning()
+        if isClaudeDesktopRunning {
+            for session in sessions
+            where session.tool == .claudeCode
+                && !session.isDemoSession
+                && session.jumpTarget?.terminalApp == "Claude.app" {
+                if session.isSessionEnded { continue }
+                let isStale = session.phase == .completed
+                    && session.updatedAt.addingTimeInterval(Self.claudeDesktopStalenessTimeout) < Date.now
                 if !isStale {
                     aliveIDs.insert(session.id)
                 }
@@ -957,6 +982,18 @@ final class ProcessMonitoringCoordinator {
     static func isCodexDesktopAppRunning() -> Bool {
         NSWorkspace.shared.runningApplications.contains { app in
             app.bundleIdentifier == "com.openai.codex"
+        }
+    }
+
+    /// Check whether the Claude desktop app is currently running.  Uses
+    /// `NSWorkspace.shared.runningApplications` for the same reason as
+    /// ``isCodexDesktopAppRunning()`` — the
+    /// `NSRunningApplication.runningApplications(withBundleIdentifier:)` API
+    /// can transiently return an empty array even while the app is running,
+    /// which would flicker visible Claude Desktop sessions out of the island.
+    static func isClaudeDesktopAppRunning() -> Bool {
+        NSWorkspace.shared.runningApplications.contains { app in
+            app.bundleIdentifier == "com.anthropic.claudefordesktop"
         }
     }
 

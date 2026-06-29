@@ -57,6 +57,44 @@ struct SessionStateTests {
         #expect(state.activeActionableSession?.permissionRequest == nil)
     }
 
+    /// Contract that the Claude Desktop fix (#510) relies on: a hook-managed
+    /// Claude session stays visible for as long as its ID is reported in
+    /// `aliveSessionIDs`, and is only evicted after two consecutive polls
+    /// where it is absent. ProcessMonitoringCoordinator keeps Claude Desktop
+    /// session IDs in that set while Claude.app is running (the desktop
+    /// subprocess is TTY-less and invisible to ps/lsof discovery), so they no
+    /// longer vanish ~6s after appearing.
+    @Test
+    func hookManagedClaudeSessionLivenessFollowsReportedAliveSet() {
+        var session = AgentSession(
+            id: "desktop-1",
+            title: "Claude · demo",
+            tool: .claudeCode,
+            phase: .running,
+            summary: "Working",
+            updatedAt: Date(timeIntervalSince1970: 1_000)
+        )
+        session.isHookManaged = true
+        session.isProcessAlive = true
+        var state = SessionState(sessions: [session])
+
+        // Reported alive (Claude.app running): stays visible across polls.
+        state.markProcessLiveness(aliveSessionIDs: ["desktop-1"])
+        state.markProcessLiveness(aliveSessionIDs: ["desktop-1"])
+        #expect(state.session(id: "desktop-1")?.isSessionEnded == false)
+        #expect(state.session(id: "desktop-1")?.isVisibleInIsland == true)
+
+        // First miss (e.g. Claude.app just quit): debounced, not yet evicted.
+        state.markProcessLiveness(aliveSessionIDs: [])
+        #expect(state.session(id: "desktop-1")?.isSessionEnded == false)
+        #expect(state.session(id: "desktop-1")?.isVisibleInIsland == true)
+
+        // Second consecutive miss: session ends and leaves the island.
+        state.markProcessLiveness(aliveSessionIDs: [])
+        #expect(state.session(id: "desktop-1")?.isSessionEnded == true)
+        #expect(state.session(id: "desktop-1")?.isVisibleInIsland == false)
+    }
+
     @Test
     func resolvesUserActionsAndKeepsSessionsSortedByRecency() {
         let startedAt = Date(timeIntervalSince1970: 2_000)
