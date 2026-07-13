@@ -95,6 +95,71 @@ struct KimiHooksTests {
     }
 
     @Test
+    func installRemovesSpacedEmptyTopLevelHooksArrayPlaceholder() {
+        let userToml = """
+        default_model = "kimi-code/kimi-for-coding"
+        hooks = [ ] # Kimi may seed this placeholder
+
+        """
+        let command = KimiHookInstaller.hookCommand(for: "/opt/open-island/OpenIslandHooks")
+        let mutation = KimiHookInstaller.installConfigTOML(
+            existingContents: userToml,
+            hookCommand: command
+        )
+
+        let contents = try! #require(mutation.contents)
+        #expect(contents.contains("hooks = [ ] # Kimi may seed this placeholder") == false)
+        #expect(contents.contains("event = \"SessionStart\""))
+    }
+
+    @Test
+    func installKeepsHooksArrayAfterCommentedTableHeader() {
+        let userToml = """
+        [harness] # user-owned table
+        hooks = [ ]
+        embedded = true
+
+        """
+        let command = KimiHookInstaller.hookCommand(for: "/opt/open-island/OpenIslandHooks")
+        let mutation = KimiHookInstaller.installConfigTOML(
+            existingContents: userToml,
+            hookCommand: command
+        )
+
+        let contents = try! #require(mutation.contents)
+        #expect(contents.contains("[harness] # user-owned table\nhooks = [ ]\nembedded = true"))
+        #expect(contents.contains("event = \"SessionStart\""))
+    }
+
+    @Test
+    func installKeepsHooksTextInsideMultilineStrings() {
+        let userToml = #"""
+        basic_message = """
+        hooks = []
+        """
+        literal_message = '''
+        hooks = [ ]
+        '''
+        hooks = [ ] # actual placeholder
+
+        """#
+        let command = KimiHookInstaller.hookCommand(for: "/opt/open-island/OpenIslandHooks")
+        let mutation = KimiHookInstaller.installConfigTOML(
+            existingContents: userToml,
+            hookCommand: command
+        )
+
+        let contents = try! #require(mutation.contents)
+        #expect(contents.contains("hooks = [ ] # actual placeholder") == false)
+        #expect(contents.contains(#"""
+        basic_message = """
+        hooks = []
+        """
+        """#))
+        #expect(contents.contains("literal_message = '''\nhooks = [ ]\n'''"))
+    }
+
+    @Test
     func reinstallIsIdempotent() {
         let command = KimiHookInstaller.hookCommand(for: "/opt/open-island/OpenIslandHooks")
         let firstInstall = KimiHookInstaller.installConfigTOML(
