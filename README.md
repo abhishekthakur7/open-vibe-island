@@ -168,6 +168,7 @@ Contributions welcome. Build and run:
 ```bash
 swift build && swift test
 swift run OpenIslandApp        # canonical dev runtime
+zsh scripts/harness.sh ci      # what CI runs: lint, docs, tests, build
 ```
 
 Where to look next:
