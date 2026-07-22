@@ -107,9 +107,7 @@ It's an open-source alternative to [Vibe Island](https://vibeisland.app/): free,
 
 ### Option 1: Download
 
-1. Download the latest DMG from [GitHub Releases](https://github.com/Octane0411/open-vibe-island/releases) — signed and notarized.
-2. Open the DMG and drag **Open Island** into your **Applications** folder.
-3. Launch it from **Applications** (or Launchpad / Spotlight).
+Grab the latest DMG from [GitHub Releases](https://github.com/Octane0411/open-vibe-island/releases) — signed and notarized, ready to run.
 
 ### Option 2: Homebrew
 
@@ -126,6 +124,15 @@ git clone https://github.com/Octane0411/open-vibe-island.git
 cd open-vibe-island
 open Package.swift   # Opens in Xcode — hit Run
 ```
+
+To build a standalone `.app` and install it into `/Applications`:
+
+```bash
+zsh scripts/package-app.sh                          # builds output/package/Open Island.app
+mv "output/package/Open Island.app" /Applications/  # install (remove the old one first when reinstalling)
+```
+
+See [docs/packaging.md](docs/packaging.md) for signing and notarization options.
 
 On first launch, Open Island auto-discovers your active agent sessions and starts the live bridge. Install hooks from the in-app **Settings** window.
 
