@@ -107,7 +107,9 @@ It's an open-source alternative to [Vibe Island](https://vibeisland.app/): free,
 
 ### Option 1: Download
 
-Grab the latest DMG from [GitHub Releases](https://github.com/Octane0411/open-vibe-island/releases) — signed and notarized, ready to run.
+1. Download the latest DMG from [GitHub Releases](https://github.com/Octane0411/open-vibe-island/releases) — signed and notarized.
+2. Open the DMG and drag **Open Island** into your **Applications** folder.
+3. Launch it from **Applications** (or Launchpad / Spotlight).
 
 ### Option 2: Homebrew
 
