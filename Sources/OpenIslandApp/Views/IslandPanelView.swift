@@ -1699,6 +1699,8 @@ private struct IslandSessionRow: View {
                 AutoHeightScrollView(maxHeight: 160) {
                     Markdown(completionMessageText)
                         .markdownTheme(.completionCard)
+                        .markdownImageProvider(.noNetwork)
+                        .markdownInlineImageProvider(.noNetwork)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 9)
