@@ -9,7 +9,7 @@ Think of Open Island as having done the basics: a macOS island shell + code agen
 You can also fork your own version and modify it however you like — but PRing here gives it a chance to reach more people (btw, we use the GPL license).
 
 > **How to contribute**:
-> 1. Describe your idea clearly in an issue, then submit a PR. See [CONTRIBUTING.md](../CONTRIBUTING.md) for details.
+> 1. Describe your idea clearly in an issue, then submit a PR.
 > 2. After any contribution (code or otherwise) gets merged, you can become a maintainer — just reach out to [@Octane0411](https://github.com/Octane0411) (you can usually find me in the WeChat group, or by email).
 
 ## Focus Areas

@@ -8,8 +8,6 @@
   <strong>Keep an eye on your AI coding agents — right from the notch.</strong>
   <br>
   Open-source, local-first, native macOS. No server, no account, no telemetry.
-  <br><br>
-  <a href="README.zh-CN.md">中文</a> | <strong>English</strong>
 </p>
 
 <p align="center">
@@ -22,8 +20,7 @@
 <p align="center">
   <a href="https://github.com/Octane0411/open-vibe-island/releases">Download</a> ·
   <a href="#quick-start">Quick Start</a> ·
-  <a href="docs/roadmap.md">Roadmap</a> ·
-  <a href="CONTRIBUTING.md">Contributing</a>
+  <a href="docs/roadmap.md">Roadmap</a>
 </p>
 
 <p align="center">
@@ -175,7 +172,6 @@ swift run OpenIslandApp        # canonical dev runtime
 
 Where to look next:
 
-- [CONTRIBUTING.md](CONTRIBUTING.md) — setup, workflow, and PR guidelines
 - [docs/index.md](docs/index.md) — repository map for humans and agents
 - [docs/architecture.md](docs/architecture.md) — runtime shape and transport boundaries
 - [docs/hooks.md](docs/hooks.md) — hook events, payloads, and per-agent `--source` flags
@@ -186,7 +182,7 @@ Join us on **Discord** for discussion, feedback, and faster issue resolution:
 
 [![Discord](https://img.shields.io/discord/1490752192368476253?style=for-the-badge&logo=discord&label=Join%20Discord&color=5865F2)](https://discord.gg/bPF2HpbCFb)
 
-We welcome issues, pull requests, and new maintainers. See [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
+We welcome issues, pull requests, and new maintainers — open an issue or PR to get started.
 
 <details>
 <summary>WeChat group (for Chinese-speaking users)</summary>
