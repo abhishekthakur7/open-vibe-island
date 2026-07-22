@@ -23,6 +23,12 @@ Or open it in Xcode and hit **Run**:
 open Package.swift
 ```
 
+Run the full check suite the same way CI does — lint, docs, tests, and build:
+
+```bash
+zsh scripts/harness.sh ci
+```
+
 ## Install to /Applications
 
 Package a standalone `Open Island.app` and move it into `/Applications`:
@@ -49,3 +55,7 @@ Or right-click the app → **Open** → **Open** to bypass it once. For signing 
 ## On first launch
 
 Open Island auto-discovers your active agent sessions and starts the live bridge. Install the per-agent hooks from the in-app **Settings** window.
+
+## More
+
+Repository map, architecture, and deeper docs: [docs/index.md](docs/index.md).
