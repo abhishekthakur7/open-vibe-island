@@ -2,9 +2,11 @@ import Darwin
 import Foundation
 
 public enum BridgeSocketLocation {
-    /// Stable per-user socket directory under ~/Library/Application Support.
-    /// Unlike /tmp, this directory is not subject to periodic system cleanup.
-    private static var stableDirectoryURL: URL {
+    /// Stable per-user directory under ~/Library/Application Support/OpenIsland.
+    /// Unlike /tmp, this directory is owner-writable only and not subject to
+    /// periodic system cleanup. Shared by the bridge socket and other local
+    /// caches so they stay out of world-writable /tmp.
+    static var stableDirectoryURL: URL {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
         return appSupport.appendingPathComponent("OpenIsland")

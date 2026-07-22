@@ -301,7 +301,7 @@ public final class ClaudeStatusLineInstallationManager: @unchecked Sendable {
         # Keep the rate_limits cache line intact — it feeds the notch usage panel.
         input=$(cat)
         _rl=$(printf '%s' "$input" | jq -c '.rate_limits // empty' 2>/dev/null)
-        [ -n "$_rl" ] && printf '%s\n' "$_rl" > "\#(cacheURL.path)"
+        [ -n "$_rl" ] && { mkdir -p "$(dirname "\#(cacheURL.path)")"; printf '%s\n' "$_rl" > "\#(cacheURL.path)"; }
         printf '%s' "$input" | "\#(delegateScriptURL.path)"
         """#
     }
@@ -328,7 +328,7 @@ public final class ClaudeStatusLineInstallationManager: @unchecked Sendable {
         # Notch panel. Removing it will degrade the usage display.
         input=$(cat)
         _rl=$(echo "$input" | jq -c '.rate_limits // empty' 2>/dev/null)
-        [ -n "$_rl" ] && printf '%s\n' "$_rl" > "\#(cacheURL.path)"
+        [ -n "$_rl" ] && { mkdir -p "$(dirname "\#(cacheURL.path)")"; printf '%s\n' "$_rl" > "\#(cacheURL.path)"; }
         echo "$input" | jq -r '"[\(.model.display_name // "Claude")] \(.context_window.used_percentage // 0)% context"' 2>/dev/null
         """#
     }

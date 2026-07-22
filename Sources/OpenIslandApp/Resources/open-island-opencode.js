@@ -5,8 +5,13 @@ import { connect } from "net";
 import { appendFileSync } from "fs";
 import { homedir } from "os";
 
-const DEBUG_LOG = "/tmp/open-island-opencode-debug.log";
+// Debug logging is OFF by default. When enabled via OPEN_ISLAND_DEBUG, it writes to the
+// user-owned app-support directory (not world-readable /tmp), because it can contain
+// prompt text, tool inputs, and bash command patterns.
+const DEBUG_ENABLED = !!process.env.OPEN_ISLAND_DEBUG;
+const DEBUG_LOG = `${process.env.HOME || homedir()}/Library/Application Support/OpenIsland/opencode-debug.log`;
 function debugLog(msg) {
+  if (!DEBUG_ENABLED) return;
   try { appendFileSync(DEBUG_LOG, `[${new Date().toISOString()}] ${msg}\n`); } catch {}
 }
 
