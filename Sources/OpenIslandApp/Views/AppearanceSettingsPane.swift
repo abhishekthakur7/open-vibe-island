@@ -636,8 +636,10 @@ struct AppearanceSettingsPane: View {
     }
 
     private var previewLabel: String? {
-        guard previewLayout == .external,
-              editingPreferences.centerLabel != .off else { return nil }
+        // AB-241: the text lane now renders on both profiles (centered on
+        // external, notch-adjacent on MacBook) — the preview mirrors
+        // `AppModel.islandClosedLabel()`'s per-profile gating exactly.
+        guard editingPreferences.centerLabel != .off else { return nil }
         switch (previewMode, editingPreferences.centerLabel) {
         case (.idle, _):               return nil
         case (.waiting, _):            return lang.t("settings.appearance.preview.permissionNeeded")

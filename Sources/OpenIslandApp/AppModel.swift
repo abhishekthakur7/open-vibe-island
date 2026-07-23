@@ -661,11 +661,17 @@ final class AppModel {
                     ?? defaults.string(forKey: islandRightSlotDefaultsKey)
                     ?? ""
             ) ?? .count,
+            // AB-241: the notch profile defaults to `.off` — before this
+            // ticket the closed pill hard-suppressed the label on MacBook
+            // regardless of this preference, so an untouched install must
+            // keep looking exactly as it did. The legacy non-namespaced key
+            // only ever backed the external/top-bar profile, so it's not a
+            // valid fallback for notch.
             centerLabel: IslandCenterLabel(
                 rawValue: defaults.string(forKey: appearanceDefaultsKey(profile, "centerLabel"))
-                    ?? defaults.string(forKey: islandCenterLabelDefaultsKey)
+                    ?? (profile == .topBar ? defaults.string(forKey: islandCenterLabelDefaultsKey) : nil)
                     ?? ""
-            ) ?? .agentAction,
+            ) ?? (profile == .notch ? .off : .agentAction),
             usageDisplay: IslandUsageDisplay(
                 rawValue: defaults.string(forKey: appearanceDefaultsKey(profile, "usageDisplay"))
                     ?? ""
@@ -1117,8 +1123,10 @@ final class AppModel {
             ?? surfacedSessions.first
     }
 
-    /// Text to show in the closed island's center label. Respects the
-    /// `islandCenterLabel` user preference.
+    /// Text to show in the closed island's text lane — centered on external
+    /// displays, beside the physical notch on MacBook (AB-241). Respects the
+    /// `islandCenterLabel` user preference, which is `.off` by default on
+    /// the notch profile.
     func islandClosedLabel() -> String? {
         guard islandCenterLabel != .off,
               let session = islandClosedSpotlight else { return nil }

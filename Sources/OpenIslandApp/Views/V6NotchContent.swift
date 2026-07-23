@@ -203,6 +203,40 @@ struct V6CenterLabelView: View {
     }
 }
 
+// MARK: - Notch-lane label renderer (AB-241)
+
+/// Beside-the-cutout activity text for notched Macs. Unlike
+/// `V6CenterLabelView` (external displays, where the whole pill grows to
+/// fit the text), this lane has a hard width cap — long text truncates
+/// gracefully instead of pushing the pill past the safe zone beside the
+/// physical notch.
+private struct V6NotchLaneLabelView: View {
+    let text: String
+    let maxWidth: CGFloat
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            label
+                .fixedSize(horizontal: true, vertical: false)
+            label
+                .frame(width: maxWidth, alignment: .leading)
+        }
+        .frame(maxWidth: maxWidth, alignment: .leading)
+    }
+
+    private var label: some View {
+        Text(text)
+            .font(.system(size: 11, weight: .medium, design: .monospaced))
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .foregroundStyle(V6Palette.paper)
+    }
+
+    static func intrinsicWidth(of text: String, cappedAt maxWidth: CGFloat) -> CGFloat {
+        min(maxWidth, CGFloat(Double(text.count) * 6.6 + 4))
+    }
+}
+
 // MARK: - Closed-pill layouts
 
 /// The canonical v6 closed-island pill rendered inside a fixed-height frame.
@@ -210,7 +244,7 @@ struct V6CenterLabelView: View {
 /// live settings preview and the real island.
 struct V6ClosedPill: View {
     var mode: UnifiedBars.Mode
-    var label: String?          // suppressed automatically in MacBook layout
+    var label: String?          // external: centered; macbook: notch-adjacent lane (AB-241)
     var rightSlot: IslandRightSlotContent?
     var layout: V6ClosedLayout
     var height: CGFloat = 32
@@ -284,10 +318,34 @@ struct V6ClosedPill: View {
         )
     }
 
-    // MARK: MacBook (outer width locked)
+    // MARK: MacBook (outer width locked, notch-lane label opt-in — AB-241)
+
+    /// Per-side reserve around the physical notch when no label lane is
+    /// shown — the original v6 spec constant. Leaving the lane off (the
+    /// default) must reproduce today's pill dimensions exactly.
+    private static let macbookBaseHalfReserve: CGFloat = 44
+    private static let notchLaneLabelGap: CGFloat = 6
+    private static let notchLaneLabelTrailingMargin: CGFloat = 4
+    /// Hard cap on the notch-lane label's width — keeps the pill's growth
+    /// bounded so a very long activity string truncates (ViewThatFits)
+    /// instead of pushing the pill arbitrarily wide.
+    static let notchLaneLabelMaxWidth: CGFloat = 84
 
     private var macbookBody: some View {
-        let halfReserve: CGFloat = 44
+        let glyphW: CGFloat = 24
+        let labelWidth = label.map {
+            V6NotchLaneLabelView.intrinsicWidth(of: $0, cappedAt: Self.notchLaneLabelMaxWidth)
+        }
+
+        // Left wing must fit: leading pad + glyph + (gap + label, if any) +
+        // a small safety margin before the physical notch. Growing this
+        // symmetrically on both sides (rather than just the left) keeps the
+        // notch gap centered in the pill — the pill is one continuous shape
+        // (see `V6ClosedPillShape` doc), so an asymmetric reserve would slide
+        // the true physical cutout out from under where we think it is.
+        let leftContentWidth = pad + glyphW + Self.notchLaneLabelTrailingMargin
+            + (labelWidth.map { Self.notchLaneLabelGap + $0 } ?? 0)
+        let halfReserve = max(Self.macbookBaseHalfReserve, leftContentWidth)
         let outer = halfReserve + physicalNotchWidth + halfReserve
 
         return ZStack {
@@ -296,17 +354,32 @@ struct V6ClosedPill: View {
 
             HStack(spacing: 0) {
                 UnifiedBars(mode: mode, size: 24)
-                    .frame(width: 24, height: 24)
+                    .frame(width: glyphW, height: 24)
+
+                if let label {
+                    V6NotchLaneLabelView(text: label, maxWidth: Self.notchLaneLabelMaxWidth)
+                        .padding(.leading, Self.notchLaneLabelGap)
+                        .transition(.opacity.combined(with: .move(edge: .leading)))
+                }
 
                 Spacer(minLength: 0)
 
                 if let rightSlot {
                     V6RightSlotView(content: rightSlot)
+                        .transition(.opacity.combined(with: .move(edge: .trailing)))
                 }
             }
             .padding(.horizontal, pad)
         }
         .frame(width: outer, height: height)
+        .animation(
+            .timingCurve(0.4, 0, 0.2, 1, duration: 0.45),
+            value: AnyHashable([
+                AnyHashable(label ?? ""),
+                AnyHashable(rightSlot.map(RightSlotKey.init) ?? .none),
+                AnyHashable(mode),
+            ])
+        )
     }
 }
 

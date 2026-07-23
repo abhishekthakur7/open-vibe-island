@@ -66,7 +66,7 @@
 "settings.appearance.rightSlot.agents" = "Agents";
 "settings.appearance.rightSlot.none" = "None";
 "settings.appearance.centerLabel.title" = "02 · Center label";
-"settings.appearance.centerLabel.note" = "External displays only — the physical notch covers this space on MacBook.";
+"settings.appearance.centerLabel.note" = "Centered on external displays; shown in a lane beside the notch on MacBook.";
 "settings.appearance.centerLabel.agentAction" = "Agent · action";
 "settings.appearance.centerLabel.sessionName" = "Session name";
 "settings.appearance.centerLabel.off" = "Off";

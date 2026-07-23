@@ -463,6 +463,36 @@ struct AppModelSessionListTests {
     }
 
     @Test
+    func closedIslandTextLaneDefaultsOffOnNotchButAgentActionOnTopBar() {
+        // AB-241: the notch-lane label reuses `islandCenterLabel`, but must
+        // default to `.off` on the notch profile specifically — before this
+        // ticket the closed pill hard-suppressed the label on MacBook, so an
+        // untouched install has to keep looking exactly as it did. The
+        // topBar (external) profile keeps its pre-existing `.agentAction`
+        // default untouched.
+        let now = Date(timeIntervalSince1970: 5_000)
+        let model = AppModel()
+
+        var running = listSession(id: "running", phase: .running, updatedAt: now)
+        running.isProcessAlive = true
+        model.state = SessionState(sessions: [running])
+
+        model.overlayPlacementDiagnostics = placementDiagnostics(mode: .notch)
+        #expect(model.islandCenterLabel == .off)
+        #expect(model.islandClosedLabel() == nil)
+
+        model.overlayPlacementDiagnostics = placementDiagnostics(mode: .topBar)
+        #expect(model.islandCenterLabel == .agentAction)
+        #expect(model.islandClosedLabel() != nil)
+
+        // Explicitly opting in on the notch profile surfaces the label
+        // there too, independent of the topBar profile's own preference.
+        model.updateAppearancePreferences(for: .notch) { $0.centerLabel = .agentAction }
+        model.overlayPlacementDiagnostics = placementDiagnostics(mode: .notch)
+        #expect(model.islandClosedLabel() != nil)
+    }
+
+    @Test
     func jumpToSessionClosesOverlayBeforeTerminalJumpFinishes() async throws {
         let now = Date(timeIntervalSince1970: 2_000)
         let model = AppModel { _ in

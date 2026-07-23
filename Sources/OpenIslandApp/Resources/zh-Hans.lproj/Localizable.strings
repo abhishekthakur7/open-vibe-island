@@ -66,7 +66,7 @@
 "settings.appearance.rightSlot.agents" = "代理";
 "settings.appearance.rightSlot.none" = "不显示";
 "settings.appearance.centerLabel.title" = "02 · 中央标签";
-"settings.appearance.centerLabel.note" = "仅外接屏显示 — MacBook 的物理刘海会遮挡中央区域。";
+"settings.appearance.centerLabel.note" = "外接屏幕时居中显示；MacBook 上则显示在刘海旁的区域。";
 "settings.appearance.centerLabel.agentAction" = "代理 · 动作";
 "settings.appearance.centerLabel.sessionName" = "会话名";
 "settings.appearance.centerLabel.off" = "关闭";

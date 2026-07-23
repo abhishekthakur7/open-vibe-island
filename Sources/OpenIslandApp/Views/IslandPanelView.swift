@@ -377,7 +377,7 @@ struct IslandPanelView: View {
         let physicalNotchWidth: CGFloat = targetOverlayScreen?.notchSize.width ?? 180
         V6ClosedPill(
             mode: model.islandClosedMode,
-            label: layout == .external ? model.islandClosedLabel() : nil,
+            label: model.islandClosedLabel(),
             rightSlot: model.islandClosedRightSlotContent(),
             layout: layout,
             height: closedNotchHeight,

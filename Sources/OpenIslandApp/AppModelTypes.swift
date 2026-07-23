@@ -33,9 +33,10 @@ enum IslandRightSlot: String, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
 }
 
-/// What the closed island renders in the center label (external displays
-/// only — on MacBook the physical notch covers this space so we suppress
-/// the label regardless).
+/// What the closed island renders as its text lane. On external displays
+/// this sits centered in the pill; on notched MacBooks it renders in a
+/// lane beside the physical notch cutout (AB-241). Defaults differ per
+/// `IslandAppearanceDisplayProfile` — see `AppModel.loadAppearancePreferences`.
 enum IslandCenterLabel: String, CaseIterable, Identifiable, Sendable {
     case sessionName  // e.g. "open-island"
     case agentAction  // e.g. "Claude · editing"

@@ -70,6 +70,29 @@ struct OverlayPanelControllerTests {
     }
 
     @Test
+    func notchLaneLabelAddsHitAreaBonusOnNotchedDisplayOnly() {
+        // AB-241: when the notch-lane label is showing, the hit area grows
+        // by a generous fixed bonus so hover/click still works over it.
+        let widthWithLabel = OverlayPanelController.closedPanelWidth(
+            notchWidth: 224,
+            isNotchedDisplay: true,
+            notchStatus: .closed,
+            includesNotchLaneLabel: true
+        )
+        #expect(widthWithLabel == CGFloat(224 + 88 + OverlayPanelController.notchLaneLabelHitAreaBonus))
+
+        // External layout ignores the flag — it already uses a generous
+        // fixed hit-area regardless of live content.
+        let externalWidth = OverlayPanelController.closedPanelWidth(
+            notchWidth: 0,
+            isNotchedDisplay: false,
+            notchStatus: .closed,
+            includesNotchLaneLabel: true
+        )
+        #expect(externalWidth == CGFloat(360))
+    }
+
+    @Test
     func poppingStatusAddsHoverBudget() {
         let width = OverlayPanelController.closedPanelWidth(
             notchWidth: 224,

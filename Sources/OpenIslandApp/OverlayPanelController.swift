@@ -502,21 +502,33 @@ final class OverlayPanelController {
             && point.y <= rect.maxY
     }
 
+    /// Extra hit-area width reserved on a notched display when the
+    /// notch-lane label (AB-241) is showing. Sized generously (rather than
+    /// tracking the live label's exact rendered width) — the same "fixed,
+    /// generous hit-area" approach already used for the external layout's
+    /// fluid pill below — so hover/click keeps working over the label
+    /// without this controller needing to duplicate `V6ClosedPill`'s text
+    /// measurement.
+    nonisolated static let notchLaneLabelHitAreaBonus: CGFloat = 200
+
     /// Hit-area width of the v6 closed pill.
     ///
     /// - On a MacBook (physical notch present) the pill is locked to
-    ///   `44 + notchWidth + 44`, per the v6 design spec.
+    ///   `44 + notchWidth + 44`, per the v6 design spec, plus
+    ///   `notchLaneLabelHitAreaBonus` when the notch-lane label is showing.
     /// - On an external display the width is content-driven; we return a
     ///   generous fixed hit-area so hover / click detection works without
     ///   the controller having to introspect live session state.
     nonisolated static func closedPanelWidth(
         notchWidth: CGFloat,
         isNotchedDisplay: Bool,
-        notchStatus: NotchStatus
+        notchStatus: NotchStatus,
+        includesNotchLaneLabel: Bool = false
     ) -> CGFloat {
         let popBonus: CGFloat = notchStatus == .popping ? 18 : 0
         if isNotchedDisplay {
-            return notchWidth + 88 + popBonus
+            let labelBonus: CGFloat = includesNotchLaneLabel ? notchLaneLabelHitAreaBonus : 0
+            return notchWidth + 88 + labelBonus + popBonus
         }
         return 360 + popBonus
     }
@@ -582,7 +594,8 @@ final class OverlayPanelController {
         return Self.closedPanelWidth(
             notchWidth: notchWidth,
             isNotchedDisplay: isNotched,
-            notchStatus: model.notchStatus
+            notchStatus: model.notchStatus,
+            includesNotchLaneLabel: isNotched && model.islandClosedLabel() != nil
         )
     }
 
