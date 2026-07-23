@@ -212,6 +212,8 @@
 "island.showAll" = "显示全部 %lld 个会话";
 "island.collapseList" = "收起列表";
 "island.usageWaiting" = "等待用量数据";
+"island.transcript.open" = "打开会话记录";
+"island.transcript.reveal" = "在访达中显示";
 
 /* Island Panel - Approval */
 "approval.toolPermissionRequested" = "请求工具权限";

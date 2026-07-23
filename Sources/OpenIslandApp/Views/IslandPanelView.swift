@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 @preconcurrency import MarkdownUI
 import OpenIslandCore
@@ -794,7 +795,12 @@ struct IslandPanelView: View {
                         onReply: TerminalTextSender.canReply(to: session, enabled: model.completionReplyEnabled)
                             ? { model.replyToSession(session, text: $0) } : nil,
                         onJump: { model.jumpToSession(session) },
-                        onDismiss: session.isRemote ? { model.dismissSession(session.id) } : nil,
+                        // AB-237: dismiss is available on every session row
+                        // (previously gated to `isRemote` even though
+                        // `dismissSession` already works for any session id —
+                        // see `SessionState.dismissSession` / `isDismissedByUser`
+                        // for the undo-safe suppress-not-tombstone semantics).
+                        onDismiss: { model.dismissSession(session.id) },
                         keyboardCoordinator: model.overlay,
                         pulseClock: model.pulseClock
                     )
@@ -1557,6 +1563,18 @@ private struct IslandSessionRow: View {
             .padding(.leading, detailLeadingInset)
             .padding(.trailing, sideInset)
             .padding(.bottom, 10)
+        }
+
+        // AB-237: `trackingTranscriptPath`/`spotlightTrackingLabel` used to be
+        // tracked but never rendered anywhere — no click-to-open affordance
+        // existed. Shown only when a transcript path is actually known.
+        if let label = session.spotlightTrackingLabel,
+           let transcriptPath = session.trackingTranscriptPath?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !transcriptPath.isEmpty {
+            TranscriptAffordance(path: transcriptPath, label: label, lang: lang)
+                .padding(.leading, detailLeadingInset)
+                .padding(.trailing, sideInset)
+                .padding(.bottom, 10)
         }
     }
 
@@ -3098,5 +3116,68 @@ private struct DismissButton: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
+    }
+}
+
+/// AB-237: renders the session's JSONL transcript filename as a clickable
+/// affordance. A plain click opens the transcript in the default editor;
+/// the context menu additionally offers "Reveal in Finder". Callers only
+/// instantiate this when a transcript path is actually known.
+private struct TranscriptAffordance: View {
+    let path: String
+    let label: String
+    let lang: LanguageManager
+    @State private var isHovered = false
+
+    var body: some View {
+        Button {
+            openTranscriptFile(at: path)
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "doc.text")
+                    .font(.system(size: 9.5, weight: .medium))
+                Text(label)
+                    .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            .foregroundStyle(.white.opacity(isHovered ? 0.62 : 0.4))
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .help(path)
+        .contextMenu {
+            Button(lang.t("island.transcript.open")) {
+                openTranscriptFile(at: path)
+            }
+            Button(lang.t("island.transcript.reveal")) {
+                revealTranscriptFileInFinder(at: path)
+            }
+        }
+    }
+}
+
+/// Opens the transcript JSONL file in whatever app the user has set as
+/// default for that file type — mirrors the plain `NSWorkspace.shared.open`
+/// pattern used elsewhere in the app (e.g. `CodexAppServerCoordinator`).
+private func openTranscriptFile(at path: String) {
+    NSWorkspace.shared.open(URL(fileURLWithPath: path))
+}
+
+/// Reveals the transcript file in Finder, falling back to its containing
+/// directory if the file itself is already gone — same fallback pattern as
+/// `GeneralSettingsPane.revealInFinder` in `SettingsView.swift`.
+private func revealTranscriptFileInFinder(at path: String) {
+    let fileManager = FileManager.default
+    let url = URL(fileURLWithPath: path).standardizedFileURL
+
+    if fileManager.fileExists(atPath: url.path) {
+        NSWorkspace.shared.activateFileViewerSelecting([url])
+        return
+    }
+
+    let directoryURL = url.deletingLastPathComponent()
+    if fileManager.fileExists(atPath: directoryURL.path) {
+        NSWorkspace.shared.open(directoryURL)
     }
 }

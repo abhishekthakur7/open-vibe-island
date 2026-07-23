@@ -431,6 +431,16 @@ public struct AgentSession: Equatable, Identifiable, Codable, Sendable {
     /// Only meaningful for hook-managed sessions.
     public var isSessionEnded: Bool = false
 
+    /// Whether the user explicitly dismissed this session from the island
+    /// (AB-237). Unlike `isSessionEnded`, this is a suppression flag, not a
+    /// tombstone: `SessionState.markSingleSessionAlive` clears it the next
+    /// time a genuine live hook event arrives for this session id, so a
+    /// dismissed-but-still-active session reappears rather than staying
+    /// hidden forever. Checked first in `isVisibleInIsland` so dismissal
+    /// hides the row immediately regardless of hook-managed / process-alive /
+    /// Codex.app classification.
+    public var isDismissedByUser: Bool = false
+
     /// Whether the agent process is currently alive according to process discovery.
     /// Used for non-hook-managed sessions (e.g. Codex, synthetic Claude sessions).
     public var isProcessAlive: Bool = false
@@ -567,6 +577,7 @@ public extension AgentSession {
     /// Hook-managed sessions (Claude Code via hooks) rely on hook lifecycle
     /// signals; non-hook sessions use process polling.
     var isVisibleInIsland: Bool {
+        if isDismissedByUser { return false }
         if isDemoSession { return true }
         if phase.requiresAttention { return true }
         // Codex.app sessions stay visible while the desktop app is running,

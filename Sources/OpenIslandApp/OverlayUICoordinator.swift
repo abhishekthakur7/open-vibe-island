@@ -42,6 +42,13 @@ final class OverlayUICoordinator {
     @ObservationIgnored
     var ignoresPointerExitAccessor: (() -> Bool)?
 
+    /// AB-237: backs the persisted "Auto-collapse on mouse exit" preference
+    /// (`AppModel.autoCollapseEnabled`). Defaults to `true` (today's
+    /// behavior) when unwired, e.g. in tests that construct
+    /// `OverlayUICoordinator` without a full `AppModel`.
+    @ObservationIgnored
+    var autoCollapseOnMouseLeaveEnabledAccessor: (() -> Bool)?
+
     @ObservationIgnored
     var harnessRuntimeMonitor: HarnessRuntimeMonitor?
 
@@ -81,6 +88,10 @@ final class OverlayUICoordinator {
 
     private var ignoresPointerExitDuringHarness: Bool {
         ignoresPointerExitAccessor?() ?? false
+    }
+
+    private var isAutoCollapseOnMouseLeaveEnabled: Bool {
+        autoCollapseOnMouseLeaveEnabledAccessor?() ?? true
     }
 
     private var preferredOverlayScreenID: String? {
@@ -290,8 +301,14 @@ final class OverlayUICoordinator {
             return false
         }
 
+        // AB-237: gated by the persisted "Auto-collapse on mouse exit"
+        // preference — previously this branch unconditionally returned
+        // `true` and the Settings toggle was `.constant(true)` and did
+        // nothing. The notification-card auto-dismiss branch below is a
+        // distinct, timed feature (a completion toast dismissing itself)
+        // and stays unaffected by this preference.
         if notchOpenReason == .hover && !islandSurface.isNotificationCard {
-            return true
+            return isAutoCollapseOnMouseLeaveEnabled
         }
 
         return notchOpenReason == .notification

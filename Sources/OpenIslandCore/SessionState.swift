@@ -364,11 +364,31 @@ public struct SessionState: Equatable, Sendable {
 
     /// Mark a single session as alive (e.g. when a hook event is received).
     /// Does not affect other sessions' processNotSeenCount.
+    ///
+    /// This is also the single place a user-dismissed session (AB-237) gets
+    /// un-suppressed: it's invoked for every event whose ingress is a genuine
+    /// live bridge hook (see `AppModel.applyTrackedEvent`), never for passive
+    /// JSONL rediscovery, so a dismissed session reappears exactly when the
+    /// agent is confirmed to still be doing something — not merely because
+    /// background process polling still sees the PID.
     public mutating func markSingleSessionAlive(sessionID: String) {
         guard var session = sessionsByID[sessionID] else { return }
-        guard !session.isProcessAlive || session.processNotSeenCount != 0 else { return }
+        let wasDismissed = session.isDismissedByUser
+        let needsLivenessUpdate = !session.isProcessAlive || session.processNotSeenCount != 0
+        guard needsLivenessUpdate || wasDismissed else { return }
         session.isProcessAlive = true
         session.processNotSeenCount = 0
+        if wasDismissed {
+            session.isDismissedByUser = false
+            // `dismissSession` also flips `isSessionEnded` (the "vanished
+            // without a clean stop" fallback it shares with process-liveness
+            // teardown) purely to hide the row via the isHookManaged
+            // visibility rule. Now that a live event proves the session
+            // didn't actually end, undo that too — otherwise a hook-managed
+            // session would clear `isDismissedByUser` here yet stay hidden
+            // via `isHookManaged { !isSessionEnded }` in `isVisibleInIsland`.
+            session.isSessionEnded = false
+        }
         upsert(session)
     }
 
@@ -474,6 +494,13 @@ public struct SessionState: Equatable, Sendable {
         // liveness fallback above.
         session.outcome = .interrupted
         session.updatedAt = .now
+        // AB-237: suppress, don't tombstone. `isDismissedByUser` (rather than
+        // just `isSessionEnded`) is what actually hides the row — it's
+        // checked first by `isVisibleInIsland` regardless of session type —
+        // and `markSingleSessionAlive` clears it the next time a live hook
+        // event arrives for this id, so the session reappears instead of
+        // staying gone until process-death polling would have caught it.
+        session.isDismissedByUser = true
         upsert(session)
     }
 

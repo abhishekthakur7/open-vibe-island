@@ -24,6 +24,7 @@ final class AppModel {
     private static let completionReplyEnabledDefaultsKey = "feature.completionReply.enabled"
     private static let suppressFrontmostNotificationsDefaultsKey = "app.suppressFrontmostNotifications"
     private static let globalHotKeyOptionDefaultsKey = "app.globalHotKeyOption"
+    private static let autoCollapseEnabledDefaultsKey = "app.autoCollapseOnMouseLeave"
     private static let legacyIslandSessionStateIndicatorDefaultsKey = "appearance.island.v8.stateIndicator"
     private static let legacyIslandSessionGroupDefaultsKey = "appearance.island.v8.sessionGroup"
     private static let legacyIslandSessionSortDefaultsKey = "appearance.island.v8.sessionSort"
@@ -268,6 +269,19 @@ final class AppModel {
         didSet {
             guard hasFinishedInit, suppressFrontmostNotifications != oldValue else { return }
             UserDefaults.standard.set(suppressFrontmostNotifications, forKey: Self.suppressFrontmostNotificationsDefaultsKey)
+        }
+    }
+
+    /// AB-237: whether the hover-opened overlay auto-collapses when the
+    /// pointer leaves its surface. Previously the Settings toggle was
+    /// hardcoded `.constant(true)` and did nothing; this backs it with a
+    /// real, persisted preference read by
+    /// `OverlayUICoordinator.shouldAutoCollapseOnMouseLeave`. Defaults to
+    /// `true` to preserve today's UX for existing users.
+    var autoCollapseEnabled: Bool = true {
+        didSet {
+            guard hasFinishedInit, autoCollapseEnabled != oldValue else { return }
+            UserDefaults.standard.set(autoCollapseEnabled, forKey: Self.autoCollapseEnabledDefaultsKey)
         }
     }
 
@@ -623,12 +637,14 @@ final class AppModel {
             Self.completionReplyEnabledDefaultsKey: false,
             Self.suppressFrontmostNotificationsDefaultsKey: true,
             Self.globalHotKeyOptionDefaultsKey: GlobalHotKeyOption.optionCommandO.rawValue,
+            Self.autoCollapseEnabledDefaultsKey: true,
         ])
         isSoundMuted = UserDefaults.standard.bool(forKey: Self.soundMutedDefaultsKey)
         selectedSoundName = NotificationSoundService.selectedSoundName
         showDockIcon = UserDefaults.standard.bool(forKey: Self.showDockIconDefaultsKey)
         hapticFeedbackEnabled = UserDefaults.standard.bool(forKey: Self.hapticFeedbackEnabledDefaultsKey)
         suppressFrontmostNotifications = UserDefaults.standard.bool(forKey: Self.suppressFrontmostNotificationsDefaultsKey)
+        autoCollapseEnabled = UserDefaults.standard.bool(forKey: Self.autoCollapseEnabledDefaultsKey)
         if UserDefaults.standard.object(forKey: Self.showCodexUsageDefaultsKey) != nil {
             showCodexUsage = UserDefaults.standard.bool(forKey: Self.showCodexUsageDefaultsKey)
         } else {
@@ -665,6 +681,9 @@ final class AppModel {
         }
         overlay.ignoresPointerExitAccessor = { [weak self] in
             self?.ignoresPointerExitDuringHarness ?? false
+        }
+        overlay.autoCollapseOnMouseLeaveEnabledAccessor = { [weak self] in
+            self?.autoCollapseEnabled ?? true
         }
 
         hooks.onStatusMessage = { [weak self] message in

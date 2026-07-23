@@ -27,6 +27,7 @@ struct AppModelSessionListTests {
             "app.suppressFrontmostNotifications",
             "feature.completionReply.enabled",
             "overlay.sound.muted",
+            "app.autoCollapseOnMouseLeave",
         ].forEach(UserDefaults.standard.removeObject(forKey:))
     }
 
@@ -88,6 +89,60 @@ struct AppModelSessionListTests {
         #expect(model.surfacedSessions.map(\.id) == ["live-session"])
         #expect(model.recentSessions.map(\.id) == ["recent-session"])
         #expect(model.islandListSessions.map(\.id) == ["live-session"])
+    }
+
+    /// AB-237: dismiss must work on any session (not just remote — the row's
+    /// dismiss button used to be gated to `session.isRemote` even though
+    /// `AppModel.dismissSession` always worked on any id), and it must be
+    /// undo-safe: a dismissed session reappears the next time a genuine live
+    /// bridge event arrives for the same session id, rather than staying
+    /// hidden until process-death polling eventually catches up.
+    @Test
+    func dismissedLocalSessionReappearsOnNextLiveBridgeEvent() {
+        let now = Date(timeIntervalSince1970: 5_000)
+        let model = AppModel()
+
+        model.applyTrackedEvent(
+            .sessionStarted(
+                SessionStarted(
+                    sessionID: "local-session",
+                    title: "Claude · local",
+                    tool: .claudeCode,
+                    origin: .live,
+                    initialPhase: .running,
+                    summary: "Working",
+                    timestamp: now
+                )
+            ),
+            updateLastActionMessage: false,
+            ingress: .bridge
+        )
+
+        #expect(model.surfacedSessions.map(\.id) == ["local-session"])
+
+        model.dismissSession("local-session")
+
+        #expect(model.surfacedSessions.isEmpty)
+        #expect(model.state.session(id: "local-session")?.phase == .completed)
+        #expect(model.state.session(id: "local-session")?.outcome == .interrupted)
+
+        // A later live hook event for the same session id — the session
+        // should reappear rather than staying suppressed.
+        model.applyTrackedEvent(
+            .activityUpdated(
+                SessionActivityUpdated(
+                    sessionID: "local-session",
+                    summary: "Back to work",
+                    phase: .running,
+                    timestamp: now.addingTimeInterval(30)
+                )
+            ),
+            updateLastActionMessage: false,
+            ingress: .bridge
+        )
+
+        #expect(model.surfacedSessions.map(\.id) == ["local-session"])
+        #expect(model.state.session(id: "local-session")?.phase == .running)
     }
 
     @Test
@@ -681,6 +736,45 @@ struct AppModelSessionListTests {
         #expect(model.notchStatus == .closed)
         #expect(model.notchOpenReason == nil)
         #expect(model.islandSurface == .sessionList())
+    }
+
+    /// AB-237: the General settings "Auto-collapse on mouse exit" toggle
+    /// used to be hardcoded `.constant(true)` and did nothing. This checks
+    /// the real, persisted `autoCollapseEnabled` preference actually changes
+    /// hover-exit behavior — with it off, a hover-opened session list stays
+    /// open when the pointer leaves instead of auto-collapsing.
+    @Test
+    func hoverOpenedSessionListStaysOpenOnPointerExitWhenAutoCollapseDisabled() {
+        let model = AppModel()
+        model.autoCollapseEnabled = false
+        model.notchStatus = .opened
+        model.notchOpenReason = .hover
+        model.islandSurface = .sessionList()
+
+        #expect(!model.shouldAutoCollapseOnMouseLeave)
+
+        model.notePointerInsideIslandSurface()
+        model.handlePointerExitedIslandSurface()
+
+        #expect(model.notchStatus == .opened)
+        #expect(model.notchOpenReason == .hover)
+        #expect(model.islandSurface == .sessionList())
+    }
+
+    /// AB-237: the preference persists across relaunch via UserDefaults —
+    /// mirrors the exact pattern `showDockIcon`/`globalHotKeyOption` use.
+    @Test
+    func autoCollapsePreferencePersistsAcrossModelInstances() {
+        let first = AppModel()
+        #expect(first.autoCollapseEnabled)
+
+        first.autoCollapseEnabled = false
+
+        let second = AppModel()
+        #expect(!second.autoCollapseEnabled)
+
+        // Leave defaults clean for subsequent tests in this suite.
+        second.autoCollapseEnabled = true
     }
 
     @Test

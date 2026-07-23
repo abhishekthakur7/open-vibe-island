@@ -1698,6 +1698,114 @@ struct SessionStateTests {
         #expect(state.session(id: "remote-1")?.outcome == .interrupted)
     }
 
+    /// AB-237: dismiss used to only be wired up in the UI for remote
+    /// sessions, but `dismissSession` itself has always worked on any
+    /// session id. This locks in that a *local*, hook-managed, still
+    /// process-alive session also disappears immediately once dismissed —
+    /// `isDismissedByUser` is checked first in `isVisibleInIsland`,
+    /// overriding the hook-managed / process-alive visibility rules.
+    @Test
+    func dismissSessionHidesLocalHookManagedSessionImmediately() {
+        var session = AgentSession(
+            id: "local-1",
+            title: "Claude · local",
+            tool: .claudeCode,
+            phase: .running,
+            summary: "Working",
+            updatedAt: Date(timeIntervalSince1970: 1_000)
+        )
+        session.isHookManaged = true
+        session.isProcessAlive = true
+        var state = SessionState(sessions: [session])
+
+        #expect(state.session(id: "local-1")?.isVisibleInIsland == true)
+
+        state.dismissSession(id: "local-1")
+
+        #expect(state.session(id: "local-1")?.isDismissedByUser == true)
+        #expect(state.session(id: "local-1")?.isVisibleInIsland == false)
+    }
+
+    /// AB-237: dismiss is undo-safe — it suppresses the row, it doesn't
+    /// tombstone the session. This mirrors exactly what
+    /// `AppModel.applyTrackedEvent` does for a genuine live bridge event
+    /// (`state.apply` followed by `markSingleSessionAlive`, see
+    /// `ProcessMonitoringCoordinator.markSessionProcessAlive`) and verifies
+    /// the dismissed session reappears once the agent is heard from again.
+    @Test
+    func dismissedSessionReappearsWhenLiveEventArrivesForSameID() {
+        var state = SessionState()
+        state.apply(
+            .sessionStarted(
+                SessionStarted(
+                    sessionID: "local-1",
+                    title: "Claude · local",
+                    tool: .claudeCode,
+                    origin: .live,
+                    initialPhase: .running,
+                    summary: "Working",
+                    timestamp: Date(timeIntervalSince1970: 1_000)
+                )
+            )
+        )
+        #expect(state.session(id: "local-1")?.isVisibleInIsland == true)
+
+        state.dismissSession(id: "local-1")
+        #expect(state.session(id: "local-1")?.isVisibleInIsland == false)
+
+        // A genuine live hook event arrives for the same session id.
+        state.apply(
+            .activityUpdated(
+                SessionActivityUpdated(
+                    sessionID: "local-1",
+                    summary: "Still working",
+                    phase: .running,
+                    timestamp: Date(timeIntervalSince1970: 1_010)
+                )
+            )
+        )
+        // `apply` alone updates phase/summary but does not undo the
+        // suppression — only `markSingleSessionAlive` does, matching how
+        // `AppModel` wires the two together for bridge-ingress events.
+        #expect(state.session(id: "local-1")?.phase == .running)
+        #expect(state.session(id: "local-1")?.isVisibleInIsland == false)
+
+        state.markSingleSessionAlive(sessionID: "local-1")
+
+        #expect(state.session(id: "local-1")?.isDismissedByUser == false)
+        #expect(state.session(id: "local-1")?.isVisibleInIsland == true)
+    }
+
+    /// AB-237: passive process-liveness polling (`markProcessLiveness`, the
+    /// periodic `ps`/`lsof` reconciliation) must NOT resurrect a dismissed
+    /// session by itself — only `markSingleSessionAlive`, invoked
+    /// exclusively for genuine live hook events, does. This is what keeps a
+    /// dismissed-but-still-running agent hidden until it actually does
+    /// something, rather than reappearing the instant background polling
+    /// next confirms the PID is alive.
+    @Test
+    func dismissedSessionStaysHiddenThroughBackgroundProcessPolling() {
+        var session = AgentSession(
+            id: "local-1",
+            title: "Claude · local",
+            tool: .claudeCode,
+            phase: .running,
+            summary: "Working",
+            updatedAt: Date(timeIntervalSince1970: 1_000)
+        )
+        session.isHookManaged = true
+        session.isProcessAlive = true
+        var state = SessionState(sessions: [session])
+
+        state.dismissSession(id: "local-1")
+        #expect(state.session(id: "local-1")?.isVisibleInIsland == false)
+
+        state.markProcessLiveness(aliveSessionIDs: ["local-1"])
+
+        #expect(state.session(id: "local-1")?.isDismissedByUser == true)
+        #expect(state.session(id: "local-1")?.isVisibleInIsland == false)
+    }
+
     @Test
     func agentSessionOutcomeRoundTripsThroughCodableWithSuccessDefaultForLegacyData() throws {
         let session = AgentSession(

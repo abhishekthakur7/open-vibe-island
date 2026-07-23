@@ -212,6 +212,8 @@
 "island.showAll" = "顯示全部 %lld 個工作階段";
 "island.collapseList" = "收起清單";
 "island.usageWaiting" = "等待用量資料";
+"island.transcript.open" = "開啟工作階段記錄";
+"island.transcript.reveal" = "在 Finder 中顯示";
 
 /* Island Panel - Approval */
 "approval.toolPermissionRequested" = "請求工具權限";

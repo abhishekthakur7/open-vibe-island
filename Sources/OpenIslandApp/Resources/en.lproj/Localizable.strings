@@ -212,6 +212,8 @@
 "island.showAll" = "Show all %lld sessions";
 "island.collapseList" = "Collapse list";
 "island.usageWaiting" = "Usage waiting";
+"island.transcript.open" = "Open transcript";
+"island.transcript.reveal" = "Reveal in Finder";
 
 /* Island Panel - Approval */
 "approval.toolPermissionRequested" = "Tool permission requested";
