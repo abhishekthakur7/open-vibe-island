@@ -74,6 +74,17 @@ struct UnifiedBars: View {
         /// actual mode transition (AB-242).
         private var lastRenderedMode: Mode?
 
+        /// AB-244: this glyph is driven by raw `CAKeyframeAnimation`s, not
+        /// SwiftUI — `@Environment(\.accessibilityReduceMotion)` never
+        /// reaches this `NSView`, so Reduce Motion is read straight off
+        /// `NSWorkspace` (matching the ticket's guidance for AppKit/CA
+        /// surfaces) and kept current via
+        /// `accessibilityDisplayOptionsDidChangeNotification` — the same
+        /// notification System Settings posts when the user flips the
+        /// toggle live, with no app relaunch required.
+        private var reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        private var reduceMotionObserver: NSObjectProtocol?
+
         override init(frame frameRect: NSRect) {
             super.init(frame: frameRect)
             wantsLayer = true
@@ -84,11 +95,31 @@ struct UnifiedBars: View {
                 barLayer.contentsScale = NSScreen.main?.backingScaleFactor ?? 2
                 layer?.addSublayer(barLayer)
             }
+
+            reduceMotionObserver = NotificationCenter.default.addObserver(
+                forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
+                object: NSWorkspace.shared,
+                queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    let updated = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+                    guard updated != self.reduceMotion else { return }
+                    self.reduceMotion = updated
+                    self.needsLayout = true
+                }
+            }
         }
 
         @available(*, unavailable)
         required init?(coder: NSCoder) {
             fatalError("init(coder:) has not been implemented")
+        }
+
+        isolated deinit {
+            if let reduceMotionObserver {
+                NotificationCenter.default.removeObserver(reduceMotionObserver)
+            }
         }
 
         func update(mode: Mode, tint: NSColor) {
@@ -245,6 +276,13 @@ struct UnifiedBars: View {
         private func configureAnimations(for barLayer: CAShapeLayer, column: Column) {
             barLayer.removeAllAnimations()
             guard mode.usesLayerAnimation, !barLayer.isHidden else { return }
+
+            // AB-244: Reduce Motion drops these `repeatCount = .infinity`
+            // keyframe animations entirely — the bars still render (at the
+            // static height/opacity `configureLayers` already computed for
+            // this mode via `initialScaleY`/`initialOpacity`), just without
+            // the running wave / waiting breathing motion.
+            guard !reduceMotion else { return }
 
             switch mode {
             case .idle:

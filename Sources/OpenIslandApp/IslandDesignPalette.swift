@@ -59,4 +59,25 @@ enum IslandDesignPalette {
             }
         }
     }
+
+    /// AB-244: contrast tokens for dim body text and hairline dividers.
+    /// Pre-existing values ranged 0.25–0.42 for de-emphasized-but-still-
+    /// informative text (contrast ratio as low as ~2:1 against the near-
+    /// black ground) and 0.045–0.08 for row/section dividers. `secondary`/
+    /// `tertiary` raise the text tiers to clear WCAG's 4.5:1 normal-text
+    /// threshold with headroom for the app's translucent (not pure-black)
+    /// vibrancy background; `hairline` stays subtle by default but jumps to
+    /// a clearly visible boundary when the user has Increase Contrast on.
+    enum Contrast {
+        static let secondaryText: Double = 0.55
+        static let tertiaryText: Double = 0.48
+
+        static func text(_ base: Double, increaseContrast: Bool) -> Double {
+            increaseContrast ? min(1, base + 0.24) : base
+        }
+
+        static func hairline(increaseContrast: Bool) -> Double {
+            increaseContrast ? 0.22 : 0.055
+        }
+    }
 }

@@ -30,6 +30,7 @@ enum IslandRightSlotContent: Equatable {
 
 struct V6RightSlotView: View {
     let content: IslandRightSlotContent
+    var lang: LanguageManager = .shared
 
     var body: some View {
         switch content {
@@ -39,9 +40,39 @@ struct V6RightSlotView: View {
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
                 .foregroundStyle(V6Palette.paper.opacity(0.72))
+                .accessibilityLabel(lang.t("a11y.agentsGrid.countBadge", n))
         case .agents(let cells):
             AgentsGridBody(cells: cells)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Self.agentsGridAccessibilitySummary(for: cells, lang: lang))
         }
+    }
+
+    /// AB-244: the closed-island agents grid packs each session into a tiny
+    /// colored square with no text of its own — individually exposing each
+    /// tile would be a wall of unlabeled shapes to VoiceOver. Collapsed into
+    /// one aggregate label ("2 running, 1 waiting for input") instead, the
+    /// same "grouped summary" shape used for session rows.
+    static func agentsGridAccessibilitySummary(for cells: [AgentGridCell], lang: LanguageManager) -> String {
+        var running = 0
+        var waiting = 0
+        var idle = 0
+        var overflow = 0
+        for cell in cells {
+            switch cell {
+            case .session(_, .running): running += 1
+            case .session(_, .waiting): waiting += 1
+            case .session(_, .idle): idle += 1
+            case .overflow(let n): overflow += n
+            }
+        }
+
+        var parts: [String] = []
+        if running > 0 { parts.append(lang.t("a11y.agentsGrid.running", running)) }
+        if waiting > 0 { parts.append(lang.t("a11y.agentsGrid.waiting", waiting)) }
+        if idle > 0 { parts.append(lang.t("a11y.agentsGrid.idle", idle)) }
+        if overflow > 0 { parts.append(lang.t("a11y.agentsGrid.more", overflow)) }
+        return parts.joined(separator: ", ")
     }
 
     /// Intrinsic width used by the fluid-layout math. Values are slightly
@@ -171,13 +202,21 @@ private struct AgentsGridWaitingTile: View {
     let size: CGFloat
     let radius: CGFloat
     @State private var pulse = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// AB-244: fixed opacity used in place of the 0.35↔1.0 breathing pulse
+    /// when Reduce Motion is on — roughly the pulse's midpoint, so a
+    /// waiting tile still reads as visually distinct from a fully dim idle
+    /// tile (0.22) or a fully solid running one (1.0), just without motion.
+    private static let reducedMotionOpacity: Double = 0.7
 
     var body: some View {
         RoundedRectangle(cornerRadius: radius, style: .continuous)
             .fill(color)
             .frame(width: size, height: size)
-            .opacity(pulse ? 1.0 : 0.35)
+            .opacity(reduceMotion ? Self.reducedMotionOpacity : (pulse ? 1.0 : 0.35))
             .onAppear {
+                guard !reduceMotion else { return }
                 withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) {
                     pulse = true
                 }

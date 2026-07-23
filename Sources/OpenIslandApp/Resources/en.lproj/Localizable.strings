@@ -268,3 +268,29 @@
 
 /* Window Titles */
 "window.settings" = "Open Island Settings";
+
+/* Accessibility (AB-244) */
+"a11y.header.muteSound" = "Mute sound";
+"a11y.header.unmuteSound" = "Unmute sound";
+"a11y.session.expandDetail" = "Expand session detail";
+"a11y.session.collapseDetail" = "Collapse session detail";
+"a11y.session.dismiss" = "Dismiss session";
+"a11y.session.summary" = "%@, %@, %@, %@";
+"a11y.phase.running" = "running";
+"a11y.phase.waitingForApproval" = "waiting for permission";
+"a11y.phase.waitingForAnswer" = "waiting for an answer";
+"a11y.phase.completed" = "completed";
+"a11y.phase.interrupted" = "interrupted";
+"a11y.phase.failed" = "failed";
+"a11y.subagent.running" = "Running";
+"a11y.task.completed" = "Completed";
+"a11y.task.inProgress" = "In progress";
+"a11y.task.pending" = "Pending";
+"a11y.approval.deny" = "Deny permission";
+"a11y.approval.allowOnce" = "Allow once";
+"a11y.completion.sendReply" = "Send reply";
+"a11y.agentsGrid.running" = "%lld running";
+"a11y.agentsGrid.waiting" = "%lld waiting for input";
+"a11y.agentsGrid.idle" = "%lld idle";
+"a11y.agentsGrid.more" = "%lld more";
+"a11y.agentsGrid.countBadge" = "%lld sessions";

@@ -267,3 +267,29 @@
 
 /* Window Titles */
 "window.settings" = "Open Island 設定";
+
+/* Accessibility (AB-244) */
+"a11y.header.muteSound" = "靜音";
+"a11y.header.unmuteSound" = "取消靜音";
+"a11y.session.expandDetail" = "展開工作階段詳情";
+"a11y.session.collapseDetail" = "收起工作階段詳情";
+"a11y.session.dismiss" = "關閉此工作階段";
+"a11y.session.summary" = "%@，%@，%@，%@";
+"a11y.phase.running" = "執行中";
+"a11y.phase.waitingForApproval" = "等待授權";
+"a11y.phase.waitingForAnswer" = "等待回答";
+"a11y.phase.completed" = "已完成";
+"a11y.phase.interrupted" = "已中斷";
+"a11y.phase.failed" = "失敗";
+"a11y.subagent.running" = "執行中";
+"a11y.task.completed" = "已完成";
+"a11y.task.inProgress" = "進行中";
+"a11y.task.pending" = "待處理";
+"a11y.approval.deny" = "拒絕授權";
+"a11y.approval.allowOnce" = "允許一次";
+"a11y.completion.sendReply" = "傳送回覆";
+"a11y.agentsGrid.running" = "%lld 個執行中";
+"a11y.agentsGrid.waiting" = "%lld 個等待輸入";
+"a11y.agentsGrid.idle" = "%lld 個閒置";
+"a11y.agentsGrid.more" = "還有 %lld 個";
+"a11y.agentsGrid.countBadge" = "%lld 個工作階段";

@@ -192,6 +192,22 @@ private struct ConditionalDrawingGroup: ViewModifier {
     }
 }
 
+/// AB-244: attaches a named VoiceOver action (rotor entry) only when `name`
+/// is non-nil — e.g. a session row's "Dismiss" action, which only exists
+/// for rows that actually got an `onDismiss` closure.
+private struct OptionalNamedAccessibilityAction: ViewModifier {
+    let name: String?
+    let action: () -> Void
+
+    func body(content: Content) -> some View {
+        if let name {
+            content.accessibilityAction(named: Text(name), action)
+        } else {
+            content
+        }
+    }
+}
+
 // MARK: - Main island view
 
 struct IslandPanelView: View {
@@ -220,6 +236,15 @@ struct IslandPanelView: View {
     /// crossfade this view used before this ticket instead of morphing the
     /// shape/frame and sliding the glyph.
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// AB-244: drives the Increase Contrast fallback for dim body text and
+    /// hairline dividers (`IslandDesignPalette.Contrast`). No CoreAnimation
+    /// surface in this view needs contrast (unlike `reduceMotion`, which
+    /// also has to reach `UnifiedBars`' `NSView`), so the plain SwiftUI
+    /// environment value is enough here.
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    private var increasesContrast: Bool { colorSchemeContrast == .increased }
 
     @State private var isHovering = false
     @State private var showingQuitConfirmation = false
@@ -681,29 +706,38 @@ struct IslandPanelView: View {
         HStack(spacing: Self.headerControlSpacing) {
             headerIconButton(
                 systemName: model.isSoundMuted ? "speaker.slash.fill" : "speaker.wave.2.fill",
-                tint: model.isSoundMuted ? .orange.opacity(0.92) : .white.opacity(0.62)
+                tint: model.isSoundMuted ? .orange.opacity(0.92) : .white.opacity(0.62),
+                accessibilityLabel: model.lang.t(model.isSoundMuted ? "a11y.header.unmuteSound" : "a11y.header.muteSound")
             ) {
                 model.toggleSoundMuted()
             }
 
-            headerIconButton(systemName: "gearshape.fill", tint: .white.opacity(0.62)) {
+            headerIconButton(
+                systemName: "gearshape.fill",
+                tint: .white.opacity(0.62),
+                accessibilityLabel: model.lang.t("window.settings")
+            ) {
                 model.showSettings()
             }
 
             headerIconButton(
                 systemName: "power",
                 tint: .white.opacity(0.62),
-                accessibilityLabel: model.lang.t("island.quit.confirmTitle")
+                accessibilityLabel: model.lang.t("settings.about.quitApp")
             ) {
                 showingQuitConfirmation = true
             }
         }
     }
 
+    /// Every call site passes an explicit, `lang.t`-routed
+    /// `accessibilityLabel` (AB-244) — previously this fell back to the raw
+    /// `systemName` (e.g. "gearshape.fill"), which is exactly the kind of
+    /// label VoiceOver users shouldn't hear.
     private func headerIconButton(
         systemName: String,
         tint: Color,
-        accessibilityLabel: String? = nil,
+        accessibilityLabel: String,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
@@ -714,7 +748,7 @@ struct IslandPanelView: View {
                 .background(.white.opacity(0.08), in: Circle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(accessibilityLabel ?? systemName)
+        .accessibilityLabel(accessibilityLabel)
     }
 
     private var openedContent: some View {
@@ -769,6 +803,7 @@ struct IslandPanelView: View {
                 Image(systemName: "sparkles")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Color.accentColor)
+                    .accessibilityHidden(true)
                 Text(model.lang.t("island.hint.installHooks"))
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.white.opacity(0.85))
@@ -778,6 +813,7 @@ struct IslandPanelView: View {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.4))
+                    .accessibilityHidden(true)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
@@ -805,7 +841,7 @@ struct IslandPanelView: View {
                 .foregroundStyle(.white.opacity(0.58))
             Text(model.lang.t("island.terminalOwnership"))
                 .font(.system(size: 12))
-                .foregroundStyle(.white.opacity(0.28))
+                .foregroundStyle(.white.opacity(IslandDesignPalette.Contrast.text(IslandDesignPalette.Contrast.tertiaryText, increaseContrast: increasesContrast)))
             Spacer()
         }
         .frame(maxWidth: .infinity)
@@ -816,12 +852,12 @@ struct IslandPanelView: View {
             Spacer()
             Text(model.lang.t("island.noTerminals"))
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.white.opacity(0.4))
+                .foregroundStyle(.white.opacity(IslandDesignPalette.Contrast.text(IslandDesignPalette.Contrast.secondaryText, increaseContrast: increasesContrast)))
             Text(model.recentSessions.isEmpty
                 ? model.lang.t("island.startAgent")
                 : model.lang.t("island.recentSessions"))
                 .font(.system(size: 12))
-                .foregroundStyle(.white.opacity(0.25))
+                .foregroundStyle(.white.opacity(IslandDesignPalette.Contrast.text(IslandDesignPalette.Contrast.tertiaryText, increaseContrast: increasesContrast)))
             Spacer()
         }
         .frame(maxWidth: .infinity)
@@ -941,7 +977,7 @@ struct IslandPanelView: View {
                     } label: {
                         Text(model.lang.t("island.showAll", model.allSessions.count))
                             .font(.system(size: 10.5, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.36))
+                            .foregroundStyle(.white.opacity(IslandDesignPalette.Contrast.text(IslandDesignPalette.Contrast.secondaryText, increaseContrast: increasesContrast)))
                             .frame(maxWidth: .infinity, alignment: .center)
                             .padding(.horizontal, sessionListSideInset)
                             .padding(.top, 6)
@@ -1022,9 +1058,10 @@ struct IslandPanelView: View {
         .padding(.leading, sessionListSideInset)
         .padding(.trailing, sessionListSideInset)
         .frame(height: 36)
+        .accessibilityElement(children: .combine)
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(.white.opacity(0.055))
+                .fill(.white.opacity(IslandDesignPalette.Contrast.hairline(increaseContrast: increasesContrast)))
                 .frame(height: 1)
         }
     }
@@ -1034,7 +1071,7 @@ struct IslandPanelView: View {
             .frame(height: 10)
         .overlay(alignment: .top) {
             Rectangle()
-                .fill(.white.opacity(0.055))
+                .fill(.white.opacity(IslandDesignPalette.Contrast.hairline(increaseContrast: increasesContrast)))
                 .frame(height: 1)
         }
     }
@@ -1081,6 +1118,11 @@ struct IslandPanelView: View {
         }
         .lineLimit(1)
         .fixedSize(horizontal: true, vertical: false)
+        // AB-244: no interactive content here — the per-metric tint dots
+        // are purely decorative (`.accessibilityHidden` below), so VoiceOver
+        // reads this whole strip as one sentence ("5 total, 2 waiting, 1
+        // running…") instead of stopping on every dot/count pair.
+        .accessibilityElement(children: .combine)
     }
 
     private func sessionOverviewMetric(_ item: SessionOverviewItem, compact: Bool) -> some View {
@@ -1089,11 +1131,16 @@ struct IslandPanelView: View {
                 Circle()
                     .fill(tint)
                     .frame(width: 5.5, height: 5.5)
+                    .accessibilityHidden(true)
             }
 
             Text(sessionOverviewMetricTitle(item, compact: compact))
                 .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
-                .foregroundStyle(item.tint == nil ? V6Palette.paper.opacity(0.34) : V6Palette.paper.opacity(0.48))
+                .foregroundStyle(
+                    item.tint == nil
+                        ? V6Palette.paper.opacity(IslandDesignPalette.Contrast.text(IslandDesignPalette.Contrast.tertiaryText, increaseContrast: increasesContrast))
+                        : V6Palette.paper.opacity(IslandDesignPalette.Contrast.text(IslandDesignPalette.Contrast.secondaryText, increaseContrast: increasesContrast))
+                )
         }
     }
 
@@ -1110,13 +1157,14 @@ struct IslandPanelView: View {
             Circle()
                 .fill(sectionTint(for: section))
                 .frame(width: 7, height: 7)
+                .accessibilityHidden(true)
             Text(sessionSectionTitle(for: section).uppercased())
                 .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
                 .tracking(0.4)
                 .foregroundStyle(sectionLabelColor(for: section))
             Text("\(section.sessions.count)")
                 .font(.system(size: 10.5, weight: .medium, design: .monospaced))
-                .foregroundStyle(V6Palette.paper.opacity(0.4))
+                .foregroundStyle(V6Palette.paper.opacity(IslandDesignPalette.Contrast.text(IslandDesignPalette.Contrast.tertiaryText, increaseContrast: increasesContrast)))
             Spacer(minLength: 0)
         }
         .padding(.leading, sessionListSideInset)
@@ -1124,9 +1172,10 @@ struct IslandPanelView: View {
         .padding(.top, 10)
         .padding(.bottom, 7)
         .background(Color.white.opacity(0.008))
+        .accessibilityElement(children: .combine)
         .overlay(alignment: .top) {
             Rectangle()
-                .fill(.white.opacity(0.055))
+                .fill(.white.opacity(IslandDesignPalette.Contrast.hairline(increaseContrast: increasesContrast)))
                 .frame(height: 1)
         }
     }
@@ -1351,7 +1400,7 @@ struct IslandPanelView: View {
 
             Text(provider.peakWindowLabel)
                 .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.42))
+                .foregroundStyle(.white.opacity(IslandDesignPalette.Contrast.text(IslandDesignPalette.Contrast.secondaryText, increaseContrast: increasesContrast)))
 
             Text("\(provider.peakUsagePercentage)%")
                 .font(.system(size: 11.5, weight: .bold, design: .monospaced))
@@ -1365,6 +1414,12 @@ struct IslandPanelView: View {
                 .strokeBorder(.white.opacity(0.06), lineWidth: 1)
         )
         .help(usageHelpText(for: provider))
+        // AB-244: three adjacent `Text`s (title / window / percentage) would
+        // otherwise read as three separate VoiceOver stops — combine into
+        // one chip-level label reusing the same summary already built for
+        // the `.help()` tooltip.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(usesShortTitle ? provider.shortTitle : provider.title) \(usageHelpText(for: provider))")
     }
 
     private func usageHelpText(for provider: UsageProviderPresentation) -> String {
@@ -1515,10 +1570,19 @@ private struct PulsingStatusDot: View {
     let tint: Color
     let presence: IslandSessionPresence
 
+    /// AB-244: under Reduce Motion this never acquires the shared clock at
+    /// all, so the 15fps timer doesn't even run for this dot — the static
+    /// (`pulse: 0`) rendering already used for non-pulsing rows.
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
-        islandStatusDotView(tint: tint, presence: presence, pulse: pulseClock.phase)
-            .onAppear { pulseClock.acquire() }
-            .onDisappear { pulseClock.release() }
+        if reduceMotion {
+            islandStatusDotView(tint: tint, presence: presence, pulse: 0)
+        } else {
+            islandStatusDotView(tint: tint, presence: presence, pulse: pulseClock.phase)
+                .onAppear { pulseClock.acquire() }
+                .onDisappear { pulseClock.release() }
+        }
     }
 }
 
@@ -1547,6 +1611,33 @@ private struct IslandSessionRow: View {
     @State private var isHighlighted = false
     @State private var detailOverride: Bool?
     @State private var replyText: String = ""
+
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    private var increasesContrast: Bool { colorSchemeContrast == .increased }
+
+    /// AB-244: coarse type ramp for this row's core reading content
+    /// (headline, prompt/activity lines, badges, age). `@ScaledMetric`
+    /// tracks the system Dynamic Type / "Larger Text" setting; every literal
+    /// point size below is expressed relative to this one reference value
+    /// via `scaledFont(_:weight:design:)` rather than re-declaring a
+    /// `ScaledMetric` per size, so the whole row scales together off one
+    /// measurement. Deliberately NOT applied to the closed-pill/notch glyph
+    /// fonts (`V6CenterLabelView`, `V6NotchLaneLabelView`, `UnifiedBars`) —
+    /// those sizes are baked into hard-coded intrinsic-width math against
+    /// the physical notch cutout, so scaling them would desync the layout
+    /// from the actual hardware notch; nor to compact side-badges (SSH,
+    /// PLAN, model name) which are already redundantly conveyed by this
+    /// row's grouped VoiceOver summary and would be the first thing to
+    /// overflow the fixed-width row at larger sizes.
+    @ScaledMetric(relativeTo: .body) private var typeScaleReference: CGFloat = 13
+
+    private var typeScale: CGFloat {
+        typeScaleReference / 13
+    }
+
+    private func scaledFont(_ size: CGFloat, weight: Font.Weight = .regular, design: Font.Design = .default) -> Font {
+        .system(size: size * typeScale, weight: weight, design: design)
+    }
 
     /// Age badges and staleness (`islandPresence`/`isStaleCompletedForIsland`)
     /// are time-driven and were previously refreshed by a single
@@ -1590,7 +1681,7 @@ private struct IslandSessionRow: View {
         .background(rowFillColor(for: presence))
         .overlay(alignment: .top) {
             Rectangle()
-                .fill(.white.opacity(0.045))
+                .fill(.white.opacity(IslandDesignPalette.Contrast.hairline(increaseContrast: increasesContrast)))
                 .frame(height: 1)
         }
         .overlay(alignment: .leading) {
@@ -1635,7 +1726,7 @@ private struct IslandSessionRow: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(summaryHeadlineText)
-                    .font(summaryTitleFont)
+                    .font(scaledFont(summaryTitleFontSize, weight: .semibold))
                     .foregroundStyle(titleColor(for: presence))
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -1643,7 +1734,7 @@ private struct IslandSessionRow: View {
                 if showsDetail,
                    let promptLine = summaryPromptLineText {
                     Text(promptLine)
-                        .font(.system(size: 11.2, weight: .medium))
+                        .font(scaledFont(11.2, weight: .medium))
                         .foregroundStyle(summaryPromptColor(for: presence))
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -1672,7 +1763,7 @@ private struct IslandSessionRow: View {
                     .frame(minWidth: 30, alignment: .trailing)
                 detailToggleButton(isOpen: showsDetail)
                 if let onDismiss {
-                    DismissButton(action: onDismiss)
+                    DismissButton(action: onDismiss, lang: lang)
                 }
             }
         }
@@ -1680,6 +1771,78 @@ private struct IslandSessionRow: View {
         .padding(.trailing, sideInset)
         .padding(.top, 11)
         .padding(.bottom, showsDetail ? 8 : 11)
+        // AB-244: the status dot/bar/glyph, headline, prompt line, and
+        // badges above are individually undescribed (a bare colored shape,
+        // several adjacent `Text`s) — combined here into the one grouped
+        // summary VoiceOver reads for the whole row ("Claude Code,
+        // open-vibe-island, waiting for permission, 3 minutes ago").
+        // `detailToggleButton`/`DismissButton` are real `Button`s nested
+        // inside this same subtree, so `.ignore` hides their *own*
+        // accessibility elements — recreated below as named actions
+        // (VoiceOver's rotor) so both stay reachable/activatable without
+        // splitting the row into a dozen swipe stops. Approve/deny/answer/
+        // jump-in-terminal controls live in the sibling
+        // `rowAuxiliaryDetails`/`embeddedDetailBody` views, outside this
+        // `.ignore`d subtree, so they're unaffected and stay independently
+        // reachable.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityRowSummaryText(referenceDate: referenceDate))
+        .accessibilityAddTraits(isInteractive ? .isButton : [])
+        .accessibilityAction {
+            guard isInteractive else { return }
+            onJump()
+        }
+        .accessibilityAction(named: Text(lang.t(showsDetail ? "a11y.session.collapseDetail" : "a11y.session.expandDetail"))) {
+            toggleDetail(currentlyOpen: showsDetail)
+        }
+        .modifier(OptionalNamedAccessibilityAction(name: onDismiss != nil ? lang.t("a11y.session.dismiss") : nil, action: { onDismiss?() }))
+    }
+
+    // MARK: - Accessibility (AB-244)
+
+    /// The one grouped VoiceOver summary for this row — agent, workspace,
+    /// phase, and elapsed time — e.g. "Claude Code, open-vibe-island,
+    /// waiting for permission, 3 minutes ago". Doubles as the "text
+    /// equivalent of the color" the status dot/bar/glyph otherwise conveys
+    /// only visually: `accessibilityPhaseText` spells out exactly what the
+    /// status tint means.
+    private func accessibilityRowSummaryText(referenceDate: Date) -> String {
+        lang.t(
+            "a11y.session.summary",
+            session.tool.displayName,
+            session.spotlightWorkspaceName,
+            accessibilityPhaseText,
+            accessibilityElapsedText(at: referenceDate)
+        )
+    }
+
+    private var accessibilityPhaseText: String {
+        switch session.phase {
+        case .running:
+            lang.t("a11y.phase.running")
+        case .waitingForApproval:
+            lang.t("a11y.phase.waitingForApproval")
+        case .waitingForAnswer:
+            lang.t("a11y.phase.waitingForAnswer")
+        case .completed:
+            switch session.outcome {
+            case .success: lang.t("a11y.phase.completed")
+            case .interrupted: lang.t("a11y.phase.interrupted")
+            case .failed: lang.t("a11y.phase.failed")
+            }
+        }
+    }
+
+    /// Relative time reads naturally in whichever language the app is
+    /// currently displaying — `RelativeDateTimeFormatter` is locale-driven,
+    /// so it's pointed at `lang`'s resolved code rather than the system
+    /// locale, which may differ from the in-app language toggle.
+    private func accessibilityElapsedText(at referenceDate: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = Locale(identifier: lang.language.resolvedCode)
+        formatter.unitsStyle = .full
+        let reference = session.phase == .running ? session.firstSeenAt : session.islandActivityDate
+        return formatter.localizedString(for: reference, relativeTo: referenceDate)
     }
 
     @ViewBuilder
@@ -1687,7 +1850,7 @@ private struct IslandSessionRow: View {
         if !shouldShowEmbeddedDetailBody,
            let activityLine = session.spotlightActivityLineText ?? expandedActivityLineText {
             Text(activityLine)
-                .font(.system(size: 11, weight: .medium))
+                .font(scaledFont(11, weight: .medium))
                 .foregroundStyle(activityColor(for: presence).opacity(0.94))
                 .lineLimit(2)
                 .padding(.leading, detailLeadingInset)
@@ -1701,6 +1864,7 @@ private struct IslandSessionRow: View {
                 HStack(spacing: 5) {
                     Image(systemName: "arrow.triangle.branch")
                         .font(.system(size: 9, weight: .medium))
+                        .accessibilityHidden(true)
                     Text(lang.t("subagents.title", subagents.count))
                         .font(.system(size: 10.5, weight: .medium))
                 }
@@ -1713,6 +1877,7 @@ private struct IslandSessionRow: View {
                                 ? IslandDesignPalette.Status.completed
                                 : IslandDesignPalette.Status.running)
                             .frame(width: 6, height: 6)
+                            .accessibilityLabel(lang.t(sub.summary != nil ? "subagents.completed" : "a11y.subagent.running"))
                         Text(sub.agentType ?? sub.agentID)
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(.white.opacity(0.8))
@@ -1736,6 +1901,10 @@ private struct IslandSessionRow: View {
                             }
                         }
                     }
+                    // AB-244: status dot + name + description + trailing
+                    // elapsed/"Completed" all read as one row instead of
+                    // four separate stops.
+                    .accessibilityElement(children: .combine)
                 }
             }
             .padding(.leading, detailLeadingInset)
@@ -1760,6 +1929,7 @@ private struct IslandSessionRow: View {
                             .strikethrough(task.status == .completed)
                             .lineLimit(1)
                     }
+                    .accessibilityElement(children: .combine)
                 }
             }
             .padding(.leading, detailLeadingInset)
@@ -1943,24 +2113,28 @@ private struct IslandSessionRow: View {
         presentation == .list && stateIndicator == .bar
     }
 
-    private var summaryTitleFont: Font {
-        .system(size: presentation == .notification ? 13.2 : (isActionable ? 13.8 : 13.2), weight: .semibold)
+    private var summaryTitleFontSize: CGFloat {
+        presentation == .notification ? 13.2 : (isActionable ? 13.8 : 13.2)
     }
 
     private func summaryPromptColor(for presence: IslandSessionPresence) -> Color {
         if presentation == .notification {
-            return V6Palette.paper.opacity(session.phase == .completed ? 0.38 : 0.46)
+            return V6Palette.paper.opacity(contrastText(session.phase == .completed ? IslandDesignPalette.Contrast.tertiaryText : IslandDesignPalette.Contrast.secondaryText))
         }
 
-        return V6Palette.paper.opacity(presence == .inactive ? 0.34 : 0.52)
+        return V6Palette.paper.opacity(contrastText(presence == .inactive ? IslandDesignPalette.Contrast.tertiaryText : IslandDesignPalette.Contrast.secondaryText))
     }
 
     private func summaryAgeColor(for presence: IslandSessionPresence) -> Color {
         if presentation == .notification {
-            return V6Palette.paper.opacity(0.36)
+            return V6Palette.paper.opacity(contrastText(IslandDesignPalette.Contrast.tertiaryText))
         }
 
-        return V6Palette.paper.opacity(presence == .inactive ? 0.32 : 0.45)
+        return V6Palette.paper.opacity(contrastText(presence == .inactive ? IslandDesignPalette.Contrast.tertiaryText : IslandDesignPalette.Contrast.secondaryText))
+    }
+
+    private func contrastText(_ base: Double) -> Double {
+        IslandDesignPalette.Contrast.text(base, increaseContrast: increasesContrast)
     }
 
     private var notificationChromeOpacity: Double {
@@ -2110,8 +2284,15 @@ private struct IslandSessionRow: View {
                 HStack(spacing: 8) {
                     Button(session.permissionRequest?.secondaryActionTitle ?? lang.t("approval.deny")) { onApprove?(.deny) }
                         .buttonStyle(IslandActionButtonStyle(kind: .secondary, expands: true))
+                        // AB-244: the visible label is often just "No" —
+                        // unambiguous on screen next to "Yes", but not out of
+                        // context to VoiceOver. Falls back to the same
+                        // clarifying text only when the request didn't
+                        // supply its own custom title (which stays as-is).
+                        .accessibilityLabel(session.permissionRequest?.secondaryActionTitle ?? lang.t("a11y.approval.deny"))
                     Button(session.permissionRequest?.primaryActionTitle ?? lang.t("approval.allowOnce")) { onApprove?(.allowOnce) }
                         .buttonStyle(IslandActionButtonStyle(kind: .warning, expands: true))
+                        .accessibilityLabel(session.permissionRequest?.primaryActionTitle ?? lang.t("a11y.approval.allowOnce"))
                 }
 
                 alwaysAllowOptions
@@ -2169,6 +2350,7 @@ private struct IslandSessionRow: View {
             HStack(spacing: 6) {
                 Image(systemName: "arrow.up.forward.app")
                     .font(.system(size: 11, weight: .semibold))
+                    .accessibilityHidden(true)
                 Text(lang.t("approval.respondInTerminal"))
             }
             .frame(maxWidth: .infinity)
@@ -2262,6 +2444,7 @@ private struct IslandSessionRow: View {
         HStack(spacing: 6) {
             Image(systemName: completionOutcomeGlyphName)
                 .font(.system(size: 10.5, weight: .bold))
+                .accessibilityHidden(true)
             Text(completionOutcomeLabel)
                 .font(.system(size: 11, weight: .bold))
             Spacer(minLength: 0)
@@ -2326,6 +2509,7 @@ private struct IslandSessionRow: View {
             }
             .buttonStyle(.plain)
             .disabled(replyText.trimmingCharacters(in: .whitespaces).isEmpty)
+            .accessibilityLabel(lang.t("a11y.completion.sendReply"))
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -2405,14 +2589,17 @@ private struct IslandSessionRow: View {
             Image(systemName: "checkmark.square.fill")
                 .font(.system(size: 9))
                 .foregroundStyle(.white.opacity(0.35))
+                .accessibilityLabel(lang.t("a11y.task.completed"))
         case .inProgress:
             Circle()
                 .fill(IslandDesignPalette.Status.running)
                 .frame(width: 6, height: 6)
+                .accessibilityLabel(lang.t("a11y.task.inProgress"))
         case .pending:
             Circle()
                 .strokeBorder(.white.opacity(0.3), lineWidth: 1)
                 .frame(width: 6, height: 6)
+                .accessibilityLabel(lang.t("a11y.task.pending"))
         }
     }
 
@@ -2512,10 +2699,7 @@ private struct IslandSessionRow: View {
 
     private func detailToggleButton(isOpen: Bool) -> some View {
         Button {
-            guard isInteractive else { return }
-            withAnimation(.easeInOut(duration: 0.2)) {
-                detailOverride = !isOpen
-            }
+            toggleDetail(currentlyOpen: isOpen)
         } label: {
             Image(systemName: "chevron.down")
                 .font(.system(size: 10, weight: .bold))
@@ -2529,7 +2713,21 @@ private struct IslandSessionRow: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(isOpen ? "Collapse session detail" : "Expand session detail")
+        // AB-244: this button's own accessibility element is normally
+        // suppressed (its parent `rowSummary` sets `.accessibilityElement
+        // (children: .ignore)` and exposes the same toggle as a named
+        // action instead), but the label is kept correct and `lang.t`-routed
+        // here too in case this view is ever used standalone.
+        .accessibilityLabel(lang.t(isOpen ? "a11y.session.collapseDetail" : "a11y.session.expandDetail"))
+    }
+
+    /// Shared by the visible chevron `Button` and `rowSummary`'s named
+    /// VoiceOver action so both toggle paths agree exactly.
+    private func toggleDetail(currentlyOpen: Bool) {
+        guard isInteractive else { return }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            detailOverride = !currentlyOpen
+        }
     }
 
     private func detailToggleFillOpacity(isOpen: Bool) -> Double {
@@ -2578,9 +2776,9 @@ private struct IslandSessionRow: View {
         case .live:
             statusTint(for: presence)
         case .idle:
-            .white.opacity(0.46)
+            .white.opacity(contrastText(IslandDesignPalette.Contrast.secondaryText))
         case .ready:
-            presence == .inactive ? .white.opacity(0.46) : statusTint(for: presence)
+            presence == .inactive ? .white.opacity(contrastText(IslandDesignPalette.Contrast.secondaryText)) : statusTint(for: presence)
         }
     }
 }
@@ -2718,6 +2916,7 @@ private struct StructuredQuestionPromptView: View {
                         Image(systemName: "checkmark")
                             .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(IslandDesignPalette.Status.completed)
+                            .accessibilityHidden(true)
                     }
                 }
                 .contentShape(Rectangle())
@@ -2725,6 +2924,10 @@ private struct StructuredQuestionPromptView: View {
                 .padding(.horizontal, 11)
             }
             .buttonStyle(.plain)
+            // AB-244: selection state conveyed via the `.isSelected` trait
+            // (VoiceOver appends "selected") rather than folding the
+            // checkmark glyph's name into the button's spoken label.
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
 
             if showsFreeform {
                 Divider()
@@ -3308,6 +3511,7 @@ extension MarkdownUI.Theme {
 
 private struct DismissButton: View {
     let action: () -> Void
+    var lang: LanguageManager = .shared
     @State private var isHovered = false
 
     var body: some View {
@@ -3318,6 +3522,10 @@ private struct DismissButton: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
+        // AB-244: normally suppressed by the parent's `.accessibilityElement
+        // (children: .ignore)` in favor of a named action, same as
+        // `detailToggleButton` — kept correct here too for standalone use.
+        .accessibilityLabel(lang.t("a11y.session.dismiss"))
     }
 }
 
@@ -3338,6 +3546,7 @@ private struct TranscriptAffordance: View {
             HStack(spacing: 5) {
                 Image(systemName: "doc.text")
                     .font(.system(size: 9.5, weight: .medium))
+                    .accessibilityHidden(true)
                 Text(label)
                     .font(.system(size: 10.5, weight: .medium, design: .monospaced))
                     .lineLimit(1)

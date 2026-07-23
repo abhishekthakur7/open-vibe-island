@@ -268,3 +268,29 @@
 
 /* Window Titles */
 "window.settings" = "Open Island 设置";
+
+/* Accessibility (AB-244) */
+"a11y.header.muteSound" = "静音";
+"a11y.header.unmuteSound" = "取消静音";
+"a11y.session.expandDetail" = "展开会话详情";
+"a11y.session.collapseDetail" = "收起会话详情";
+"a11y.session.dismiss" = "关闭该会话";
+"a11y.session.summary" = "%@，%@，%@，%@";
+"a11y.phase.running" = "运行中";
+"a11y.phase.waitingForApproval" = "等待授权";
+"a11y.phase.waitingForAnswer" = "等待回答";
+"a11y.phase.completed" = "已完成";
+"a11y.phase.interrupted" = "已中断";
+"a11y.phase.failed" = "失败";
+"a11y.subagent.running" = "运行中";
+"a11y.task.completed" = "已完成";
+"a11y.task.inProgress" = "进行中";
+"a11y.task.pending" = "待处理";
+"a11y.approval.deny" = "拒绝授权";
+"a11y.approval.allowOnce" = "允许一次";
+"a11y.completion.sendReply" = "发送回复";
+"a11y.agentsGrid.running" = "%lld 个运行中";
+"a11y.agentsGrid.waiting" = "%lld 个等待输入";
+"a11y.agentsGrid.idle" = "%lld 个空闲";
+"a11y.agentsGrid.more" = "还有 %lld 个";
+"a11y.agentsGrid.countBadge" = "%lld 个会话";
