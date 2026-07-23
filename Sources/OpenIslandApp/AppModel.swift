@@ -1814,10 +1814,15 @@ final class AppModel {
         }
 
         if let surface = IslandSurface.notificationSurface(for: event) {
+            let isCompletionEvent: Bool = {
+                if case .sessionCompleted = event { return true }
+                return false
+            }()
             scheduleNotificationSurfacePresentationIfNeeded(
                 surface,
                 wasAlreadyCompleted: wasAlreadyCompleted,
-                ingress: ingress
+                ingress: ingress,
+                isCompletionEvent: isCompletionEvent
             )
         }
     }
@@ -1825,7 +1830,8 @@ final class AppModel {
     private func scheduleNotificationSurfacePresentationIfNeeded(
         _ surface: IslandSurface,
         wasAlreadyCompleted: Bool,
-        ingress: TrackedEventIngress
+        ingress: TrackedEventIngress,
+        isCompletionEvent: Bool
     ) {
         guard !wasAlreadyCompleted,
               notificationSurfaceIsEligibleForPresentation(surface, ingress: ingress),
@@ -1846,9 +1852,25 @@ final class AppModel {
             }
 
             let shouldSuppress = await self.isNotificationSessionAlreadyFrontmost(session)
-            guard !Task.isCancelled,
-                  !shouldSuppress,
-                  self.notificationSurfaceIsEligibleForPresentation(surface, ingress: ingress) else {
+            guard !Task.isCancelled else {
+                return
+            }
+
+            if shouldSuppress {
+                // AB-243: the session's own terminal/IDE was already
+                // frontmost, so no notification card is shown — but a
+                // completed session still earns a brief pill "pop" bump
+                // when the overlay is closed, acknowledging the completion
+                // without stealing focus. `notchPop()` no-ops unless the
+                // overlay is currently closed, so this is safe to call
+                // unconditionally for completion events here.
+                if isCompletionEvent {
+                    self.notchPop()
+                }
+                return
+            }
+
+            guard self.notificationSurfaceIsEligibleForPresentation(surface, ingress: ingress) else {
                 return
             }
 

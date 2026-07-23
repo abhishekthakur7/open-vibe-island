@@ -213,6 +213,14 @@ struct IslandPanelView: View {
     /// of `NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency`.
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
+    /// AB-243: gates the shape-driven notch morph. SwiftUI keeps this
+    /// current as the user toggles System Settings → Accessibility →
+    /// Display & Text Size → Reduce Motion, same as `reduceTransparency`
+    /// above. When set, `islandSurfaceBody` falls back to the plain opacity
+    /// crossfade this view used before this ticket instead of morphing the
+    /// shape/frame and sliding the glyph.
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     @State private var isHovering = false
     @State private var showingQuitConfirmation = false
     @State private var keepsOpenedSurfaceMounted = false
@@ -318,18 +326,8 @@ struct IslandPanelView: View {
         let openedHeight = max(closedNotchHeight, layoutHeight - outerBottomPadding)
 
         VStack(spacing: 0) {
-            ZStack(alignment: .top) {
-                if shouldRenderOpenedSurface {
-                    openedSurface(width: openedWidth, height: openedHeight)
-                        .opacity(usesOpenedVisualState ? 1 : 0)
-                        .allowsHitTesting(usesOpenedVisualState)
-                }
-
-                v6ClosedSurface()
-                    .opacity(usesOpenedVisualState ? 0 : 1)
-                    .allowsHitTesting(!usesOpenedVisualState)
-            }
-            .frame(maxWidth: .infinity, alignment: .top)
+            islandSurfaceBody(openedWidth: openedWidth, openedHeight: openedHeight)
+                .frame(maxWidth: .infinity, alignment: .top)
         }
         .scaleEffect(usesOpenedVisualState ? 1 : (isHovering ? IslandChromeMetrics.closedHoverScale : 1), anchor: .top)
         .padding(.horizontal, panelShadowHorizontalInset)
@@ -378,8 +376,15 @@ struct IslandPanelView: View {
     /// preferences. AppModel is @Observable so any change to sessions /
     /// preferences re-renders this automatically; UnifiedBars runs its own
     /// TimelineView internally for bar animation.
+    ///
+    /// `showsGlyph: false` is used by `morphingIslandSurface` (AB-243), which
+    /// renders the glyph itself as a separate, continuously-mounted overlay
+    /// so it can travel into the opened header instead of fading in place —
+    /// the pop-bump scale used to live here too but now lives one level up,
+    /// in `islandSurfaceBody`, so it applies identically whether the morph
+    /// or the Reduce Motion crossfade is active.
     @ViewBuilder
-    private func v6ClosedSurface() -> some View {
+    private func v6ClosedSurface(showsGlyph: Bool = true) -> some View {
         let layout: V6ClosedLayout = isExternalDisplayPlacement ? .external : .macbook
         let physicalNotchWidth: CGFloat = targetOverlayScreen?.notchSize.width ?? 180
         V6ClosedPill(
@@ -389,20 +394,45 @@ struct IslandPanelView: View {
             layout: layout,
             height: closedNotchHeight,
             physicalNotchWidth: layout == .macbook ? physicalNotchWidth : 0,
-            minWidth: 70
+            minWidth: 70,
+            showsGlyph: showsGlyph
         )
-        .scaleEffect(isPopping ? 1.04 : 1, anchor: .top)
-        .animation(popAnimation, value: isPopping)
     }
 
     // MARK: - Opened surface
 
+    /// Header + session-list content only — no background, shape, shadow, or
+    /// stroke. Shared by `openedSurface` (the Reduce Motion crossfade, which
+    /// draws its own chrome around this) and `morphingIslandSurface` (which
+    /// draws chrome once, shared with the closed state, around whichever
+    /// content is currently crossfading — AB-243).
+    @ViewBuilder
+    private func openedSurfaceContent(width openedWidth: CGFloat, height openedHeight: CGFloat) -> some View {
+        VStack(spacing: 0) {
+            openedHeaderContent
+                .frame(height: closedNotchHeight)
+
+            openedContent
+                .frame(width: openedWidth)
+                // AB-228: no `.clipped()` here anymore. The panel window
+                // is now sized from `openedContent`'s own SwiftUI-measured
+                // height (see `OverlayPanelController.openedContentHeight`),
+                // so in steady state this frame already matches the
+                // content exactly — clipping was only ever masking a
+                // stale/wrong estimate. The intentional scroll cap for
+                // long session lists lives in `AutoHeightScrollView`
+                // inside `sessionList`, which scrolls instead of clipping.
+                .frame(maxHeight: max(0, openedHeight - closedNotchHeight), alignment: .top)
+        }
+        .frame(width: openedWidth, height: openedHeight, alignment: .top)
+    }
+
+    /// Reduce Motion path only (also the shape this ticket's morph replaces
+    /// for everyone else — see `morphingIslandSurface`). Draws its own full
+    /// chrome (vibrancy background, shape clip, shadow, stroke) since it's
+    /// never composited against a shared shape the way the morph is.
     @ViewBuilder
     private func openedSurface(width openedWidth: CGFloat, height openedHeight: CGFloat) -> some View {
-        let horizontalInset = 0.0
-        let bottomInset = 0.0
-        let surfaceWidth = openedWidth + (horizontalInset * 2)
-        let surfaceHeight = openedHeight + bottomInset
         let surfaceShape = OpenedIslandSurfaceShape(
             topProfile: usesNotchAwareOpenedHeader ? .notch : .topBar
         )
@@ -414,37 +444,187 @@ struct IslandPanelView: View {
             // with neither). Falls back to that original flat ink fill under
             // Reduce Transparency.
             OpenedSurfaceBackground(reduceTransparency: reduceTransparency)
-                .frame(width: surfaceWidth, height: surfaceHeight)
+                .frame(width: openedWidth, height: openedHeight)
                 .clipShape(surfaceShape)
                 .shadow(color: .black.opacity(0.36), radius: 22, y: 12)
                 .animation(.easeInOut(duration: 0.2), value: reduceTransparency)
 
-            VStack(spacing: 0) {
-                openedHeaderContent
-                    .frame(height: closedNotchHeight)
+            openedSurfaceContent(width: openedWidth, height: openedHeight)
+                .clipShape(surfaceShape)
+                .overlay {
+                    surfaceShape
+                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                }
+        }
+        .frame(width: openedWidth, height: openedHeight, alignment: .top)
+    }
 
-                openedContent
-                    .frame(width: openedWidth)
-                    // AB-228: no `.clipped()` here anymore. The panel window
-                    // is now sized from `openedContent`'s own SwiftUI-measured
-                    // height (see `OverlayPanelController.openedContentHeight`),
-                    // so in steady state this frame already matches the
-                    // content exactly — clipping was only ever masking a
-                    // stale/wrong estimate. The intentional scroll cap for
-                    // long session lists lives in `AutoHeightScrollView`
-                    // inside `sessionList`, which scrolls instead of clipping.
-                    .frame(maxHeight: max(0, openedHeight - closedNotchHeight), alignment: .top)
+    // MARK: - AB-243: shape-driven notch morph
+
+    /// Leading inset (from the surface's own leading edge) where the
+    /// traveling glyph lands once opened, on notch-aware layouts. Chosen to
+    /// sit comfortably inside the header's reserved notch-safety gutter
+    /// (`notchHeaderHorizontalPadding` = 46) so it never collides with the
+    /// usage lane / header buttons, which only start rendering past that
+    /// padding.
+    private static let openedGlyphLeadingInset: CGFloat = 26
+
+    /// Whether the glyph has anywhere safe to travel to once opened. The
+    /// external/top-bar header reserves far less leading padding
+    /// (`headerHorizontalPadding` = 18) before its own content starts — not
+    /// enough room for a persistent glyph without colliding with the usage
+    /// summary — so there it just fades out with the rest of the closed
+    /// content instead, exactly as it did before this ticket.
+    private var travelsGlyphOnOpen: Bool { usesNotchAwareOpenedHeader }
+
+    /// The `UnifiedBars` glyph, mounted once and continuously, whose leading
+    /// inset (and, on layouts with nowhere safe to land, opacity) is driven
+    /// straight off `opened` — the same boolean driving the shape/frame
+    /// below. A single stable view identity is enough to get free, fully
+    /// interruptible position animation from SwiftUI's layout system, so
+    /// there's no need for `matchedGeometryEffect`'s separate source/
+    /// destination bookkeeping (and no risk of the ambiguity that comes with
+    /// it if both branches were ever simultaneously mounted).
+    @ViewBuilder
+    private func islandGlyphOverlay(opened: Bool, closedLeadingInset: CGFloat) -> some View {
+        UnifiedBars(mode: model.islandClosedMode, size: 24)
+            .frame(width: 24, height: 24)
+            .padding(.leading, opened && travelsGlyphOnOpen ? Self.openedGlyphLeadingInset : closedLeadingInset)
+            .padding(.top, max(0, (closedNotchHeight - 24) / 2))
+            .opacity(opened && !travelsGlyphOnOpen ? 0 : 1)
+            .allowsHitTesting(false)
+    }
+
+    /// Single entry point choosing between the true morph and its Reduce
+    /// Motion fallback, plus the completion "pop" bump (AB-243) — applied
+    /// here, once, so it looks identical whichever path is active. Under
+    /// Reduce Motion the scale bump becomes a brief opacity dip instead, in
+    /// keeping with the ticket's "simple fade" guidance for reduced motion.
+    @ViewBuilder
+    private func islandSurfaceBody(openedWidth: CGFloat, openedHeight: CGFloat) -> some View {
+        Group {
+            if reduceMotion {
+                legacyCrossfadeSurface(openedWidth: openedWidth, openedHeight: openedHeight)
+            } else {
+                morphingIslandSurface(openedWidth: openedWidth, openedHeight: openedHeight)
             }
-            .frame(width: openedWidth, height: openedHeight, alignment: .top)
-            .padding(.horizontal, horizontalInset)
-            .padding(.bottom, bottomInset)
-            .clipShape(surfaceShape)
+        }
+        .scaleEffect(reduceMotion ? 1 : (isPopping ? 1.04 : 1), anchor: .top)
+        .opacity(reduceMotion && isPopping ? 0.7 : 1)
+        .animation(reduceMotion ? .easeInOut(duration: 0.18) : popAnimation, value: isPopping)
+    }
+
+    /// Pre-AB-243 behavior, kept verbatim as the Reduce Motion fallback: an
+    /// opacity crossfade between the two independent, unrelated shapes
+    /// (`V6ClosedPillShape` and `OpenedIslandSurfaceShape`) rather than one
+    /// surface morphing between them.
+    @ViewBuilder
+    private func legacyCrossfadeSurface(openedWidth: CGFloat, openedHeight: CGFloat) -> some View {
+        ZStack(alignment: .top) {
+            if shouldRenderOpenedSurface {
+                openedSurface(width: openedWidth, height: openedHeight)
+                    .opacity(usesOpenedVisualState ? 1 : 0)
+                    .allowsHitTesting(usesOpenedVisualState)
+            }
+
+            v6ClosedSurface()
+                .opacity(usesOpenedVisualState ? 0 : 1)
+                .allowsHitTesting(!usesOpenedVisualState)
+        }
+    }
+
+    /// The true morph (AB-243): a single `OpenedIslandSurfaceShape` instance
+    /// whose `topCornerRadius`/`bottomCornerRadius` and this container's own
+    /// frame width/height are the *only* source of transition progress — all
+    /// fed straight from `usesOpenedVisualState` (in turn just
+    /// `model.notchStatus`), with no separate `@State` progress value. The
+    /// single `notchTransitionAnimation` on `notchContent` interpolates
+    /// shape, frame, and content opacity together, so the spring is free to
+    /// retarget mid-flight like any other SwiftUI-animated value —
+    /// interrupting a hover-open with a quick exit just reverses whatever
+    /// point the shared shape/frame had already reached, instead of jumping.
+    ///
+    /// At rest this reproduces today's exact pixel output: `NotchShape`'s
+    /// concave top curve degenerates to a flat edge at `topCornerRadius ==
+    /// 0` (the closed pill's flat top), and its quadratic bottom-corner
+    /// curve deviates from `V6ClosedPillShape`'s true arc by well under a
+    /// point at these radii — imperceptible, and only ever in play
+    /// mid-transition anyway. Content (labels / session list) crossfades via
+    /// opacity *inside* the one continuously-growing shape — never two
+    /// independently shaped surfaces stacked and cross-dissolving past each
+    /// other — so there's no double-image at any point mid-gesture.
+    @ViewBuilder
+    private func morphingIslandSurface(openedWidth: CGFloat, openedHeight: CGFloat) -> some View {
+        let layout: V6ClosedLayout = isExternalDisplayPlacement ? .external : .macbook
+        let physicalNotchWidth: CGFloat = targetOverlayScreen?.notchSize.width ?? 180
+        let label = model.islandClosedLabel()
+        let rightSlot = model.islandClosedRightSlotContent()
+
+        let closedWidth = layout == .macbook
+            ? V6ClosedPill.macbookOuterWidth(
+                label: label,
+                physicalNotchWidth: physicalNotchWidth,
+                height: closedNotchHeight
+            )
+            : V6ClosedPill.externalOuterWidth(
+                label: label,
+                rightSlot: rightSlot,
+                minWidth: 70,
+                height: closedNotchHeight
+            )
+
+        let topProfile: OpenedIslandSurfaceShape.TopProfile = usesNotchAwareOpenedHeader ? .notch : .topBar
+        let opened = usesOpenedVisualState
+
+        let surfaceWidth = opened ? openedWidth : closedWidth
+        let surfaceHeight = opened ? openedHeight : closedNotchHeight
+        let shape = OpenedIslandSurfaceShape(
+            topProfile: topProfile,
+            topCornerRadius: opened ? NotchShape.openedTopRadius : 0,
+            bottomCornerRadius: opened ? NotchShape.openedBottomRadius : (closedNotchHeight / 2)
+        )
+        let closedLeadingInset = closedNotchHeight / 2
+
+        ZStack(alignment: .top) {
+            // One clip shape drives the whole transition. The fill
+            // crossfades between the closed pill's flat ink and the opened
+            // surface's vibrancy, but the silhouette — the thing that
+            // actually reads as "growing" — never doubles up, because
+            // there's only ever one shape instance underneath.
+            ZStack {
+                OpenedSurfaceBackground(reduceTransparency: reduceTransparency)
+                    .opacity(opened ? 1 : 0)
+                V6Palette.ink
+                    .opacity(opened ? 0 : 1)
+            }
+            .frame(width: surfaceWidth, height: surfaceHeight)
+            .clipShape(shape)
+            .shadow(color: .black.opacity(opened ? 0.36 : 0), radius: opened ? 22 : 0, y: opened ? 12 : 0)
+            .animation(.easeInOut(duration: 0.2), value: reduceTransparency)
+
+            ZStack(alignment: .top) {
+                // `showsGlyph: false` — the glyph is rendered once, below,
+                // as its own overlay so it can travel instead of fading.
+                v6ClosedSurface(showsGlyph: false)
+                    .opacity(opened ? 0 : 1)
+                    .allowsHitTesting(!opened)
+
+                if shouldRenderOpenedSurface {
+                    openedSurfaceContent(width: openedWidth, height: openedHeight)
+                        .opacity(opened ? 1 : 0)
+                        .allowsHitTesting(opened)
+                }
+            }
+            .frame(width: surfaceWidth, height: surfaceHeight, alignment: .top)
+            .clipShape(shape)
             .overlay {
-                surfaceShape
-                    .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                shape.stroke(Color.white.opacity(opened ? 0.07 : 0), lineWidth: 1)
             }
         }
         .frame(width: surfaceWidth, height: surfaceHeight, alignment: .top)
+        .overlay(alignment: .topLeading) {
+            islandGlyphOverlay(opened: opened, closedLeadingInset: closedLeadingInset)
+        }
     }
 
     // MARK: - Closed state

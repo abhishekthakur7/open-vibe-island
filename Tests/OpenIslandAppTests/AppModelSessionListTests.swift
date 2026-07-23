@@ -752,6 +752,70 @@ struct AppModelSessionListTests {
         #expect(model.islandSurface == .sessionList(actionableSessionID: "background-session"))
     }
 
+    /// AB-243: reviving `notchPop()`. A completion that would otherwise be
+    /// suppressed by the frontmost-session gate (the session's own terminal
+    /// was already focused, so no notification card should steal attention)
+    /// still earns a brief pill "pop" bump — but only while the overlay is
+    /// closed, and only for completions (not permission/question events,
+    /// which stay covered by `bridgeNotificationIsSuppressedWhenSessionIsAlreadyFrontmost`
+    /// above showing no state change at all).
+    @Test
+    func completionSuppressedByFrontmostSessionStillPopsTheClosedPill() async throws {
+        let now = Date(timeIntervalSince1970: 2_000)
+        let model = AppModel(
+            isNotificationSessionAlreadyFrontmost: { session in
+                session.id == "frontmost-session"
+            }
+        )
+        model.notchStatus = .closed
+        model.notchOpenReason = nil
+        model.state = SessionState(
+            sessions: [
+                AgentSession(
+                    id: "frontmost-session",
+                    title: "Codex · open-island",
+                    tool: .codex,
+                    origin: .live,
+                    attachmentState: .attached,
+                    phase: .running,
+                    summary: "Already focused in the front terminal.",
+                    updatedAt: now
+                ),
+            ]
+        )
+
+        model.applyTrackedEvent(
+            .sessionCompleted(
+                SessionCompleted(
+                    sessionID: "frontmost-session",
+                    summary: "Done while frontmost.",
+                    timestamp: now.addingTimeInterval(1)
+                )
+            ),
+            updateLastActionMessage: false,
+            ingress: .bridge
+        )
+
+        var observedPopping = false
+        for _ in 0..<20 {
+            if model.notchStatus == .popping {
+                observedPopping = true
+                break
+            }
+            await Task.yield()
+            try await Task.sleep(for: .milliseconds(10))
+        }
+
+        #expect(observedPopping)
+        // No notification card — the overlay never opened.
+        #expect(model.islandSurface == .sessionList())
+        #expect(model.notchOpenReason == nil)
+
+        // `notchPop()` reverts to `.closed` on its own after ~0.3s.
+        try await Task.sleep(for: .milliseconds(500))
+        #expect(model.notchStatus == .closed)
+    }
+
     @Test
     func hoverOpenedSessionListAutoCollapsesOnPointerExit() {
         let model = AppModel()

@@ -256,6 +256,17 @@ struct V6ClosedPill: View {
     /// width that fits just the glyph.
     var minWidth: CGFloat = 70
 
+    /// AB-243: when the notch morph owns the glyph (rendered externally, as
+    /// its own overlay, so it can travel into the opened header instead of
+    /// fading in place), the pill renders a transparent placeholder in the
+    /// glyph's slot instead — otherwise the real glyph would be drawn twice
+    /// (once here, fading with the rest of this content; once traveling to
+    /// its opened position), reading as a duplicate-image glitch mid-morph.
+    /// Defaults to `true` so every other caller (the settings-tab live
+    /// preview, the Reduce Motion crossfade) keeps rendering its own glyph
+    /// unchanged.
+    var showsGlyph: Bool = true
+
     var body: some View {
         switch layout {
         case .external: externalBody
@@ -268,29 +279,59 @@ struct V6ClosedPill: View {
     // clear of the curve.
     private var pad: CGFloat { height / 2 }
 
+    private static let glyphSize: CGFloat = 24
+
     // Minimum breathing room between the center label (or glyph, when no
     // label) and the right-slot content so they never touch at small widths.
     private static let innerGap: CGFloat = 6
 
+    @ViewBuilder
+    private var glyphOrPlaceholder: some View {
+        if showsGlyph {
+            UnifiedBars(mode: mode, size: Self.glyphSize)
+                .frame(width: Self.glyphSize, height: Self.glyphSize)
+        } else {
+            Color.clear
+                .frame(width: Self.glyphSize, height: Self.glyphSize)
+        }
+    }
+
     // MARK: External (fluid)
 
-    private var externalBody: some View {
-        let glyphW: CGFloat = 24
+    /// Intrinsic pill width for the external/top-bar layout — shared with
+    /// `IslandPanelView`'s notch-morph container (AB-243) so the closed-state
+    /// target frame it animates from/to always matches this view's own
+    /// layout exactly, without duplicating the math in two places.
+    static func externalOuterWidth(
+        label: String?,
+        rightSlot: IslandRightSlotContent?,
+        minWidth: CGFloat,
+        height: CGFloat
+    ) -> CGFloat {
+        let pad = height / 2
         let labelW = label.map { V6CenterLabelView.intrinsicWidth(of: $0) } ?? 0
         let rightW = rightSlot.map { V6RightSlotView.intrinsicWidth(of: $0) } ?? 0
 
         let labelBlock = (label == nil ? 0 : 6 + labelW)
-        let rightBlock = (rightSlot == nil ? 0 : Self.innerGap + rightW)
-        let intrinsic = pad * 2 + glyphW + labelBlock + rightBlock
-        let width = max(minWidth, intrinsic)
+        let rightBlock = (rightSlot == nil ? 0 : innerGap + rightW)
+        let intrinsic = pad * 2 + glyphSize + labelBlock + rightBlock
+        return max(minWidth, intrinsic)
+    }
+
+    private var externalBody: some View {
+        let width = Self.externalOuterWidth(
+            label: label,
+            rightSlot: rightSlot,
+            minWidth: minWidth,
+            height: height
+        )
 
         return ZStack {
             V6ClosedPillShape()
                 .fill(V6Palette.ink)
 
             HStack(spacing: 0) {
-                UnifiedBars(mode: mode, size: 24)
-                    .frame(width: glyphW, height: 24)
+                glyphOrPlaceholder
 
                 if let label {
                     V6CenterLabelView(text: label)
@@ -331,10 +372,17 @@ struct V6ClosedPill: View {
     /// instead of pushing the pill arbitrarily wide.
     static let notchLaneLabelMaxWidth: CGFloat = 84
 
-    private var macbookBody: some View {
-        let glyphW: CGFloat = 24
+    /// Intrinsic outer pill width for the MacBook layout — shared with
+    /// `IslandPanelView`'s notch-morph container (AB-243); see
+    /// `externalOuterWidth` doc above.
+    static func macbookOuterWidth(
+        label: String?,
+        physicalNotchWidth: CGFloat,
+        height: CGFloat
+    ) -> CGFloat {
+        let pad = height / 2
         let labelWidth = label.map {
-            V6NotchLaneLabelView.intrinsicWidth(of: $0, cappedAt: Self.notchLaneLabelMaxWidth)
+            V6NotchLaneLabelView.intrinsicWidth(of: $0, cappedAt: notchLaneLabelMaxWidth)
         }
 
         // Left wing must fit: leading pad + glyph + (gap + label, if any) +
@@ -343,18 +391,25 @@ struct V6ClosedPill: View {
         // notch gap centered in the pill — the pill is one continuous shape
         // (see `V6ClosedPillShape` doc), so an asymmetric reserve would slide
         // the true physical cutout out from under where we think it is.
-        let leftContentWidth = pad + glyphW + Self.notchLaneLabelTrailingMargin
-            + (labelWidth.map { Self.notchLaneLabelGap + $0 } ?? 0)
-        let halfReserve = max(Self.macbookBaseHalfReserve, leftContentWidth)
-        let outer = halfReserve + physicalNotchWidth + halfReserve
+        let leftContentWidth = pad + glyphSize + notchLaneLabelTrailingMargin
+            + (labelWidth.map { notchLaneLabelGap + $0 } ?? 0)
+        let halfReserve = max(macbookBaseHalfReserve, leftContentWidth)
+        return halfReserve + physicalNotchWidth + halfReserve
+    }
+
+    private var macbookBody: some View {
+        let outer = Self.macbookOuterWidth(
+            label: label,
+            physicalNotchWidth: physicalNotchWidth,
+            height: height
+        )
 
         return ZStack {
             V6ClosedPillShape()
                 .fill(V6Palette.ink)
 
             HStack(spacing: 0) {
-                UnifiedBars(mode: mode, size: 24)
-                    .frame(width: glyphW, height: 24)
+                glyphOrPlaceholder
 
                 if let label {
                     V6NotchLaneLabelView(text: label, maxWidth: Self.notchLaneLabelMaxWidth)
