@@ -78,9 +78,13 @@ enum IslandSessionStateIndicator: String, CaseIterable, Identifiable, Sendable {
 
     var id: String { rawValue }
 
-    func timelineInterval(presence: IslandSessionPresence, isActionable: Bool) -> TimeInterval? {
-        guard self == .animatedDot else { return nil }
-        return presence == .running || isActionable ? 1.0 / 15.0 : nil
+    /// Whether a row using this indicator should animate off the shared
+    /// `PulseClock` (AB-228). Replaces the old per-row `TimelineView`
+    /// interval — the cadence itself (15fps) now lives once, centrally, in
+    /// `PulseClock`.
+    func pulses(presence: IslandSessionPresence, isActionable: Bool) -> Bool {
+        guard self == .animatedDot else { return false }
+        return presence == .running || isActionable
     }
 }
 

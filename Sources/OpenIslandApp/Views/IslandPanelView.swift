@@ -9,6 +9,18 @@ private struct NotificationContentHeightKey: PreferenceKey {
     }
 }
 
+/// Measures the full (non-notification) opened surface — header, session
+/// rows, and footer combined — so `OverlayPanelController` can size the
+/// window from real rendered content instead of hand-estimated per-phase
+/// heights (AB-228). Mirrors `NotificationContentHeightKey`, which does the
+/// same job for the single-session notification card.
+private struct OpenedContentHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
 private struct ContentHeightKey: PreferenceKey {
     static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
@@ -44,30 +56,6 @@ private struct AutoHeightScrollView<Content: View>: View {
         .scrollBounceBehavior(.basedOnSize)
         .scrollIndicators(isScrollable ? .automatic : .hidden)
         .frame(height: contentHeight > 0 ? min(contentHeight, maxHeight) : nil)
-    }
-}
-
-// MARK: - Row Height Estimation
-
-extension AgentSession {
-    /// Estimated row height matching `IslandSessionRow` layout for viewport sizing.
-    func estimatedIslandRowHeight(at date: Date) -> CGFloat {
-        let presence = islandPresence(at: date)
-        // v8 list rows are full-width scan rows, not rounded cards.
-        // Base: vertical padding (22) + headline (~17) + divider rounding.
-        var height: CGFloat = 40
-        guard presence != .inactive else { return height }
-        if spotlightPromptLineText != nil { height += 17 }
-        if spotlightActivityLineText != nil { height += 20 }
-        if let subagents = claudeMetadata?.activeSubagents, !subagents.isEmpty {
-            height += 18
-            height += CGFloat(subagents.count) * 18  // each subagent row (spacing 4 + text 14)
-        }
-        if let tasks = claudeMetadata?.activeTasks, !tasks.isEmpty {
-            height += 17
-            height += CGFloat(tasks.count) * 16  // each task row (spacing 3 + text 13)
-        }
-        return height
     }
 }
 
@@ -309,8 +297,15 @@ struct IslandPanelView: View {
 
                 openedContent
                     .frame(width: openedWidth)
+                    // AB-228: no `.clipped()` here anymore. The panel window
+                    // is now sized from `openedContent`'s own SwiftUI-measured
+                    // height (see `OverlayPanelController.openedContentHeight`),
+                    // so in steady state this frame already matches the
+                    // content exactly — clipping was only ever masking a
+                    // stale/wrong estimate. The intentional scroll cap for
+                    // long session lists lives in `AutoHeightScrollView`
+                    // inside `sessionList`, which scrolls instead of clipping.
                     .frame(maxHeight: max(0, openedHeight - closedNotchHeight), alignment: .top)
-                    .clipped()
             }
             .frame(width: openedWidth, height: openedHeight, alignment: .top)
             .padding(.horizontal, horizontalInset)
@@ -435,6 +430,22 @@ struct IslandPanelView: View {
             }
         }
         .padding(.bottom, 0)
+        // AB-228: measure the real, rendered height of the opened surface
+        // (hint banner + list/placeholder/empty state, all included) and
+        // feed it to `OverlayPanelController` via `AppModel`, replacing the
+        // old hand-estimated per-phase heights. Notification mode publishes
+        // its own narrower measurement inside `sessionList` instead (a
+        // single actionable card, not the full list chrome), so this is
+        // skipped there to avoid two measurements fighting each other.
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(key: OpenedContentHeightKey.self, value: geo.size.height)
+            }
+        )
+        .onPreferenceChange(OpenedContentHeightKey.self) { height in
+            guard height > 0, !isNotificationMode else { return }
+            model.measuredOpenedContentHeight = height
+        }
     }
 
     /// Persistent hint at the top of the expanded island while no agent
@@ -517,6 +528,13 @@ struct IslandPanelView: View {
         model.notchOpenReason == .notification && actionableSessionID != nil
     }
 
+    /// Cap for the scrollable session-row region — the one intentional
+    /// height cap left in the opened surface (long lists scroll instead of
+    /// growing the window indefinitely). This used to also live, duplicated,
+    /// as `OverlayPanelController.maxSessionListHeight`, with a comment
+    /// admitting the two had to be hand-kept in sync; now the controller
+    /// only reads the real measured height, so this is the single source of
+    /// truth (AB-228).
     private static let maxSessionListHeight: CGFloat = 560
 
     private var sessionListSideInset: CGFloat {
@@ -524,12 +542,10 @@ struct IslandPanelView: View {
     }
 
     private var sessionList: some View {
-        TimelineView(.periodic(from: .now, by: 30)) { context in
-            let referenceDate = context.date
-
+        Group {
             if isNotificationMode {
-                // Notification mode: NO ScrollView — content sizes naturally
-                sessionListContent(referenceDate: referenceDate)
+                // Notification mode: NO ScrollView — content sizes naturally.
+                notificationCardContent
                     .padding(.vertical, 2)
                     .onHover { hovering in
                         if hovering {
@@ -552,14 +568,25 @@ struct IslandPanelView: View {
                         }
                     }
             } else {
+                // AB-228: the header and the row list each own their own
+                // small periodic tick instead of sharing one `TimelineView`
+                // that wrapped (and rebuilt) header + rows + footer together
+                // every 30s. The header's tick keeps its aggregate counts
+                // and the "just done → idle" section regrouping fresh; each
+                // row (see `IslandSessionRow`) separately owns the much
+                // smaller job of refreshing its own age badge / presence, so
+                // a row updating doesn't ripple into the header or its
+                // siblings, and vice versa.
                 VStack(spacing: 0) {
-                    sessionPanelHeader(referenceDate: referenceDate)
-
-                    ScrollView(.vertical) {
-                        sessionRowsContent(referenceDate: referenceDate)
+                    TimelineView(.periodic(from: .now, by: 30)) { context in
+                        sessionPanelHeader(referenceDate: context.date)
                     }
-                    .scrollIndicators(.hidden)
-                    .scrollBounceBehavior(.basedOnSize)
+
+                    AutoHeightScrollView(maxHeight: Self.maxSessionListHeight) {
+                        TimelineView(.periodic(from: .now, by: 30)) { _ in
+                            sessionRowsContent()
+                        }
+                    }
 
                     sessionPanelFooter
                 }
@@ -568,17 +595,19 @@ struct IslandPanelView: View {
         }
     }
 
+    /// Single actionable session shown when the panel was opened by a
+    /// notification — plus the "show all N" affordance when other sessions
+    /// exist. (The list/section rendering below used to live in this same
+    /// function behind an `isNotificationMode` branch that could never
+    /// actually be reached from here — `sessionList` only calls this helper
+    /// when already in notification mode — so it's been dropped rather than
+    /// carried forward as dead code.)
     @ViewBuilder
-    private func sessionListContent(referenceDate: Date) -> some View {
+    private var notificationCardContent: some View {
         VStack(spacing: 0) {
-            if !isNotificationMode {
-                sessionPanelHeader(referenceDate: referenceDate)
-            }
-
-            if isNotificationMode, let session = model.activeIslandCardSession {
+            if let session = model.activeIslandCardSession {
                 IslandSessionRow(
                     session: session,
-                    referenceDate: referenceDate,
                     stateIndicator: model.islandSessionStateIndicator,
                     completedStaleThreshold: model.completedStaleThreshold.seconds,
                     isActionable: true,
@@ -592,7 +621,8 @@ struct IslandPanelView: View {
                     onReply: TerminalTextSender.canReply(to: session, enabled: model.completionReplyEnabled)
                         ? { model.replyToSession(session, text: $0) } : nil,
                     onJump: { model.jumpToSession(session) },
-                    keyboardCoordinator: model.overlay
+                    keyboardCoordinator: model.overlay,
+                    pulseClock: model.pulseClock
                 )
                 .id(notificationCardIdentity(for: session))
 
@@ -611,39 +641,6 @@ struct IslandPanelView: View {
                     }
                     .buttonStyle(.plain)
                 }
-            } else {
-                ForEach(model.islandSessionSections) { section in
-                    VStack(alignment: .leading, spacing: 0) {
-                        if model.islandSessionGroup != .none {
-                            sessionSectionHeader(section)
-                        }
-
-                        ForEach(section.sessions) { session in
-                            IslandSessionRow(
-                                session: session,
-                                referenceDate: referenceDate,
-                                stateIndicator: model.islandSessionStateIndicator,
-                                completedStaleThreshold: model.completedStaleThreshold.seconds,
-                                isActionable: session.phase.requiresAttention || session.id == actionableSessionID,
-                                useDrawingGroup: model.notchStatus == .opened,
-                                isInteractive: model.notchStatus == .opened,
-                                sideInset: sessionListSideInset,
-                                lang: model.lang,
-                                onApprove: { model.approvePermission(for: session.id, action: $0) },
-                                onAnswer: { model.answerQuestion(for: session.id, answer: $0) },
-                                onReply: TerminalTextSender.canReply(to: session, enabled: model.completionReplyEnabled)
-                                    ? { model.replyToSession(session, text: $0) } : nil,
-                                onJump: { model.jumpToSession(session) },
-                                onDismiss: session.isRemote ? { model.dismissSession(session.id) } : nil,
-                                keyboardCoordinator: model.overlay
-                            )
-                        }
-                    }
-                }
-            }
-
-            if !isNotificationMode {
-                sessionPanelFooter
             }
         }
     }
@@ -662,7 +659,7 @@ struct IslandPanelView: View {
     }
 
     @ViewBuilder
-    private func sessionRowsContent(referenceDate: Date) -> some View {
+    private func sessionRowsContent() -> some View {
         ForEach(model.islandSessionSections) { section in
             VStack(alignment: .leading, spacing: 0) {
                 if model.islandSessionGroup != .none {
@@ -672,7 +669,6 @@ struct IslandPanelView: View {
                 ForEach(section.sessions) { session in
                     IslandSessionRow(
                         session: session,
-                        referenceDate: referenceDate,
                         stateIndicator: model.islandSessionStateIndicator,
                         completedStaleThreshold: model.completedStaleThreshold.seconds,
                         isActionable: session.phase.requiresAttention || session.id == actionableSessionID,
@@ -686,7 +682,8 @@ struct IslandPanelView: View {
                             ? { model.replyToSession(session, text: $0) } : nil,
                         onJump: { model.jumpToSession(session) },
                         onDismiss: session.isRemote ? { model.dismissSession(session.id) } : nil,
-                        keyboardCoordinator: model.overlay
+                        keyboardCoordinator: model.overlay,
+                        pulseClock: model.pulseClock
                     )
                 }
             }
@@ -1181,9 +1178,39 @@ private enum IslandSessionRowPresentation {
     case notification
 }
 
+/// The animated-dot visual, shared by the static (`pulse: 0`) case in
+/// `IslandSessionRow.statusIndicator(for:)` and by `PulsingStatusDot` below.
+/// Kept as a free function (rather than a method on `IslandSessionRow`) so
+/// both callers — a distinct `View` type for the pulsing case — can use it.
+private func islandStatusDotView(tint: Color, presence: IslandSessionPresence, pulse: Double) -> some View {
+    Circle()
+        .fill(tint)
+        .frame(width: 9, height: 9)
+        .scaleEffect(1 + (pulse * 0.18))
+        .shadow(color: tint.opacity(presence == .inactive ? 0 : 0.36 + (pulse * 0.26)), radius: 4 + (pulse * 3))
+        .padding(.top, 6)
+}
+
+/// Leaf view for the animated status dot (AB-228). Reading `pulseClock.phase`
+/// here — inside its own `View` type, distinct from `IslandSessionRow` — means
+/// Observation's per-view access tracking invalidates only this small dot at
+/// 15fps, not the row (markdown, buttons, todos, ...) it sits inside or the
+/// session list around it. `acquire`/`release` ref-count the shared clock's
+/// underlying timer so it only runs while at least one dot is visible.
+private struct PulsingStatusDot: View {
+    let pulseClock: PulseClock
+    let tint: Color
+    let presence: IslandSessionPresence
+
+    var body: some View {
+        islandStatusDotView(tint: tint, presence: presence, pulse: pulseClock.phase)
+            .onAppear { pulseClock.acquire() }
+            .onDisappear { pulseClock.release() }
+    }
+}
+
 private struct IslandSessionRow: View {
     let session: AgentSession
-    let referenceDate: Date
     var stateIndicator: IslandSessionStateIndicator = .animatedDot
     var completedStaleThreshold: TimeInterval = AgentSession.staleCompletedDisplayThreshold
     var isActionable: Bool = false
@@ -1200,13 +1227,26 @@ private struct IslandSessionRow: View {
     /// Lets the visible question card register its option-selection state
     /// with `OverlayPanelController`'s keyboard shortcut handler (AB-227).
     var keyboardCoordinator: OverlayUICoordinator?
+    /// Shared 15fps clock for the animated status dot (AB-228). Passed
+    /// through to `PulsingStatusDot`; rows that don't animate never touch it.
+    var pulseClock: PulseClock?
 
     @State private var isHighlighted = false
     @State private var detailOverride: Bool?
     @State private var replyText: String = ""
 
+    /// Age badges and staleness (`islandPresence`/`isStaleCompletedForIsland`)
+    /// are time-driven and were previously refreshed by a single
+    /// `TimelineView` wrapping the ENTIRE session list, forcing a full
+    /// list/header rebuild every 30s just to keep a few relative-time
+    /// strings current. Each row now owns that refresh itself (AB-228), so
+    /// a tick only invalidates this one row, not its siblings or the header.
+    private static let ageRefreshInterval: TimeInterval = 30
+
     var body: some View {
-        rowBody(referenceDate: referenceDate)
+        TimelineView(.periodic(from: .now, by: Self.ageRefreshInterval)) { context in
+            rowBody(referenceDate: context.date)
+        }
     }
 
     private func rowBody(referenceDate: Date) -> some View {
@@ -1877,14 +1917,11 @@ private struct IslandSessionRow: View {
         let tint = statusTint(for: presence)
         switch stateIndicator {
         case .animatedDot:
-            if let interval = stateIndicator.timelineInterval(presence: presence, isActionable: isActionable) {
-                TimelineView(.periodic(from: .now, by: interval)) { context in
-                    let pulse = (sin(context.date.timeIntervalSinceReferenceDate * 3.2) + 1) / 2
-                    statusDot(tint: tint, presence: presence, pulse: pulse)
-                }
-                .frame(width: 10, height: 24, alignment: .top)
+            if let pulseClock, stateIndicator.pulses(presence: presence, isActionable: isActionable) {
+                PulsingStatusDot(pulseClock: pulseClock, tint: tint, presence: presence)
+                    .frame(width: 10, height: 24, alignment: .top)
             } else {
-                statusDot(tint: tint, presence: presence, pulse: 0)
+                islandStatusDotView(tint: tint, presence: presence, pulse: 0)
                     .frame(width: 10, height: 24, alignment: .top)
             }
         case .bar:
@@ -1904,15 +1941,6 @@ private struct IslandSessionRow: View {
                 .frame(width: 8, height: 8)
                 .padding(.top, 6)
         }
-    }
-
-    private func statusDot(tint: Color, presence: IslandSessionPresence, pulse: Double) -> some View {
-        Circle()
-            .fill(tint)
-            .frame(width: 9, height: 9)
-            .scaleEffect(1 + (pulse * 0.18))
-            .shadow(color: tint.opacity(presence == .inactive ? 0 : 0.36 + (pulse * 0.26)), radius: 4 + (pulse * 3))
-            .padding(.top, 6)
     }
 
     private func rowFillColor(for presence: IslandSessionPresence) -> Color {

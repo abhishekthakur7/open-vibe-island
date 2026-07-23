@@ -8,29 +8,20 @@ import OpenIslandCore
 final class OverlayPanelController {
     private static let preferredNotchOpenedPanelWidth: CGFloat = 540
     private static let preferredTopBarOpenedPanelWidth: CGFloat = 520
-    private static let preferredNotificationPanelWidth: CGFloat = 620
     private static let openedContentWidthPadding: CGFloat = 0
     private static let openedContentBottomPadding: CGFloat = 0
-    /// Must match `IslandPanelView.maxSessionListHeight` — the AutoHeightScrollView cap.
-    private static let maxSessionListHeight: CGFloat = 560
-    private static let maxVisibleSessionRows: Int = 6
-    private static let openedRowSpacing: CGFloat = 0
-    // Content padding top + scroll padding + v8 list header/footer + bottom inset.
-    // Rows are now full-width scan rows, so the old inter-card spacing is gone.
-    private static let openedContentVerticalInsets: CGFloat = 84
-    private static let notificationMeasuredContentPadding: CGFloat = 8
-    private static let notificationEstimatedVerticalInsets: CGFloat = 36
+    /// Small cushion added on top of the SwiftUI-measured content height
+    /// (AB-228). The measured value can land a couple of points short of
+    /// what's actually needed depending on which padding/inset layer the
+    /// measuring `GeometryReader` sits under; a few points of headroom here
+    /// is far cheaper to reason about than chasing that discrepancy, and
+    /// erring tall avoids reintroducing clipping.
+    private static let measuredContentSafetyPadding: CGFloat = 8
+    /// Height used only while sessions list is empty, or before the opened
+    /// surface has been measured for the first time. This is a fixed UI
+    /// constant (the empty-state/placeholder layout doesn't vary with agent
+    /// content), unlike the old per-phase estimates it used to sit next to.
     private static let openedEmptyStateHeight: CGFloat = 108
-    private static let questionCardBaseHeight: CGFloat = 110
-    private static let questionCardMaxHeight: CGFloat = 420
-    // Completion card chrome breakdown (everything except the scrollable text):
-    // openedContent vertical padding: 24, card container padding: 28,
-    // card VStack spacing: 14, card header (title+prompt): ~50,
-    // completionBody header ("You:"/Done row): ~42, divider: 1,
-    // text area vertical padding: 28  →  total ≈ 187
-    private static let completionCardChromeHeight: CGFloat = 187
-    private static let completionCardMinHeight: CGFloat = 210
-    private static let completionCardMaxHeight: CGFloat = 400
 
     private var panel: NotchPanel?
     private var eventMonitors = NotchEventMonitors()
@@ -464,14 +455,6 @@ final class OverlayPanelController {
         return max(360, min(preferredWidth, screen.visibleFrame.width - 32))
     }
 
-    func notificationPanelWidth(for screen: NSScreen?) -> CGFloat {
-        guard let screen else {
-            return Self.preferredNotificationPanelWidth
-        }
-
-        return min(Self.preferredNotificationPanelWidth, screen.visibleFrame.width - 32)
-    }
-
     func contentRect(for model: AppModel, in bounds: NSRect) -> NSRect? {
         let insets = panelShadowInsets
         return NSRect(
@@ -586,162 +569,42 @@ final class OverlayPanelController {
         )
     }
 
+    /// Opened-surface content height, driven entirely by SwiftUI measurement
+    /// (AB-228). This used to hand-estimate a height per session phase
+    /// (~15 constants covering row height, approval/question/completion body
+    /// height, markdown text measured via `NSString.boundingRect`, ...) that
+    /// had to be kept in lockstep with `IslandPanelView`'s actual layout by
+    /// hand, and diverged whenever real content (long commands, wrapped
+    /// markdown, many todos, long question lists) didn't match the estimate
+    /// — causing clipped content or dead space below it.
+    ///
+    /// `IslandPanelView.openedContent` now measures its own real, rendered
+    /// height via a `GeometryReader`/`PreferenceKey` (the same mechanism
+    /// already used for notification cards) and publishes it to
+    /// `AppModel.measuredOpenedContentHeight` /
+    /// `measuredNotificationContentHeight`. This method just reads that
+    /// measured value back.
     private func openedContentHeight(for model: AppModel) -> CGFloat {
-        let now = Date.now
-        let visibleSessions = openedVisibleSessions(
-            sessions: model.islandListSessions
-        )
-
-        if visibleSessions.isEmpty {
+        guard !model.islandListSessions.isEmpty else {
             return Self.openedEmptyStateHeight
         }
 
-        let actionableID = model.islandSurface.sessionID
-        let isNotificationMode = model.notchOpenReason == .notification && actionableID != nil
+        let isNotificationMode = model.notchOpenReason == .notification && model.islandSurface.sessionID != nil
+        let measured = isNotificationMode
+            ? model.measuredNotificationContentHeight
+            : model.measuredOpenedContentHeight
 
-        if isNotificationMode {
-            // Use SwiftUI-measured height when available (accurate after first render).
-            if model.measuredNotificationContentHeight > 0 {
-                return model.measuredNotificationContentHeight + Self.notificationMeasuredContentPadding
-            }
-            // First render: estimate from the actionable session's content so the
-            // initial window is close to the final size. This avoids a large blank
-            // panel flash (the previous 500pt fallback) and reduces the chance of
-            // a measurement→reposition cycle.
-            if let actionableID,
-               let session = model.state.session(id: actionableID) {
-                let rowHeight = session.estimatedIslandRowHeight(at: now)
-                let bodyHeight = actionableBodyHeight(for: session, model: model)
-                return rowHeight + bodyHeight + Self.notificationEstimatedVerticalInsets
-            }
-            return 300
+        guard measured > 0 else {
+            // Not measured yet (first frame after the surface/content
+            // changed, before SwiftUI has laid out and reported a height).
+            // Fall back to the empty-state floor; the measured-height
+            // `didSet` debounce corrects this with a follow-up reposition as
+            // soon as layout completes, matching how notification cards
+            // already behaved before this change.
+            return Self.openedEmptyStateHeight
         }
 
-        let rowHeights = visibleSessions.map { session -> CGFloat in
-            if session.id == actionableID {
-                return session.estimatedIslandRowHeight(at: now)
-                    + actionableBodyHeight(for: session, model: model)
-            }
-            return session.estimatedIslandRowHeight(at: now)
-        }
-
-        let rowsHeight = rowHeights.reduce(CGFloat.zero, +)
-        let spacingHeight = CGFloat(max(0, rowHeights.count - 1)) * Self.openedRowSpacing
-        let listHeight = rowsHeight + spacingHeight
-        // Cap to match AutoHeightScrollView's maxHeight in IslandPanelView.
-        let cappedListHeight = min(listHeight, Self.maxSessionListHeight)
-        return cappedListHeight + Self.openedContentVerticalInsets
-    }
-
-    /// Additional height for the actionable session's inline action area.
-    private func actionableBodyHeight(for session: AgentSession, model: AppModel) -> CGFloat {
-        switch session.phase {
-        case .waitingForApproval:
-            return 118
-        case .waitingForAnswer:
-            return questionCardHeight(for: session.questionPrompt) - 44
-        case .completed:
-            return completionBodyHeight(for: session, model: model)
-        case .running:
-            return 0
-        }
-    }
-
-    /// Height of the inline completion expansion area (not the old full-card height).
-    private func completionBodyHeight(for session: AgentSession, model: AppModel) -> CGFloat {
-        let headerHeight: CGFloat = 44
-
-        let text = (session.completionAssistantMessageText ?? session.summary)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard !text.isEmpty else {
-            return headerHeight
-        }
-
-        let availableWidth = Self.preferredNotificationPanelWidth - 96
-        let font = NSFont.systemFont(ofSize: 13.5, weight: .medium)
-        let textSize = (text as NSString).boundingRect(
-            with: NSSize(width: availableWidth, height: .greatestFiniteMagnitude),
-            options: [.usesLineFragmentOrigin, .usesFontLeading],
-            attributes: [.font: font]
-        )
-        let markdownHeight = min(260, ceil(textSize.height) + 20)
-        // Reply input: divider (1) + input bar padding+content (~52)
-        let replyInputHeight: CGFloat = TerminalTextSender.canReply(to: session, enabled: model.completionReplyEnabled) ? 53 : 0
-        return headerHeight + 1 + markdownHeight + replyInputHeight
-    }
-
-    /// Estimates the question card height based on prompt content (question count,
-    /// option count per question, and whether the prompt title is shown).
-    private func questionCardHeight(for prompt: QuestionPrompt?) -> CGFloat {
-        guard let prompt else {
-            return Self.questionCardBaseHeight
-        }
-
-        let questions = prompt.questions.isEmpty && !prompt.options.isEmpty
-            ? [
-                QuestionPromptItem(
-                    question: prompt.title,
-                    header: "",
-                    options: prompt.options.map { QuestionOption(label: $0) }
-                ),
-            ]
-            : prompt.questions
-
-        guard !questions.isEmpty else {
-            return Self.questionCardBaseHeight
-        }
-
-        // Card chrome: outer padding + submit button.
-        // When the prompt title is suppressed (single question whose title
-        // matches the question text), reduce chrome because the body carries it.
-        let titleSuppressed = questions.count == 1
-            && prompt.title == questions.first?.question
-        let chromeHeight: CGFloat = titleSuppressed ? 82 : 102
-        var contentHeight: CGFloat = 0
-
-        for question in questions {
-            if questions.count > 1 {
-                contentHeight += 16 // header
-            }
-            contentHeight += 20 // question text
-            contentHeight += CGFloat(question.options.count) * 38 // option rows
-        }
-
-        // Inter-question spacing (only between questions, not after the last).
-        contentHeight += CGFloat(max(0, questions.count - 1)) * 10
-
-        let estimated = chromeHeight + contentHeight
-        return min(Self.questionCardMaxHeight, max(Self.questionCardBaseHeight, estimated))
-    }
-
-    private func completionCardHeight(for model: AppModel) -> CGFloat {
-        guard let session = model.activeIslandCardSession else {
-            return Self.completionCardMinHeight
-        }
-
-        let text = (session.completionAssistantMessageText ?? session.summary)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-
-        // Estimate text height using NSString measurement with the actual font.
-        // Available text width ≈ notificationPanelWidth - card horizontal chrome
-        // Card chrome: openedContent padding (18*2) + card padding (16*2) + text padding (14*2) = 96
-        let availableWidth = Self.preferredNotificationPanelWidth - 96
-        let font = NSFont.systemFont(ofSize: 13.5, weight: .medium)
-        let textSize = (text as NSString).boundingRect(
-            with: NSSize(width: availableWidth, height: .greatestFiniteMagnitude),
-            options: [.usesLineFragmentOrigin, .usesFontLeading],
-            attributes: [.font: font]
-        )
-
-        let estimatedHeight = Self.completionCardChromeHeight + ceil(textSize.height)
-        // Use a smaller minimum to avoid blank space when content is short
-        let minHeight: CGFloat = Self.completionCardChromeHeight + 20
-        return min(Self.completionCardMaxHeight, max(minHeight, estimatedHeight))
-    }
-
-    private func openedVisibleSessions(sessions: [AgentSession]) -> [AgentSession] {
-        Array(sessions.prefix(Self.maxVisibleSessionRows))
+        return measured + Self.measuredContentSafetyPadding
     }
 
     // MARK: - Event reposting

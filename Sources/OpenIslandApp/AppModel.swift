@@ -65,6 +65,10 @@ final class AppModel {
     var selectedSessionID: String?
     let hooks = HookInstallationCoordinator()
     let overlay = OverlayUICoordinator()
+    /// Shared 15fps clock backing every animated status dot (AB-228). One
+    /// timer for the whole app instead of one per pulsing row — see
+    /// `PulseClock`.
+    let pulseClock = PulseClock()
     let discovery = SessionDiscoveryCoordinator()
     let monitoring = ProcessMonitoringCoordinator()
     let codexAppServer = CodexAppServerCoordinator()
@@ -749,6 +753,22 @@ final class AppModel {
         didSet {
             let delta = abs(measuredNotificationContentHeight - oldValue)
             if delta >= 2, measuredNotificationContentHeight > 0 {
+                overlay.refreshOverlayPlacementIfVisible()
+            }
+        }
+    }
+
+    /// Measured by SwiftUI GeometryReader for the full (non-notification)
+    /// opened surface — header, session rows, and footer combined (AB-228).
+    /// This is what replaced `OverlayPanelController`'s hand-estimated
+    /// per-phase heights; see `openedContent` in `IslandPanelView`. Same 2pt
+    /// debounce tolerance as `measuredNotificationContentHeight` above, and
+    /// for the same reason: avoid a reposition/re-measure feedback loop from
+    /// floating-point jitter between layout passes.
+    var measuredOpenedContentHeight: CGFloat = 0 {
+        didSet {
+            let delta = abs(measuredOpenedContentHeight - oldValue)
+            if delta >= 2, measuredOpenedContentHeight > 0 {
                 overlay.refreshOverlayPlacementIfVisible()
             }
         }
@@ -1534,7 +1554,14 @@ final class AppModel {
         }
         synchronizeSelection()
         discovery.refreshCodexRolloutTracking()
-        refreshOverlayPlacementIfVisible()
+        // AB-228: no unconditional reposition here anymore — every tracked
+        // event used to force a full `panelSize`/`panelFrame` recompute
+        // regardless of whether the event actually changed the opened
+        // surface's rendered height. Sizing is now driven by the
+        // SwiftUI-measured content height (`measuredOpenedContentHeight` /
+        // `measuredNotificationContentHeight`), which reactively triggers a
+        // debounced reposition only when the real, rendered height changes
+        // by more than the jitter tolerance — see their `didSet`s above.
         discovery.scheduleCodexSessionPersistence()
         discovery.scheduleClaudeSessionPersistence()
         discovery.scheduleOpenCodeSessionPersistence()

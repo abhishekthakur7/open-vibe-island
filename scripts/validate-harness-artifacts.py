@@ -226,10 +226,18 @@ def main() -> None:
             fail(f"expected opened notch for sessionList, got {notch_status!r}")
         if island_surface != "sessionList":
             fail(f"expected sessionList surface, got {island_surface!r}")
+        # AB-228: the opened panel is now sized from SwiftUI's real measured
+        # content height instead of a hand-estimated guess that only ever
+        # summed the first 6 rows. This fixture has 9 sessions (2 with an
+        # expanded body), so the accurate height is legitimately taller than
+        # the old estimate-derived ceiling of 500 — the upper bound here is
+        # widened to match, capped by the session-list scroll region
+        # (`IslandPanelView.maxSessionListHeight`, 560) plus header/hint/
+        # footer/inset chrome, with headroom for minor rendering variance.
         require_frame_between(
             overlay_frame,
             width=(520, 780),
-            height=(360, 500),
+            height=(360, 760),
             context="sessionList overlay frame",
         )
         if len(button_labels) < 3 and report.get("sessionCount", 0) < 3:

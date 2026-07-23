@@ -74,22 +74,29 @@ struct PerformancePolicyTests {
     }
 
     @Test
-    func inactiveSessionDotDoesNotRequireAnimationTimeline() {
-        #expect(IslandSessionStateIndicator.animatedDot.timelineInterval(
+    func inactiveSessionDotDoesNotRequireThePulseClock() {
+        #expect(!IslandSessionStateIndicator.animatedDot.pulses(
             presence: .inactive,
             isActionable: false
-        ) == nil)
-        #expect(IslandSessionStateIndicator.animatedDot.timelineInterval(
+        ))
+        #expect(!IslandSessionStateIndicator.animatedDot.pulses(
             presence: .active,
             isActionable: false
-        ) == nil)
-        #expect(IslandSessionStateIndicator.animatedDot.timelineInterval(
+        ))
+        #expect(IslandSessionStateIndicator.animatedDot.pulses(
             presence: .running,
             isActionable: false
-        ) == 1.0 / 15.0)
-        #expect(IslandSessionStateIndicator.animatedDot.timelineInterval(
+        ))
+        #expect(IslandSessionStateIndicator.animatedDot.pulses(
             presence: .inactive,
             isActionable: true
-        ) == 1.0 / 15.0)
+        ))
+    }
+
+    @Test
+    func nonAnimatedDotIndicatorsNeverRequireThePulseClock() {
+        #expect(!IslandSessionStateIndicator.bar.pulses(presence: .running, isActionable: true))
+        #expect(!IslandSessionStateIndicator.glyph.pulses(presence: .running, isActionable: true))
+        #expect(!IslandSessionStateIndicator.tint.pulses(presence: .running, isActionable: true))
     }
 }
