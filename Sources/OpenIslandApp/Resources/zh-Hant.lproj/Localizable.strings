@@ -28,6 +28,12 @@
 "settings.general.suppressFrontmostNotifications" = "前台工作階段不彈出通知";
 "settings.general.showCodexUsage" = "顯示 Codex 用量";
 "settings.general.completionReply" = "在完成卡片中回覆";
+"settings.general.attention" = "關注提醒";
+"settings.general.attentionFooter" = "即使您沒有看著凹槽，也能收到待處理權限和問題的提醒。";
+"settings.general.menuBarAttention" = "在選單列顯示待處理數量";
+"settings.general.systemNotifications" = "為權限與問題事件傳送系統通知";
+"settings.general.dockBadge" = "在 Dock 圖示顯示待處理角標";
+"settings.general.dockBadgeRequiresIcon" = "需要先開啟「在 Dock 中顯示圖示」。";
 "settings.general.cliHooks" = "CLI Hooks";
 "settings.general.activated" = "已啟用";
 "settings.general.install" = "安裝";
@@ -125,6 +131,19 @@
 "settings.sound.notifications" = "通知音效";
 "settings.sound.mute" = "靜音";
 "settings.sound.selectSound" = "選擇音效";
+"settings.sound.permission" = "權限請求";
+"settings.sound.question" = "問題";
+"settings.sound.completion" = "已完成";
+"settings.sound.perEventFooter" = "每種事件類型可使用各自的音效。上方的靜音會同時關閉所有音效。";
+"settings.sound.preview" = "試聽音效";
+
+/* Menu Bar (AB-239) */
+"menuBar.noAttention" = "沒有需要處理的工作階段";
+
+/* System Notifications (AB-239) */
+"notification.system.permissionTitle" = "需要授權";
+"notification.system.questionTitle" = "有問題需要回答";
+"notification.system.completionTitle" = "工作階段已完成";
 
 /* Settings - Setup */
 "settings.tab.setup" = "安裝引導";

@@ -28,6 +28,12 @@
 "settings.general.suppressFrontmostNotifications" = "Suppress notifications for focused sessions";
 "settings.general.showCodexUsage" = "Show Codex usage";
 "settings.general.completionReply" = "Reply from completion card";
+"settings.general.attention" = "Attention";
+"settings.general.attentionFooter" = "Get notified about pending permissions and questions even when you're not looking at the notch.";
+"settings.general.menuBarAttention" = "Show pending count in menu bar";
+"settings.general.systemNotifications" = "System notifications for permission & question events";
+"settings.general.dockBadge" = "Show pending count as Dock badge";
+"settings.general.dockBadgeRequiresIcon" = "Requires \"Show icon in Dock\" to be on.";
 "settings.general.cliHooks" = "CLI Hooks";
 "settings.general.activated" = "Activated";
 "settings.general.install" = "Install";
@@ -125,6 +131,19 @@
 "settings.sound.notifications" = "Notification Sounds";
 "settings.sound.mute" = "Mute";
 "settings.sound.selectSound" = "Select Sound";
+"settings.sound.permission" = "Permission requests";
+"settings.sound.question" = "Questions";
+"settings.sound.completion" = "Completion";
+"settings.sound.perEventFooter" = "Each event type can use its own sound. Mute above silences all of them.";
+"settings.sound.preview" = "Preview sound";
+
+/* Menu Bar (AB-239) */
+"menuBar.noAttention" = "No sessions need attention";
+
+/* System Notifications (AB-239) */
+"notification.system.permissionTitle" = "Permission needed";
+"notification.system.questionTitle" = "Question needs an answer";
+"notification.system.completionTitle" = "Session completed";
 
 /* Settings - Setup */
 "settings.tab.setup" = "Setup";

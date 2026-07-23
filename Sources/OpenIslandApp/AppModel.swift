@@ -25,6 +25,9 @@ final class AppModel {
     private static let suppressFrontmostNotificationsDefaultsKey = "app.suppressFrontmostNotifications"
     private static let globalHotKeyOptionDefaultsKey = "app.globalHotKeyOption"
     private static let autoCollapseEnabledDefaultsKey = "app.autoCollapseOnMouseLeave"
+    private static let menuBarAttentionEnabledDefaultsKey = "app.menuBarAttentionEnabled"
+    private static let systemNotificationsEnabledDefaultsKey = "app.systemNotificationsEnabled"
+    private static let dockBadgeEnabledDefaultsKey = "app.dockBadgeEnabled"
     private static let legacyIslandSessionStateIndicatorDefaultsKey = "appearance.island.v8.stateIndicator"
     private static let legacyIslandSessionGroupDefaultsKey = "appearance.island.v8.sessionGroup"
     private static let legacyIslandSessionSortDefaultsKey = "appearance.island.v8.sessionSort"
@@ -51,6 +54,7 @@ final class AppModel {
             _cachedSessionBuckets = nil
             pruneAgentsGridObservationTicketsIfNeeded()
             bridgeServer.updateStateSnapshot(state)
+            refreshAttentionSurfaces()
         }
     }
     @ObservationIgnored private var _cachedSessionBuckets: (primary: [AgentSession], overflow: [AgentSession])?
@@ -66,6 +70,14 @@ final class AppModel {
     var selectedSessionID: String?
     let hooks = HookInstallationCoordinator()
     let overlay = OverlayUICoordinator()
+    /// AB-239: owns the optional menu-bar `NSStatusItem` showing a live
+    /// pending-attention count. Hidden until `menuBarAttentionEnabled` turns
+    /// it on.
+    let menuBarController = AttentionStatusItemController()
+    /// AB-239: thin `UNUserNotificationCenter` wrapper for optional system
+    /// notifications. Constructing it never touches the real notification
+    /// center — see `UserNotificationService`'s doc comment.
+    let userNotificationService = UserNotificationService()
     /// Shared 15fps clock backing every animated status dot (AB-228). One
     /// timer for the whole app instead of one per pulsing row — see
     /// `PulseClock`.
@@ -244,6 +256,7 @@ final class AppModel {
                     NSApp.unhide(nil)
                 }
             }
+            refreshAttentionSurfaces()
         }
     }
     var hapticFeedbackEnabled: Bool = false {
@@ -282,6 +295,47 @@ final class AppModel {
         didSet {
             guard hasFinishedInit, autoCollapseEnabled != oldValue else { return }
             UserDefaults.standard.set(autoCollapseEnabled, forKey: Self.autoCollapseEnabledDefaultsKey)
+        }
+    }
+
+    // MARK: - Attention beyond the notch (AB-239)
+
+    /// Shows a menu-bar `NSStatusItem` with a live pending-attention count;
+    /// its menu lists the waiting sessions. Off by default — preserves
+    /// today's notch-only presentation until the user opts in.
+    var menuBarAttentionEnabled: Bool = false {
+        didSet {
+            guard hasFinishedInit, menuBarAttentionEnabled != oldValue else { return }
+            UserDefaults.standard.set(menuBarAttentionEnabled, forKey: Self.menuBarAttentionEnabledDefaultsKey)
+            menuBarController.setEnabled(menuBarAttentionEnabled)
+            if menuBarAttentionEnabled {
+                refreshAttentionSurfaces()
+            }
+        }
+    }
+
+    /// Posts macOS user notifications for permission/question events when
+    /// the overlay's display isn't the one the user is currently on. Off by
+    /// default; enabling it lazily requests `UNUserNotificationCenter`
+    /// authorization (never at launch — see `UserNotificationService`).
+    var systemNotificationsEnabled: Bool = false {
+        didSet {
+            guard hasFinishedInit, systemNotificationsEnabled != oldValue else { return }
+            UserDefaults.standard.set(systemNotificationsEnabled, forKey: Self.systemNotificationsEnabledDefaultsKey)
+            if systemNotificationsEnabled {
+                userNotificationService.requestAuthorizationIfNeeded()
+            }
+        }
+    }
+
+    /// Shows the live pending-attention count as a Dock badge. Only visible
+    /// when `showDockIcon` is also on (accessory apps have no Dock tile to
+    /// badge). Off by default.
+    var dockBadgeEnabled: Bool = false {
+        didSet {
+            guard hasFinishedInit, dockBadgeEnabled != oldValue else { return }
+            UserDefaults.standard.set(dockBadgeEnabled, forKey: Self.dockBadgeEnabledDefaultsKey)
+            refreshAttentionSurfaces()
         }
     }
 
@@ -340,10 +394,28 @@ final class AppModel {
                 : "Island sound notifications enabled."
         }
     }
-    var selectedSoundName: String = NotificationSoundService.defaultSoundName {
+    /// AB-239: per-event sound preferences, replacing the single global
+    /// `selectedSoundName`. Each defaults to whatever the legacy single sound
+    /// was (see `NotificationSoundService.soundName(for:)`), so upgrading
+    /// users keep hearing exactly the sound they already chose for every
+    /// event until they customize one individually. The global mute
+    /// (`isSoundMuted`) still silences all three.
+    var permissionSoundName: String = NotificationSoundService.defaultSoundName {
         didSet {
-            guard selectedSoundName != oldValue else { return }
-            NotificationSoundService.selectedSoundName = selectedSoundName
+            guard permissionSoundName != oldValue else { return }
+            NotificationSoundService.setSoundName(permissionSoundName, for: .permission)
+        }
+    }
+    var questionSoundName: String = NotificationSoundService.defaultSoundName {
+        didSet {
+            guard questionSoundName != oldValue else { return }
+            NotificationSoundService.setSoundName(questionSoundName, for: .question)
+        }
+    }
+    var completionSoundName: String = NotificationSoundService.defaultSoundName {
+        didSet {
+            guard completionSoundName != oldValue else { return }
+            NotificationSoundService.setSoundName(completionSoundName, for: .completion)
         }
     }
     var overlayDisplaySelectionID: String {
@@ -638,13 +710,21 @@ final class AppModel {
             Self.suppressFrontmostNotificationsDefaultsKey: true,
             Self.globalHotKeyOptionDefaultsKey: GlobalHotKeyOption.optionCommandO.rawValue,
             Self.autoCollapseEnabledDefaultsKey: true,
+            Self.menuBarAttentionEnabledDefaultsKey: false,
+            Self.systemNotificationsEnabledDefaultsKey: false,
+            Self.dockBadgeEnabledDefaultsKey: false,
         ])
         isSoundMuted = UserDefaults.standard.bool(forKey: Self.soundMutedDefaultsKey)
-        selectedSoundName = NotificationSoundService.selectedSoundName
+        permissionSoundName = NotificationSoundService.soundName(for: .permission)
+        questionSoundName = NotificationSoundService.soundName(for: .question)
+        completionSoundName = NotificationSoundService.soundName(for: .completion)
         showDockIcon = UserDefaults.standard.bool(forKey: Self.showDockIconDefaultsKey)
         hapticFeedbackEnabled = UserDefaults.standard.bool(forKey: Self.hapticFeedbackEnabledDefaultsKey)
         suppressFrontmostNotifications = UserDefaults.standard.bool(forKey: Self.suppressFrontmostNotificationsDefaultsKey)
         autoCollapseEnabled = UserDefaults.standard.bool(forKey: Self.autoCollapseEnabledDefaultsKey)
+        menuBarAttentionEnabled = UserDefaults.standard.bool(forKey: Self.menuBarAttentionEnabledDefaultsKey)
+        systemNotificationsEnabled = UserDefaults.standard.bool(forKey: Self.systemNotificationsEnabledDefaultsKey)
+        dockBadgeEnabled = UserDefaults.standard.bool(forKey: Self.dockBadgeEnabledDefaultsKey)
         if UserDefaults.standard.object(forKey: Self.showCodexUsageDefaultsKey) != nil {
             showCodexUsage = UserDefaults.standard.bool(forKey: Self.showCodexUsageDefaultsKey)
         } else {
@@ -684,6 +764,16 @@ final class AppModel {
         }
         overlay.autoCollapseOnMouseLeaveEnabledAccessor = { [weak self] in
             self?.autoCollapseEnabled ?? true
+        }
+        overlay.onNotificationSurfacePresented = { [weak self] session, surface in
+            self?.handleNotificationSurfacePresented(session: session, surface: surface)
+        }
+
+        menuBarController.onSelectSession = { [weak self] sessionID in
+            self?.presentOverlayFocused(onSessionID: sessionID)
+        }
+        userNotificationService.onNotificationClicked = { [weak self] sessionID in
+            self?.presentOverlayFocused(onSessionID: sessionID)
         }
 
         hooks.onStatusMessage = { [weak self] message in
@@ -754,6 +844,13 @@ final class AppModel {
         }
         refreshOverlayDisplayConfiguration()
         registerGlobalHotKey()
+        // AB-239: apply persisted attention-surface preferences unconditionally
+        // — like `registerGlobalHotKey()` above, this must run on every launch,
+        // not just when a Settings toggle changes at runtime (the property
+        // `didSet`s above are gated on `hasFinishedInit` and stay silent during
+        // this initializer).
+        menuBarController.setEnabled(menuBarAttentionEnabled)
+        refreshAttentionSurfaces()
         hasFinishedInit = true
     }
 
@@ -844,12 +941,108 @@ final class AppModel {
         surfacedSessions.count
     }
 
+    /// Live sessions currently waiting on the user (permission or question),
+    /// most recently active first. Backs the menu-bar count/menu and the
+    /// Dock badge (AB-239).
+    var attentionSessions: [AgentSession] {
+        surfacedSessions
+            .filter { $0.phase.requiresAttention }
+            .sorted { $0.islandActivityDate > $1.islandActivityDate }
+    }
+
     var liveAttentionCount: Int {
-        surfacedSessions.filter { $0.phase.requiresAttention }.count
+        attentionSessions.count
     }
 
     var liveRunningCount: Int {
         surfacedSessions.filter { $0.phase == .running }.count
+    }
+
+    // MARK: - Attention beyond the notch (AB-239)
+
+    /// Keeps the menu-bar status item and Dock badge in sync with the
+    /// current attention count. Cheap to call unconditionally — both
+    /// downstream calls no-op when their respective feature is off.
+    private func refreshAttentionSurfaces() {
+        let attention = attentionSessions
+        menuBarController.update(attentionSessions: attention)
+        updateDockBadge(count: attention.count)
+    }
+
+    private func updateDockBadge(count: Int) {
+        // `NSApp` (the `NSApplication!` global) is only non-nil once
+        // `NSApplication.shared` has actually run — true for the real app
+        // (SwiftUI's `App` lifecycle does this before launch), but never
+        // true for `swift test`'s bare executable. Optional-chain every
+        // access so this safely no-ops there instead of crashing on the
+        // implicit force-unwrap.
+        guard dockBadgeEnabled, showDockIcon else {
+            NSApp?.dockTile.badgeLabel = nil
+            return
+        }
+        NSApp?.dockTile.badgeLabel = count > 0 ? String(count) : nil
+    }
+
+    /// Fired from `OverlayUICoordinator.presentNotificationSurface` every
+    /// time a notification card actually opens (i.e. past the
+    /// frontmost-session suppression gate). Decides whether this specific
+    /// permission/question event also warrants a system notification.
+    private func handleNotificationSurfacePresented(session: AgentSession?, surface: IslandSurface) {
+        guard systemNotificationsEnabled,
+              let session,
+              let sessionID = surface.sessionID else {
+            return
+        }
+
+        let eventKind = NotificationEventKind(phase: session.phase)
+        let overlayScreenID = overlayPlacementDiagnostics?.targetScreenID
+        let activeScreenID = OverlayDisplayResolver.activeScreenID()
+
+        guard SystemNotificationPolicy.shouldPost(
+            eventKind: eventKind,
+            overlayScreenID: overlayScreenID,
+            activeScreenID: activeScreenID
+        ), let eventKind else {
+            return
+        }
+
+        userNotificationService.post(
+            sessionID: sessionID,
+            title: systemNotificationTitle(for: eventKind),
+            body: systemNotificationBody(for: session)
+        )
+    }
+
+    private func systemNotificationTitle(for kind: NotificationEventKind) -> String {
+        switch kind {
+        case .permission:
+            lang.t("notification.system.permissionTitle")
+        case .question:
+            lang.t("notification.system.questionTitle")
+        case .completion:
+            lang.t("notification.system.completionTitle")
+        }
+    }
+
+    private func systemNotificationBody(for session: AgentSession) -> String {
+        let workspace = session.jumpTarget?.workspaceName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let workspace, !workspace.isEmpty {
+            return "\(session.tool.displayName) · \(workspace) — \(session.summary)"
+        }
+        return "\(session.tool.displayName) — \(session.summary)"
+    }
+
+    /// Surfaces the overlay focused on a specific session — used by both the
+    /// menu-bar item's session list and a clicked system notification
+    /// (AB-239). Opens on the configured display via the normal overlay
+    /// placement path (`overlayDisplaySelectionID`).
+    func presentOverlayFocused(onSessionID sessionID: String) {
+        guard state.session(id: sessionID) != nil else {
+            return
+        }
+        selectedSessionID = sessionID
+        NSApp?.activate(ignoringOtherApps: true)
+        notchOpen(reason: .click, surface: .sessionList(actionableSessionID: sessionID))
     }
 
     private func sortIslandSessions(_ sessions: [AgentSession]) -> [AgentSession] {

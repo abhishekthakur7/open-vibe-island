@@ -189,4 +189,17 @@ enum OverlayDisplayResolver {
         let originY = Int(screen.frame.origin.y.rounded())
         return "fallback-\(screen.localizedName)-\(width)x\(height)@\(originX),\(originY)"
     }
+
+    /// Best-effort id for the screen the user is currently on — used by
+    /// `SystemNotificationPolicy` (AB-239 #2) to decide whether a permission/
+    /// question event is worth a system notification. macOS has no direct
+    /// "which display is the user looking at" API without Accessibility
+    /// permission, so this approximates it via the screen currently under
+    /// the mouse cursor (a reasonable proxy for user attention), falling
+    /// back to `NSScreen.main` when the cursor can't be resolved to a screen
+    /// (e.g. mid-hotplug).
+    static func activeScreenID(mouseLocation: NSPoint = NSEvent.mouseLocation) -> String? {
+        let screen = NSScreen.screens.first { $0.frame.contains(mouseLocation) } ?? NSScreen.main
+        return screen.map(screenID(for:))
+    }
 }

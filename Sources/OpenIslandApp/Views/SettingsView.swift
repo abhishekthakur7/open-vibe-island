@@ -228,6 +228,33 @@ struct GeneralSettingsPane: View {
                 ))
             }
 
+            Section {
+                Toggle(lang.t("settings.general.menuBarAttention"), isOn: Binding(
+                    get: { model.menuBarAttentionEnabled },
+                    set: { model.menuBarAttentionEnabled = $0 }
+                ))
+                Toggle(lang.t("settings.general.systemNotifications"), isOn: Binding(
+                    get: { model.systemNotificationsEnabled },
+                    set: { model.systemNotificationsEnabled = $0 }
+                ))
+                Toggle(lang.t("settings.general.dockBadge"), isOn: Binding(
+                    get: { model.dockBadgeEnabled },
+                    set: { model.dockBadgeEnabled = $0 }
+                ))
+                .disabled(!model.showDockIcon)
+                if !model.showDockIcon {
+                    Text(lang.t("settings.general.dockBadgeRequiresIcon"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text(lang.t("settings.general.attention"))
+            } footer: {
+                Text(lang.t("settings.general.attentionFooter"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
         }
         .formStyle(.grouped)
         .navigationTitle(lang.t("settings.tab.general"))
@@ -287,30 +314,62 @@ struct SoundSettingsPane: View {
                 ))
             }
 
-            Section(lang.t("settings.sound.selectSound")) {
-                List(availableSounds, id: \.self) { name in
-                    Button {
-                        model.selectedSoundName = name
-                        NotificationSoundService.play(name)
-                    } label: {
-                        HStack {
-                            Text(name)
-                                .foregroundStyle(.primary)
-                            Spacer()
-                            if name == model.selectedSoundName {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(.blue)
-                                    .fontWeight(.semibold)
-                            }
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
+            // AB-239: permission/question/completion each get their own
+            // sound, instead of one sound for every event.
+            Section {
+                soundRow(
+                    title: lang.t("settings.sound.permission"),
+                    selection: Binding(
+                        get: { model.permissionSoundName },
+                        set: { model.permissionSoundName = $0 }
+                    )
+                )
+                soundRow(
+                    title: lang.t("settings.sound.question"),
+                    selection: Binding(
+                        get: { model.questionSoundName },
+                        set: { model.questionSoundName = $0 }
+                    )
+                )
+                soundRow(
+                    title: lang.t("settings.sound.completion"),
+                    selection: Binding(
+                        get: { model.completionSoundName },
+                        set: { model.completionSoundName = $0 }
+                    )
+                )
+            } header: {
+                Text(lang.t("settings.sound.selectSound"))
+            } footer: {
+                Text(lang.t("settings.sound.perEventFooter"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
         .navigationTitle(lang.t("settings.tab.sound"))
+    }
+
+    @ViewBuilder
+    private func soundRow(title: String, selection: Binding<String>) -> some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Picker(title, selection: selection) {
+                ForEach(availableSounds, id: \.self) { name in
+                    Text(name).tag(name)
+                }
+            }
+            .labelsHidden()
+            .frame(maxWidth: 200)
+            Button {
+                NotificationSoundService.play(selection.wrappedValue)
+            } label: {
+                Image(systemName: "play.circle")
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(lang.t("settings.sound.preview"))
+        }
     }
 }
 

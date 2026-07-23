@@ -39,6 +39,14 @@ final class OverlayUICoordinator {
     @ObservationIgnored
     var isSoundMutedAccessor: (() -> Bool)?
 
+    /// AB-239: fired every time `presentNotificationSurface` actually opens
+    /// a notification card (i.e. after the frontmost-session suppression
+    /// gate in `AppModel.scheduleNotificationSurfacePresentationIfNeeded` has
+    /// already passed). `AppModel` uses this to decide whether to also post
+    /// a system notification and to keep the menu-bar/dock badge current.
+    @ObservationIgnored
+    var onNotificationSurfacePresented: ((AgentSession?, IslandSurface) -> Void)?
+
     @ObservationIgnored
     var ignoresPointerExitAccessor: (() -> Bool)?
 
@@ -372,9 +380,14 @@ final class OverlayUICoordinator {
             return
         }
 
+        let session = appModel?.state.session(id: surface.sessionID)
         appModel?.measuredNotificationContentHeight = 0
-        NotificationSoundService.playNotification(isMuted: isSoundMuted)
+        NotificationSoundService.playNotification(
+            for: session.flatMap { NotificationEventKind(phase: $0.phase) },
+            isMuted: isSoundMuted
+        )
         notchOpen(reason: .notification, surface: surface)
+        onNotificationSurfacePresented?(session, surface)
     }
 
     func shouldPreserveCurrentNotificationSurface(against candidate: IslandSurface) -> Bool {

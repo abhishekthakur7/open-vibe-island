@@ -28,6 +28,12 @@
 "settings.general.suppressFrontmostNotifications" = "前台会话不弹出通知";
 "settings.general.showCodexUsage" = "显示 Codex 用量";
 "settings.general.completionReply" = "在完成卡片中回复";
+"settings.general.attention" = "关注提醒";
+"settings.general.attentionFooter" = "即使你没有看着刘海，也能收到待处理权限和问题的提醒。";
+"settings.general.menuBarAttention" = "在菜单栏显示待处理数量";
+"settings.general.systemNotifications" = "为权限与问题事件发送系统通知";
+"settings.general.dockBadge" = "在 Dock 图标显示待处理角标";
+"settings.general.dockBadgeRequiresIcon" = "需要先开启「在 Dock 中显示图标」。";
 "settings.general.cliHooks" = "CLI Hooks";
 "settings.general.activated" = "已激活";
 "settings.general.install" = "安装";
@@ -125,6 +131,19 @@
 "settings.sound.notifications" = "通知音效";
 "settings.sound.mute" = "静音";
 "settings.sound.selectSound" = "选择音效";
+"settings.sound.permission" = "权限请求";
+"settings.sound.question" = "问题";
+"settings.sound.completion" = "已完成";
+"settings.sound.perEventFooter" = "每种事件类型可使用各自的音效。上方的静音会同时关闭所有音效。";
+"settings.sound.preview" = "试听音效";
+
+/* Menu Bar (AB-239) */
+"menuBar.noAttention" = "没有需要处理的会话";
+
+/* System Notifications (AB-239) */
+"notification.system.permissionTitle" = "需要授权";
+"notification.system.questionTitle" = "有问题需要回答";
+"notification.system.completionTitle" = "会话已完成";
 
 /* Settings - Setup */
 "settings.tab.setup" = "安装引导";
