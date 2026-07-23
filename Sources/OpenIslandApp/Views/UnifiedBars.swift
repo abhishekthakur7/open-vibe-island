@@ -67,6 +67,12 @@ struct UnifiedBars: View {
         private let barLayers = [CAShapeLayer(), CAShapeLayer(), CAShapeLayer()]
         private var mode: Mode = .idle
         private var tintColor = NSColor.white
+        /// Mode most recently committed to `barLayers`. Compared against
+        /// `mode` in `configureLayers()` to detect a genuine idle/running/
+        /// waiting switch (as opposed to the first layout, or a same-mode
+        /// re-layout from a resize) so the crossfade below only plays on an
+        /// actual mode transition (AB-242).
+        private var lastRenderedMode: Mode?
 
         override init(frame frameRect: NSRect) {
             super.init(frame: frameRect)
@@ -100,6 +106,17 @@ struct UnifiedBars: View {
             let side = min(bounds.width, bounds.height)
             guard side > 0 else { return }
 
+            // AB-242: bar geometry differs discretely between idle/running/
+            // waiting (different heights, different animated vs. static
+            // columns), so animating the real layers' bounds/path/transform
+            // directly across a mode switch would read as a glitchy morph
+            // rather than a clean transition. Instead, snapshot the outgoing
+            // look *before* reconfiguring, reconfigure the real layers for
+            // the new mode instantly underneath, then fade the snapshot out
+            // — a crossfade without morphing individual bar geometry.
+            let modeDidChange = lastRenderedMode != nil && lastRenderedMode != mode
+            let outgoingSnapshot = modeDidChange ? snapshotImage(of: layer) : nil
+
             let scale = side / UnifiedBars.box
             let dx = (bounds.width - side) / 2
             let dy = (bounds.height - side) / 2
@@ -131,6 +148,69 @@ struct UnifiedBars: View {
                 configureAnimations(for: barLayer, column: column)
             }
             CATransaction.commit()
+
+            lastRenderedMode = mode
+
+            if let outgoingSnapshot {
+                crossfadeOut(outgoingSnapshot)
+            }
+        }
+
+        /// Places a snapshot of the just-replaced look on top of the (already
+        /// reconfigured) real bar layers and fades it out, revealing the new
+        /// mode underneath. Runs as an explicit `CABasicAnimation` outside the
+        /// `setDisableActions(true)` transaction above, so it animates
+        /// regardless of that flag.
+        private func crossfadeOut(_ snapshot: CGImage) {
+            guard let containerLayer = layer else { return }
+
+            let fadeLayer = CALayer()
+            fadeLayer.frame = containerLayer.bounds
+            fadeLayer.contents = snapshot
+            fadeLayer.contentsScale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
+            containerLayer.addSublayer(fadeLayer)
+
+            CATransaction.begin()
+            CATransaction.setCompletionBlock {
+                fadeLayer.removeFromSuperlayer()
+            }
+            let fade = CABasicAnimation(keyPath: "opacity")
+            fade.fromValue = 1
+            fade.toValue = 0
+            fade.duration = 0.2
+            fade.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            fade.fillMode = .forwards
+            fade.isRemovedOnCompletion = false
+            fadeLayer.add(fade, forKey: "crossfade-out")
+            fadeLayer.opacity = 0
+            CATransaction.commit()
+        }
+
+        /// Renders `layer`'s current contents into a bitmap so the outgoing
+        /// look can keep being shown (fading out) after the real bar layers
+        /// have already moved on to the new mode's configuration.
+        private func snapshotImage(of layer: CALayer?) -> CGImage? {
+            guard let layer, layer.bounds.width > 0, layer.bounds.height > 0 else { return nil }
+
+            let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
+            let width = Int(layer.bounds.width * scale)
+            let height = Int(layer.bounds.height * scale)
+            guard width > 0, height > 0,
+                  let context = CGContext(
+                    data: nil,
+                    width: width,
+                    height: height,
+                    bitsPerComponent: 8,
+                    bytesPerRow: 0,
+                    space: CGColorSpaceCreateDeviceRGB(),
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+                  ) else {
+                return nil
+            }
+
+            context.scaleBy(x: scale, y: scale)
+            layer.render(in: context)
+            return context.makeImage()
         }
 
         private func baseHeight(for column: Column) -> CGFloat {

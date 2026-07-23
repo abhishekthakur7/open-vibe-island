@@ -206,6 +206,13 @@ struct IslandPanelView: View {
     var model: AppModel
     private var lang: LanguageManager { model.lang }
 
+    /// AB-242: drives the opened surface's Reduce Transparency fallback.
+    /// SwiftUI keeps this current as the user toggles System Settings →
+    /// Accessibility → Display → Reduce Transparency — no manual
+    /// `NSWorkspace` observation needed, unlike a plain launch-time snapshot
+    /// of `NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency`.
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     @State private var isHovering = false
     @State private var showingQuitConfirmation = false
     @State private var keepsOpenedSurfaceMounted = false
@@ -401,9 +408,16 @@ struct IslandPanelView: View {
         )
 
         ZStack(alignment: .top) {
-            surfaceShape
-                .fill(V6Palette.ink)
+            // AB-242: native vibrancy base + a soft shadow, matching the drop
+            // shadow `AppearanceSettingsPane`'s `SessionListPanelPreview` has
+            // always rendered (the real overlay used to be a flat opaque fill
+            // with neither). Falls back to that original flat ink fill under
+            // Reduce Transparency.
+            OpenedSurfaceBackground(reduceTransparency: reduceTransparency)
                 .frame(width: surfaceWidth, height: surfaceHeight)
+                .clipShape(surfaceShape)
+                .shadow(color: .black.opacity(0.36), radius: 22, y: 12)
+                .animation(.easeInOut(duration: 0.2), value: reduceTransparency)
 
             VStack(spacing: 0) {
                 openedHeaderContent
@@ -1412,6 +1426,14 @@ private struct IslandSessionRow: View {
         .modifier(ConditionalDrawingGroup(enabled: useDrawingGroup && !isActionable))
         .contentShape(Rectangle())
         .animation(.easeInOut(duration: 0.15), value: isHighlighted)
+        // AB-242: status tint (dot fill, leading bar, tinted row background,
+        // title color) used to snap the instant a session's phase/outcome/
+        // presence changed. These three cover the tint-driving inputs
+        // (`statusTint(for:)` / `IslandDesignPalette.Status.tint`) so a
+        // running → waiting → completed transition crossfades instead.
+        .animation(.easeInOut(duration: 0.2), value: session.phase)
+        .animation(.easeInOut(duration: 0.2), value: session.outcome)
+        .animation(.easeInOut(duration: 0.2), value: presence)
         .onTapGesture(perform: handlePrimaryTap)
         .onHover { hovering in
             guard isInteractive, allowsRowHoverHighlight else { return }
