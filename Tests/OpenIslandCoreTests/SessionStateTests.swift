@@ -914,6 +914,51 @@ struct SessionStateTests {
         #expect(metadata?.cursorMetadata.model == "gpt-5-codex")
         #expect(e4.sessionCompleted?.sessionID == "cursor-stop-clear")
         #expect(e4.sessionCompleted?.summary == "Cursor completed the turn.")
+        #expect(e4.sessionCompleted?.outcome == nil)
+    }
+
+    /// AB-230: Cursor's `Stop` hook already reports `status: "error"` /
+    /// `"aborted"`, but the resulting `SessionCompleted` used to always land
+    /// as a plain, indistinguishable `.completed` session. Verify BridgeServer
+    /// now threads `status` into the outcome the session list/notification
+    /// card renders distinctly.
+    @Test
+    func cursorStopStatusMapsToDistinctOutcomes() async throws {
+        let socketURL = BridgeSocketLocation.uniqueTestURL()
+        let server = BridgeServer(socketURL: socketURL)
+        try server.start()
+        defer { server.stop() }
+
+        let observer = LocalBridgeClient(socketURL: socketURL)
+        let stream = try observer.connect()
+        defer { observer.disconnect() }
+        try await observer.send(.registerClient(role: .observer))
+
+        _ = try BridgeCommandClient(socketURL: socketURL).send(.processCursorHook(CursorHookPayload(
+            hookEventName: .stop,
+            conversationId: "cursor-error",
+            generationId: "gen-error-1",
+            workspaceRoots: ["/tmp/cursor-error"],
+            status: "error"
+        )))
+        _ = try BridgeCommandClient(socketURL: socketURL).send(.processCursorHook(CursorHookPayload(
+            hookEventName: .stop,
+            conversationId: "cursor-aborted",
+            generationId: "gen-aborted-1",
+            workspaceRoots: ["/tmp/cursor-aborted"],
+            status: "aborted"
+        )))
+
+        var iterator = stream.makeAsyncIterator()
+        let errorStarted = try await nextEvent(from: &iterator)
+        let errorCompleted = try await nextEvent(from: &iterator)
+        let abortedStarted = try await nextEvent(from: &iterator)
+        let abortedCompleted = try await nextEvent(from: &iterator)
+
+        #expect(errorStarted.isSessionStarted)
+        #expect(errorCompleted.sessionCompleted?.outcome == .failed)
+        #expect(abortedStarted.isSessionStarted)
+        #expect(abortedCompleted.sessionCompleted?.outcome == .interrupted)
     }
 
     @Test
@@ -1440,6 +1485,254 @@ struct SessionStateTests {
         #expect(legacy.firstSeenAt == nil)
         let legacyUpdated = ISO8601DateFormatter().date(from: "2026-01-01T00:00:00Z")
         #expect(legacy.session.firstSeenAt == legacyUpdated)
+        // Legacy records predate `outcome` entirely — should fall back to `.success`.
+        #expect(legacy.outcome == nil)
+        #expect(legacy.session.outcome == .success)
+    }
+
+    // MARK: - AB-230: session outcome (success / interrupted / failed)
+
+    @Test
+    func sessionCompletedWithoutSignalsDefaultsToSuccessOutcome() {
+        let startedAt = Date(timeIntervalSince1970: 30_000)
+        var state = SessionState()
+        state.apply(.sessionStarted(SessionStarted(
+            sessionID: "s-1",
+            title: "Session",
+            tool: .claudeCode,
+            summary: "Working",
+            timestamp: startedAt
+        )))
+
+        state.apply(.sessionCompleted(SessionCompleted(
+            sessionID: "s-1",
+            summary: "Claude Code completed the turn.",
+            timestamp: startedAt.addingTimeInterval(10)
+        )))
+
+        #expect(state.session(id: "s-1")?.phase == .completed)
+        #expect(state.session(id: "s-1")?.outcome == .success)
+    }
+
+    @Test
+    func sessionCompletedWithInterruptFlagMapsToInterruptedOutcome() {
+        let startedAt = Date(timeIntervalSince1970: 30_100)
+        var state = SessionState()
+        state.apply(.sessionStarted(SessionStarted(
+            sessionID: "s-1",
+            title: "Session",
+            tool: .claudeCode,
+            summary: "Working",
+            timestamp: startedAt
+        )))
+
+        // Mirrors BridgeServer's `.stop` handling when Claude reports a
+        // Ctrl+C mid-turn (`payload.isInterrupt == true`).
+        state.apply(.sessionCompleted(SessionCompleted(
+            sessionID: "s-1",
+            summary: "Claude Code completed the turn.",
+            timestamp: startedAt.addingTimeInterval(10),
+            isInterrupt: true
+        )))
+
+        #expect(state.session(id: "s-1")?.phase == .completed)
+        #expect(state.session(id: "s-1")?.outcome == .interrupted)
+    }
+
+    @Test
+    func sessionCompletedWithExplicitOutcomeMapsStopFailureToFailed() {
+        let startedAt = Date(timeIntervalSince1970: 30_200)
+        var state = SessionState()
+        state.apply(.sessionStarted(SessionStarted(
+            sessionID: "s-1",
+            title: "Session",
+            tool: .claudeCode,
+            summary: "Working",
+            timestamp: startedAt
+        )))
+
+        // Mirrors BridgeServer's `.stopFailure` handling — always `.failed`
+        // regardless of `isInterrupt`.
+        state.apply(.sessionCompleted(SessionCompleted(
+            sessionID: "s-1",
+            summary: "Claude Code failed to finish the turn.",
+            timestamp: startedAt.addingTimeInterval(10),
+            outcome: .failed
+        )))
+
+        #expect(state.session(id: "s-1")?.phase == .completed)
+        #expect(state.session(id: "s-1")?.outcome == .failed)
+    }
+
+    @Test
+    func sessionEndTeardownPreservesThePreviouslyRecordedOutcome() {
+        let startedAt = Date(timeIntervalSince1970: 30_300)
+        var state = SessionState()
+        state.apply(.sessionStarted(SessionStarted(
+            sessionID: "s-1",
+            title: "Session",
+            tool: .claudeCode,
+            summary: "Working",
+            timestamp: startedAt
+        )))
+
+        state.apply(.sessionCompleted(SessionCompleted(
+            sessionID: "s-1",
+            summary: "Claude Code failed to finish the turn.",
+            timestamp: startedAt.addingTimeInterval(10),
+            outcome: .failed
+        )))
+        #expect(state.session(id: "s-1")?.outcome == .failed)
+
+        // SessionEnd unconditionally sets `isInterrupt: true` purely to
+        // suppress a duplicate notification card — it must NOT stomp the
+        // `.failed` outcome the prior StopFailure already recorded.
+        state.apply(.sessionCompleted(SessionCompleted(
+            sessionID: "s-1",
+            summary: "Claude Code session ended.",
+            timestamp: startedAt.addingTimeInterval(20),
+            isInterrupt: true,
+            isSessionEnd: true
+        )))
+
+        #expect(state.session(id: "s-1")?.isSessionEnded == true)
+        #expect(state.session(id: "s-1")?.outcome == .failed)
+    }
+
+    @Test
+    func denyingPermissionThroughOpenIslandRecordsFailedOutcome() {
+        let startedAt = Date(timeIntervalSince1970: 30_400)
+        var state = SessionState(sessions: [
+            AgentSession(
+                id: "s-1",
+                title: "Session",
+                tool: .claudeCode,
+                phase: .waitingForApproval,
+                summary: "Wants to edit a file",
+                updatedAt: startedAt,
+                permissionRequest: PermissionRequest(
+                    title: "Edit file",
+                    summary: "Wants to edit a file",
+                    affectedPath: "src/main.ts"
+                )
+            ),
+        ])
+
+        state.resolvePermission(
+            sessionID: "s-1",
+            resolution: .deny(),
+            at: startedAt.addingTimeInterval(5)
+        )
+
+        #expect(state.session(id: "s-1")?.phase == .completed)
+        #expect(state.session(id: "s-1")?.outcome == .failed)
+    }
+
+    @Test
+    func approvingPermissionResetsOutcomeToSuccess() {
+        let startedAt = Date(timeIntervalSince1970: 30_500)
+        var state = SessionState(sessions: [
+            AgentSession(
+                id: "s-1",
+                title: "Session",
+                tool: .claudeCode,
+                phase: .waitingForApproval,
+                summary: "Wants to edit a file",
+                updatedAt: startedAt,
+                permissionRequest: PermissionRequest(
+                    title: "Edit file",
+                    summary: "Wants to edit a file",
+                    affectedPath: "src/main.ts"
+                )
+            ),
+        ])
+
+        state.resolvePermission(
+            sessionID: "s-1",
+            resolution: .allowOnce(),
+            at: startedAt.addingTimeInterval(5)
+        )
+
+        #expect(state.session(id: "s-1")?.phase == .running)
+        #expect(state.session(id: "s-1")?.outcome == .success)
+    }
+
+    @Test
+    func processVanishingWithoutACleanStopRecordsInterruptedOutcome() {
+        var session = AgentSession(
+            id: "desktop-1",
+            title: "Claude · demo",
+            tool: .claudeCode,
+            phase: .running,
+            summary: "Working",
+            updatedAt: Date(timeIntervalSince1970: 1_000)
+        )
+        session.isHookManaged = true
+        session.isProcessAlive = true
+        var state = SessionState(sessions: [session])
+
+        state.markProcessLiveness(aliveSessionIDs: [])
+        state.markProcessLiveness(aliveSessionIDs: [])
+
+        #expect(state.session(id: "desktop-1")?.isSessionEnded == true)
+        #expect(state.session(id: "desktop-1")?.phase == .completed)
+        #expect(state.session(id: "desktop-1")?.outcome == .interrupted)
+    }
+
+    @Test
+    func dismissSessionRecordsInterruptedOutcome() {
+        var state = SessionState(sessions: [
+            AgentSession(
+                id: "remote-1",
+                title: "Remote session",
+                tool: .claudeCode,
+                phase: .running,
+                summary: "Working",
+                updatedAt: Date(timeIntervalSince1970: 1_000)
+            ),
+        ])
+
+        state.dismissSession(id: "remote-1")
+
+        #expect(state.session(id: "remote-1")?.phase == .completed)
+        #expect(state.session(id: "remote-1")?.outcome == .interrupted)
+    }
+
+    @Test
+    func agentSessionOutcomeRoundTripsThroughCodableWithSuccessDefaultForLegacyData() throws {
+        let session = AgentSession(
+            id: "s-1",
+            title: "Session",
+            tool: .claudeCode,
+            phase: .completed,
+            outcome: .failed,
+            summary: "Failed",
+            updatedAt: .now
+        )
+
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(session)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let decoded = try decoder.decode(AgentSession.self, from: data)
+        #expect(decoded.outcome == .failed)
+
+        // Pre-AB-230 persisted JSON has no "outcome" key at all.
+        let legacyJSON = """
+        {
+          "id": "legacy-1",
+          "title": "Legacy",
+          "tool": "claudeCode",
+          "attachmentState": "stale",
+          "phase": "completed",
+          "summary": "Done",
+          "updatedAt": "2026-01-01T00:00:00Z",
+          "firstSeenAt": "2026-01-01T00:00:00Z"
+        }
+        """.data(using: .utf8)!
+        let legacy = try decoder.decode(AgentSession.self, from: legacyJSON)
+        #expect(legacy.outcome == .success)
     }
 }
 

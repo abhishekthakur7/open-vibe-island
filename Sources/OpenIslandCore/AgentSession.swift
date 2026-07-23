@@ -135,6 +135,18 @@ public enum SessionPhase: String, Codable, Sendable, CaseIterable {
     }
 }
 
+/// Refines a `.completed` session into how it actually ended, without
+/// introducing a new `SessionPhase` case (that would ripple through every
+/// grouping/sectioning switch that matches on phase). `StopFailure`, a
+/// denied permission, and a Ctrl+C interrupt all used to land as a plain
+/// `.completed` session indistinguishable from a clean success — this lets
+/// presentation code (tint/glyph/label) tell them apart.
+public enum SessionOutcome: String, Codable, Sendable, CaseIterable {
+    case success
+    case interrupted
+    case failed
+}
+
 public struct JumpTarget: Equatable, Codable, Sendable {
     public var terminalApp: String
     public var workspaceName: String
@@ -359,6 +371,10 @@ public struct AgentSession: Equatable, Identifiable, Codable, Sendable {
     public var origin: SessionOrigin?
     public var attachmentState: SessionAttachmentState
     public var phase: SessionPhase
+    /// Only meaningful when `phase == .completed`. Defaults to `.success` for
+    /// running/waiting sessions and for any pre-existing persisted data that
+    /// predates this field.
+    public var outcome: SessionOutcome
     public var summary: String
     public var updatedAt: Date
     /// First time this session appeared in local state. Written once and
@@ -408,6 +424,7 @@ public struct AgentSession: Equatable, Identifiable, Codable, Sendable {
         origin: SessionOrigin? = nil,
         attachmentState: SessionAttachmentState = .stale,
         phase: SessionPhase,
+        outcome: SessionOutcome = .success,
         summary: String,
         updatedAt: Date,
         firstSeenAt: Date? = nil,
@@ -426,6 +443,7 @@ public struct AgentSession: Equatable, Identifiable, Codable, Sendable {
         self.origin = origin
         self.attachmentState = attachmentState
         self.phase = phase
+        self.outcome = outcome
         self.summary = summary
         self.updatedAt = updatedAt
         self.firstSeenAt = firstSeenAt ?? updatedAt
@@ -446,6 +464,7 @@ public struct AgentSession: Equatable, Identifiable, Codable, Sendable {
         case origin
         case attachmentState
         case phase
+        case outcome
         case summary
         case updatedAt
         case firstSeenAt
@@ -467,6 +486,7 @@ public struct AgentSession: Equatable, Identifiable, Codable, Sendable {
         origin = try container.decodeIfPresent(SessionOrigin.self, forKey: .origin)
         attachmentState = try container.decodeIfPresent(SessionAttachmentState.self, forKey: .attachmentState) ?? .stale
         phase = try container.decode(SessionPhase.self, forKey: .phase)
+        outcome = try container.decodeIfPresent(SessionOutcome.self, forKey: .outcome) ?? .success
         summary = try container.decode(String.self, forKey: .summary)
         updatedAt = try container.decode(Date.self, forKey: .updatedAt)
         firstSeenAt = try container.decodeIfPresent(Date.self, forKey: .firstSeenAt) ?? updatedAt
@@ -488,6 +508,7 @@ public struct AgentSession: Equatable, Identifiable, Codable, Sendable {
         try container.encodeIfPresent(origin, forKey: .origin)
         try container.encode(attachmentState, forKey: .attachmentState)
         try container.encode(phase, forKey: .phase)
+        try container.encode(outcome, forKey: .outcome)
         try container.encode(summary, forKey: .summary)
         try container.encode(updatedAt, forKey: .updatedAt)
         try container.encode(firstSeenAt, forKey: .firstSeenAt)

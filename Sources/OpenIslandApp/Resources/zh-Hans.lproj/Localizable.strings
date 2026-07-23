@@ -234,7 +234,13 @@
 
 /* Island Panel - Completion */
 "completion.done" = "完成";
+"completion.interrupted" = "已中断";
+"completion.failed" = "失败";
 "completion.replyPlaceholder" = "回复 %@…";
+
+/* Island Panel - Badges */
+"badge.planMode" = "计划";
+"badge.bypassPermissions" = "绕过权限";
 
 /* Window Titles */
 "window.settings" = "Open Island 设置";

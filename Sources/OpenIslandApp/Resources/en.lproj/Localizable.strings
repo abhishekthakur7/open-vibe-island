@@ -234,7 +234,13 @@
 
 /* Island Panel - Completion */
 "completion.done" = "Done";
+"completion.interrupted" = "Interrupted";
+"completion.failed" = "Failed";
 "completion.replyPlaceholder" = "Reply to %@…";
+
+/* Island Panel - Badges */
+"badge.planMode" = "PLAN";
+"badge.bypassPermissions" = "BYPASS";
 
 /* Window Titles */
 "window.settings" = "Open Island Settings";

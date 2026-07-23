@@ -264,7 +264,14 @@ extension AgentSession {
                 return assistantMessage
             }
 
-            return jumpTarget != nil ? "Ready" : "Completed"
+            switch outcome {
+            case .success:
+                return jumpTarget != nil ? "Ready" : "Completed"
+            case .interrupted:
+                return "Interrupted"
+            case .failed:
+                return "Failed"
+            }
         }
     }
 
@@ -318,6 +325,123 @@ extension AgentSession {
         }
 
         return "\(max(1, age / 86_400))d"
+    }
+
+    /// How long the main session has actually been running, derived from
+    /// `firstSeenAt` — distinct from `spotlightAgeBadge`, which measures time
+    /// since the *last update* and reads as "<1m" for most running sessions.
+    /// Minute granularity (AB-230); callers re-derive this from their own
+    /// periodic tick rather than a dedicated high-frequency timer.
+    func elapsedRunningLabel(at referenceDate: Date) -> String {
+        let totalSeconds = max(0, Int(referenceDate.timeIntervalSince(firstSeenAt)))
+        let totalMinutes = totalSeconds / 60
+
+        if totalMinutes < 1 {
+            return "<1m"
+        }
+
+        if totalMinutes < 60 {
+            return "\(totalMinutes)m"
+        }
+
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+
+        if hours < 24 {
+            return minutes == 0 ? "\(hours)h" : "\(hours)h \(minutes)m"
+        }
+
+        let days = hours / 24
+        let remainingHours = hours % 24
+        return remainingHours == 0 ? "\(days)d" : "\(days)d \(remainingHours)h"
+    }
+
+    /// Short display form of the session's model metadata, e.g.
+    /// `"claude-sonnet-4-5"` → `"Sonnet 4.5"`, `"gpt-5-codex"` → `"GPT-5"`.
+    /// `nil` when no model metadata is present (AB-230) — the model badge is
+    /// hidden entirely in that case.
+    var displayModelName: String? {
+        let rawModel = claudeMetadata?.model ?? openCodeMetadata?.model ?? cursorMetadata?.model
+        guard let trimmed = rawModel?.trimmedForSurface, !trimmed.isEmpty else {
+            return nil
+        }
+
+        return Self.shortModelDisplayName(for: trimmed)
+    }
+
+    /// Family keywords recognized regardless of where they appear in the raw
+    /// model string (e.g. both `"claude-opus-4-6"` and `"claude-4.6-opus"`).
+    private static let modelFamilyDisplayNames: [String: String] = [
+        "opus": "Opus",
+        "sonnet": "Sonnet",
+        "haiku": "Haiku",
+        "gemini": "Gemini",
+        "grok": "Grok",
+        "llama": "Llama",
+        "mistral": "Mistral",
+        "qwen": "Qwen",
+        "kimi": "Kimi",
+        "deepseek": "DeepSeek",
+        "glm": "GLM",
+    ]
+
+    static func shortModelDisplayName(for rawModel: String) -> String {
+        var value = rawModel.trimmedForSurface
+        guard !value.isEmpty else { return rawModel }
+
+        // Drop a leading provider namespace, e.g. "anthropic/claude-opus-4-6".
+        if let slashIndex = value.lastIndex(of: "/") {
+            value = String(value[value.index(after: slashIndex)...])
+        }
+
+        let tokens = value
+            .lowercased()
+            .split(whereSeparator: { !$0.isLetter && !$0.isNumber })
+            .map(String.init)
+        guard !tokens.isEmpty else { return value }
+
+        var family: String?
+        var isGPTFamily = false
+
+        for token in tokens {
+            if let mapped = modelFamilyDisplayNames[token] {
+                family = mapped
+                break
+            }
+            if token == "gpt" {
+                family = "GPT"
+                isGPTFamily = true
+                break
+            }
+            if token.count == 2, token.hasPrefix("o"), token.dropFirst().allSatisfy(\.isNumber) {
+                family = token.uppercased()
+                break
+            }
+        }
+
+        guard let resolvedFamily = family else {
+            return humanizedModelName(from: tokens)
+        }
+
+        // Version = the numeric tokens, in original order — but drop
+        // date-like tokens (e.g. the "20260101" trailing a Claude model id).
+        let version = tokens
+            .filter { $0.allSatisfy(\.isNumber) && $0.count < 6 }
+            .joined(separator: ".")
+
+        if version.isEmpty {
+            return resolvedFamily
+        }
+
+        return isGPTFamily ? "\(resolvedFamily)-\(version)" : "\(resolvedFamily) \(version)"
+    }
+
+    private static func humanizedModelName(from tokens: [String]) -> String {
+        let filtered = tokens.filter { !($0.allSatisfy(\.isNumber) && $0.count >= 6) }
+        let source = filtered.isEmpty ? tokens : filtered
+        return source
+            .map { $0.prefix(1).uppercased() + $0.dropFirst() }
+            .joined(separator: " ")
     }
 
     func islandPresence(at referenceDate: Date) -> IslandSessionPresence {

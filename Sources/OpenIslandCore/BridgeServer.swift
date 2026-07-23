@@ -820,7 +820,8 @@ public final class BridgeServer: @unchecked Sendable {
                         sessionID: payload.sessionID,
                         summary: payload.error ?? "\(payload.resolvedAgentTool.displayName) tool failed.",
                         phase: payload.isInterrupt == true ? .completed : .running,
-                        timestamp: .now
+                        timestamp: .now,
+                        outcome: payload.isInterrupt == true ? .interrupted : nil
                     )
                 )
             )
@@ -837,7 +838,8 @@ public final class BridgeServer: @unchecked Sendable {
                     SessionCompleted(
                         sessionID: payload.sessionID,
                         summary: payload.error ?? "\(payload.resolvedAgentTool.displayName) permission was denied.",
-                        timestamp: .now
+                        timestamp: .now,
+                        outcome: .failed
                     )
                 )
             )
@@ -907,7 +909,8 @@ public final class BridgeServer: @unchecked Sendable {
                         sessionID: payload.sessionID,
                         summary: payload.error ?? payload.lastAssistantMessage ?? payload.assistantMessagePreview ?? "\(payload.resolvedAgentTool.displayName) failed to finish the turn.",
                         timestamp: .now,
-                        isInterrupt: payload.isInterrupt
+                        isInterrupt: payload.isInterrupt,
+                        outcome: .failed
                     )
                 )
             )
@@ -1277,20 +1280,25 @@ public final class BridgeServer: @unchecked Sendable {
             synchronizeCursorJumpTarget(for: payload)
             synchronizeCursorMetadata(for: payload)
             let stopSummary: String
+            let stopOutcome: SessionOutcome?
             switch payload.status {
             case "error":
                 stopSummary = "Cursor encountered an error."
+                stopOutcome = .failed
             case "aborted":
                 stopSummary = "Cursor task was aborted."
+                stopOutcome = .interrupted
             default:
                 stopSummary = "Cursor completed the turn."
+                stopOutcome = nil
             }
             emit(
                 .sessionCompleted(
                     SessionCompleted(
                         sessionID: payload.sessionID,
                         summary: stopSummary,
-                        timestamp: .now
+                        timestamp: .now,
+                        outcome: stopOutcome
                     )
                 )
             )

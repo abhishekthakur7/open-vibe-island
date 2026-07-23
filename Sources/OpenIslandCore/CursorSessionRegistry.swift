@@ -7,6 +7,9 @@ public struct CursorTrackedSessionRecord: Equatable, Codable, Sendable {
     public var attachmentState: SessionAttachmentState
     public var summary: String
     public var phase: SessionPhase
+    /// Optional so legacy records (saved before `AgentSession.outcome`
+    /// existed) decode cleanly; `session` falls back to `.success`.
+    public var outcome: SessionOutcome?
     public var updatedAt: Date
     public var jumpTarget: JumpTarget?
     public var cursorMetadata: CursorSessionMetadata?
@@ -18,6 +21,7 @@ public struct CursorTrackedSessionRecord: Equatable, Codable, Sendable {
         attachmentState: SessionAttachmentState = .stale,
         summary: String,
         phase: SessionPhase,
+        outcome: SessionOutcome? = nil,
         updatedAt: Date,
         jumpTarget: JumpTarget? = nil,
         cursorMetadata: CursorSessionMetadata? = nil
@@ -28,6 +32,7 @@ public struct CursorTrackedSessionRecord: Equatable, Codable, Sendable {
         self.attachmentState = attachmentState
         self.summary = summary
         self.phase = phase
+        self.outcome = outcome
         self.updatedAt = updatedAt
         self.jumpTarget = jumpTarget
         self.cursorMetadata = cursorMetadata
@@ -41,6 +46,7 @@ public struct CursorTrackedSessionRecord: Equatable, Codable, Sendable {
             attachmentState: session.attachmentState,
             summary: session.summary,
             phase: session.phase,
+            outcome: session.outcome,
             updatedAt: session.updatedAt,
             jumpTarget: session.jumpTarget,
             cursorMetadata: session.cursorMetadata
@@ -55,6 +61,7 @@ public struct CursorTrackedSessionRecord: Equatable, Codable, Sendable {
             origin: origin,
             attachmentState: attachmentState,
             phase: phase,
+            outcome: outcome ?? .success,
             summary: summary,
             updatedAt: updatedAt,
             jumpTarget: jumpTarget,

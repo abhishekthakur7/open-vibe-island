@@ -54,17 +54,23 @@ public struct SessionActivityUpdated: Equatable, Codable, Sendable {
     public var summary: String
     public var phase: SessionPhase
     public var timestamp: Date
+    /// Set when this activity update itself transitions the session into
+    /// `.completed` (e.g. a Claude `PostToolUseFailure` interrupted mid-tool).
+    /// Nil defaults to `.success` when `phase == .completed`.
+    public var outcome: SessionOutcome?
 
     public init(
         sessionID: String,
         summary: String,
         phase: SessionPhase,
-        timestamp: Date
+        timestamp: Date,
+        outcome: SessionOutcome? = nil
     ) {
         self.sessionID = sessionID
         self.summary = summary
         self.phase = phase
         self.timestamp = timestamp
+        self.outcome = outcome
     }
 }
 
@@ -110,19 +116,27 @@ public struct SessionCompleted: Equatable, Codable, Sendable {
     /// turn-level completion (`Stop`/`StopFailure`) where the CLI is still
     /// running and waiting for the next user prompt.
     public var isSessionEnd: Bool?
+    /// Explicit outcome for this completion. When nil, `SessionState.apply`
+    /// derives it: `isSessionEnd == true` preserves whatever outcome the
+    /// session already had (a teardown signal, not a fresh completion),
+    /// otherwise `isInterrupt == true` maps to `.interrupted` and anything
+    /// else defaults to `.success`.
+    public var outcome: SessionOutcome?
 
     public init(
         sessionID: String,
         summary: String,
         timestamp: Date,
         isInterrupt: Bool? = nil,
-        isSessionEnd: Bool? = nil
+        isSessionEnd: Bool? = nil,
+        outcome: SessionOutcome? = nil
     ) {
         self.sessionID = sessionID
         self.summary = summary
         self.timestamp = timestamp
         self.isInterrupt = isInterrupt
         self.isSessionEnd = isSessionEnd
+        self.outcome = outcome
     }
 }
 

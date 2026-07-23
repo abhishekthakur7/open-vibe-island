@@ -107,6 +107,9 @@ public struct SessionState: Equatable, Sendable {
                 if payload.phase != .waitingForAnswer {
                     session.questionPrompt = nil
                 }
+                session.outcome = payload.phase == .completed
+                    ? (payload.outcome ?? .success)
+                    : .success
             }
 
             session.updatedAt = payload.timestamp
@@ -149,6 +152,7 @@ public struct SessionState: Equatable, Sendable {
             if payload.isSessionEnd == true {
                 session.isSessionEnded = true
             }
+            session.outcome = Self.resolvedCompletionOutcome(for: payload, previous: session.outcome)
             upsert(session)
 
         case let .jumpTargetUpdated(payload):
@@ -216,6 +220,7 @@ public struct SessionState: Equatable, Sendable {
             }
 
             session.phase = .running
+            session.outcome = .success
             session.summary = payload.summary
             session.permissionRequest = nil
             session.questionPrompt = nil
@@ -238,6 +243,7 @@ public struct SessionState: Equatable, Sendable {
 
         if resolution.isApproved {
             session.phase = .running
+            session.outcome = .success
             switch session.tool {
             case .claudeCode, .geminiCLI, .qoder, .qwenCode, .factory, .codebuddy, .kimiCLI:
                 session.summary = "Permission approved. \(session.tool.displayName) continued the tool."
@@ -248,6 +254,7 @@ public struct SessionState: Equatable, Sendable {
             }
         } else {
             session.phase = .completed
+            session.outcome = .failed
             switch session.tool {
             case .claudeCode, .geminiCLI, .qoder, .qwenCode, .factory, .codebuddy, .kimiCLI:
                 session.summary = "Permission denied in Open Island."
@@ -272,6 +279,7 @@ public struct SessionState: Equatable, Sendable {
 
         session.questionPrompt = nil
         session.phase = .running
+        session.outcome = .success
         let summary = response.displaySummary
         session.summary = summary.isEmpty ? "Answered the question." : "Answered: \(summary)"
         session.updatedAt = timestamp
@@ -321,6 +329,31 @@ public struct SessionState: Equatable, Sendable {
     /// later resolver pass replaces the jumpTarget with a generic one.
     /// This handles the case where the first hook fires before terminalApp
     /// is known and a later `jumpTargetUpdated` fills it in.
+    /// Resolves the `SessionOutcome` to apply for a `.sessionCompleted` event.
+    /// - An explicit `payload.outcome` always wins (e.g. `StopFailure`,
+    ///   denied permissions — set at the `BridgeServer` call site).
+    /// - `isSessionEnd == true` is a teardown signal, not a fresh completion
+    ///   (Claude/Gemini/OpenCode all set `isInterrupt: true` unconditionally
+    ///   on `SessionEnd` purely to suppress a duplicate notification card) —
+    ///   preserve whatever outcome the session already recorded.
+    /// - Otherwise `isInterrupt == true` (a genuine Ctrl+C mid-turn) maps to
+    ///   `.interrupted`; anything else is a clean `.success`.
+    static func resolvedCompletionOutcome(
+        for payload: SessionCompleted,
+        previous: SessionOutcome
+    ) -> SessionOutcome {
+        if let outcome = payload.outcome {
+            return outcome
+        }
+        if payload.isSessionEnd == true {
+            return previous
+        }
+        if payload.isInterrupt == true {
+            return .interrupted
+        }
+        return .success
+    }
+
     static func refreshCodexAppClassification(for session: inout AgentSession) {
         if session.jumpTarget?.terminalApp == "Codex.app" {
             session.isCodexAppSession = true
@@ -392,6 +425,11 @@ public struct SessionState: Equatable, Sendable {
                     if session.processNotSeenCount >= 2 {
                         session.isSessionEnded = true
                         session.phase = .completed
+                        // The process vanished without a Stop/SessionEnd hook
+                        // ever arriving (terminal closed, process killed) —
+                        // treat that like an interruption rather than a
+                        // clean success.
+                        session.outcome = .interrupted
                         changed.insert(id)
                     }
                 }
@@ -431,6 +469,10 @@ public struct SessionState: Equatable, Sendable {
         guard var session = sessionsByID[id] else { return }
         session.isSessionEnded = true
         session.phase = .completed
+        // No SessionEnd hook fired here either (e.g. a dropped SSH tunnel) —
+        // same "vanished, not cleanly stopped" reasoning as the process
+        // liveness fallback above.
+        session.outcome = .interrupted
         session.updatedAt = .now
         upsert(session)
     }

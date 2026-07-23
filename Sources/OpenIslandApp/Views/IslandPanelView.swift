@@ -821,7 +821,7 @@ struct IslandPanelView: View {
     private func sectionTint(for section: IslandSessionSection) -> Color {
         guard let first = section.sessions.first else { return IslandDesignPalette.Status.idle }
         if section.id == "state-idle" { return IslandDesignPalette.Status.idle }
-        return IslandDesignPalette.Status.tint(for: first.phase)
+        return IslandDesignPalette.Status.tint(for: first.phase, outcome: first.outcome)
     }
 
     private func sessionSectionTitle(for section: IslandSessionSection) -> String {
@@ -1261,7 +1261,7 @@ private struct IslandSessionRow: View {
             ? .inactive
             : ((showsDetail && rawPresence == .inactive) ? .active : rawPresence)
         return VStack(alignment: .leading, spacing: 0) {
-            rowSummary(presence: presence, showsDetail: showsDetail)
+            rowSummary(presence: presence, showsDetail: showsDetail, referenceDate: referenceDate)
 
             if showsDetail {
                 rowAuxiliaryDetails(presence: presence)
@@ -1305,7 +1305,7 @@ private struct IslandSessionRow: View {
         }
     }
 
-    private func rowSummary(presence: IslandSessionPresence, showsDetail: Bool) -> some View {
+    private func rowSummary(presence: IslandSessionPresence, showsDetail: Bool, referenceDate: Date) -> some View {
         HStack(alignment: .top, spacing: 10) {
             if showsLeadingStatusIndicator {
                 statusIndicator(for: presence)
@@ -1333,13 +1333,19 @@ private struct IslandSessionRow: View {
 
             HStack(spacing: 6) {
                 agentBadge
+                if let modelBadge = session.displayModelName {
+                    sideBadge(modelBadge)
+                }
+                if let permissionChip = permissionModeBadgeKind {
+                    permissionModeChip(permissionChip)
+                }
                 if session.isRemote {
                     sideBadge("SSH")
                 }
                 if let terminalBadge = session.spotlightTerminalBadge {
                     sideBadge(terminalBadge)
                 }
-                Text(session.spotlightAgeBadge)
+                Text(ageBadgeText(at: referenceDate))
                     .font(.system(size: 10.5, weight: .medium, design: .monospaced))
                     .foregroundStyle(summaryAgeColor(for: presence))
                     .frame(minWidth: 30, alignment: .trailing)
@@ -1459,6 +1465,54 @@ private struct IslandSessionRow: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(.white.opacity(presentation == .notification ? 0.045 : 0.06), in: Capsule())
+    }
+
+    /// `plan` gets the same neutral treatment as `sideBadge`; `bypass` gets a
+    /// warning tint since a bypass-permissions session behaves very
+    /// differently from the default (AB-230).
+    private enum PermissionModeBadgeKind {
+        case plan
+        case bypass
+    }
+
+    private var permissionModeBadgeKind: PermissionModeBadgeKind? {
+        switch session.claudeMetadata?.permissionMode {
+        case .plan:
+            .plan
+        case .bypassPermissions:
+            .bypass
+        default:
+            nil
+        }
+    }
+
+    @ViewBuilder
+    private func permissionModeChip(_ kind: PermissionModeBadgeKind) -> some View {
+        switch kind {
+        case .plan:
+            sideBadge(lang.t("badge.planMode"))
+        case .bypass:
+            Text(lang.t("badge.bypassPermissions"))
+                .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+                .foregroundStyle(IslandDesignPalette.Status.warning.opacity(0.94))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(IslandDesignPalette.Status.warning.opacity(0.16), in: Capsule())
+                .overlay(Capsule().stroke(IslandDesignPalette.Status.warning.opacity(0.4), lineWidth: 1))
+        }
+    }
+
+    /// The trailing badge shows time-since-last-update for most sessions, but
+    /// that's nearly always "<1m" for a running session and doesn't answer
+    /// the question that actually matters: how long has it been running?
+    /// For running sessions, show elapsed time since `firstSeenAt` instead.
+    /// Reuses the row's existing 30s tick (`referenceDate`, from AB-228)
+    /// rather than a new per-row high-frequency timer.
+    private func ageBadgeText(at referenceDate: Date) -> String {
+        if session.phase == .running {
+            return session.elapsedRunningLabel(at: referenceDate)
+        }
+        return session.spotlightAgeBadge
     }
 
     private var summaryPromptLineText: String? {
@@ -1608,7 +1662,7 @@ private struct IslandSessionRow: View {
     }
 
     private var actionableStatusTint: Color {
-        IslandDesignPalette.Status.tint(for: session.phase)
+        IslandDesignPalette.Status.tint(for: session.phase, outcome: session.outcome)
     }
 
     @ViewBuilder
@@ -1636,7 +1690,11 @@ private struct IslandSessionRow: View {
     }
 
     private var completionHasExpandedBody: Bool {
-        !completionMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        // A non-success outcome always earns the expanded card — even with
+        // no message body — so an interrupted/failed completion isn't
+        // silently indistinguishable from a plain "Completed" row.
+        session.outcome != .success
+            || !completionMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             || onReply != nil
     }
 
@@ -1743,6 +1801,10 @@ private struct IslandSessionRow: View {
     private var completionActionBody: some View {
         VStack(alignment: .leading, spacing: 0) {
             if !completionMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                if session.outcome != .success {
+                    completionOutcomeBanner
+                }
+
                 AutoHeightScrollView(maxHeight: 160) {
                     Markdown(completionMessageText)
                         .markdownTheme(.completionCard)
@@ -1790,11 +1852,50 @@ private struct IslandSessionRow: View {
         presentation == .notification ? 0.06 : 0.08
     }
 
+    /// Shown above the completion message body whenever the session didn't
+    /// finish cleanly — the message text alone (an error string, or nothing)
+    /// isn't a reliable enough signal on its own.
+    private var completionOutcomeBanner: some View {
+        HStack(spacing: 6) {
+            Image(systemName: completionOutcomeGlyphName)
+                .font(.system(size: 10.5, weight: .bold))
+            Text(completionOutcomeLabel)
+                .font(.system(size: 11, weight: .bold))
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(completionOutcomeTint.opacity(completionDoneOpacity))
+        .padding(.horizontal, 14)
+        .padding(.top, 10)
+        .padding(.bottom, 4)
+    }
+
+    /// Only ever rendered from `completionOutcomeBanner`, which is gated on
+    /// `session.outcome != .success` — "stop" is just the glyph for the
+    /// remaining `.interrupted` case.
+    private var completionOutcomeGlyphName: String {
+        session.outcome == .failed ? "xmark.circle.fill" : "stop.circle.fill"
+    }
+
+    private var completionOutcomeTint: Color {
+        IslandDesignPalette.Status.tint(for: .completed, outcome: session.outcome)
+    }
+
+    private var completionOutcomeLabel: String {
+        switch session.outcome {
+        case .success:
+            lang.t("completion.done")
+        case .interrupted:
+            lang.t("completion.interrupted")
+        case .failed:
+            lang.t("completion.failed")
+        }
+    }
+
     private var completionEmptyState: some View {
         HStack {
-            Text(lang.t("completion.done"))
+            Text(completionOutcomeLabel)
                 .font(.system(size: 11.5, weight: .bold))
-                .foregroundStyle(IslandDesignPalette.Status.completed.opacity(completionDoneOpacity))
+                .foregroundStyle(completionOutcomeTint.opacity(completionDoneOpacity))
 
             Spacer(minLength: 0)
         }
@@ -1969,7 +2070,14 @@ private struct IslandSessionRow: View {
         case .running:
             "circle.dashed"
         case .completed:
-            "checkmark.circle.fill"
+            switch session.outcome {
+            case .success:
+                "checkmark.circle.fill"
+            case .interrupted:
+                "stop.circle.fill"
+            case .failed:
+                "xmark.circle.fill"
+            }
         }
     }
 
@@ -2057,7 +2165,7 @@ private struct IslandSessionRow: View {
     }
 
     private func statusTint(for presence: IslandSessionPresence) -> Color {
-        IslandDesignPalette.Status.tint(for: session.phase, presence: presence)
+        IslandDesignPalette.Status.tint(for: session.phase, presence: presence, outcome: session.outcome)
     }
 
     private func activityColor(for presence: IslandSessionPresence) -> Color {

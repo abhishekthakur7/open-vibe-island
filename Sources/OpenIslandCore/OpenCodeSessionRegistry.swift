@@ -7,6 +7,9 @@ public struct OpenCodeTrackedSessionRecord: Equatable, Codable, Sendable {
     public var attachmentState: SessionAttachmentState
     public var summary: String
     public var phase: SessionPhase
+    /// Optional so legacy records (saved before `AgentSession.outcome`
+    /// existed) decode cleanly; `session` falls back to `.success`.
+    public var outcome: SessionOutcome?
     public var updatedAt: Date
     public var jumpTarget: JumpTarget?
     public var openCodeMetadata: OpenCodeSessionMetadata?
@@ -18,6 +21,7 @@ public struct OpenCodeTrackedSessionRecord: Equatable, Codable, Sendable {
         attachmentState: SessionAttachmentState = .stale,
         summary: String,
         phase: SessionPhase,
+        outcome: SessionOutcome? = nil,
         updatedAt: Date,
         jumpTarget: JumpTarget? = nil,
         openCodeMetadata: OpenCodeSessionMetadata? = nil
@@ -28,6 +32,7 @@ public struct OpenCodeTrackedSessionRecord: Equatable, Codable, Sendable {
         self.attachmentState = attachmentState
         self.summary = summary
         self.phase = phase
+        self.outcome = outcome
         self.updatedAt = updatedAt
         self.jumpTarget = jumpTarget
         self.openCodeMetadata = openCodeMetadata
@@ -41,6 +46,7 @@ public struct OpenCodeTrackedSessionRecord: Equatable, Codable, Sendable {
             attachmentState: session.attachmentState,
             summary: session.summary,
             phase: session.phase,
+            outcome: session.outcome,
             updatedAt: session.updatedAt,
             jumpTarget: session.jumpTarget,
             openCodeMetadata: session.openCodeMetadata
@@ -55,6 +61,7 @@ public struct OpenCodeTrackedSessionRecord: Equatable, Codable, Sendable {
             origin: origin,
             attachmentState: attachmentState,
             phase: phase,
+            outcome: outcome ?? .success,
             summary: summary,
             updatedAt: updatedAt,
             jumpTarget: jumpTarget,
@@ -75,6 +82,7 @@ public struct OpenCodeTrackedSessionRecord: Equatable, Codable, Sendable {
         case attachmentState
         case summary
         case phase
+        case outcome
         case updatedAt
         case jumpTarget
         case openCodeMetadata
@@ -88,6 +96,7 @@ public struct OpenCodeTrackedSessionRecord: Equatable, Codable, Sendable {
         attachmentState = try container.decodeIfPresent(SessionAttachmentState.self, forKey: .attachmentState) ?? .stale
         summary = try container.decode(String.self, forKey: .summary)
         phase = try container.decode(SessionPhase.self, forKey: .phase)
+        outcome = try container.decodeIfPresent(SessionOutcome.self, forKey: .outcome)
         updatedAt = try container.decode(Date.self, forKey: .updatedAt)
         jumpTarget = try container.decodeIfPresent(JumpTarget.self, forKey: .jumpTarget)
         openCodeMetadata = try container.decodeIfPresent(OpenCodeSessionMetadata.self, forKey: .openCodeMetadata)
@@ -101,6 +110,7 @@ public struct OpenCodeTrackedSessionRecord: Equatable, Codable, Sendable {
         try container.encode(attachmentState, forKey: .attachmentState)
         try container.encode(summary, forKey: .summary)
         try container.encode(phase, forKey: .phase)
+        try container.encodeIfPresent(outcome, forKey: .outcome)
         try container.encode(updatedAt, forKey: .updatedAt)
         try container.encodeIfPresent(jumpTarget, forKey: .jumpTarget)
         try container.encodeIfPresent(openCodeMetadata, forKey: .openCodeMetadata)

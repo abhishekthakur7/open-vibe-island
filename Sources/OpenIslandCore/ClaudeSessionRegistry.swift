@@ -7,6 +7,9 @@ public struct ClaudeTrackedSessionRecord: Equatable, Codable, Sendable {
     public var attachmentState: SessionAttachmentState
     public var summary: String
     public var phase: SessionPhase
+    /// Optional so legacy records (saved before `AgentSession.outcome`
+    /// existed) decode cleanly; `session` falls back to `.success`.
+    public var outcome: SessionOutcome?
     public var updatedAt: Date
     public var firstSeenAt: Date?
     public var jumpTarget: JumpTarget?
@@ -19,6 +22,7 @@ public struct ClaudeTrackedSessionRecord: Equatable, Codable, Sendable {
         attachmentState: SessionAttachmentState = .stale,
         summary: String,
         phase: SessionPhase,
+        outcome: SessionOutcome? = nil,
         updatedAt: Date,
         firstSeenAt: Date? = nil,
         jumpTarget: JumpTarget? = nil,
@@ -30,6 +34,7 @@ public struct ClaudeTrackedSessionRecord: Equatable, Codable, Sendable {
         self.attachmentState = attachmentState
         self.summary = summary
         self.phase = phase
+        self.outcome = outcome
         self.updatedAt = updatedAt
         self.firstSeenAt = firstSeenAt
         self.jumpTarget = jumpTarget
@@ -44,6 +49,7 @@ public struct ClaudeTrackedSessionRecord: Equatable, Codable, Sendable {
             attachmentState: session.attachmentState,
             summary: session.summary,
             phase: session.phase,
+            outcome: session.outcome,
             updatedAt: session.updatedAt,
             firstSeenAt: session.firstSeenAt,
             jumpTarget: session.jumpTarget,
@@ -59,6 +65,7 @@ public struct ClaudeTrackedSessionRecord: Equatable, Codable, Sendable {
             origin: origin,
             attachmentState: attachmentState,
             phase: phase,
+            outcome: outcome ?? .success,
             summary: summary,
             updatedAt: updatedAt,
             firstSeenAt: firstSeenAt,
@@ -80,6 +87,7 @@ public struct ClaudeTrackedSessionRecord: Equatable, Codable, Sendable {
         case attachmentState
         case summary
         case phase
+        case outcome
         case updatedAt
         case firstSeenAt
         case jumpTarget
@@ -94,6 +102,7 @@ public struct ClaudeTrackedSessionRecord: Equatable, Codable, Sendable {
         attachmentState = try container.decodeIfPresent(SessionAttachmentState.self, forKey: .attachmentState) ?? .stale
         summary = try container.decode(String.self, forKey: .summary)
         phase = try container.decode(SessionPhase.self, forKey: .phase)
+        outcome = try container.decodeIfPresent(SessionOutcome.self, forKey: .outcome)
         updatedAt = try container.decode(Date.self, forKey: .updatedAt)
         firstSeenAt = try container.decodeIfPresent(Date.self, forKey: .firstSeenAt)
         jumpTarget = try container.decodeIfPresent(JumpTarget.self, forKey: .jumpTarget)
@@ -108,6 +117,7 @@ public struct ClaudeTrackedSessionRecord: Equatable, Codable, Sendable {
         try container.encode(attachmentState, forKey: .attachmentState)
         try container.encode(summary, forKey: .summary)
         try container.encode(phase, forKey: .phase)
+        try container.encodeIfPresent(outcome, forKey: .outcome)
         try container.encode(updatedAt, forKey: .updatedAt)
         try container.encodeIfPresent(firstSeenAt, forKey: .firstSeenAt)
         try container.encodeIfPresent(jumpTarget, forKey: .jumpTarget)
