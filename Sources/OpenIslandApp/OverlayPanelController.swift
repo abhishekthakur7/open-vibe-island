@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import Combine
 import SwiftUI
 import OpenIslandCore
@@ -33,6 +34,7 @@ final class OverlayPanelController {
 
     private var panel: NotchPanel?
     private var eventMonitors = NotchEventMonitors()
+    private var keyCommandMonitor: Any?
     private var hoverTimer: DispatchWorkItem?
     private var hoverCancelGrace: DispatchWorkItem?
     weak var model: AppModel?
@@ -228,6 +230,13 @@ final class OverlayPanelController {
             return
         }
 
+        if keyCommandMonitor == nil {
+            keyCommandMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard let self, self.handleOverlayKeyDown(event) else { return event }
+                return nil
+            }
+        }
+
         guard !eventMonitors.isActive else { return }
 
         eventMonitors.start { [weak self] location in
@@ -235,6 +244,80 @@ final class OverlayPanelController {
         } mouseDownHandler: { [weak self] location in
             self?.handleMouseDown(location)
         }
+    }
+
+    // MARK: - Keyboard shortcuts (AB-227)
+
+    /// Handles keyboard shortcuts on the visible approval/question card.
+    /// Returns `true` when the event was fully handled (the caller swallows
+    /// it); `false` lets it continue through normal AppKit dispatch.
+    ///
+    /// Focus guard: while a text field on the card is being edited (Reply /
+    /// "Other" freeform fields), everything except Esc passes through
+    /// untouched so typing digits or pressing Enter behaves like normal
+    /// text entry — see `ReplyTextField`'s own IME-safe Enter handling.
+    private func handleOverlayKeyDown(_ event: NSEvent) -> Bool {
+        guard let model, model.isOverlayVisible,
+              let panel, panel.isKeyWindow else {
+            return false
+        }
+
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+
+        // Plain Esc only — leave modified combos (e.g. ⌘⌥Esc Force Quit)
+        // alone rather than reinterpreting them as "close the overlay".
+        if event.keyCode == UInt16(kVK_Escape), flags.isEmpty {
+            model.notchClose()
+            return true
+        }
+
+        guard !(panel.firstResponder is NSText) else {
+            return false
+        }
+
+        let characters = event.charactersIgnoringModifiers?.lowercased()
+
+        if flags.contains(.command), characters == "y" {
+            return flags.contains(.shift)
+                ? handleAlwaysAllowShortcut(model)
+                : handleApprovalShortcut(model, action: .allowOnce)
+        }
+
+        if flags.contains(.command), characters == "n" {
+            return handleApprovalShortcut(model, action: .deny)
+        }
+
+        if event.keyCode == UInt16(kVK_Return) || event.keyCode == UInt16(kVK_ANSI_KeypadEnter) {
+            return model.overlay.handleQuestionSubmitKey()
+        }
+
+        if let characters, characters.count == 1,
+           let digit = Int(characters), (1...9).contains(digit) {
+            return model.overlay.handleQuestionOptionKey(digit - 1)
+        }
+
+        return false
+    }
+
+    private func handleApprovalShortcut(_ model: AppModel, action: ApprovalAction) -> Bool {
+        guard let session = model.activeIslandCardSession, session.phase == .waitingForApproval else {
+            return false
+        }
+        model.approvePermission(for: session.id, action: action)
+        return true
+    }
+
+    private func handleAlwaysAllowShortcut(_ model: AppModel) -> Bool {
+        guard let session = model.activeIslandCardSession,
+              session.phase == .waitingForApproval,
+              let toolName = session.permissionRequest?.toolName else {
+            return false
+        }
+
+        let rule = ClaudePermissionRuleValue(toolName: toolName)
+        let update = ClaudePermissionUpdate.addRules(destination: .session, rules: [rule], behavior: .allow)
+        model.approvePermission(for: session.id, action: .allowWithUpdates([update]))
+        return true
     }
 
     private func handleMouseMoved(_ screenLocation: NSPoint) {

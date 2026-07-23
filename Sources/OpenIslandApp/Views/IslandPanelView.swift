@@ -591,7 +591,8 @@ struct IslandPanelView: View {
                     onAnswer: { model.answerQuestion(for: session.id, answer: $0) },
                     onReply: TerminalTextSender.canReply(to: session, enabled: model.completionReplyEnabled)
                         ? { model.replyToSession(session, text: $0) } : nil,
-                    onJump: { model.jumpToSession(session) }
+                    onJump: { model.jumpToSession(session) },
+                    keyboardCoordinator: model.overlay
                 )
                 .id(notificationCardIdentity(for: session))
 
@@ -633,7 +634,8 @@ struct IslandPanelView: View {
                                 onReply: TerminalTextSender.canReply(to: session, enabled: model.completionReplyEnabled)
                                     ? { model.replyToSession(session, text: $0) } : nil,
                                 onJump: { model.jumpToSession(session) },
-                                onDismiss: session.isRemote ? { model.dismissSession(session.id) } : nil
+                                onDismiss: session.isRemote ? { model.dismissSession(session.id) } : nil,
+                                keyboardCoordinator: model.overlay
                             )
                         }
                     }
@@ -683,7 +685,8 @@ struct IslandPanelView: View {
                         onReply: TerminalTextSender.canReply(to: session, enabled: model.completionReplyEnabled)
                             ? { model.replyToSession(session, text: $0) } : nil,
                         onJump: { model.jumpToSession(session) },
-                        onDismiss: session.isRemote ? { model.dismissSession(session.id) } : nil
+                        onDismiss: session.isRemote ? { model.dismissSession(session.id) } : nil,
+                        keyboardCoordinator: model.overlay
                     )
                 }
             }
@@ -1194,6 +1197,9 @@ private struct IslandSessionRow: View {
     var onReply: ((String) -> Void)?
     let onJump: () -> Void
     var onDismiss: (() -> Void)?
+    /// Lets the visible question card register its option-selection state
+    /// with `OverlayPanelController`'s keyboard shortcut handler (AB-227).
+    var keyboardCoordinator: OverlayUICoordinator?
 
     @State private var isHighlighted = false
     @State private var detailOverride: Bool?
@@ -1687,6 +1693,7 @@ private struct IslandSessionRow: View {
         StructuredQuestionPromptView(
             prompt: session.questionPrompt,
             lang: lang,
+            keyboardCoordinator: keyboardCoordinator,
             onAnswer: { onAnswer?($0) }
         )
     }
@@ -2042,6 +2049,12 @@ private struct IslandSessionRow: View {
 private struct StructuredQuestionPromptView: View {
     let prompt: QuestionPrompt?
     var lang: LanguageManager = .shared
+    /// When set, registers this card's option-select/submit actions so
+    /// `OverlayPanelController`'s keyboard monitor can drive them (1–9 /
+    /// ⌘1–9 select, Enter submits — AB-227). Only wired for single-question
+    /// prompts, the overwhelmingly common case; multi-question prompts fall
+    /// back to mouse-only selection for v1.
+    var keyboardCoordinator: OverlayUICoordinator?
     let onAnswer: (QuestionPromptResponse) -> Void
 
     @State private var selections: [String: Set<String>] = [:]
@@ -2083,6 +2096,9 @@ private struct StructuredQuestionPromptView: View {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(Color.white.opacity(0.03))
         )
+        .onAppear { registerKeyboardHandlersIfNeeded() }
+        .onChange(of: prompt?.id) { _, _ in registerKeyboardHandlersIfNeeded() }
+        .onDisappear { keyboardCoordinator?.clearQuestionCardKeyboardHandlers() }
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .strokeBorder(.white.opacity(0.05))
@@ -2442,6 +2458,43 @@ private struct StructuredQuestionPromptView: View {
 
         typedReply = ""
         selections[question.question] = selected
+    }
+
+    // MARK: - Keyboard shortcuts (AB-227)
+
+    /// Registers (or clears) this card's number-key/Enter handlers with the
+    /// shared overlay coordinator. Called on appear and whenever the prompt
+    /// identity changes, so a fresh question always gets fresh handlers.
+    private func registerKeyboardHandlersIfNeeded() {
+        guard let keyboardCoordinator else {
+            return
+        }
+
+        // Multi-question prompts have no single flat 1–9 numbering (each
+        // question restarts at 1), so keyboard selection is scoped to the
+        // common single-question case for v1; mouse selection still works.
+        guard structuredQuestions.count == 1 else {
+            keyboardCoordinator.clearQuestionCardKeyboardHandlers()
+            return
+        }
+
+        keyboardCoordinator.registerQuestionCardKeyboardHandlers(
+            OverlayUICoordinator.QuestionCardKeyboardHandlers(
+                optionCount: { structuredQuestions.first?.options.count ?? 0 },
+                toggleOption: { index in
+                    guard let question = structuredQuestions.first,
+                          question.options.indices.contains(index) else {
+                        return
+                    }
+                    toggle(option: question.options[index].label, for: question)
+                },
+                submit: {
+                    if canSubmit {
+                        submitAnswer()
+                    }
+                }
+            )
+        )
     }
 }
 

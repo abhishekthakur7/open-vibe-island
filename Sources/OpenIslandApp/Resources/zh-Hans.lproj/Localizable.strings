@@ -159,8 +159,21 @@
 "setup.diagnostics.allHealthy" = "所有 Hooks 运行正常。";
 
 /* Settings - Placeholder */
-"settings.shortcuts.comingSoon" = "快捷键设置即将推出。";
 "settings.lab.comingSoon" = "实验性功能即将推出。";
+
+/* Settings - Shortcuts */
+"settings.shortcuts.global.section" = "全局快捷键";
+"settings.shortcuts.global.picker" = "唤出 Open Island";
+"settings.shortcuts.global.off" = "关闭";
+"settings.shortcuts.global.footnote" = "在任意应用中打开或关闭悬浮面板，即使 Open Island 未处于焦点状态。";
+"settings.shortcuts.overlay.section" = "悬浮面板快捷键";
+"settings.shortcuts.overlay.allowOnce" = "批准权限（仅一次）";
+"settings.shortcuts.overlay.deny" = "拒绝权限";
+"settings.shortcuts.overlay.alwaysAllow" = "始终允许此工具";
+"settings.shortcuts.overlay.selectOption" = "选择/切换问题选项";
+"settings.shortcuts.overlay.submit" = "提交答案";
+"settings.shortcuts.overlay.close" = "关闭悬浮面板";
+"settings.shortcuts.overlay.footnote" = "仅在悬浮面板打开且处于焦点时生效。在文本框中输入数字和回车仍按正常文本处理。";
 
 /* Settings - About */
 "settings.about.version" = "版本 %@";

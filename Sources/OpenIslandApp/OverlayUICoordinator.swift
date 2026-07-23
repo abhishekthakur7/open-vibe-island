@@ -507,6 +507,57 @@ final class OverlayUICoordinator {
         }
     }
 
+    // MARK: - Question card keyboard shortcuts
+
+    /// Bridges AppKit-level keyboard shortcuts (AB-227) into the SwiftUI
+    /// `@State` selection held by whichever `StructuredQuestionPromptView`
+    /// is currently on screen. The view registers/clears these handlers as
+    /// its question prompt appears/changes/disappears; `OverlayPanelController`'s
+    /// key-event monitor calls them without needing to know about SwiftUI
+    /// view internals.
+    struct QuestionCardKeyboardHandlers {
+        let optionCount: () -> Int
+        let toggleOption: (Int) -> Void
+        let submit: () -> Void
+    }
+
+    @ObservationIgnored
+    private var questionCardKeyboardHandlers: QuestionCardKeyboardHandlers?
+
+    func registerQuestionCardKeyboardHandlers(_ handlers: QuestionCardKeyboardHandlers) {
+        questionCardKeyboardHandlers = handlers
+    }
+
+    func clearQuestionCardKeyboardHandlers() {
+        questionCardKeyboardHandlers = nil
+    }
+
+    /// Toggles the option at `index` (0-based) on the visible question card.
+    /// Returns `false` (a no-op) when no question card is registered or the
+    /// index is out of range, so callers can fall through to normal key
+    /// dispatch instead of swallowing the event.
+    @discardableResult
+    func handleQuestionOptionKey(_ index: Int) -> Bool {
+        guard let handlers = questionCardKeyboardHandlers,
+              index >= 0,
+              index < handlers.optionCount() else {
+            return false
+        }
+        handlers.toggleOption(index)
+        return true
+    }
+
+    /// Submits the visible question card's current selection, if any is
+    /// registered. Returns `false` when there's nothing to submit.
+    @discardableResult
+    func handleQuestionSubmitKey() -> Bool {
+        guard let handlers = questionCardKeyboardHandlers else {
+            return false
+        }
+        handlers.submit()
+        return true
+    }
+
     // MARK: - Persistence
 
     private func persistOverlayDisplayPreference() {

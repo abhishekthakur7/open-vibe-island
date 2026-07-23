@@ -159,8 +159,21 @@
 "setup.diagnostics.allHealthy" = "All hooks are healthy.";
 
 /* Settings - Placeholder */
-"settings.shortcuts.comingSoon" = "Keyboard shortcuts coming soon.";
 "settings.lab.comingSoon" = "Experimental features coming soon.";
+
+/* Settings - Shortcuts */
+"settings.shortcuts.global.section" = "Global Hotkey";
+"settings.shortcuts.global.picker" = "Summon Open Island";
+"settings.shortcuts.global.off" = "Off";
+"settings.shortcuts.global.footnote" = "Opens or closes the overlay from any app, even when Open Island isn't in focus.";
+"settings.shortcuts.overlay.section" = "Overlay Shortcuts";
+"settings.shortcuts.overlay.allowOnce" = "Approve permission (once)";
+"settings.shortcuts.overlay.deny" = "Deny permission";
+"settings.shortcuts.overlay.alwaysAllow" = "Always allow this tool";
+"settings.shortcuts.overlay.selectOption" = "Select/toggle question option";
+"settings.shortcuts.overlay.submit" = "Submit answer";
+"settings.shortcuts.overlay.close" = "Close overlay";
+"settings.shortcuts.overlay.footnote" = "Active only while the overlay is open and focused. Digits and Enter still type normally in text fields.";
 
 /* Settings - About */
 "settings.about.version" = "Version %@";

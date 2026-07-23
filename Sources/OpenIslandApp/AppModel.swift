@@ -23,6 +23,7 @@ final class AppModel {
     private static let showCodexUsageDefaultsKey = "app.showCodexUsage"
     private static let completionReplyEnabledDefaultsKey = "feature.completionReply.enabled"
     private static let suppressFrontmostNotificationsDefaultsKey = "app.suppressFrontmostNotifications"
+    private static let globalHotKeyOptionDefaultsKey = "app.globalHotKeyOption"
     private static let legacyIslandSessionStateIndicatorDefaultsKey = "appearance.island.v8.stateIndicator"
     private static let legacyIslandSessionGroupDefaultsKey = "appearance.island.v8.sessionGroup"
     private static let legacyIslandSessionSortDefaultsKey = "appearance.island.v8.sessionSort"
@@ -265,6 +266,28 @@ final class AppModel {
             UserDefaults.standard.set(suppressFrontmostNotifications, forKey: Self.suppressFrontmostNotificationsDefaultsKey)
         }
     }
+
+    // MARK: - Keyboard shortcuts
+
+    /// System-wide hotkey that toggles the overlay open/closed from any
+    /// app. See `GlobalHotKeyManager` for why Carbon's `RegisterEventHotKey`
+    /// was chosen over a global `NSEvent` monitor or `CGEventTap`.
+    let globalHotKeyManager = GlobalHotKeyManager()
+
+    var globalHotKeyOption: GlobalHotKeyOption = .optionCommandO {
+        didSet {
+            guard hasFinishedInit, globalHotKeyOption != oldValue else { return }
+            UserDefaults.standard.set(globalHotKeyOption.rawValue, forKey: Self.globalHotKeyOptionDefaultsKey)
+            registerGlobalHotKey()
+        }
+    }
+
+    private func registerGlobalHotKey() {
+        globalHotKeyManager.register(globalHotKeyOption.combo) { [weak self] in
+            self?.toggleOverlay()
+        }
+    }
+
     var launchAtLoginEnabled: Bool = false {
         didSet {
             guard !isApplyingLaunchAtLogin, hasFinishedInit, launchAtLoginEnabled != oldValue else { return }
@@ -595,6 +618,7 @@ final class AppModel {
             Self.hapticFeedbackEnabledDefaultsKey: false,
             Self.completionReplyEnabledDefaultsKey: false,
             Self.suppressFrontmostNotificationsDefaultsKey: true,
+            Self.globalHotKeyOptionDefaultsKey: GlobalHotKeyOption.optionCommandO.rawValue,
         ])
         isSoundMuted = UserDefaults.standard.bool(forKey: Self.soundMutedDefaultsKey)
         selectedSoundName = NotificationSoundService.selectedSoundName
@@ -609,6 +633,9 @@ final class AppModel {
             )
         }
         completionReplyEnabled = UserDefaults.standard.bool(forKey: Self.completionReplyEnabledDefaultsKey)
+        globalHotKeyOption = GlobalHotKeyOption(
+            rawValue: UserDefaults.standard.string(forKey: Self.globalHotKeyOptionDefaultsKey) ?? ""
+        ) ?? .optionCommandO
         launchAtLoginEnabled = LaunchAtLoginService.shared.isEnabled
         appearanceSettingsProfile = IslandAppearanceDisplayProfile(
             rawValue: UserDefaults.standard.string(forKey: Self.appearanceProfileSettingsDefaultsKey) ?? ""
@@ -703,6 +730,7 @@ final class AppModel {
             self?.discovery.maintainCodexAppSessionsIfNeeded()
         }
         refreshOverlayDisplayConfiguration()
+        registerGlobalHotKey()
         hasFinishedInit = true
     }
 

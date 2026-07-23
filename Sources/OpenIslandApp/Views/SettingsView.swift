@@ -149,7 +149,7 @@ struct SettingsView: View {
             case .watch:
                 WatchSettingsPane(model: model)
             case .shortcuts:
-                PlaceholderSettingsPane(model: model, titleKey: "settings.tab.shortcuts", subtitleKey: "settings.shortcuts.comingSoon")
+                ShortcutsSettingsPane(model: model)
             case .lab:
                 PlaceholderSettingsPane(model: model, titleKey: "settings.tab.lab", subtitleKey: "settings.lab.comingSoon")
             case .about:
@@ -308,6 +308,69 @@ struct SoundSettingsPane: View {
         }
         .formStyle(.grouped)
         .navigationTitle(lang.t("settings.tab.sound"))
+    }
+}
+
+// MARK: - Shortcuts
+
+struct ShortcutsSettingsPane: View {
+    var model: AppModel
+
+    private var lang: LanguageManager { model.lang }
+
+    private struct ShortcutRow: Identifiable {
+        let id: String
+        let keys: String
+        let labelKey: String
+    }
+
+    /// Fixed for v1 — see AB-227. These map 1:1 to the handling in
+    /// `OverlayPanelController.handleOverlayKeyDown` and
+    /// `StructuredQuestionPromptView`'s keyboard registration.
+    private var overlayShortcuts: [ShortcutRow] {
+        [
+            ShortcutRow(id: "allowOnce", keys: "⌘Y", labelKey: "settings.shortcuts.overlay.allowOnce"),
+            ShortcutRow(id: "deny", keys: "⌘N", labelKey: "settings.shortcuts.overlay.deny"),
+            ShortcutRow(id: "alwaysAllow", keys: "⌘⇧Y", labelKey: "settings.shortcuts.overlay.alwaysAllow"),
+            ShortcutRow(id: "selectOption", keys: "1–9 / ⌘1–9", labelKey: "settings.shortcuts.overlay.selectOption"),
+            ShortcutRow(id: "submit", keys: "⏎", labelKey: "settings.shortcuts.overlay.submit"),
+            ShortcutRow(id: "close", keys: "⎋", labelKey: "settings.shortcuts.overlay.close"),
+        ]
+    }
+
+    var body: some View {
+        Form {
+            Section(lang.t("settings.shortcuts.global.section")) {
+                Picker(lang.t("settings.shortcuts.global.picker"), selection: Binding(
+                    get: { model.globalHotKeyOption },
+                    set: { model.globalHotKeyOption = $0 }
+                )) {
+                    ForEach(GlobalHotKeyOption.allCases) { option in
+                        Text(option.displayName(lang)).tag(option)
+                    }
+                }
+
+                Text(lang.t("settings.shortcuts.global.footnote"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section(lang.t("settings.shortcuts.overlay.section")) {
+                ForEach(overlayShortcuts) { row in
+                    LabeledContent(lang.t(row.labelKey)) {
+                        Text(row.keys)
+                            .font(.system(.body, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Text(lang.t("settings.shortcuts.overlay.footnote"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        .navigationTitle(lang.t("settings.tab.shortcuts"))
     }
 }
 
