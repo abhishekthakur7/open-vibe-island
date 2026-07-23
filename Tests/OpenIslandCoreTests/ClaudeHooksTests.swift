@@ -25,6 +25,193 @@ struct ClaudeHooksTests {
         #expect(decision?["interrupt"] as? Bool == true)
     }
 
+    // MARK: - AB-235: scoped always-allow (ClaudePermissionUpdate serialization)
+
+    /// Confirms that choosing a scoped always-allow option round-trips onto
+    /// the wire exactly as Claude Code's PermissionRequest hook contract
+    /// expects: an "allow" decision whose `updatedPermissions` carries the
+    /// selected `ClaudePermissionUpdate`, not just a bare allow.
+    @Test
+    func claudeHookOutputEncoderEncodesAllowDecisionWithScopedPermissionUpdate() throws {
+        let rule = ClaudePermissionRuleValue(toolName: "Edit", ruleContent: "Sources/**")
+        let update = ClaudePermissionUpdate.addRules(
+            destination: .projectSettings,
+            rules: [rule],
+            behavior: .allow
+        )
+
+        let output = try ClaudeHookOutputEncoder.standardOutput(
+            for: .claudeHookDirective(
+                .permissionRequest(.allow(updatedInput: nil, updatedPermissions: [update]))
+            )
+        )
+
+        let payload = try #require(output)
+        let object = try jsonObject(from: payload)
+        let hookSpecificOutput = object["hookSpecificOutput"] as? [String: Any]
+        let decision = hookSpecificOutput?["decision"] as? [String: Any]
+        let updatedPermissions = decision?["updatedPermissions"] as? [[String: Any]]
+
+        #expect(decision?["behavior"] as? String == "allow")
+        #expect(updatedPermissions?.count == 1)
+        #expect(updatedPermissions?.first?["type"] as? String == "addRules")
+        #expect(updatedPermissions?.first?["destination"] as? String == "projectSettings")
+        #expect(updatedPermissions?.first?["behavior"] as? String == "allow")
+
+        let rules = updatedPermissions?.first?["rules"] as? [[String: Any]]
+        #expect(rules?.first?["toolName"] as? String == "Edit")
+        #expect(rules?.first?["ruleContent"] as? String == "Sources/**")
+    }
+
+    /// A denied allow (no `updatedPermissions`) must NOT emit the key at
+    /// all — Claude Code treats a present-but-empty array differently from
+    /// an absent one for some settings destinations, so the encoder omits it
+    /// (see `ClaudePermissionRequestDecision.encode(to:)`).
+    @Test
+    func claudeHookOutputEncoderOmitsUpdatedPermissionsWhenNoneChosen() throws {
+        let output = try ClaudeHookOutputEncoder.standardOutput(
+            for: .claudeHookDirective(.permissionRequest(.allow()))
+        )
+
+        let payload = try #require(output)
+        let object = try jsonObject(from: payload)
+        let hookSpecificOutput = object["hookSpecificOutput"] as? [String: Any]
+        let decision = hookSpecificOutput?["decision"] as? [String: Any]
+
+        #expect(decision?["behavior"] as? String == "allow")
+        #expect(decision?["updatedPermissions"] == nil)
+    }
+
+    /// Every `ClaudePermissionUpdate` case must survive an encode/decode
+    /// round trip unchanged — this is the exact value carried from the
+    /// approval card's chosen button, through `ApprovalAction.allowWithUpdates`,
+    /// over the bridge, to the hook's stdout.
+    @Test
+    func claudePermissionUpdateRoundTripsThroughCodableForEveryCase() throws {
+        let updates: [ClaudePermissionUpdate] = [
+            .addRules(
+                destination: .session,
+                rules: [ClaudePermissionRuleValue(toolName: "Bash", ruleContent: "npm run *")],
+                behavior: .allow
+            ),
+            .replaceRules(
+                destination: .localSettings,
+                rules: [ClaudePermissionRuleValue(toolName: "Read")],
+                behavior: .ask
+            ),
+            .removeRules(
+                destination: .userSettings,
+                rules: [ClaudePermissionRuleValue(toolName: "Write")],
+                behavior: .deny
+            ),
+            .setMode(destination: .cliArg, mode: .acceptEdits),
+            .addDirectories(destination: .projectSettings, directories: ["/tmp/a", "/tmp/b"]),
+            .removeDirectories(destination: .projectSettings, directories: ["/tmp/a"]),
+        ]
+
+        let encoder = JSONEncoder()
+        let decoder = JSONDecoder()
+
+        for update in updates {
+            let data = try encoder.encode(update)
+            let decoded = try decoder.decode(ClaudePermissionUpdate.self, from: data)
+            #expect(decoded == update)
+        }
+    }
+
+    @Test
+    func claudePermissionUpdateDisplayLabelsDistinguishScopes() {
+        let sessionScoped = ClaudePermissionUpdate.addRules(
+            destination: .session,
+            rules: [ClaudePermissionRuleValue(toolName: "Bash")],
+            behavior: .allow
+        )
+        let projectScoped = ClaudePermissionUpdate.addRules(
+            destination: .projectSettings,
+            rules: [ClaudePermissionRuleValue(toolName: "Bash")],
+            behavior: .allow
+        )
+        let globalScoped = ClaudePermissionUpdate.addRules(
+            destination: .userSettings,
+            rules: [ClaudePermissionRuleValue(toolName: "Bash")],
+            behavior: .allow
+        )
+
+        // Each scope must render distinctly so choosing among stacked
+        // buttons is unambiguous — this was the whole point of surfacing
+        // `suggestedUpdates` instead of one generic "always allow" button.
+        #expect(sessionScoped.displayLabel != projectScoped.displayLabel)
+        #expect(projectScoped.displayLabel != globalScoped.displayLabel)
+        #expect(sessionScoped.displayLabel != globalScoped.displayLabel)
+        #expect(projectScoped.displayLabel.contains("this project"))
+        #expect(globalScoped.displayLabel.contains("globally"))
+    }
+
+    // MARK: - AB-235: inline diff source extraction
+
+    @Test
+    func permissionFileDiffSourceExtractsEditOldAndNewStrings() {
+        let payload = ClaudeHookPayload(
+            cwd: "/tmp/worktree",
+            hookEventName: .permissionRequest,
+            sessionID: "claude-session-1",
+            toolName: "Edit",
+            toolInput: .object([
+                "file_path": .string("/tmp/worktree/Foo.swift"),
+                "old_string": .string("let a = 1"),
+                "new_string": .string("let a = 2"),
+            ])
+        )
+
+        let diffSource = payload.permissionFileDiffSource
+        #expect(diffSource?.oldText == "let a = 1")
+        #expect(diffSource?.newText == "let a = 2")
+    }
+
+    @Test
+    func permissionFileDiffSourceTreatsWriteContentAsAllAdded() {
+        let payload = ClaudeHookPayload(
+            cwd: "/tmp/worktree",
+            hookEventName: .permissionRequest,
+            sessionID: "claude-session-1",
+            toolName: "Write",
+            toolInput: .object([
+                "file_path": .string("/tmp/worktree/Foo.swift"),
+                "content": .string("line one\nline two"),
+            ])
+        )
+
+        let diffSource = payload.permissionFileDiffSource
+        #expect(diffSource?.oldText == "")
+        #expect(diffSource?.newText == "line one\nline two")
+    }
+
+    @Test
+    func permissionFileDiffSourceIsNilForNonEditTools() {
+        let payload = ClaudeHookPayload(
+            cwd: "/tmp/worktree",
+            hookEventName: .permissionRequest,
+            sessionID: "claude-session-1",
+            toolName: "Bash",
+            toolInput: .object(["command": .string("ls -la")])
+        )
+
+        #expect(payload.permissionFileDiffSource == nil)
+    }
+
+    @Test
+    func permissionFileDiffSourceIsNilWhenEditFieldsAreMissing() {
+        let payload = ClaudeHookPayload(
+            cwd: "/tmp/worktree",
+            hookEventName: .permissionRequest,
+            sessionID: "claude-session-1",
+            toolName: "Edit",
+            toolInput: .object(["file_path": .string("/tmp/worktree/Foo.swift")])
+        )
+
+        #expect(payload.permissionFileDiffSource == nil)
+    }
+
     @Test
     func claudeHookInstallationManagerRoundTripsInstallAndUninstall() throws {
         let rootURL = FileManager.default.temporaryDirectory

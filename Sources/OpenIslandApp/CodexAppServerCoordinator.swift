@@ -132,7 +132,16 @@ final class CodexAppServerCoordinator {
                             request: PermissionRequest(
                                 title: "Approval Required",
                                 summary: "Codex is waiting for approval.",
-                                affectedPath: ""
+                                affectedPath: "",
+                                // Codex.app surfaces this purely as a status
+                                // notification over the app-server JSON-RPC
+                                // connection — there is no matching "submit
+                                // decision" RPC on `CodexAppServerClient`, so
+                                // Allow/Deny here would silently do nothing.
+                                // The user has to switch to Codex.app itself
+                                // (which shows its own native approval UI);
+                                // the card instead offers a jump CTA (AB-235).
+                                requiresTerminalApproval: true
                             ),
                             timestamp: .now
                         )

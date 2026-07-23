@@ -218,6 +218,9 @@
 "approval.deny" = "No";
 "approval.allowOnce" = "Yes";
 "approval.alwaysAllow" = "Always Allow (%@)";
+"approval.diffUpdated" = "Updated";
+"approval.diffMoreLines" = "…and %lld more lines";
+"approval.respondInTerminal" = "Respond in terminal";
 
 
 /* Island Panel - Subagents & Tasks */

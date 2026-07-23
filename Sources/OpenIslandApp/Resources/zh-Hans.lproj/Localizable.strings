@@ -218,6 +218,9 @@
 "approval.deny" = "拒绝";
 "approval.allowOnce" = "允许一次";
 "approval.alwaysAllow" = "始终允许（%@）";
+"approval.diffUpdated" = "已更新";
+"approval.diffMoreLines" = "……还有 %lld 行";
+"approval.respondInTerminal" = "前往终端处理";
 
 
 /* Island Panel - Subagents & Tasks */

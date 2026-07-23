@@ -747,7 +747,8 @@ public final class BridgeServer: @unchecked Sendable {
                                 secondaryActionTitle: "Deny",
                                 toolName: payload.toolName,
                                 toolUseID: claudeToolUseID(for: payload),
-                                suggestedUpdates: suggestions
+                                suggestedUpdates: suggestions,
+                                fileDiffSource: payload.permissionFileDiffSource
                             ),
                             timestamp: .now
                         )

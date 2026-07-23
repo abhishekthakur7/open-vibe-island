@@ -944,6 +944,34 @@ public extension ClaudeHookPayload {
         return cwd
     }
 
+    /// Extracts old/new text for file-edit tools from `tool_input`, when
+    /// present, so the approval card can render an inline diff (AB-235).
+    /// `Edit`'s `old_string`/`new_string` give a real before/after; `Write`
+    /// only carries the new `content`, so the "before" side is empty and the
+    /// whole file renders as added. Returns `nil` for any other tool, or
+    /// when the expected fields are missing from `tool_input`.
+    var permissionFileDiffSource: PermissionFileDiffSource? {
+        guard case let .object(input) = toolInput else {
+            return nil
+        }
+
+        switch toolName {
+        case "Edit":
+            guard let oldString = input["old_string"]?.stringValue,
+                  let newString = input["new_string"]?.stringValue else {
+                return nil
+            }
+            return PermissionFileDiffSource(oldText: oldString, newText: newString)
+        case "Write":
+            guard let content = input["content"]?.stringValue else {
+                return nil
+            }
+            return PermissionFileDiffSource(oldText: "", newText: content)
+        default:
+            return nil
+        }
+    }
+
     func withRuntimeContext(environment: [String: String]) -> ClaudeHookPayload {
         withRuntimeContext(
             environment: environment,

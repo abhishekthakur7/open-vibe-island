@@ -187,6 +187,22 @@ public struct JumpTarget: Equatable, Codable, Sendable {
     }
 }
 
+/// Old/new text captured from a file-edit tool's `tool_input` at
+/// PreToolUse/PermissionRequest time — Edit carries `old_string`/
+/// `new_string`; Write carries only `content`, so `oldText` is empty and the
+/// whole thing renders as added. Feeds `PermissionDiff.compute` (AB-235) so
+/// the approval card can show an inline "what would change" preview instead
+/// of forcing the user to jump to the terminal to see it.
+public struct PermissionFileDiffSource: Equatable, Codable, Sendable {
+    public var oldText: String
+    public var newText: String
+
+    public init(oldText: String, newText: String) {
+        self.oldText = oldText
+        self.newText = newText
+    }
+}
+
 public struct PermissionRequest: Equatable, Identifiable, Codable, Sendable {
     public var id: UUID
     public var title: String
@@ -198,6 +214,11 @@ public struct PermissionRequest: Equatable, Identifiable, Codable, Sendable {
     public var toolUseID: String?
     public var suggestedUpdates: [ClaudePermissionUpdate]
     public var requiresTerminalApproval: Bool
+    /// Present only for file-edit tools (Edit/Write) whose `tool_input`
+    /// carried enough to compute a diff. `nil` means "don't render a diff
+    /// preview" — either the tool isn't a file edit or the payload lacked
+    /// the needed fields.
+    public var fileDiffSource: PermissionFileDiffSource?
 
     public init(
         id: UUID = UUID(),
@@ -209,7 +230,8 @@ public struct PermissionRequest: Equatable, Identifiable, Codable, Sendable {
         toolName: String? = nil,
         toolUseID: String? = nil,
         suggestedUpdates: [ClaudePermissionUpdate] = [],
-        requiresTerminalApproval: Bool = false
+        requiresTerminalApproval: Bool = false,
+        fileDiffSource: PermissionFileDiffSource? = nil
     ) {
         self.id = id
         self.title = title
@@ -221,6 +243,7 @@ public struct PermissionRequest: Equatable, Identifiable, Codable, Sendable {
         self.toolUseID = toolUseID
         self.suggestedUpdates = suggestedUpdates
         self.requiresTerminalApproval = requiresTerminalApproval
+        self.fileDiffSource = fileDiffSource
     }
 }
 

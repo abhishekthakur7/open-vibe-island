@@ -59,6 +59,119 @@ private struct AutoHeightScrollView<Content: View>: View {
     }
 }
 
+/// Inline diff preview for Edit/Write permission requests (AB-235):
+/// monospaced +/- lines with a "Updated (+N −N)" summary, inside a capped,
+/// scrollable container so a long diff scrolls in place rather than
+/// stretching the panel — the same measured-height + capped-scroll pattern
+/// `AutoHeightScrollView` already establishes elsewhere on this card (AB-228).
+private struct PermissionDiffPreview: View {
+    let result: PermissionDiffResult
+    let lang: LanguageManager
+
+    /// Caps rendered rows so a pathologically large `Write` (e.g. a
+    /// generated file with tens of thousands of lines) can't force SwiftUI
+    /// to build an enormous `VStack`. The +/- counts in the summary above
+    /// always reflect the full diff; only the line-by-line render is capped.
+    private static let maxRenderedLines = 500
+    private static let maxHeight: CGFloat = 180
+
+    private var renderedLines: [PermissionDiffLine] {
+        Array(result.lines.prefix(Self.maxRenderedLines))
+    }
+
+    private var hiddenLineCount: Int {
+        result.lines.count - renderedLines.count
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 4) {
+                Text(lang.t("approval.diffUpdated"))
+                Text("(")
+                Text("+\(result.addedCount)")
+                    .foregroundStyle(IslandDesignPalette.Status.completed)
+                Text("\u{2212}\(result.removedCount)")
+                    .foregroundStyle(IslandDesignPalette.Status.failed)
+                Text(")")
+            }
+            .font(.system(size: 10.5, weight: .bold, design: .monospaced))
+            .foregroundStyle(V6Palette.paper.opacity(0.66))
+
+            AutoHeightScrollView(maxHeight: Self.maxHeight) {
+                VStack(alignment: .leading, spacing: 1) {
+                    ForEach(Array(renderedLines.enumerated()), id: \.offset) { _, line in
+                        PermissionDiffLineRow(line: line)
+                    }
+
+                    if hiddenLineCount > 0 {
+                        Text(lang.t("approval.diffMoreLines", hiddenLineCount))
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(V6Palette.paper.opacity(0.42))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(Color.white.opacity(0.03))
+            )
+        }
+    }
+}
+
+private struct PermissionDiffLineRow: View {
+    let line: PermissionDiffLine
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 6) {
+            Text(marker)
+                .foregroundStyle(markerColor)
+                .frame(width: 10, alignment: .leading)
+            Text(line.text.isEmpty ? " " : line.text)
+                .foregroundStyle(textColor)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .font(.system(size: 10, design: .monospaced))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 1)
+        .background(backgroundColor)
+    }
+
+    private var marker: String {
+        switch line.kind {
+        case .added: "+"
+        case .removed: "\u{2212}"
+        case .unchanged: " "
+        }
+    }
+
+    private var markerColor: Color {
+        switch line.kind {
+        case .added: IslandDesignPalette.Status.completed
+        case .removed: IslandDesignPalette.Status.failed
+        case .unchanged: V6Palette.paper.opacity(0.3)
+        }
+    }
+
+    private var textColor: Color {
+        switch line.kind {
+        case .added, .removed: V6Palette.paper.opacity(0.86)
+        case .unchanged: V6Palette.paper.opacity(0.42)
+        }
+    }
+
+    private var backgroundColor: Color {
+        switch line.kind {
+        case .added: IslandDesignPalette.Status.completed.opacity(0.12)
+        case .removed: IslandDesignPalette.Status.failed.opacity(0.12)
+        case .unchanged: Color.clear
+        }
+    }
+}
+
 // MARK: - Animations
 
 private let openAnimation = Animation.spring(response: 0.42, dampingFraction: 0.8, blendDuration: 0)
@@ -1764,25 +1877,95 @@ private struct IslandSessionRow: View {
                     .fill(Color.white.opacity(0.045))
             )
 
-            HStack(spacing: 8) {
-                Button(session.permissionRequest?.secondaryActionTitle ?? lang.t("approval.deny")) { onApprove?(.deny) }
-                    .buttonStyle(IslandActionButtonStyle(kind: .secondary, expands: true))
-                Button(session.permissionRequest?.primaryActionTitle ?? lang.t("approval.allowOnce")) { onApprove?(.allowOnce) }
-                    .buttonStyle(IslandActionButtonStyle(kind: .warning, expands: true))
-                if let toolName = session.permissionRequest?.toolName {
-                    Button(lang.t("approval.alwaysAllow", toolName)) {
-                        let rule = ClaudePermissionRuleValue(toolName: toolName)
-                        let update = ClaudePermissionUpdate.addRules(
-                            destination: .session,
-                            rules: [rule],
-                            behavior: .allow
-                        )
+            // AB-235: only rendered for Edit/Write requests whose `tool_input`
+            // carried enough to compute a diff (`permissionDiffResult` is nil
+            // otherwise) — everyone else sees exactly the card they saw before.
+            if let diffResult = permissionDiffResult {
+                PermissionDiffPreview(result: diffResult, lang: lang)
+            }
+
+            if session.permissionRequest?.requiresTerminalApproval == true {
+                terminalApprovalCTA
+            } else {
+                HStack(spacing: 8) {
+                    Button(session.permissionRequest?.secondaryActionTitle ?? lang.t("approval.deny")) { onApprove?(.deny) }
+                        .buttonStyle(IslandActionButtonStyle(kind: .secondary, expands: true))
+                    Button(session.permissionRequest?.primaryActionTitle ?? lang.t("approval.allowOnce")) { onApprove?(.allowOnce) }
+                        .buttonStyle(IslandActionButtonStyle(kind: .warning, expands: true))
+                }
+
+                alwaysAllowOptions
+            }
+        }
+    }
+
+    /// AB-235: `suggestedUpdates` carries Claude's actual scoped always-allow
+    /// options (session / project / global settings, or a permission-mode
+    /// change) with ready-made human `displayLabel`s — rendered as one
+    /// stacked button per option so choosing one sends exactly that
+    /// `ClaudePermissionUpdate` back over the bridge and the rule is applied
+    /// at the scope the user picked. Falls back to the original single
+    /// session-scoped "Always allow <tool>" button when the payload carried
+    /// no suggestions at all (e.g. non-Claude agents).
+    @ViewBuilder
+    private var alwaysAllowOptions: some View {
+        if let updates = session.permissionRequest?.suggestedUpdates, !updates.isEmpty {
+            VStack(spacing: 6) {
+                ForEach(Array(updates.enumerated()), id: \.offset) { _, update in
+                    Button(update.displayLabel) {
                         onApprove?(.allowWithUpdates([update]))
                     }
                     .buttonStyle(IslandActionButtonStyle(kind: .primary, expands: true))
                 }
             }
+        } else if let toolName = session.permissionRequest?.toolName {
+            Button(lang.t("approval.alwaysAllow", toolName)) {
+                let rule = ClaudePermissionRuleValue(toolName: toolName)
+                let update = ClaudePermissionUpdate.addRules(
+                    destination: .session,
+                    rules: [rule],
+                    behavior: .allow
+                )
+                onApprove?(.allowWithUpdates([update]))
+            }
+            .buttonStyle(IslandActionButtonStyle(kind: .primary, expands: true))
         }
+    }
+
+    /// AB-235: shown instead of Deny/Allow/Always-allow when
+    /// `requiresTerminalApproval` is set on the request — the decision can't
+    /// be round-tripped through the bridge (see
+    /// `CodexAppServerCoordinator.handleNotification`, the current concrete
+    /// case: a Codex.app approval surfaced purely as an app-server status
+    /// notification with no matching "submit decision" RPC), so Allow/Deny
+    /// here would silently do nothing. `onJump` already knows how to reach
+    /// wherever the request actually lives (terminal pane or, for Codex.app,
+    /// the `codex://threads/<id>` URL scheme) via the same jump mechanism
+    /// used everywhere else on this row.
+    private var terminalApprovalCTA: some View {
+        Button {
+            onJump()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "arrow.up.forward.app")
+                    .font(.system(size: 11, weight: .semibold))
+                Text(lang.t("approval.respondInTerminal"))
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(IslandActionButtonStyle(kind: .primary, expands: true))
+    }
+
+    /// Computes the diff lazily from the permission request's captured
+    /// old/new text (AB-235). `nil` when there's nothing to diff (no
+    /// `fileDiffSource`, e.g. non-edit tools) or when old/new text are
+    /// identical.
+    private var permissionDiffResult: PermissionDiffResult? {
+        guard let source = session.permissionRequest?.fileDiffSource else {
+            return nil
+        }
+        let result = PermissionDiff.compute(oldText: source.oldText, newText: source.newText)
+        return result.isEmpty ? nil : result
     }
 
     // MARK: - Question action area

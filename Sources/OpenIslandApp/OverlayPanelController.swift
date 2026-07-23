@@ -291,17 +291,34 @@ final class OverlayPanelController {
     }
 
     private func handleApprovalShortcut(_ model: AppModel, action: ApprovalAction) -> Bool {
-        guard let session = model.activeIslandCardSession, session.phase == .waitingForApproval else {
+        guard let session = model.activeIslandCardSession, session.phase == .waitingForApproval,
+              session.permissionRequest?.requiresTerminalApproval != true else {
             return false
         }
         model.approvePermission(for: session.id, action: action)
         return true
     }
 
+    /// AB-235: prefers the first of Claude's actual `suggestedUpdates` (the
+    /// scoped always-allow options rendered as stacked buttons on the card)
+    /// so the shortcut applies the same real, correctly-scoped rule a click
+    /// would. Falls back to synthesizing the original generic session-scoped
+    /// rule when the request carried no suggestions (e.g. non-Claude agents),
+    /// so the shortcut keeps working exactly as it did before AB-235.
     private func handleAlwaysAllowShortcut(_ model: AppModel) -> Bool {
         guard let session = model.activeIslandCardSession,
               session.phase == .waitingForApproval,
-              let toolName = session.permissionRequest?.toolName else {
+              let permissionRequest = session.permissionRequest,
+              !permissionRequest.requiresTerminalApproval else {
+            return false
+        }
+
+        if let firstSuggestedUpdate = permissionRequest.suggestedUpdates.first {
+            model.approvePermission(for: session.id, action: .allowWithUpdates([firstSuggestedUpdate]))
+            return true
+        }
+
+        guard let toolName = permissionRequest.toolName else {
             return false
         }
 
