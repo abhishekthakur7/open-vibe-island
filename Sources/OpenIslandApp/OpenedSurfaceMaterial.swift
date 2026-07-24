@@ -23,26 +23,28 @@ private struct VibrancyView: NSViewRepresentable {
     }
 }
 
-/// Opened-surface fill (AB-242): HUD vibrancy tinted toward `V6Palette.ink`
-/// under normal conditions, so the surface reads as translucent native
-/// material instead of the previous flat `#0d0d0f` slab. Falls back to that
-/// original flat fill whenever `reduceTransparency` is set — pass in
+/// Opened-surface fill (AB-242): HUD vibrancy tinted toward the theme's
+/// `surfaceInk` under normal conditions, so the surface reads as translucent
+/// native material instead of the previous flat `#0d0d0f` slab. Falls back to
+/// that original flat fill whenever `reduceTransparency` is set — pass in
 /// `@Environment(\.accessibilityReduceTransparency)`, which SwiftUI keeps
 /// current as the user toggles System Settings → Accessibility → Display →
 /// Reduce Transparency, not just at launch.
 struct OpenedSurfaceBackground: View {
     var reduceTransparency: Bool
 
+    @Environment(\.islandTokens) private var tokens
+
     var body: some View {
         if reduceTransparency {
-            V6Palette.ink
+            tokens.colors.surfaceInk
         } else {
             ZStack {
                 VibrancyView()
                 // Keeps the surface's ink identity and text contrast intact
                 // over both bright and dark wallpapers — the blur alone would
                 // let a light wallpaper wash the panel out.
-                V6Palette.ink.opacity(0.6)
+                tokens.colors.surfaceInk.opacity(0.6)
             }
         }
     }
