@@ -693,7 +693,7 @@ public extension ClaudeHookPayload {
 
     var defaultJumpTarget: JumpTarget {
         JumpTarget(
-            terminalApp: terminalApp ?? "Unknown",
+            terminalApp: terminalApp ?? JumpTarget.unknownTerminalApp,
             workspaceName: workspaceName,
             paneTitle: terminalTitle ?? "Claude \(sessionID.prefix(8))",
             workingDirectory: cwd,

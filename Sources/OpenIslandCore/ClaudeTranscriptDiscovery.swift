@@ -204,7 +204,7 @@ public final class ClaudeTranscriptDiscovery: @unchecked Sendable {
             summary: summary,
             updatedAt: updatedAt,
             jumpTarget: JumpTarget(
-                terminalApp: "Unknown",
+                terminalApp: JumpTarget.unknownTerminalApp,
                 workspaceName: workspaceName,
                 paneTitle: "Claude \(sessionID.prefix(8))",
                 workingDirectory: cwd

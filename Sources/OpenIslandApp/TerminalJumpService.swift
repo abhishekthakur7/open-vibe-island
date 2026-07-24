@@ -1183,7 +1183,7 @@ struct TerminalJumpService {
         // cwd fallback instead of silently activating the first installed
         // known terminal — the historical behavior that caused Warp sessions to
         // open Terminal.app (or worse, iTerm) windows.
-        if normalized == "unknown" {
+        if normalized == normalizeTerminalAppName(JumpTarget.unknownTerminalApp) {
             return nil
         }
 

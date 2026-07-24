@@ -407,4 +407,51 @@ struct AgentSessionPresentationTests {
         #expect(session.elapsedRunningLabel(at: firstSeenAt.addingTimeInterval(3_900)) == "1h 5m")
         #expect(session.elapsedRunningLabel(at: firstSeenAt.addingTimeInterval(90_000)) == "1d 1h")
     }
+
+    // MARK: - AB-283: terminal badge hides the unclassified sentinel
+
+    @Test
+    func spotlightTerminalBadgeHidesUnknownSentinel() {
+        let session = sessionWithTerminalApp(JumpTarget.unknownTerminalApp)
+
+        #expect(session.spotlightTerminalBadge == nil)
+    }
+
+    @Test
+    func spotlightTerminalBadgePassesThroughRealHost() {
+        #expect(sessionWithTerminalApp("Ghostty").spotlightTerminalBadge == "Ghostty")
+        #expect(sessionWithTerminalApp("Warp").spotlightTerminalBadge == "Warp")
+        #expect(sessionWithTerminalApp("Codex.app").spotlightTerminalBadge == "Codex.app")
+    }
+
+    @Test
+    func spotlightTerminalBadgeIsNilWithoutJumpTarget() {
+        let session = AgentSession(
+            id: "session-1",
+            title: "Claude · repo",
+            tool: .claudeCode,
+            phase: .running,
+            summary: "Working",
+            updatedAt: Date(timeIntervalSince1970: 10_000)
+        )
+
+        #expect(session.spotlightTerminalBadge == nil)
+    }
+
+    private func sessionWithTerminalApp(_ terminalApp: String) -> AgentSession {
+        AgentSession(
+            id: "session-1",
+            title: "Claude · repo",
+            tool: .claudeCode,
+            phase: .running,
+            summary: "Working",
+            updatedAt: Date(timeIntervalSince1970: 10_000),
+            jumpTarget: JumpTarget(
+                terminalApp: terminalApp,
+                workspaceName: "repo",
+                paneTitle: "claude ~/repo",
+                workingDirectory: "/tmp/repo"
+            )
+        )
+    }
 }

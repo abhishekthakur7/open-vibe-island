@@ -384,7 +384,7 @@ public extension CodexHookPayload {
 
     var defaultJumpTarget: JumpTarget {
         JumpTarget(
-            terminalApp: terminalApp ?? "Unknown",
+            terminalApp: terminalApp ?? JumpTarget.unknownTerminalApp,
             workspaceName: workspaceName,
             paneTitle: terminalTitle ?? "Codex \(sessionID.prefix(8))",
             workingDirectory: cwd,
