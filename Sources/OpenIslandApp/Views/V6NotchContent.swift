@@ -31,6 +31,7 @@ enum IslandRightSlotContent: Equatable {
 struct V6RightSlotView: View {
     let content: IslandRightSlotContent
     var lang: LanguageManager = .shared
+    @Environment(\.islandTokens) private var tokens
 
     var body: some View {
         switch content {
@@ -39,7 +40,7 @@ struct V6RightSlotView: View {
                 .font(.system(size: 11, weight: .semibold, design: .monospaced))
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
-                .foregroundStyle(V6Palette.paper.opacity(0.72))
+                .foregroundStyle(tokens.colors.paper.opacity(0.72))
                 .accessibilityLabel(lang.t("a11y.agentsGrid.countBadge", n))
         case .agents(let cells):
             AgentsGridBody(cells: cells)
@@ -168,6 +169,7 @@ private struct AgentsGridTileView: View {
     let cell: AgentGridCell
     let size: CGFloat
     let radius: CGFloat
+    @Environment(\.islandTokens) private var tokens
 
     var body: some View {
         switch cell {
@@ -187,10 +189,10 @@ private struct AgentsGridTileView: View {
         case .overflow(let n):
             ZStack {
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .fill(V6Palette.paper.opacity(0.14))
+                    .fill(tokens.colors.paper.opacity(0.14))
                 Text("+\(n)")
                     .font(.system(size: max(5, size * 0.55), weight: .bold, design: .monospaced))
-                    .foregroundStyle(V6Palette.paper)
+                    .foregroundStyle(tokens.colors.paper)
             }
             .frame(width: size, height: size)
         }
@@ -228,13 +230,14 @@ private struct AgentsGridWaitingTile: View {
 
 struct V6CenterLabelView: View {
     let text: String
+    @Environment(\.islandTokens) private var tokens
 
     var body: some View {
         Text(text)
             .font(.system(size: 11.5, weight: .medium, design: .monospaced))
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
-            .foregroundStyle(V6Palette.paper)
+            .foregroundStyle(tokens.colors.paper)
     }
 
     static func intrinsicWidth(of text: String) -> CGFloat {
@@ -252,6 +255,7 @@ struct V6CenterLabelView: View {
 private struct V6NotchLaneLabelView: View {
     let text: String
     let maxWidth: CGFloat
+    @Environment(\.islandTokens) private var tokens
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
@@ -268,7 +272,7 @@ private struct V6NotchLaneLabelView: View {
             .font(.system(size: 11, weight: .medium, design: .monospaced))
             .lineLimit(1)
             .truncationMode(.tail)
-            .foregroundStyle(V6Palette.paper)
+            .foregroundStyle(tokens.colors.paper)
     }
 
     static func intrinsicWidth(of text: String, cappedAt maxWidth: CGFloat) -> CGFloat {
@@ -305,6 +309,8 @@ struct V6ClosedPill: View {
     /// preview, the Reduce Motion crossfade) keeps rendering its own glyph
     /// unchanged.
     var showsGlyph: Bool = true
+
+    @Environment(\.islandTokens) private var tokens
 
     var body: some View {
         switch layout {
@@ -367,7 +373,7 @@ struct V6ClosedPill: View {
 
         return ZStack {
             V6ClosedPillShape()
-                .fill(V6Palette.ink)
+                .fill(tokens.colors.surfaceInk)
 
             HStack(spacing: 0) {
                 glyphOrPlaceholder
@@ -445,7 +451,7 @@ struct V6ClosedPill: View {
 
         return ZStack {
             V6ClosedPillShape()
-                .fill(V6Palette.ink)
+                .fill(tokens.colors.surfaceInk)
 
             HStack(spacing: 0) {
                 glyphOrPlaceholder

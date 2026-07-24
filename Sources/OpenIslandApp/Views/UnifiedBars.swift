@@ -29,8 +29,12 @@ struct UnifiedBars: View {
 
     var mode: Mode
     var size: CGFloat = 24
-    /// Ink color for bars / tick. Defaults to the v6 paper ink.
-    var tint: Color = Color(red: 0xf1 / 255.0, green: 0xea / 255.0, blue: 0xd9 / 255.0)
+    /// Ink color for bars / tick. `nil` uses the theme's paper tone.
+    var tint: Color?
+
+    /// The `LayerView` below is an `NSView` and cannot read SwiftUI's
+    /// environment, so the tint is resolved here and passed down.
+    @Environment(\.islandTokens) private var tokens
 
     private static let box: CGFloat = 24
     private static let barWidth: CGFloat = 2.5
@@ -44,7 +48,7 @@ struct UnifiedBars: View {
 
     @ViewBuilder
     var body: some View {
-        LayerRepresentable(mode: mode, tint: tint)
+        LayerRepresentable(mode: mode, tint: tint ?? tokens.colors.paper)
             .frame(width: size, height: size)
     }
 

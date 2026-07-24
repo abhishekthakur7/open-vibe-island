@@ -25,6 +25,8 @@ struct OpenIslandBrandMark: View {
     var tone: Tone = .paper
     var style: Style = .duotone
 
+    @Environment(\.islandTokens) private var tokens
+
     // Canonical viewBox from the design handoff: 160×64.
     private static let designWidth: CGFloat = 160
     private static let designHeight: CGFloat = 64
@@ -42,8 +44,8 @@ struct OpenIslandBrandMark: View {
             BarDotMarkShape()
                 .fill(tint, style: FillStyle(eoFill: true))
         case .duotone:
-            let bg: Color = tone == .paper ? V6Palette.ink : V6Palette.paper
-            let fg: Color = tone == .paper ? V6Palette.paper : V6Palette.ink
+            let bg: Color = tone == .paper ? tokens.colors.surfaceInk : tokens.colors.paper
+            let fg: Color = tone == .paper ? tokens.colors.paper : tokens.colors.surfaceInk
             ZStack(alignment: .leading) {
                 V6ClosedPillShape()
                     .fill(bg)
