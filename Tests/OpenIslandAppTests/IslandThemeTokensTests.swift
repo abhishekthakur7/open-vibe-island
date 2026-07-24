@@ -28,6 +28,15 @@ struct IslandThemeTokensTests {
         #expect(colors.paper == V6Palette.paper)
     }
 
+    /// Literal pin: `surfaceText` has no legacy constant to compare against.
+    /// The MarkdownUI `completionCard` theme spelled this out as `.white` at
+    /// every foreground and wash until AB-296 pointed it at the tokens, so
+    /// this literal is now the only definition.
+    @Test
+    func classicSurfaceTextIsPlainWhite() {
+        #expect(IslandThemeTokens.classic.colors.surfaceText == Color.white)
+    }
+
     @Test
     func classicStatusColorsMatchIslandDesignPalette() {
         let colors = IslandThemeTokens.classic.colors

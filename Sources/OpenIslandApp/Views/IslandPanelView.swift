@@ -69,6 +69,8 @@ private struct PermissionDiffPreview: View {
     let result: PermissionDiffResult
     let lang: LanguageManager
 
+    @Environment(\.islandTokens) private var tokens
+
     /// Caps rendered rows so a pathologically large `Write` (e.g. a
     /// generated file with tens of thousands of lines) can't force SwiftUI
     /// to build an enormous `VStack`. The +/- counts in the summary above
@@ -90,13 +92,13 @@ private struct PermissionDiffPreview: View {
                 Text(lang.t("approval.diffUpdated"))
                 Text("(")
                 Text("+\(result.addedCount)")
-                    .foregroundStyle(IslandDesignPalette.Status.completed)
+                    .foregroundStyle(tokens.colors.statusCompleted)
                 Text("\u{2212}\(result.removedCount)")
-                    .foregroundStyle(IslandDesignPalette.Status.failed)
+                    .foregroundStyle(tokens.colors.statusFailed)
                 Text(")")
             }
             .font(.system(size: 10.5, weight: .bold, design: .monospaced))
-            .foregroundStyle(V6Palette.paper.opacity(0.66))
+            .foregroundStyle(tokens.colors.paper.opacity(0.66))
 
             AutoHeightScrollView(maxHeight: Self.maxHeight) {
                 VStack(alignment: .leading, spacing: 1) {
@@ -107,7 +109,7 @@ private struct PermissionDiffPreview: View {
                     if hiddenLineCount > 0 {
                         Text(lang.t("approval.diffMoreLines", hiddenLineCount))
                             .font(.system(size: 10, design: .monospaced))
-                            .foregroundStyle(V6Palette.paper.opacity(0.42))
+                            .foregroundStyle(tokens.colors.paper.opacity(0.42))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                     }
@@ -124,6 +126,8 @@ private struct PermissionDiffPreview: View {
 
 private struct PermissionDiffLineRow: View {
     let line: PermissionDiffLine
+
+    @Environment(\.islandTokens) private var tokens
 
     var body: some View {
         HStack(alignment: .top, spacing: 6) {
@@ -151,23 +155,23 @@ private struct PermissionDiffLineRow: View {
 
     private var markerColor: Color {
         switch line.kind {
-        case .added: IslandDesignPalette.Status.completed
-        case .removed: IslandDesignPalette.Status.failed
-        case .unchanged: V6Palette.paper.opacity(0.3)
+        case .added: tokens.colors.statusCompleted
+        case .removed: tokens.colors.statusFailed
+        case .unchanged: tokens.colors.paper.opacity(0.3)
         }
     }
 
     private var textColor: Color {
         switch line.kind {
-        case .added, .removed: V6Palette.paper.opacity(0.86)
-        case .unchanged: V6Palette.paper.opacity(0.42)
+        case .added, .removed: tokens.colors.paper.opacity(0.86)
+        case .unchanged: tokens.colors.paper.opacity(0.42)
         }
     }
 
     private var backgroundColor: Color {
         switch line.kind {
-        case .added: IslandDesignPalette.Status.completed.opacity(0.12)
-        case .removed: IslandDesignPalette.Status.failed.opacity(0.12)
+        case .added: tokens.colors.statusCompleted.opacity(0.12)
+        case .removed: tokens.colors.statusFailed.opacity(0.12)
         case .unchanged: Color.clear
         }
     }
@@ -1622,6 +1626,13 @@ private struct IslandSessionRow: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     private var increasesContrast: Bool { colorSchemeContrast == .increased }
 
+    /// AB-296: every status tint, paper tone and text/hairline opacity below
+    /// resolves from here. One read on the row covers all of its `private
+    /// func`/`private var` builders; the separate types it composes
+    /// (`PermissionDiffPreview`, `StructuredQuestionPromptView`, and the
+    /// `IslandActionButtonStyle` its buttons use) declare their own.
+    @Environment(\.islandTokens) private var tokens
+
     /// AB-244: coarse type ramp for this row's core reading content
     /// (headline, prompt/activity lines, badges, age). `@ScaledMetric`
     /// tracks the system Dynamic Type / "Larger Text" setting; every literal
@@ -1688,7 +1699,7 @@ private struct IslandSessionRow: View {
         .background(rowFillColor(for: presence))
         .overlay(alignment: .top) {
             Rectangle()
-                .fill(.white.opacity(IslandDesignPalette.Contrast.hairline(increaseContrast: increasesContrast)))
+                .fill(.white.opacity(tokens.colors.hairline(increaseContrast: increasesContrast)))
                 .frame(height: 1)
         }
         .overlay(alignment: .leading) {
@@ -1707,7 +1718,7 @@ private struct IslandSessionRow: View {
         // AB-242: status tint (dot fill, leading bar, tinted row background,
         // title color) used to snap the instant a session's phase/outcome/
         // presence changed. These three cover the tint-driving inputs
-        // (`statusTint(for:)` / `IslandDesignPalette.Status.tint`) so a
+        // (`statusTint(for:)` / `tokens.colors.statusTint`) so a
         // running → waiting → completed transition crossfades instead.
         .animation(.easeInOut(duration: 0.2), value: session.phase)
         .animation(.easeInOut(duration: 0.2), value: session.outcome)
@@ -1883,8 +1894,8 @@ private struct IslandSessionRow: View {
                     HStack(spacing: 6) {
                         Circle()
                             .fill(sub.summary != nil
-                                ? IslandDesignPalette.Status.completed
-                                : IslandDesignPalette.Status.running)
+                                ? tokens.colors.statusCompleted
+                                : tokens.colors.statusRunning)
                             .frame(width: 6, height: 6)
                             .accessibilityLabel(lang.t(sub.summary != nil ? "subagents.completed" : "a11y.subagent.running"))
                         Text(sub.agentType ?? sub.agentID)
@@ -1963,7 +1974,7 @@ private struct IslandSessionRow: View {
     }
 
     private var agentBadge: some View {
-        let tint = Color(hex: session.tool.brandColorHex) ?? V6Palette.paper
+        let tint = Color(hex: session.tool.brandColorHex) ?? tokens.colors.paper
         return Text(agentBadgeTitle)
             .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
             .foregroundStyle(tint.opacity(notificationChromeOpacity))
@@ -1977,7 +1988,7 @@ private struct IslandSessionRow: View {
     private func sideBadge(_ title: String) -> some View {
         Text(title)
             .font(.system(size: 10.5, weight: .medium, design: .monospaced))
-            .foregroundStyle(V6Palette.paper.opacity(presentation == .notification ? 0.52 : 0.7))
+            .foregroundStyle(tokens.colors.paper.opacity(presentation == .notification ? 0.52 : 0.7))
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(.white.opacity(presentation == .notification ? 0.045 : 0.06), in: Capsule())
@@ -2010,11 +2021,11 @@ private struct IslandSessionRow: View {
         case .bypass:
             Text(lang.t("badge.bypassPermissions"))
                 .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
-                .foregroundStyle(IslandDesignPalette.Status.warning.opacity(0.94))
+                .foregroundStyle(tokens.colors.statusWarning.opacity(0.94))
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
-                .background(IslandDesignPalette.Status.warning.opacity(0.16), in: Capsule())
-                .overlay(Capsule().stroke(IslandDesignPalette.Status.warning.opacity(0.4), lineWidth: 1))
+                .background(tokens.colors.statusWarning.opacity(0.16), in: Capsule())
+                .overlay(Capsule().stroke(tokens.colors.statusWarning.opacity(0.4), lineWidth: 1))
         }
     }
 
@@ -2132,22 +2143,22 @@ private struct IslandSessionRow: View {
 
     private func summaryPromptColor(for presence: IslandSessionPresence) -> Color {
         if presentation == .notification {
-            return V6Palette.paper.opacity(contrastText(session.phase == .completed ? IslandDesignPalette.Contrast.tertiaryText : IslandDesignPalette.Contrast.secondaryText))
+            return tokens.colors.paper.opacity(contrastText(session.phase == .completed ? tokens.colors.tertiaryTextOpacity : tokens.colors.secondaryTextOpacity))
         }
 
-        return V6Palette.paper.opacity(contrastText(presence == .inactive ? IslandDesignPalette.Contrast.tertiaryText : IslandDesignPalette.Contrast.secondaryText))
+        return tokens.colors.paper.opacity(contrastText(presence == .inactive ? tokens.colors.tertiaryTextOpacity : tokens.colors.secondaryTextOpacity))
     }
 
     private func summaryAgeColor(for presence: IslandSessionPresence) -> Color {
         if presentation == .notification {
-            return V6Palette.paper.opacity(contrastText(IslandDesignPalette.Contrast.tertiaryText))
+            return tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity))
         }
 
-        return V6Palette.paper.opacity(contrastText(presence == .inactive ? IslandDesignPalette.Contrast.tertiaryText : IslandDesignPalette.Contrast.secondaryText))
+        return tokens.colors.paper.opacity(contrastText(presence == .inactive ? tokens.colors.tertiaryTextOpacity : tokens.colors.secondaryTextOpacity))
     }
 
     private func contrastText(_ base: Double) -> Double {
-        IslandDesignPalette.Contrast.text(base, increaseContrast: increasesContrast)
+        tokens.colors.text(base, increaseContrast: increasesContrast)
     }
 
     private var notificationChromeOpacity: Double {
@@ -2182,7 +2193,7 @@ private struct IslandSessionRow: View {
     }
 
     private var actionableStatusTint: Color {
-        IslandDesignPalette.Status.tint(for: session.phase, outcome: session.outcome)
+        tokens.colors.statusTint(for: session.phase, outcome: session.outcome)
     }
 
     @ViewBuilder
@@ -2259,19 +2270,19 @@ private struct IslandSessionRow: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(lang.t("approval.toolPermissionRequested"))
                 .font(.system(size: 12.5, weight: .semibold))
-                .foregroundStyle(V6Palette.paper.opacity(0.86))
+                .foregroundStyle(tokens.colors.paper.opacity(0.86))
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(commandPreviewText)
                     .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(V6Palette.paper.opacity(0.78))
+                    .foregroundStyle(tokens.colors.paper.opacity(0.78))
                     .fixedSize(horizontal: false, vertical: true)
 
                 if let path = session.permissionRequest?.affectedPath.trimmedForNotificationCard,
                    !path.isEmpty {
                     Text(path)
                         .font(.system(size: 10.5, weight: .medium))
-                        .foregroundStyle(V6Palette.paper.opacity(0.42))
+                        .foregroundStyle(tokens.colors.paper.opacity(0.42))
                         .lineLimit(1)
                 }
             }
@@ -2405,7 +2416,7 @@ private struct IslandSessionRow: View {
 
                 AutoHeightScrollView(maxHeight: 160) {
                     Markdown(completionMessageText)
-                        .markdownTheme(.completionCard)
+                        .markdownTheme(.completionCard(tokens.colors))
                         .markdownImageProvider(.noNetwork)
                         .markdownInlineImageProvider(.noNetwork)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -2476,7 +2487,7 @@ private struct IslandSessionRow: View {
     }
 
     private var completionOutcomeTint: Color {
-        IslandDesignPalette.Status.tint(for: .completed, outcome: session.outcome)
+        tokens.colors.statusTint(for: .completed, outcome: session.outcome)
     }
 
     private var completionOutcomeLabel: String {
@@ -2605,7 +2616,7 @@ private struct IslandSessionRow: View {
                 .accessibilityLabel(lang.t("a11y.task.completed"))
         case .inProgress:
             Circle()
-                .fill(IslandDesignPalette.Status.running)
+                .fill(tokens.colors.statusRunning)
                 .frame(width: 6, height: 6)
                 .accessibilityLabel(lang.t("a11y.task.inProgress"))
         case .pending:
@@ -2782,19 +2793,19 @@ private struct IslandSessionRow: View {
     }
 
     private func statusTint(for presence: IslandSessionPresence) -> Color {
-        IslandDesignPalette.Status.tint(for: session.phase, presence: presence, outcome: session.outcome)
+        tokens.colors.statusTint(for: session.phase, presence: presence, outcome: session.outcome)
     }
 
     private func activityColor(for presence: IslandSessionPresence) -> Color {
         switch session.spotlightActivityTone {
         case .attention:
-            IslandDesignPalette.Status.tint(for: session.phase)
+            tokens.colors.statusTint(for: session.phase)
         case .live:
             statusTint(for: presence)
         case .idle:
-            .white.opacity(contrastText(IslandDesignPalette.Contrast.secondaryText))
+            .white.opacity(contrastText(tokens.colors.secondaryTextOpacity))
         case .ready:
-            presence == .inactive ? .white.opacity(contrastText(IslandDesignPalette.Contrast.secondaryText)) : statusTint(for: presence)
+            presence == .inactive ? .white.opacity(contrastText(tokens.colors.secondaryTextOpacity)) : statusTint(for: presence)
         }
     }
 }
@@ -2815,12 +2826,14 @@ private struct StructuredQuestionPromptView: View {
     @State private var typedReply: String = ""
     @State private var hoveredOptionKey: String?
 
+    @Environment(\.islandTokens) private var tokens
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if showsPromptTitle {
                 Text(promptTitle)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(IslandDesignPalette.Status.waitingForAnswer)
+                    .foregroundStyle(tokens.colors.statusWaitingForAnswer)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -2902,11 +2915,11 @@ private struct StructuredQuestionPromptView: View {
                 HStack(spacing: 10) {
                     Text("\(optionIndex + 1)")
                         .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(isSelected ? .black.opacity(0.82) : V6Palette.paper.opacity(0.42))
+                        .foregroundStyle(isSelected ? .black.opacity(0.82) : tokens.colors.paper.opacity(0.42))
                         .frame(width: 22, height: 20)
                         .background(
                             RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                .fill(isSelected ? V6Palette.paper.opacity(0.88) : Color.white.opacity(0.045))
+                                .fill(isSelected ? tokens.colors.paper.opacity(0.88) : Color.white.opacity(0.045))
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 5, style: .continuous)
@@ -2931,7 +2944,7 @@ private struct StructuredQuestionPromptView: View {
                     if isSelected {
                         Image(systemName: "checkmark")
                             .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(IslandDesignPalette.Status.completed)
+                            .foregroundStyle(tokens.colors.statusCompleted)
                             .accessibilityHidden(true)
                     }
                 }
@@ -3174,7 +3187,7 @@ private struct StructuredQuestionPromptView: View {
 
     private func optionFillColor(isSelected: Bool, isHovered: Bool) -> Color {
         if isSelected {
-            return V6Palette.paper.opacity(0.10)
+            return tokens.colors.paper.opacity(0.10)
         }
         if isHovered {
             return Color.white.opacity(0.065)
@@ -3184,7 +3197,7 @@ private struct StructuredQuestionPromptView: View {
 
     private func optionStrokeColor(isSelected: Bool, isHovered: Bool) -> Color {
         if isSelected {
-            return V6Palette.paper.opacity(0.36)
+            return tokens.colors.paper.opacity(0.36)
         }
         if isHovered {
             return .white.opacity(0.13)
@@ -3361,6 +3374,12 @@ private struct IslandActionButtonStyle: ButtonStyle {
 
     @Environment(\.isEnabled) private var isEnabled
 
+    /// AB-296: same route `isEnabled` already takes — SwiftUI updates a
+    /// `ButtonStyle`'s dynamic properties from the surrounding environment
+    /// before calling `makeBody`, so the tokens arrive without threading them
+    /// through every call site.
+    @Environment(\.islandTokens) private var tokens
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 11.8, weight: .semibold))
@@ -3379,7 +3398,7 @@ private struct IslandActionButtonStyle: ButtonStyle {
 
     private var foregroundColor: Color {
         guard isEnabled else {
-            return V6Palette.paper.opacity(0.42)
+            return tokens.colors.paper.opacity(0.42)
         }
 
         switch kind {
@@ -3388,7 +3407,7 @@ private struct IslandActionButtonStyle: ButtonStyle {
         case .warning:
             return .white
         case .secondary:
-            return V6Palette.paper.opacity(0.78)
+            return tokens.colors.paper.opacity(0.78)
         }
     }
 
@@ -3399,9 +3418,9 @@ private struct IslandActionButtonStyle: ButtonStyle {
 
         switch kind {
         case .primary:
-            return V6Palette.paper.opacity(0.86)
+            return tokens.colors.paper.opacity(0.86)
         case .warning:
-            return Color(red: 0.85, green: 0.55, blue: 0.15).opacity(0.42)
+            return tokens.colors.statusWarning.opacity(0.42)
         case .secondary:
             return .white.opacity(0.07)
         }
@@ -3415,9 +3434,9 @@ private struct IslandActionButtonStyle: ButtonStyle {
         let pressedFactor: Double = isPressed ? 0.78 : 1
         switch kind {
         case .primary:
-            return V6Palette.paper.opacity(pressedFactor)
+            return tokens.colors.paper.opacity(pressedFactor)
         case .warning:
-            return Color(red: 0.85, green: 0.55, blue: 0.15).opacity(pressedFactor)
+            return tokens.colors.statusWarning.opacity(pressedFactor)
         case .secondary:
             return Color.white.opacity(isPressed ? 0.11 : 0.065)
         }
@@ -3429,9 +3448,15 @@ private struct IslandActionButtonStyle: ButtonStyle {
 // MARK: - MarkdownUI Theme
 
 extension MarkdownUI.Theme {
-    @MainActor static let completionCard = Theme()
+    /// AB-296: a `Theme` is a value, not a `View`, so it can't read the
+    /// environment itself — the colour tokens are handed in by the one call
+    /// site (`IslandSessionRow.completionActionBody`) that renders a
+    /// completion message. Every foreground and wash below was a hardcoded
+    /// `.white`; they now resolve from `surfaceText`.
+    @MainActor static func completionCard(_ colors: IslandColorTokens) -> Theme {
+        Theme()
         .text {
-            ForegroundColor(.white.opacity(0.88))
+            ForegroundColor(colors.surfaceText.opacity(0.88))
             FontSize(13.5)
             FontWeight(.medium)
         }
@@ -3444,18 +3469,18 @@ extension MarkdownUI.Theme {
         .code {
             FontFamilyVariant(.monospaced)
             FontSize(12.5)
-            ForegroundColor(.white.opacity(0.88))
-            BackgroundColor(.white.opacity(0.08))
+            ForegroundColor(colors.surfaceText.opacity(0.88))
+            BackgroundColor(colors.surfaceText.opacity(0.08))
         }
         .codeBlock { configuration in
             configuration.label
                 .markdownTextStyle {
                     FontFamilyVariant(.monospaced)
                     FontSize(12.5)
-                    ForegroundColor(.white.opacity(0.88))
+                    ForegroundColor(colors.surfaceText.opacity(0.88))
                 }
                 .padding(10)
-                .background(Color.white.opacity(0.08))
+                .background(colors.surfaceText.opacity(0.08))
                 .clipShape(RoundedRectangle(cornerRadius: 6))
         }
         .heading1 { configuration in
@@ -3463,7 +3488,7 @@ extension MarkdownUI.Theme {
                 .markdownTextStyle {
                     FontSize(16)
                     FontWeight(.bold)
-                    ForegroundColor(.white.opacity(0.88))
+                    ForegroundColor(colors.surfaceText.opacity(0.88))
                 }
                 .markdownMargin(top: 8, bottom: 4)
         }
@@ -3472,7 +3497,7 @@ extension MarkdownUI.Theme {
                 .markdownTextStyle {
                     FontSize(15)
                     FontWeight(.bold)
-                    ForegroundColor(.white.opacity(0.88))
+                    ForegroundColor(colors.surfaceText.opacity(0.88))
                 }
                 .markdownMargin(top: 8, bottom: 4)
         }
@@ -3481,20 +3506,20 @@ extension MarkdownUI.Theme {
                 .markdownTextStyle {
                     FontSize(14)
                     FontWeight(.semibold)
-                    ForegroundColor(.white.opacity(0.88))
+                    ForegroundColor(colors.surfaceText.opacity(0.88))
                 }
                 .markdownMargin(top: 6, bottom: 2)
         }
         .blockquote { configuration in
             configuration.label
                 .markdownTextStyle {
-                    ForegroundColor(.white.opacity(0.6))
+                    ForegroundColor(colors.surfaceText.opacity(0.6))
                     FontSize(13.5)
                 }
                 .padding(.leading, 12)
                 .overlay(alignment: .leading) {
                     Rectangle()
-                        .fill(Color.white.opacity(0.2))
+                        .fill(colors.surfaceText.opacity(0.2))
                         .frame(width: 3)
                 }
         }
@@ -3505,9 +3530,9 @@ extension MarkdownUI.Theme {
         .table { configuration in
             configuration.label
                 .fixedSize(horizontal: false, vertical: true)
-                .markdownTableBorderStyle(.init(.allBorders, color: .white.opacity(0.15), strokeStyle: .init(lineWidth: 1)))
+                .markdownTableBorderStyle(.init(.allBorders, color: colors.surfaceText.opacity(0.15), strokeStyle: .init(lineWidth: 1)))
                 .markdownTableBackgroundStyle(
-                    .alternatingRows(Color.white.opacity(0.04), Color.white.opacity(0.08))
+                    .alternatingRows(colors.surfaceText.opacity(0.04), colors.surfaceText.opacity(0.08))
                 )
                 .markdownMargin(top: 4, bottom: 8)
         }
@@ -3523,6 +3548,7 @@ extension MarkdownUI.Theme {
                 .padding(.horizontal, 12)
                 .relativeLineSpacing(.em(0.25))
         }
+    }
 }
 
 private struct DismissButton: View {
