@@ -24,6 +24,13 @@ struct IslandColorTokens: Equatable, Sendable {
     /// Mirrors `V6Palette.paper`.
     var paper: Color
 
+    /// Neutral foreground drawn on `surfaceInk`: body copy and the
+    /// translucent washes (code backgrounds, table fills, rules) derived from
+    /// it by opacity rather than by a separate colour. Distinct from `paper`,
+    /// which is the warmer accent tone reserved for badges, primary buttons
+    /// and headline chrome.
+    var surfaceText: Color
+
     // MARK: - Status tints
 
     /// A session that is actively working.
@@ -159,6 +166,7 @@ extension IslandColorTokens {
     static let classic = IslandColorTokens(
         surfaceInk: classicInk,
         paper: classicPaper,
+        surfaceText: .white,
         statusRunning: Color(red: 110.0 / 255.0, green: 167.0 / 255.0, blue: 255.0 / 255.0),
         statusCompleted: Color(red: 111.0 / 255.0, green: 185.0 / 255.0, blue: 130.0 / 255.0),
         statusWaitingForApproval: Color(red: 244.0 / 255.0, green: 164.0 / 255.0, blue: 164.0 / 255.0),
