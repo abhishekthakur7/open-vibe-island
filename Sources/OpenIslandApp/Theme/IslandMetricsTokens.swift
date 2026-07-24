@@ -23,12 +23,11 @@ struct IslandShadowToken: Equatable, Sendable {
 
 /// Geometry half of the island theme token layer.
 ///
-/// Values are lifted verbatim from `NotchShape`'s opened-state radii,
+/// Values were lifted verbatim from `NotchShape`'s opened-state radii,
 /// `IslandChromeMetrics`' shadow insets and hover scale, and the opened
-/// surface's shadow in `IslandPanelView`.
-///
-/// Nothing consumes these yet — later tickets route views through the token
-/// layer one region at a time.
+/// surface's shadow in `IslandPanelView` — the last of which now exists only
+/// here (AB-295). The shadow insets and hover scale still have un-migrated
+/// `IslandChromeMetrics` call sites; later tickets route the rest.
 struct IslandMetricsTokens: Equatable, Sendable {
     /// Concave top-corner radius of the opened island shape.
     var openedTopRadius: CGFloat

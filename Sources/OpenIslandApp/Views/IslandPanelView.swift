@@ -173,13 +173,6 @@ private struct PermissionDiffLineRow: View {
     }
 }
 
-// MARK: - Animations
-
-private let openAnimation = Animation.spring(response: 0.42, dampingFraction: 0.8, blendDuration: 0)
-private let closeAnimation = Animation.smooth(duration: 0.3)
-private let popAnimation = Animation.spring(response: 0.3, dampingFraction: 0.5)
-private let openedSurfaceUnmountDelay: TimeInterval = 0.36
-
 private struct ConditionalDrawingGroup: ViewModifier {
     let enabled: Bool
 
@@ -238,11 +231,17 @@ struct IslandPanelView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// AB-244: drives the Increase Contrast fallback for dim body text and
-    /// hairline dividers (`IslandDesignPalette.Contrast`). No CoreAnimation
-    /// surface in this view needs contrast (unlike `reduceMotion`, which
-    /// also has to reach `UnifiedBars`' `NSView`), so the plain SwiftUI
-    /// environment value is enough here.
+    /// hairline dividers (`tokens.colors`). No CoreAnimation surface in this
+    /// view needs contrast (unlike `reduceMotion`, which also has to reach
+    /// `UnifiedBars`' `NSView`), so the plain SwiftUI environment value is
+    /// enough here.
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    /// AB-295: the opened panel's chrome, header and summary read their
+    /// colours, radii, shadow and transition springs from here. One read on
+    /// the owning view covers every `private func`/`private var` builder
+    /// below; nested helper views declare their own.
+    @Environment(\.islandTokens) private var tokens
 
     private var increasesContrast: Bool { colorSchemeContrast == .increased }
 
@@ -270,9 +269,9 @@ struct IslandPanelView: View {
     /// Single animation selection based on the current notch status.
     private var notchTransitionAnimation: Animation {
         switch model.notchStatus {
-        case .opened:  return openAnimation
-        case .closed:  return closeAnimation
-        case .popping: return popAnimation
+        case .opened:  return tokens.motion.openAnimation.animation
+        case .closed:  return tokens.motion.closeAnimation.animation
+        case .popping: return tokens.motion.popAnimation.animation
         }
     }
 
@@ -384,7 +383,7 @@ struct IslandPanelView: View {
                 return
             }
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + openedSurfaceUnmountDelay) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + tokens.motion.openedSurfaceUnmountDelay) {
                 guard openedSurfaceMountGeneration == generation,
                       model.notchStatus != .opened else {
                     return
@@ -459,8 +458,11 @@ struct IslandPanelView: View {
     @ViewBuilder
     private func openedSurface(width openedWidth: CGFloat, height openedHeight: CGFloat) -> some View {
         let surfaceShape = OpenedIslandSurfaceShape(
-            topProfile: usesNotchAwareOpenedHeader ? .notch : .topBar
+            topProfile: usesNotchAwareOpenedHeader ? .notch : .topBar,
+            topCornerRadius: tokens.metrics.openedTopRadius,
+            bottomCornerRadius: tokens.metrics.openedBottomRadius
         )
+        let shadow = tokens.metrics.surfaceShadow
 
         ZStack(alignment: .top) {
             // AB-242: native vibrancy base + a soft shadow, matching the drop
@@ -471,7 +473,7 @@ struct IslandPanelView: View {
             OpenedSurfaceBackground(reduceTransparency: reduceTransparency)
                 .frame(width: openedWidth, height: openedHeight)
                 .clipShape(surfaceShape)
-                .shadow(color: .black.opacity(0.36), radius: 22, y: 12)
+                .shadow(color: shadow.resolvedColor, radius: shadow.radius, y: shadow.yOffset)
                 .animation(.easeInOut(duration: 0.2), value: reduceTransparency)
 
             openedSurfaceContent(width: openedWidth, height: openedHeight)
@@ -536,7 +538,7 @@ struct IslandPanelView: View {
         }
         .scaleEffect(reduceMotion ? 1 : (isPopping ? 1.04 : 1), anchor: .top)
         .opacity(reduceMotion && isPopping ? 0.7 : 1)
-        .animation(reduceMotion ? .easeInOut(duration: 0.18) : popAnimation, value: isPopping)
+        .animation(reduceMotion ? .easeInOut(duration: 0.18) : tokens.motion.popAnimation.animation, value: isPopping)
     }
 
     /// Pre-AB-243 behavior, kept verbatim as the Reduce Motion fallback: an
@@ -605,9 +607,10 @@ struct IslandPanelView: View {
         let surfaceHeight = opened ? openedHeight : closedNotchHeight
         let shape = OpenedIslandSurfaceShape(
             topProfile: topProfile,
-            topCornerRadius: opened ? NotchShape.openedTopRadius : 0,
-            bottomCornerRadius: opened ? NotchShape.openedBottomRadius : (closedNotchHeight / 2)
+            topCornerRadius: opened ? tokens.metrics.openedTopRadius : 0,
+            bottomCornerRadius: opened ? tokens.metrics.openedBottomRadius : (closedNotchHeight / 2)
         )
+        let shadow = tokens.metrics.surfaceShadow
         let closedLeadingInset = closedNotchHeight / 2
 
         ZStack(alignment: .top) {
@@ -619,12 +622,16 @@ struct IslandPanelView: View {
             ZStack {
                 OpenedSurfaceBackground(reduceTransparency: reduceTransparency)
                     .opacity(opened ? 1 : 0)
-                V6Palette.ink
+                tokens.colors.surfaceInk
                     .opacity(opened ? 0 : 1)
             }
             .frame(width: surfaceWidth, height: surfaceHeight)
             .clipShape(shape)
-            .shadow(color: .black.opacity(opened ? 0.36 : 0), radius: opened ? 22 : 0, y: opened ? 12 : 0)
+            .shadow(
+                color: shadow.color.opacity(opened ? shadow.opacity : 0),
+                radius: opened ? shadow.radius : 0,
+                y: opened ? shadow.yOffset : 0
+            )
             .animation(.easeInOut(duration: 0.2), value: reduceTransparency)
 
             ZStack(alignment: .top) {
@@ -841,7 +848,7 @@ struct IslandPanelView: View {
                 .foregroundStyle(.white.opacity(0.58))
             Text(model.lang.t("island.terminalOwnership"))
                 .font(.system(size: 12))
-                .foregroundStyle(.white.opacity(IslandDesignPalette.Contrast.text(IslandDesignPalette.Contrast.tertiaryText, increaseContrast: increasesContrast)))
+                .foregroundStyle(.white.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
             Spacer()
         }
         .frame(maxWidth: .infinity)
@@ -852,12 +859,12 @@ struct IslandPanelView: View {
             Spacer()
             Text(model.lang.t("island.noTerminals"))
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.white.opacity(IslandDesignPalette.Contrast.text(IslandDesignPalette.Contrast.secondaryText, increaseContrast: increasesContrast)))
+                .foregroundStyle(.white.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
             Text(model.recentSessions.isEmpty
                 ? model.lang.t("island.startAgent")
                 : model.lang.t("island.recentSessions"))
                 .font(.system(size: 12))
-                .foregroundStyle(.white.opacity(IslandDesignPalette.Contrast.text(IslandDesignPalette.Contrast.tertiaryText, increaseContrast: increasesContrast)))
+                .foregroundStyle(.white.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
             Spacer()
         }
         .frame(maxWidth: .infinity)
@@ -977,7 +984,7 @@ struct IslandPanelView: View {
                     } label: {
                         Text(model.lang.t("island.showAll", model.allSessions.count))
                             .font(.system(size: 10.5, weight: .medium))
-                            .foregroundStyle(.white.opacity(IslandDesignPalette.Contrast.text(IslandDesignPalette.Contrast.secondaryText, increaseContrast: increasesContrast)))
+                            .foregroundStyle(.white.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
                             .frame(maxWidth: .infinity, alignment: .center)
                             .padding(.horizontal, sessionListSideInset)
                             .padding(.top, 6)
@@ -1046,7 +1053,7 @@ struct IslandPanelView: View {
             Text(lang.t("island.sessionList.title").uppercased())
                 .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
                 .tracking(1.4)
-                .foregroundStyle(V6Palette.paper.opacity(0.55))
+                .foregroundStyle(tokens.colors.paper.opacity(0.55))
 
             ViewThatFits(in: .horizontal) {
                 sessionOverviewView(overview, compact: false)
@@ -1061,7 +1068,7 @@ struct IslandPanelView: View {
         .accessibilityElement(children: .combine)
         .overlay(alignment: .bottom) {
             Rectangle()
-                .fill(.white.opacity(IslandDesignPalette.Contrast.hairline(increaseContrast: increasesContrast)))
+                .fill(.white.opacity(tokens.colors.hairline(increaseContrast: increasesContrast)))
                 .frame(height: 1)
         }
     }
@@ -1071,7 +1078,7 @@ struct IslandPanelView: View {
             .frame(height: 10)
         .overlay(alignment: .top) {
             Rectangle()
-                .fill(.white.opacity(IslandDesignPalette.Contrast.hairline(increaseContrast: increasesContrast)))
+                .fill(.white.opacity(tokens.colors.hairline(increaseContrast: increasesContrast)))
                 .frame(height: 1)
         }
     }
@@ -1093,10 +1100,10 @@ struct IslandPanelView: View {
 
         return [
             SessionOverviewItem(id: "total", title: lang.t("island.sessionOverview.total"), compactTitle: "", count: sessions.count, tint: nil),
-            SessionOverviewItem(id: "waiting", title: lang.t("island.sessionOverview.waiting"), compactTitle: lang.t("island.sessionOverview.waitingCompact"), count: waiting, tint: IslandDesignPalette.Status.waitingAggregate),
-            SessionOverviewItem(id: "running", title: lang.t("island.sessionOverview.running"), compactTitle: lang.t("island.sessionOverview.runningCompact"), count: running, tint: IslandDesignPalette.Status.running),
-            SessionOverviewItem(id: "done", title: lang.t("island.sessionOverview.done"), compactTitle: lang.t("island.sessionOverview.done"), count: done, tint: IslandDesignPalette.Status.completed),
-            SessionOverviewItem(id: "idle", title: lang.t("island.sessionOverview.idle"), compactTitle: lang.t("island.sessionOverview.idle"), count: idle, tint: IslandDesignPalette.Status.idle),
+            SessionOverviewItem(id: "waiting", title: lang.t("island.sessionOverview.waiting"), compactTitle: lang.t("island.sessionOverview.waitingCompact"), count: waiting, tint: tokens.colors.statusWaitingAggregate),
+            SessionOverviewItem(id: "running", title: lang.t("island.sessionOverview.running"), compactTitle: lang.t("island.sessionOverview.runningCompact"), count: running, tint: tokens.colors.statusRunning),
+            SessionOverviewItem(id: "done", title: lang.t("island.sessionOverview.done"), compactTitle: lang.t("island.sessionOverview.done"), count: done, tint: tokens.colors.statusCompleted),
+            SessionOverviewItem(id: "idle", title: lang.t("island.sessionOverview.idle"), compactTitle: lang.t("island.sessionOverview.idle"), count: idle, tint: tokens.colors.statusIdle),
         ].filter { $0.id == "total" || $0.count > 0 }
     }
 
@@ -1138,8 +1145,8 @@ struct IslandPanelView: View {
                 .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
                 .foregroundStyle(
                     item.tint == nil
-                        ? V6Palette.paper.opacity(IslandDesignPalette.Contrast.text(IslandDesignPalette.Contrast.tertiaryText, increaseContrast: increasesContrast))
-                        : V6Palette.paper.opacity(IslandDesignPalette.Contrast.text(IslandDesignPalette.Contrast.secondaryText, increaseContrast: increasesContrast))
+                        ? tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast))
+                        : tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast))
                 )
         }
     }
@@ -1164,7 +1171,7 @@ struct IslandPanelView: View {
                 .foregroundStyle(sectionLabelColor(for: section))
             Text("\(section.sessions.count)")
                 .font(.system(size: 10.5, weight: .medium, design: .monospaced))
-                .foregroundStyle(V6Palette.paper.opacity(IslandDesignPalette.Contrast.text(IslandDesignPalette.Contrast.tertiaryText, increaseContrast: increasesContrast)))
+                .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
             Spacer(minLength: 0)
         }
         .padding(.leading, sessionListSideInset)
@@ -1175,15 +1182,15 @@ struct IslandPanelView: View {
         .accessibilityElement(children: .combine)
         .overlay(alignment: .top) {
             Rectangle()
-                .fill(.white.opacity(IslandDesignPalette.Contrast.hairline(increaseContrast: increasesContrast)))
+                .fill(.white.opacity(tokens.colors.hairline(increaseContrast: increasesContrast)))
                 .frame(height: 1)
         }
     }
 
     private func sectionTint(for section: IslandSessionSection) -> Color {
-        guard let first = section.sessions.first else { return IslandDesignPalette.Status.idle }
-        if section.id == "state-idle" { return IslandDesignPalette.Status.idle }
-        return IslandDesignPalette.Status.tint(for: first.phase, outcome: first.outcome)
+        guard let first = section.sessions.first else { return tokens.colors.statusIdle }
+        if section.id == "state-idle" { return tokens.colors.statusIdle }
+        return tokens.colors.statusTint(for: first.phase, outcome: first.outcome)
     }
 
     private func sessionSectionTitle(for section: IslandSessionSection) -> String {
@@ -1196,11 +1203,11 @@ struct IslandPanelView: View {
     private func sectionLabelColor(for section: IslandSessionSection) -> Color {
         switch section.id {
         case "state-approval":
-            return IslandDesignPalette.Status.waitingForApproval.opacity(0.86)
+            return tokens.colors.statusWaitingForApproval.opacity(0.86)
         case "state-answer":
-            return IslandDesignPalette.Status.waitingForAnswer.opacity(0.86)
+            return tokens.colors.statusWaitingForAnswer.opacity(0.86)
         default:
-            return V6Palette.paper.opacity(0.7)
+            return tokens.colors.paper.opacity(0.7)
         }
     }
 
@@ -1400,7 +1407,7 @@ struct IslandPanelView: View {
 
             Text(provider.peakWindowLabel)
                 .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
-                .foregroundStyle(.white.opacity(IslandDesignPalette.Contrast.text(IslandDesignPalette.Contrast.secondaryText, increaseContrast: increasesContrast)))
+                .foregroundStyle(.white.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
 
             Text("\(provider.peakUsagePercentage)%")
                 .font(.system(size: 11.5, weight: .bold, design: .monospaced))
