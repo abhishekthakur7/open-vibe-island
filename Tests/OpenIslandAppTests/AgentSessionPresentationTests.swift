@@ -351,6 +351,39 @@ struct AgentSessionPresentationTests {
     }
 
     @Test
+    func displayModelNameRendersFableAndMythosWithoutTheVendorWord() {
+        #expect(AgentSession.shortModelDisplayName(for: "claude-fable-5") == "Fable 5")
+        #expect(AgentSession.shortModelDisplayName(for: "claude-fable-5-20260101") == "Fable 5")
+        #expect(AgentSession.shortModelDisplayName(for: "claude-mythos-5") == "Mythos 5")
+        #expect(AgentSession.shortModelDisplayName(for: "anthropic/claude-fable-5") == "Fable 5")
+        // Bare alias, no version.
+        #expect(AgentSession.shortModelDisplayName(for: "fable") == "Fable")
+
+        let withFableModel = AgentSession(
+            id: "session-4",
+            title: "Claude · repo",
+            tool: .claudeCode,
+            phase: .running,
+            summary: "Working",
+            updatedAt: .now,
+            claudeMetadata: ClaudeSessionMetadata(model: "claude-fable-5-20260101")
+        )
+        #expect(withFableModel.displayModelName == "Fable 5")
+
+        // Cross-vendor sessions keep an identifiable family name.
+        let withOpenCodeModel = AgentSession(
+            id: "session-5",
+            title: "OpenCode · repo",
+            tool: .openCode,
+            phase: .running,
+            summary: "Working",
+            updatedAt: .now,
+            openCodeMetadata: OpenCodeSessionMetadata(model: "anthropic/claude-fable-5")
+        )
+        #expect(withOpenCodeModel.displayModelName == "Fable 5")
+    }
+
+    @Test
     func displayModelNameIsNilWithoutMetadataAndPicksFirstAvailableSource() {
         let withoutMetadata = AgentSession(
             id: "session-1",
