@@ -231,8 +231,10 @@
 "island.showAll" = "显示全部 %lld 个会话";
 "island.collapseList" = "收起列表";
 "island.usageWaiting" = "等待用量数据";
+"island.transcript.label" = "会话记录";
 "island.transcript.open" = "打开会话记录";
 "island.transcript.reveal" = "在访达中显示";
+"island.transcript.copyPath" = "拷贝路径";
 
 /* Island Panel - Approval */
 "approval.toolPermissionRequested" = "请求工具权限";
@@ -276,6 +278,7 @@
 "a11y.session.collapseDetail" = "收起会话详情";
 "a11y.session.dismiss" = "关闭该会话";
 "a11y.session.summary" = "%@，%@，%@，%@";
+"a11y.transcript" = "会话记录，%@";
 "a11y.phase.running" = "运行中";
 "a11y.phase.waitingForApproval" = "等待授权";
 "a11y.phase.waitingForAnswer" = "等待回答";

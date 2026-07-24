@@ -231,8 +231,10 @@
 "island.showAll" = "顯示全部 %lld 個工作階段";
 "island.collapseList" = "收起清單";
 "island.usageWaiting" = "等待用量資料";
+"island.transcript.label" = "工作階段記錄";
 "island.transcript.open" = "開啟工作階段記錄";
 "island.transcript.reveal" = "在 Finder 中顯示";
+"island.transcript.copyPath" = "拷貝路徑";
 
 /* Island Panel - Approval */
 "approval.toolPermissionRequested" = "請求工具權限";
@@ -275,6 +277,7 @@
 "a11y.session.collapseDetail" = "收起工作階段詳情";
 "a11y.session.dismiss" = "關閉此工作階段";
 "a11y.session.summary" = "%@，%@，%@，%@";
+"a11y.transcript" = "工作階段記錄，%@";
 "a11y.phase.running" = "執行中";
 "a11y.phase.waitingForApproval" = "等待授權";
 "a11y.phase.waitingForAnswer" = "等待回答";

@@ -1939,16 +1939,19 @@ private struct IslandSessionRow: View {
             .padding(.bottom, 10)
         }
 
-        // AB-237: `trackingTranscriptPath`/`spotlightTrackingLabel` used to be
-        // tracked but never rendered anywhere — no click-to-open affordance
-        // existed. Shown only when a transcript path is actually known.
-        if let label = session.spotlightTrackingLabel,
-           let transcriptPath = session.trackingTranscriptPath?.trimmingCharacters(in: .whitespacesAndNewlines),
+        // AB-237: `trackingTranscriptPath` used to be tracked but never
+        // rendered anywhere — no click-to-open affordance existed. Shown
+        // only when a transcript path is actually known.
+        if let transcriptPath = session.trackingTranscriptPath?.trimmingCharacters(in: .whitespacesAndNewlines),
            !transcriptPath.isEmpty {
-            TranscriptAffordance(path: transcriptPath, label: label, lang: lang)
-                .padding(.leading, detailLeadingInset)
-                .padding(.trailing, sideInset)
-                .padding(.bottom, 10)
+            TranscriptAffordance(
+                path: transcriptPath,
+                workspace: session.spotlightWorkspaceName,
+                lang: lang
+            )
+            .padding(.leading, detailLeadingInset)
+            .padding(.trailing, sideInset)
+            .padding(.bottom, 10)
         }
     }
 
@@ -3531,13 +3534,18 @@ private struct DismissButton: View {
     }
 }
 
-/// AB-237: renders the session's JSONL transcript filename as a clickable
-/// affordance. A plain click opens the transcript in the default editor;
-/// the context menu additionally offers "Reveal in Finder". Callers only
+/// AB-237: renders the session's JSONL transcript as a clickable affordance.
+/// A plain click opens the transcript in the default editor; the context menu
+/// additionally offers "Reveal in Finder" and "Copy Path". Callers only
 /// instantiate this when a transcript path is actually known.
+///
+/// AB-285: the visible label is a localized "Transcript" rather than the
+/// `<session-id>.jsonl` filename — the row headline already carries the
+/// workspace, and a 36-character UUID read as developer debris. The full
+/// path stays one hover (tooltip) or one context-menu click away.
 private struct TranscriptAffordance: View {
     let path: String
-    let label: String
+    let workspace: String
     let lang: LanguageManager
     @State private var isHovered = false
 
@@ -3549,22 +3557,28 @@ private struct TranscriptAffordance: View {
                 Image(systemName: "doc.text")
                     .font(.system(size: 9.5, weight: .medium))
                     .accessibilityHidden(true)
-                Text(label)
-                    .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                Text(lang.t("island.transcript.label"))
+                    .font(.system(size: 10.5, weight: .medium))
                     .lineLimit(1)
-                    .truncationMode(.middle)
             }
             .foregroundStyle(.white.opacity(isHovered ? 0.62 : 0.4))
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
         .help(path)
+        // The visible label is now the same word on every row, so VoiceOver
+        // gets the workspace too — otherwise several expanded rows all
+        // announce an identical "Transcript".
+        .accessibilityLabel(lang.t("a11y.transcript", workspace))
         .contextMenu {
             Button(lang.t("island.transcript.open")) {
                 openTranscriptFile(at: path)
             }
             Button(lang.t("island.transcript.reveal")) {
                 revealTranscriptFileInFinder(at: path)
+            }
+            Button(lang.t("island.transcript.copyPath")) {
+                copyTranscriptPath(path)
             }
         }
     }
@@ -3593,4 +3607,13 @@ private func revealTranscriptFileInFinder(at path: String) {
     if fileManager.fileExists(atPath: directoryURL.path) {
         NSWorkspace.shared.open(directoryURL)
     }
+}
+
+/// Puts the full transcript path — session-id filename included — on the
+/// clipboard, so the identifier the label no longer spells out stays one
+/// click away for debugging. Same pasteboard pattern as the copyable command
+/// rows in `SettingsView.swift`.
+private func copyTranscriptPath(_ path: String) {
+    NSPasteboard.general.clearContents()
+    NSPasteboard.general.setString(path, forType: .string)
 }
