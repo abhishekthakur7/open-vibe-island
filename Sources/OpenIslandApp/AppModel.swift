@@ -33,6 +33,7 @@ final class AppModel {
     private static let legacyIslandSessionSortDefaultsKey = "appearance.island.v8.sessionSort"
     private static let legacyCompletedStaleThresholdDefaultsKey = "appearance.island.v8.completedStaleThreshold"
     private static let appearanceProfileSettingsDefaultsKey = "appearance.island.v8.settingsProfile"
+    private static let islandThemeDefaultsKey = "appearance.island.v8.theme"
 
     private static let syntheticClaudeSessionPrefix = "claude-process:"
     private static let liveSessionStalenessWindow: TimeInterval = 15 * 60
@@ -432,6 +433,25 @@ final class AppModel {
         }
     }
 
+    /// The active island theme, selected globally rather than per display
+    /// profile (a theme is a whole visual identity, not a per-screen tweak).
+    /// Persisted as its stable `id`; resolution — including the fallback for a
+    /// missing or unknown id — lives in `ThemeRegistry`, so this is always kept
+    /// as a known id (`init` normalizes what it loads).
+    var islandThemeID: String = ThemeRegistry.default.id {
+        didSet {
+            guard hasFinishedInit, islandThemeID != oldValue else { return }
+            UserDefaults.standard.set(islandThemeID, forKey: Self.islandThemeDefaultsKey)
+        }
+    }
+
+    /// The resolved active theme. `@Observable` makes reads of `islandThemeID`
+    /// dependencies, so flipping the theme re-renders the live overlay with the
+    /// new tokens and slot factories immediately — no app restart.
+    var islandTheme: any IslandTheme {
+        ThemeRegistry.theme(id: islandThemeID)
+    }
+
     private var notchAppearancePreferences = IslandAppearancePreferences() {
         didSet {
             guard notchAppearancePreferences != oldValue else { return }
@@ -746,6 +766,11 @@ final class AppModel {
         appearanceSettingsProfile = IslandAppearanceDisplayProfile(
             rawValue: UserDefaults.standard.string(forKey: Self.appearanceProfileSettingsDefaultsKey) ?? ""
         ) ?? .topBar
+        // Normalize to a known id so `islandThemeID` is never garbage; an
+        // unknown or missing persisted value resolves to the registry default.
+        islandThemeID = ThemeRegistry.theme(
+            id: UserDefaults.standard.string(forKey: Self.islandThemeDefaultsKey)
+        ).id
         notchAppearancePreferences = Self.loadAppearancePreferences(for: .notch)
         topBarAppearancePreferences = Self.loadAppearancePreferences(for: .topBar)
         watchNotificationEnabled = UserDefaults.standard.bool(forKey: Self.watchNotificationEnabledKey)

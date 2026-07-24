@@ -151,7 +151,7 @@ struct SettingsView: View {
             case .shortcuts:
                 ShortcutsSettingsPane(model: model)
             case .lab:
-                PlaceholderSettingsPane(model: model, titleKey: "settings.tab.lab", subtitleKey: "settings.lab.comingSoon")
+                LabSettingsPane(model: model)
             case .about:
                 AboutSettingsPane(model: model)
             }
@@ -1166,6 +1166,40 @@ struct WatchSettingsPane: View {
 }
 
 // MARK: - Placeholder
+
+// MARK: - Lab
+
+/// AB-299: a temporary theme switch for testing the theme runtime. The real,
+/// designed appearance picker lands in a later ticket (AB-305); this just
+/// exercises the selection → persistence → live-re-render path. With only
+/// Classic registered today it offers a single option, and new themes appear
+/// here automatically as they're added to `ThemeRegistry`.
+struct LabSettingsPane: View {
+    var model: AppModel
+
+    private var lang: LanguageManager { model.lang }
+
+    var body: some View {
+        Form {
+            Section {
+                Picker(lang.t("settings.lab.theme.title"), selection: Binding(
+                    get: { model.islandThemeID },
+                    set: { model.islandThemeID = $0 }
+                )) {
+                    ForEach(ThemeRegistry.all, id: \.id) { theme in
+                        Text(theme.name(lang)).tag(theme.id)
+                    }
+                }
+            } header: {
+                Text(lang.t("settings.lab.theme.section"))
+            } footer: {
+                Text(lang.t("settings.lab.theme.note"))
+            }
+        }
+        .formStyle(.grouped)
+        .navigationTitle(lang.t("settings.tab.lab"))
+    }
+}
 
 struct PlaceholderSettingsPane: View {
     var model: AppModel

@@ -38,6 +38,10 @@ struct IslandNotificationCard: View {
 
     @Environment(\.islandTokens) private var tokens
 
+    /// AB-299: the card's single row is built through the active theme's
+    /// `sessionRow` factory. Classic returns the same `IslandSessionRow`.
+    @Environment(\.islandTheme) private var theme
+
     var body: some View {
         cardContent
             .padding(.vertical, 2)
@@ -71,7 +75,7 @@ struct IslandNotificationCard: View {
                     presentation: .notification,
                     isInteractive: isInteractive
                 ) { isHighlighted in
-                    IslandSessionRow(
+                    theme.sessionRow(
                         session: session,
                         stateIndicator: stateIndicator,
                         completedStaleThreshold: completedStaleThreshold,

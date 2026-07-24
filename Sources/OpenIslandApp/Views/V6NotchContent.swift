@@ -147,9 +147,16 @@ struct V6RightSlotView: View {
 private struct AgentsGridBody: View {
     let cells: [AgentGridCell]
 
+    /// AB-299: the matrix shape comes from the active theme's grid strategy.
+    /// Classic delegates straight back to the `V6RightSlotView` statics (which
+    /// stay the single implementation the width math and `AgentsGridLayoutTests`
+    /// share), so its layout is unchanged.
+    @Environment(\.islandTheme) private var theme
+
     var body: some View {
-        let rowSizes = V6RightSlotView.balancedRows(cells.count)
-        let geom = V6RightSlotView.cellGeometry(rowCount: rowSizes.count)
+        let geometry = theme.agentsGridGeometry
+        let rowSizes = geometry.balancedRows(cells.count)
+        let geom = geometry.cellGeometry(rowSizes.count)
         let rows = V6RightSlotView.splitIntoRows(cells, rowSizes: rowSizes)
 
         VStack(spacing: geom.gap) {

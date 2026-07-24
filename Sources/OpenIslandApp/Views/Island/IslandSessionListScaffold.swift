@@ -39,6 +39,12 @@ struct IslandSessionListScaffold: View {
 
     @Environment(\.islandTokens) private var tokens
 
+    /// AB-299: rows are built through the active theme's `sessionRow` factory
+    /// so a theme can supply its own row without re-implementing the list
+    /// scaffold. Classic returns the same `IslandSessionRow` this used to
+    /// instantiate directly.
+    @Environment(\.islandTheme) private var theme
+
     var body: some View {
         // AB-228: the header and the row list each own their own small
         // periodic tick instead of sharing one `TimelineView` that wrapped
@@ -74,7 +80,7 @@ struct IslandSessionListScaffold: View {
 
                 ForEach(section.sessions) { session in
                     SessionRowContainer(isInteractive: isInteractive) { isHighlighted in
-                        IslandSessionRow(
+                        theme.sessionRow(
                             session: session,
                             stateIndicator: stateIndicator,
                             completedStaleThreshold: completedStaleThreshold,
@@ -82,6 +88,7 @@ struct IslandSessionListScaffold: View {
                             useDrawingGroup: isInteractive,
                             isInteractive: isInteractive,
                             isHighlighted: isHighlighted,
+                            presentation: .list,
                             sideInset: sideInset,
                             lang: lang,
                             actions: makeActions(session),
