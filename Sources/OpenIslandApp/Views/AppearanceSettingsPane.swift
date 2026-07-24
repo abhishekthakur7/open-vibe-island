@@ -1151,18 +1151,21 @@ private struct SessionListLivePreviewRow: View {
 
                 Spacer(minLength: 10)
 
-                HStack(spacing: 6) {
+                HStack(spacing: IslandSessionRowMetrics.badgeSpacing) {
                     agentChip
                     sideBadge(item.terminal)
                     Text(item.age)
                         .font(.system(size: 10.5, weight: .medium, design: .monospaced))
                         .foregroundStyle(V6Palette.paper.opacity(item.phase == .idle ? 0.32 : 0.45))
-                        .frame(minWidth: 30, alignment: .trailing)
+                        .frame(minWidth: IslandSessionRowMetrics.ageColumnWidth, alignment: .trailing)
 
                     Image(systemName: item.phase == .idle ? "chevron.right" : "chevron.down")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(V6Palette.paper.opacity(item.phase == .idle ? 0.42 : 0.68))
-                        .frame(width: 28, height: 28)
+                        .frame(
+                            width: IslandSessionRowMetrics.detailToggleColumnWidth,
+                            height: IslandSessionRowMetrics.trailingControlHeight
+                        )
                         .background(
                             Circle()
                                 .fill(.white.opacity(item.phase == .idle ? 0.02 : 0.045))
@@ -1218,6 +1221,7 @@ private struct SessionListLivePreviewRow: View {
         Text(item.agentShort)
             .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
             .foregroundStyle(item.agentColor)
+            .frame(minWidth: IslandSessionRowMetrics.agentTitleWidth)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(item.agentColor.opacity(0.13), in: Capsule())
