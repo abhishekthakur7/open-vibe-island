@@ -3,13 +3,6 @@ import SwiftUI
 @preconcurrency import MarkdownUI
 import OpenIslandCore
 
-private struct NotificationContentHeightKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
-    }
-}
-
 /// Measures the full (non-notification) opened surface — header, session
 /// rows, and footer combined — so `OverlayPanelController` can size the
 /// window from real rendered content instead of hand-estimated per-phase
@@ -31,7 +24,10 @@ private struct ContentHeightKey: PreferenceKey {
 
 /// Auto-height container: renders content directly (auto-sizing).
 /// When content exceeds maxHeight, wraps in ScrollView at fixed maxHeight.
-private struct AutoHeightScrollView<Content: View>: View {
+///
+/// AB-298: internal (not `private`) so the extracted `IslandSessionListScaffold`
+/// slot component can reuse the same measured-height + capped-scroll container.
+struct AutoHeightScrollView<Content: View>: View {
     let maxHeight: CGFloat
     @ViewBuilder let content: () -> Content
     @State private var contentHeight: CGFloat = 0
@@ -208,14 +204,6 @@ private struct OptionalNamedAccessibilityAction: ViewModifier {
 // MARK: - Main island view
 
 struct IslandPanelView: View {
-    private static let headerControlButtonSize: CGFloat = 22
-    private static let headerControlSpacing: CGFloat = 8
-    private static let headerHorizontalPadding: CGFloat = 18
-    private static let headerTopPadding: CGFloat = 2
-    private static let notchHeaderHorizontalPadding: CGFloat = 46
-    private static let notchLaneSafetyInset: CGFloat = 12
-    private static let minimumRightUsageLaneWidth: CGFloat = 58
-
     var model: AppModel
     private var lang: LanguageManager { model.lang }
 
@@ -302,14 +290,6 @@ struct IslandPanelView: View {
         }
         // Fallback when diagnostics haven't been populated yet.
         return (targetOverlayScreen?.safeAreaInsets.top ?? 0) == 0
-    }
-
-    private var openedHeaderButtonsWidth: CGFloat {
-        (Self.headerControlButtonSize * 3) + (Self.headerControlSpacing * 2)
-    }
-
-    private var openedHeaderHorizontalPadding: CGFloat {
-        usesNotchAwareOpenedHeader ? Self.notchHeaderHorizontalPadding : Self.headerHorizontalPadding
     }
 
     var body: some View {
@@ -673,109 +653,37 @@ struct IslandPanelView: View {
         (targetOverlayScreen ?? NSScreen.screens.first(where: { $0.safeAreaInsets.top > 0 }))?.islandClosedHeight ?? 24
     }
 
-    @ViewBuilder
+    /// AB-298: the header row is now the `IslandHeaderControls` slot component.
+    /// The usage providers and layout inputs are computed here (where `model`
+    /// lives) and passed in by value; the three buttons emit through closures,
+    /// with quit still routed to this view's `showingQuitConfirmation` state.
     private var openedHeaderContent: some View {
-        if usesNotchAwareOpenedHeader {
-            GeometryReader { geometry in
-                let providers = openedUsageProviders
-                let providerGroups = splitUsageProviders(providers)
-                let metrics = openedHeaderMetrics(for: geometry.size.width)
-
-                HStack(spacing: 0) {
-                    usageLaneView(providerGroups.left, alignment: .leading)
-                        .frame(width: metrics.leftUsageWidth, alignment: .leading)
-
-                    Color.clear
-                        .frame(width: metrics.centerGapWidth)
-
-                    HStack(spacing: Self.headerControlSpacing) {
-                        if metrics.rightUsageWidth > 0, !providerGroups.right.isEmpty {
-                            usageLaneView(providerGroups.right, alignment: .trailing)
-                                .frame(width: metrics.rightUsageWidth, alignment: .trailing)
-                        }
-                        openedHeaderButtons
-                    }
-                    .frame(width: metrics.rightLaneWidth, alignment: .trailing)
-                }
-                .padding(.horizontal, openedHeaderHorizontalPadding)
-                .padding(.top, Self.headerTopPadding)
-            }
-        } else {
-            HStack(spacing: 12) {
-                openedUsageSummary
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                openedHeaderButtons
-            }
-            .padding(.leading, openedHeaderHorizontalPadding)
-            .padding(.trailing, openedHeaderHorizontalPadding)
-            .padding(.top, Self.headerTopPadding)
-        }
-    }
-
-    private var openedHeaderButtons: some View {
-        HStack(spacing: Self.headerControlSpacing) {
-            headerIconButton(
-                systemName: model.isSoundMuted ? "speaker.slash.fill" : "speaker.wave.2.fill",
-                tint: model.isSoundMuted ? .orange.opacity(0.92) : .white.opacity(0.62),
-                accessibilityLabel: model.lang.t(model.isSoundMuted ? "a11y.header.unmuteSound" : "a11y.header.muteSound")
-            ) {
-                model.toggleSoundMuted()
-            }
-
-            headerIconButton(
-                systemName: "gearshape.fill",
-                tint: .white.opacity(0.62),
-                accessibilityLabel: model.lang.t("window.settings")
-            ) {
-                model.showSettings()
-            }
-
-            headerIconButton(
-                systemName: "power",
-                tint: .white.opacity(0.62),
-                accessibilityLabel: model.lang.t("settings.about.quitApp")
-            ) {
-                showingQuitConfirmation = true
-            }
-        }
-    }
-
-    /// Every call site passes an explicit, `lang.t`-routed
-    /// `accessibilityLabel` (AB-244) — previously this fell back to the raw
-    /// `systemName` (e.g. "gearshape.fill"), which is exactly the kind of
-    /// label VoiceOver users shouldn't hear.
-    private func headerIconButton(
-        systemName: String,
-        tint: Color,
-        accessibilityLabel: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(tint)
-                .frame(width: Self.headerControlButtonSize, height: Self.headerControlButtonSize)
-                .background(.white.opacity(0.08), in: Circle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(accessibilityLabel)
+        IslandHeaderControls(
+            providers: openedUsageProviders,
+            usesNotchAwareLayout: usesNotchAwareOpenedHeader,
+            targetScreen: targetOverlayScreen,
+            isSoundMuted: model.isSoundMuted,
+            lang: lang,
+            onToggleMute: { model.toggleSoundMuted() },
+            onShowSettings: { model.showSettings() },
+            onQuit: { showingQuitConfirmation = true }
+        )
     }
 
     private var openedContent: some View {
         VStack(spacing: 8) {
             if !model.hasAnyInstalledAgent {
-                installHooksHint
+                IslandInstallHooksHint(lang: lang, onTap: { model.showOnboarding() })
                     .padding(.horizontal, 18)
                     .padding(.top, 8)
             }
 
             if model.shouldShowSessionBootstrapPlaceholder {
-                sessionBootstrapPlaceholder
+                IslandBootstrapPlaceholder(lang: lang)
                     .padding(.horizontal, 18)
                     .padding(.top, 8)
             } else if model.islandListSessions.isEmpty {
-                emptyState
+                IslandEmptyState(lang: lang, hasRecentSessions: !model.recentSessions.isEmpty)
                     .padding(.horizontal, 18)
                     .padding(.top, 8)
             } else {
@@ -801,79 +709,6 @@ struct IslandPanelView: View {
         }
     }
 
-    /// Persistent hint at the top of the expanded island while no agent
-    /// hooks are installed. Decoupled from session presence — process
-    /// discovery routinely surfaces sessions even on a freshly cleaned
-    /// install, so the empty-state branch alone never reaches users who
-    /// already run an agent.
-    private var installHooksHint: some View {
-        Button {
-            model.showOnboarding()
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.accentColor)
-                    .accessibilityHidden(true)
-                Text(model.lang.t("island.hint.installHooks"))
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.85))
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.4))
-                    .accessibilityHidden(true)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.accentColor.opacity(0.14))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(Color.accentColor.opacity(0.35), lineWidth: 0.5)
-                    )
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var sessionBootstrapPlaceholder: some View {
-        VStack(spacing: 12) {
-            Spacer()
-            ProgressView()
-                .progressViewStyle(.circular)
-                .tint(.white.opacity(0.7))
-                .scaleEffect(0.8)
-            Text(model.lang.t("island.checkingTerminals"))
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.white.opacity(0.58))
-            Text(model.lang.t("island.terminalOwnership"))
-                .font(.system(size: 12))
-                .foregroundStyle(.white.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
-            Spacer()
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private var emptyState: some View {
-        VStack(spacing: 12) {
-            Spacer()
-            Text(model.lang.t("island.noTerminals"))
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.white.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
-            Text(model.recentSessions.isEmpty
-                ? model.lang.t("island.startAgent")
-                : model.lang.t("island.recentSessions"))
-                .font(.system(size: 12))
-                .foregroundStyle(.white.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
-            Spacer()
-        }
-        .frame(maxWidth: .infinity)
-    }
-
     private var actionableSessionID: String? {
         model.islandSurface.sessionID
     }
@@ -883,366 +718,89 @@ struct IslandPanelView: View {
         model.notchOpenReason == .notification && actionableSessionID != nil
     }
 
-    /// Cap for the scrollable session-row region — the one intentional
-    /// height cap left in the opened surface (long lists scroll instead of
-    /// growing the window indefinitely). This used to also live, duplicated,
-    /// as `OverlayPanelController.maxSessionListHeight`, with a comment
-    /// admitting the two had to be hand-kept in sync; now the controller
-    /// only reads the real measured height, so this is the single source of
-    /// truth (AB-228).
-    private static let maxSessionListHeight: CGFloat = 560
-
     private var sessionListSideInset: CGFloat {
         usesNotchAwareOpenedHeader ? 46 : 16
     }
 
+    /// AB-298: per-row action surface for the notification card. Built here,
+    /// where `model` lives, and handed to `IslandNotificationCard` via its
+    /// `makeActions` closure. No `dismiss` — the notification card isn't
+    /// dismissible.
+    private func notificationRowActions(for session: AgentSession) -> RowActions {
+        RowActions(
+            approve: { model.approvePermission(for: session.id, action: $0) },
+            answer: { model.answerQuestion(for: session.id, answer: $0) },
+            reply: TerminalTextSender.canReply(to: session, enabled: model.completionReplyEnabled)
+                ? { model.replyToSession(session, text: $0) } : nil,
+            jump: { model.jumpToSession(session) }
+        )
+    }
+
+    /// AB-298: per-row action surface for the session list. Same as the
+    /// notification card's, plus `dismiss` — available on every list row.
+    private func listRowActions(for session: AgentSession) -> RowActions {
+        RowActions(
+            approve: { model.approvePermission(for: session.id, action: $0) },
+            answer: { model.answerQuestion(for: session.id, answer: $0) },
+            reply: TerminalTextSender.canReply(to: session, enabled: model.completionReplyEnabled)
+                ? { model.replyToSession(session, text: $0) } : nil,
+            jump: { model.jumpToSession(session) },
+            // AB-237: dismiss is available on every session row (previously
+            // gated to `isRemote` even though `dismissSession` already works
+            // for any session id — see `SessionState.dismissSession` /
+            // `isDismissedByUser` for the undo-safe suppress-not-tombstone
+            // semantics).
+            dismiss: { model.dismissSession(session.id) }
+        )
+    }
+
+    /// AB-298: routes to the extracted `IslandNotificationCard` (single
+    /// actionable session, opened by a notification) or the extracted
+    /// `IslandSessionListScaffold` (the full grouped list). Every model read
+    /// is resolved here and handed in by value; each surface builds its rows
+    /// from the `makeActions` closures above.
     private var sessionList: some View {
         Group {
             if isNotificationMode {
-                // Notification mode: NO ScrollView — content sizes naturally.
-                notificationCardContent
-                    .padding(.vertical, 2)
-                    .onHover { hovering in
-                        if hovering {
-                            model.notePointerInsideIslandSurface()
-                        } else {
-                            model.handlePointerExitedIslandSurface()
-                        }
-                    }
-                    .background(
-                        GeometryReader { geo in
-                            Color.clear.preference(
-                                key: NotificationContentHeightKey.self,
-                                value: geo.size.height
-                            )
-                        }
-                    )
-                    .onPreferenceChange(NotificationContentHeightKey.self) { height in
-                        if height > 0 {
-                            model.measuredNotificationContentHeight = height
-                        }
-                    }
-            } else {
-                // AB-228: the header and the row list each own their own
-                // small periodic tick instead of sharing one `TimelineView`
-                // that wrapped (and rebuilt) header + rows + footer together
-                // every 30s. The header's tick keeps its aggregate counts
-                // and the "just done → idle" section regrouping fresh; each
-                // row (see `IslandSessionRow`) separately owns the much
-                // smaller job of refreshing its own age badge / presence, so
-                // a row updating doesn't ripple into the header or its
-                // siblings, and vice versa.
-                VStack(spacing: 0) {
-                    TimelineView(.periodic(from: .now, by: 30)) { context in
-                        sessionPanelHeader(referenceDate: context.date)
-                    }
-
-                    AutoHeightScrollView(maxHeight: Self.maxSessionListHeight) {
-                        TimelineView(.periodic(from: .now, by: 30)) { _ in
-                            sessionRowsContent()
-                        }
-                    }
-
-                    sessionPanelFooter
-                }
-                .padding(.vertical, 2)
-            }
-        }
-    }
-
-    /// Single actionable session shown when the panel was opened by a
-    /// notification — plus the "show all N" affordance when other sessions
-    /// exist. (The list/section rendering below used to live in this same
-    /// function behind an `isNotificationMode` branch that could never
-    /// actually be reached from here — `sessionList` only calls this helper
-    /// when already in notification mode — so it's been dropped rather than
-    /// carried forward as dead code.)
-    @ViewBuilder
-    private var notificationCardContent: some View {
-        VStack(spacing: 0) {
-            if let session = model.activeIslandCardSession {
-                SessionRowContainer(
-                    presentation: .notification,
-                    isInteractive: model.notchStatus == .opened
-                ) { isHighlighted in
-                    IslandSessionRow(
-                        session: session,
-                        stateIndicator: model.islandSessionStateIndicator,
-                        completedStaleThreshold: model.completedStaleThreshold.seconds,
-                        isActionable: true,
-                        useDrawingGroup: model.notchStatus == .opened,
-                        isInteractive: model.notchStatus == .opened,
-                        isHighlighted: isHighlighted,
-                        presentation: .notification,
-                        sideInset: sessionListSideInset,
-                        lang: model.lang,
-                        actions: RowActions(
-                            approve: { model.approvePermission(for: session.id, action: $0) },
-                            answer: { model.answerQuestion(for: session.id, answer: $0) },
-                            reply: TerminalTextSender.canReply(to: session, enabled: model.completionReplyEnabled)
-                                ? { model.replyToSession(session, text: $0) } : nil,
-                            jump: { model.jumpToSession(session) }
-                        ),
-                        keyboardCoordinator: model.overlay,
-                        pulseClock: model.pulseClock
-                    )
-                }
-                .id(notificationCardIdentity(for: session))
-
-                if model.allSessions.count > 1 {
-                    Button {
+                IslandNotificationCard(
+                    session: model.activeIslandCardSession,
+                    isInteractive: model.notchStatus == .opened,
+                    stateIndicator: model.islandSessionStateIndicator,
+                    completedStaleThreshold: model.completedStaleThreshold.seconds,
+                    sideInset: sessionListSideInset,
+                    totalSessionCount: model.allSessions.count,
+                    lang: lang,
+                    keyboardCoordinator: model.overlay,
+                    pulseClock: model.pulseClock,
+                    makeActions: { notificationRowActions(for: $0) },
+                    onShowAll: { session in
                         let isCompletion = session.phase == .completed
                         model.expandNotificationToSessionList(clearExpansion: isCompletion)
-                    } label: {
-                        Text(model.lang.t("island.showAll", model.allSessions.count))
-                            .font(.system(size: 10.5, weight: .medium))
-                            .foregroundStyle(.white.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.horizontal, sessionListSideInset)
-                            .padding(.top, 6)
-                            .padding(.bottom, 2)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
-    private func notificationCardIdentity(for session: AgentSession) -> String {
-        switch session.phase {
-        case .waitingForApproval:
-            return "\(session.id)|approval|\(session.permissionRequest?.id.uuidString ?? "none")"
-        case .waitingForAnswer:
-            return "\(session.id)|question|\(session.questionPrompt?.id.uuidString ?? "none")"
-        case .completed:
-            return "\(session.id)|completed|\(session.updatedAt.timeIntervalSinceReferenceDate)"
-        case .running:
-            return "\(session.id)|running"
-        }
-    }
-
-    @ViewBuilder
-    private func sessionRowsContent() -> some View {
-        ForEach(model.islandSessionSections) { section in
-            VStack(alignment: .leading, spacing: 0) {
-                if model.islandSessionGroup != .none {
-                    sessionSectionHeader(section)
-                }
-
-                ForEach(section.sessions) { session in
-                    SessionRowContainer(isInteractive: model.notchStatus == .opened) { isHighlighted in
-                        IslandSessionRow(
-                            session: session,
-                            stateIndicator: model.islandSessionStateIndicator,
-                            completedStaleThreshold: model.completedStaleThreshold.seconds,
-                            isActionable: session.phase.requiresAttention || session.id == actionableSessionID,
-                            useDrawingGroup: model.notchStatus == .opened,
-                            isInteractive: model.notchStatus == .opened,
-                            isHighlighted: isHighlighted,
-                            sideInset: sessionListSideInset,
-                            lang: model.lang,
-                            actions: RowActions(
-                                approve: { model.approvePermission(for: session.id, action: $0) },
-                                answer: { model.answerQuestion(for: session.id, answer: $0) },
-                                reply: TerminalTextSender.canReply(to: session, enabled: model.completionReplyEnabled)
-                                    ? { model.replyToSession(session, text: $0) } : nil,
-                                jump: { model.jumpToSession(session) },
-                                // AB-237: dismiss is available on every session row
-                                // (previously gated to `isRemote` even though
-                                // `dismissSession` already works for any session id —
-                                // see `SessionState.dismissSession` / `isDismissedByUser`
-                                // for the undo-safe suppress-not-tombstone semantics).
-                                dismiss: { model.dismissSession(session.id) }
-                            ),
-                            keyboardCoordinator: model.overlay,
-                            pulseClock: model.pulseClock
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    private func sessionPanelHeader(referenceDate: Date) -> some View {
-        let overview = sessionOverviewItems(referenceDate: referenceDate)
-
-        return HStack(spacing: 8) {
-            Text(lang.t("island.sessionList.title").uppercased())
-                .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
-                .tracking(1.4)
-                .foregroundStyle(tokens.colors.paper.opacity(0.55))
-
-            ViewThatFits(in: .horizontal) {
-                sessionOverviewView(overview, compact: false)
-                sessionOverviewView(overview, compact: true)
-            }
-
-            Spacer(minLength: 0)
-        }
-        .padding(.leading, sessionListSideInset)
-        .padding(.trailing, sessionListSideInset)
-        .frame(height: 36)
-        .accessibilityElement(children: .combine)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(.white.opacity(tokens.colors.hairline(increaseContrast: increasesContrast)))
-                .frame(height: 1)
-        }
-    }
-
-    private var sessionPanelFooter: some View {
-        Color.clear
-            .frame(height: 10)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(.white.opacity(tokens.colors.hairline(increaseContrast: increasesContrast)))
-                .frame(height: 1)
-        }
-    }
-
-    private func sessionOverviewItems(referenceDate: Date) -> [SessionOverviewItem] {
-        let sessions = model.islandListSessions
-        guard !sessions.isEmpty else { return [] }
-
-        let threshold = model.completedStaleThreshold.seconds
-        let waiting = sessions.filter(\.phase.requiresAttention).count
-        let running = sessions.filter { $0.phase == .running }.count
-        let done = sessions.filter {
-            $0.phase == .completed
-                && !isIdleSessionOverviewItem($0, referenceDate: referenceDate, threshold: threshold)
-        }.count
-        let idle = sessions.filter {
-            isIdleSessionOverviewItem($0, referenceDate: referenceDate, threshold: threshold)
-        }.count
-
-        return [
-            SessionOverviewItem(id: "total", title: lang.t("island.sessionOverview.total"), compactTitle: "", count: sessions.count, tint: nil),
-            SessionOverviewItem(id: "waiting", title: lang.t("island.sessionOverview.waiting"), compactTitle: lang.t("island.sessionOverview.waitingCompact"), count: waiting, tint: tokens.colors.statusWaitingAggregate),
-            SessionOverviewItem(id: "running", title: lang.t("island.sessionOverview.running"), compactTitle: lang.t("island.sessionOverview.runningCompact"), count: running, tint: tokens.colors.statusRunning),
-            SessionOverviewItem(id: "done", title: lang.t("island.sessionOverview.done"), compactTitle: lang.t("island.sessionOverview.done"), count: done, tint: tokens.colors.statusCompleted),
-            SessionOverviewItem(id: "idle", title: lang.t("island.sessionOverview.idle"), compactTitle: lang.t("island.sessionOverview.idle"), count: idle, tint: tokens.colors.statusIdle),
-        ].filter { $0.id == "total" || $0.count > 0 }
-    }
-
-    private func isIdleSessionOverviewItem(
-        _ session: AgentSession,
-        referenceDate: Date,
-        threshold: TimeInterval
-    ) -> Bool {
-        guard session.phase == .completed else { return false }
-        return session.isStaleCompletedForIsland(at: referenceDate, threshold: threshold)
-            || session.islandPresence(at: referenceDate) == .inactive
-    }
-
-    private func sessionOverviewView(_ items: [SessionOverviewItem], compact: Bool) -> some View {
-        HStack(spacing: compact ? 7 : 9) {
-            ForEach(items) { item in
-                sessionOverviewMetric(item, compact: compact)
-            }
-        }
-        .lineLimit(1)
-        .fixedSize(horizontal: true, vertical: false)
-        // AB-244: no interactive content here — the per-metric tint dots
-        // are purely decorative (`.accessibilityHidden` below), so VoiceOver
-        // reads this whole strip as one sentence ("5 total, 2 waiting, 1
-        // running…") instead of stopping on every dot/count pair.
-        .accessibilityElement(children: .combine)
-    }
-
-    private func sessionOverviewMetric(_ item: SessionOverviewItem, compact: Bool) -> some View {
-        HStack(spacing: 4) {
-            if let tint = item.tint {
-                Circle()
-                    .fill(tint)
-                    .frame(width: 5.5, height: 5.5)
-                    .accessibilityHidden(true)
-            }
-
-            Text(sessionOverviewMetricTitle(item, compact: compact))
-                .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
-                .foregroundStyle(
-                    item.tint == nil
-                        ? tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast))
-                        : tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast))
+                    },
+                    onPointerInside: { model.notePointerInsideIslandSurface() },
+                    onPointerExited: { model.handlePointerExitedIslandSurface() },
+                    onMeasuredHeight: { model.measuredNotificationContentHeight = $0 }
                 )
-        }
-    }
-
-    private func sessionOverviewMetricTitle(_ item: SessionOverviewItem, compact: Bool) -> String {
-        if item.id == "total" {
-            return compact ? "\(item.count)" : "\(item.count) \(item.title)"
-        }
-
-        return "\(item.count) \(compact ? item.compactTitle : item.title)"
-    }
-
-    private func sessionSectionHeader(_ section: IslandSessionSection) -> some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(sectionTint(for: section))
-                .frame(width: 7, height: 7)
-                .accessibilityHidden(true)
-            Text(sessionSectionTitle(for: section).uppercased())
-                .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
-                .tracking(0.4)
-                .foregroundStyle(sectionLabelColor(for: section))
-            Text("\(section.sessions.count)")
-                .font(.system(size: 10.5, weight: .medium, design: .monospaced))
-                .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
-            Spacer(minLength: 0)
-        }
-        .padding(.leading, sessionListSideInset)
-        .padding(.trailing, sessionListSideInset)
-        .padding(.top, 10)
-        .padding(.bottom, 7)
-        .background(Color.white.opacity(0.008))
-        .accessibilityElement(children: .combine)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(.white.opacity(tokens.colors.hairline(increaseContrast: increasesContrast)))
-                .frame(height: 1)
-        }
-    }
-
-    private func sectionTint(for section: IslandSessionSection) -> Color {
-        guard let first = section.sessions.first else { return tokens.colors.statusIdle }
-        if section.id == "state-idle" { return tokens.colors.statusIdle }
-        return tokens.colors.statusTint(for: first.phase, outcome: first.outcome)
-    }
-
-    private func sessionSectionTitle(for section: IslandSessionSection) -> String {
-        if section.title.hasPrefix("island.") {
-            return lang.t(section.title)
-        }
-        return section.title
-    }
-
-    private func sectionLabelColor(for section: IslandSessionSection) -> Color {
-        switch section.id {
-        case "state-approval":
-            return tokens.colors.statusWaitingForApproval.opacity(0.86)
-        case "state-answer":
-            return tokens.colors.statusWaitingForAnswer.opacity(0.86)
-        default:
-            return tokens.colors.paper.opacity(0.7)
+            } else {
+                IslandSessionListScaffold(
+                    sessions: model.islandListSessions,
+                    sections: model.islandSessionSections,
+                    group: model.islandSessionGroup,
+                    stateIndicator: model.islandSessionStateIndicator,
+                    completedStaleThreshold: model.completedStaleThreshold.seconds,
+                    sideInset: sessionListSideInset,
+                    isInteractive: model.notchStatus == .opened,
+                    actionableSessionID: actionableSessionID,
+                    lang: lang,
+                    keyboardCoordinator: model.overlay,
+                    pulseClock: model.pulseClock,
+                    makeActions: { listRowActions(for: $0) }
+                )
+            }
         }
     }
 
     // MARK: - Helpers
-
-    @ViewBuilder
-    private var openedUsageSummary: some View {
-        let providers = openedUsageProviders
-
-        if providers.isEmpty == false {
-            ViewThatFits(in: .horizontal) {
-                compactUsageSummaryView(providers, usesShortTitles: false)
-                compactUsageSummaryView(providers, usesShortTitles: true)
-            }
-        } else {
-            Color.clear
-        }
-    }
 
     private var openedUsageProviders: [UsageProviderPresentation] {
         guard model.islandUsageDisplay == .compact else {
@@ -1314,253 +872,6 @@ struct IslandPanelView: View {
         return providers
     }
 
-    private func splitUsageProviders(
-        _ providers: [UsageProviderPresentation]
-    ) -> (left: [UsageProviderPresentation], right: [UsageProviderPresentation]) {
-        switch providers.count {
-        case 0:
-            return ([], [])
-        case 1:
-            return ([providers[0]], [])
-        case 2:
-            return ([providers[0]], [providers[1]])
-        default:
-            let splitIndex = Int(ceil(Double(providers.count) / 2.0))
-            return (
-                Array(providers.prefix(splitIndex)),
-                Array(providers.dropFirst(splitIndex))
-            )
-        }
-    }
-
-    @ViewBuilder
-    private func usageLaneView(
-        _ providers: [UsageProviderPresentation],
-        alignment: Alignment
-    ) -> some View {
-        if providers.isEmpty {
-            Color.clear
-                .frame(maxWidth: .infinity)
-        } else {
-            ViewThatFits(in: .horizontal) {
-                compactUsageSummaryView(providers, usesShortTitles: false)
-                compactUsageSummaryView(providers, usesShortTitles: true)
-            }
-            .frame(maxWidth: .infinity, alignment: alignment)
-        }
-    }
-
-    private func openedHeaderMetrics(for totalWidth: CGFloat) -> OpenedHeaderMetrics {
-        let horizontalPadding = openedHeaderHorizontalPadding
-        let contentWidth = max(0, totalWidth - (horizontalPadding * 2))
-        guard usesNotchAwareOpenedHeader,
-              let screen = targetOverlayScreen else {
-            let rightLaneWidth = min(contentWidth, openedHeaderButtonsWidth + (contentWidth / 2))
-            let leftUsageWidth = max(0, contentWidth - rightLaneWidth)
-            return OpenedHeaderMetrics(
-                leftUsageWidth: leftUsageWidth,
-                centerGapWidth: 0,
-                rightUsageWidth: max(0, rightLaneWidth - openedHeaderButtonsWidth - Self.headerControlSpacing),
-                rightLaneWidth: rightLaneWidth
-            )
-        }
-
-        let panelMinX = screen.frame.midX - (totalWidth / 2)
-        let panelMaxX = panelMinX + totalWidth
-        let contentMinX = panelMinX + horizontalPadding
-        let contentMaxX = panelMaxX - horizontalPadding
-
-        let fallbackNotchHalfWidth = screen.notchSize.width / 2
-        let notchLeftEdge = screen.frame.midX - fallbackNotchHalfWidth
-        let notchRightEdge = screen.frame.midX + fallbackNotchHalfWidth
-        let leftVisibleMaxX = screen.auxiliaryTopLeftArea?.maxX ?? notchLeftEdge
-        let rightVisibleMinX = screen.auxiliaryTopRightArea?.minX ?? notchRightEdge
-
-        let rawLeftWidth = max(0, min(contentMaxX, leftVisibleMaxX) - contentMinX)
-        let rawRightWidth = max(0, contentMaxX - max(contentMinX, rightVisibleMinX))
-
-        let leftUsageWidth = max(0, rawLeftWidth - Self.notchLaneSafetyInset)
-        let rightAvailableWidth = max(0, rawRightWidth - Self.notchLaneSafetyInset)
-        let proposedRightUsageWidth = max(
-            0,
-            rightAvailableWidth - openedHeaderButtonsWidth - Self.headerControlSpacing
-        )
-        let rightUsageWidth = proposedRightUsageWidth >= Self.minimumRightUsageLaneWidth
-            ? proposedRightUsageWidth
-            : 0
-        let rightLaneWidth = min(
-            contentWidth,
-            openedHeaderButtonsWidth
-                + (rightUsageWidth > 0 ? Self.headerControlSpacing + rightUsageWidth : 0)
-        )
-        let centerGapWidth = max(0, contentWidth - leftUsageWidth - rightLaneWidth)
-
-        return OpenedHeaderMetrics(
-            leftUsageWidth: leftUsageWidth,
-            centerGapWidth: centerGapWidth,
-            rightUsageWidth: rightUsageWidth,
-            rightLaneWidth: rightLaneWidth
-        )
-    }
-
-    private func compactUsageSummaryView(
-        _ providers: [UsageProviderPresentation],
-        usesShortTitles: Bool
-    ) -> some View {
-        HStack(spacing: 7) {
-            ForEach(providers) { provider in
-                compactUsageChip(provider, usesShortTitle: usesShortTitles)
-            }
-        }
-        .lineLimit(1)
-        .fixedSize(horizontal: true, vertical: false)
-    }
-
-    private func compactUsageChip(_ provider: UsageProviderPresentation, usesShortTitle: Bool) -> some View {
-        HStack(spacing: 5) {
-            Text(usesShortTitle ? provider.shortTitle : provider.title)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.74))
-
-            Text(provider.peakWindowLabel)
-                .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
-                .foregroundStyle(.white.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
-
-            Text("\(provider.peakUsagePercentage)%")
-                .font(.system(size: 11.5, weight: .bold, design: .monospaced))
-                .foregroundStyle(usageColor(for: provider.peakUsedPercentage))
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(.white.opacity(0.055), in: Capsule())
-        .overlay(
-            Capsule()
-                .strokeBorder(.white.opacity(0.06), lineWidth: 1)
-        )
-        .help(usageHelpText(for: provider))
-        // AB-244: three adjacent `Text`s (title / window / percentage) would
-        // otherwise read as three separate VoiceOver stops — combine into
-        // one chip-level label reusing the same summary already built for
-        // the `.help()` tooltip.
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(usesShortTitle ? provider.shortTitle : provider.title) \(usageHelpText(for: provider))")
-    }
-
-    private func usageHelpText(for provider: UsageProviderPresentation) -> String {
-        provider.windows.map { window in
-            var parts = ["\(window.label) \(window.roundedUsedPercentage)%"]
-            if let resetsAt = window.resetsAt,
-               let remaining = remainingDurationString(until: resetsAt) {
-                parts.append(remaining)
-            }
-            return parts.joined(separator: " ")
-        }
-        .joined(separator: " · ")
-    }
-
-    private func headerPill(_ title: String, tint: Color) -> some View {
-        Text(title)
-            .font(.system(size: 10, weight: .semibold))
-            .foregroundStyle(tint)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(.white.opacity(0.08), in: Capsule())
-    }
-
-    private func usageColor(for percentage: Double) -> Color {
-        switch percentage {
-        case 90...:
-            .red.opacity(0.95)
-        case 70..<90:
-            .orange.opacity(0.95)
-        default:
-            .green.opacity(0.95)
-        }
-    }
-
-    private func remainingDurationString(until date: Date) -> String? {
-        let interval = date.timeIntervalSinceNow
-        guard interval > 0 else {
-            return nil
-        }
-
-        let formatter = DateComponentsFormatter()
-        formatter.unitsStyle = .abbreviated
-
-        if interval >= 86_400 {
-            formatter.allowedUnits = [.day]
-            formatter.maximumUnitCount = 1
-        } else if interval >= 3_600 {
-            formatter.allowedUnits = [.hour, .minute]
-            formatter.maximumUnitCount = 2
-        } else {
-            formatter.allowedUnits = [.minute]
-            formatter.maximumUnitCount = 1
-        }
-
-        return formatter.string(from: interval)
-    }
-}
-
-private struct UsageProviderPresentation: Identifiable {
-    let id: String
-    let title: String
-    let windows: [UsageWindowPresentation]
-
-    var peakWindow: UsageWindowPresentation? {
-        windows.max { lhs, rhs in
-            lhs.usedPercentage < rhs.usedPercentage
-        }
-    }
-
-    var peakWindowLabel: String {
-        peakWindow?.label ?? ""
-    }
-
-    var peakUsedPercentage: Double {
-        peakWindow?.usedPercentage ?? 0
-    }
-
-    var peakUsagePercentage: Int {
-        peakWindow?.roundedUsedPercentage ?? 0
-    }
-
-    var shortTitle: String {
-        switch id {
-        case "claude":
-            "Cl"
-        case "codex":
-            "Cx"
-        default:
-            String(title.prefix(2))
-        }
-    }
-}
-
-private struct UsageWindowPresentation: Identifiable {
-    let id: String
-    let label: String
-    let usedPercentage: Double
-    let resetsAt: Date?
-
-    var roundedUsedPercentage: Int {
-        Int(usedPercentage.rounded())
-    }
-}
-
-private struct OpenedHeaderMetrics {
-    let leftUsageWidth: CGFloat
-    let centerGapWidth: CGFloat
-    let rightUsageWidth: CGFloat
-    let rightLaneWidth: CGFloat
-}
-
-private struct SessionOverviewItem: Identifiable {
-    let id: String
-    let title: String
-    let compactTitle: String
-    let count: Int
-    let tint: Color?
 }
 
 // MARK: - Session row (opened state)
@@ -1605,7 +916,9 @@ private struct PulsingStatusDot: View {
     }
 }
 
-private struct IslandSessionRow: View {
+/// AB-298: internal (not `private`) so the extracted `IslandNotificationCard`
+/// and `IslandSessionListScaffold` slot components can render session rows.
+struct IslandSessionRow: View {
     let session: AgentSession
     var stateIndicator: IslandSessionStateIndicator = .animatedDot
     var completedStaleThreshold: TimeInterval = AgentSession.staleCompletedDisplayThreshold
