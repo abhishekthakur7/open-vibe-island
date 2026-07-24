@@ -728,7 +728,7 @@ final class ProcessMonitoringCoordinator {
     ) -> AgentSession {
         let workingDirectory = process.workingDirectory
         let workspaceName = workingDirectory.map { WorkspaceNameResolver.workspaceName(for: $0) } ?? "Workspace"
-        let terminalApp = supportedTerminalApp(for: process.terminalApp) ?? "Unknown"
+        let terminalApp = supportedTerminalApp(for: process.terminalApp) ?? JumpTarget.unknownTerminalApp
         let identity = processIdentityKey(process)
 
         var session = AgentSession(
@@ -805,7 +805,7 @@ final class ProcessMonitoringCoordinator {
         let workspaceName = workingDirectory.map { WorkspaceNameResolver.workspaceName(for: $0) } ?? "Workspace"
         let terminalApp = supportedTerminalApp(for: process.terminalApp)
             ?? process.terminalApp?.trimmingCharacters(in: .whitespacesAndNewlines)
-            ?? "Unknown"
+            ?? JumpTarget.unknownTerminalApp
         let sessionID = sessionID ?? cursorSyntheticSessionID(for: process)
 
         var session = AgentSession(
@@ -1156,7 +1156,7 @@ final class ProcessMonitoringCoordinator {
             let terminalApp = supportedTerminalApp(for: process.terminalApp)
                 ?? process.terminalApp?.trimmingCharacters(in: .whitespacesAndNewlines)
                 ?? session.jumpTarget?.terminalApp
-                ?? "Unknown"
+                ?? JumpTarget.unknownTerminalApp
             let existingPaneTitle = session.jumpTarget?.paneTitle
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             let paneTitle: String

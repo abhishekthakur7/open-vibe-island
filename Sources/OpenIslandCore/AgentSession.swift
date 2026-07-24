@@ -148,6 +148,15 @@ public enum SessionOutcome: String, Codable, Sendable, CaseIterable {
 }
 
 public struct JumpTarget: Equatable, Codable, Sendable {
+    /// Sentinel stamped into `terminalApp` when the host application could not
+    /// be classified — no `TERM_PROGRAM`, no recognizable env marker, or a
+    /// session rediscovered from a `.jsonl` transcript with no live process to
+    /// inspect. Kept internally because the jump path reads it as
+    /// "unclassifiable" and falls back to the Finder cwd instead of activating
+    /// an arbitrary terminal; presentation code hides it because it carries no
+    /// host information.
+    public static let unknownTerminalApp = "Unknown"
+
     public var terminalApp: String
     public var workspaceName: String
     public var paneTitle: String

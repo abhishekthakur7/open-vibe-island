@@ -111,7 +111,12 @@ extension AgentSession {
     }
 
     var spotlightTerminalBadge: String? {
-        jumpTarget?.terminalApp
+        guard let terminalApp = jumpTarget?.terminalApp,
+              terminalApp != JumpTarget.unknownTerminalApp else {
+            return nil
+        }
+
+        return terminalApp
     }
 
     var spotlightWorkspaceName: String {

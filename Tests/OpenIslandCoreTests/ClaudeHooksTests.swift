@@ -500,7 +500,7 @@ struct ClaudeHooksTests {
         )
 
         #expect(payload.terminalApp == nil)
-        #expect(payload.defaultJumpTarget.terminalApp == "Unknown")
+        #expect(payload.defaultJumpTarget.terminalApp == JumpTarget.unknownTerminalApp)
     }
 
     /// Verifies a Claude Desktop session is tagged `Claude.app` via the
