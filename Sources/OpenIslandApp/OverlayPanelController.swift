@@ -473,7 +473,7 @@ final class OverlayPanelController {
     }
 
     func contentRect(for model: AppModel, in bounds: NSRect) -> NSRect? {
-        let insets = panelShadowInsets
+        let insets = panelShadowInsets(for: model)
         return NSRect(
             x: bounds.minX + insets.horizontal,
             y: bounds.minY + insets.bottom,
@@ -559,7 +559,7 @@ final class OverlayPanelController {
     /// needs to resize.  All visual transitions are driven purely by SwiftUI
     /// inside this fixed-size window.
     private func panelSize(for model: AppModel?, on screen: NSScreen) -> CGSize {
-        let insets = panelShadowInsets
+        let insets = panelShadowInsets(for: model)
 
         guard let model else {
             return CGSize(
@@ -580,11 +580,17 @@ final class OverlayPanelController {
         )
     }
 
-    /// Constant insets — always opened size since the window never shrinks.
-    private var panelShadowInsets: (horizontal: CGFloat, bottom: CGFloat) {
-        (
-            horizontal: IslandChromeMetrics.openedShadowHorizontalInset,
-            bottom: IslandChromeMetrics.openedShadowBottomInset
+    /// Opened-size shadow insets sourced from the active theme's metric tokens
+    /// (AB-299) — always opened size since the window never shrinks. With
+    /// Classic active `tokens.metrics` equals the legacy `IslandChromeMetrics`
+    /// statics (pinned by `IslandThemeTokensTests`), so the computed panel
+    /// frames are byte-identical to before this ticket. Falls back to Classic
+    /// when there's no model yet (early sizing during panel creation).
+    private func panelShadowInsets(for model: AppModel?) -> (horizontal: CGFloat, bottom: CGFloat) {
+        let metrics = (model?.islandTheme.tokens ?? .classic).metrics
+        return (
+            horizontal: metrics.openedShadowHorizontalInset,
+            bottom: metrics.openedShadowBottomInset
         )
     }
 

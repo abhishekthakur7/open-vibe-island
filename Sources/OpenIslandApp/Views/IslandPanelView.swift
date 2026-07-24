@@ -229,11 +229,16 @@ struct IslandPanelView: View {
     /// enough here.
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
-    /// AB-295: the opened panel's chrome, header and summary read their
-    /// colours, radii, shadow and transition springs from here. One read on
-    /// the owning view covers every `private func`/`private var` builder
-    /// below; nested helper views declare their own.
-    @Environment(\.islandTokens) private var tokens
+    /// AB-299: the whole overlay is composed from the model's active theme.
+    /// `theme` supplies the slot factories, capability flags and grid strategy;
+    /// `tokens` are its `IslandThemeTokens`. Both are read straight off the
+    /// `@Observable` model rather than from `@Environment`, so this view sees
+    /// the live selection (a self-injected environment value wouldn't reach the
+    /// injecting view itself). The overlay root injects both into the
+    /// environment for descendant slot components, which keep reading
+    /// `\.islandTokens` / `\.islandTheme` as before (AB-293…298).
+    private var theme: any IslandTheme { model.islandTheme }
+    private var tokens: IslandThemeTokens { theme.tokens }
 
     private var increasesContrast: Bool { colorSchemeContrast == .increased }
 
@@ -302,6 +307,10 @@ struct IslandPanelView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        // AB-299: inject the active theme (and its tokens) so every descendant
+        // slot component resolves its look through the current selection.
+        .environment(\.islandTheme, theme)
+        .environment(\.islandTokens, tokens)
         .ignoresSafeArea()
         .preferredColorScheme(.dark)
         .alert(model.lang.t("island.quit.confirmTitle"), isPresented: $showingQuitConfirmation) {
@@ -395,7 +404,7 @@ struct IslandPanelView: View {
     private func v6ClosedSurface(showsGlyph: Bool = true) -> some View {
         let layout: V6ClosedLayout = isExternalDisplayPlacement ? .external : .macbook
         let physicalNotchWidth: CGFloat = targetOverlayScreen?.notchSize.width ?? 180
-        V6ClosedPill(
+        theme.closedPill(
             mode: model.islandClosedMode,
             label: model.islandClosedLabel(),
             rightSlot: model.islandClosedRightSlotContent(),
@@ -454,7 +463,7 @@ struct IslandPanelView: View {
             // always rendered (the real overlay used to be a flat opaque fill
             // with neither). Falls back to that original flat ink fill under
             // Reduce Transparency.
-            OpenedSurfaceBackground(reduceTransparency: reduceTransparency)
+            OpenedSurfaceBackground(reduceTransparency: reduceTransparency || !theme.usesVibrancy)
                 .frame(width: openedWidth, height: openedHeight)
                 .clipShape(surfaceShape)
                 .shadow(color: shadow.resolvedColor, radius: shadow.radius, y: shadow.yOffset)
@@ -604,7 +613,7 @@ struct IslandPanelView: View {
             // actually reads as "growing" — never doubles up, because
             // there's only ever one shape instance underneath.
             ZStack {
-                OpenedSurfaceBackground(reduceTransparency: reduceTransparency)
+                OpenedSurfaceBackground(reduceTransparency: reduceTransparency || !theme.usesVibrancy)
                     .opacity(opened ? 1 : 0)
                 tokens.colors.surfaceInk
                     .opacity(opened ? 0 : 1)
@@ -658,7 +667,7 @@ struct IslandPanelView: View {
     /// lives) and passed in by value; the three buttons emit through closures,
     /// with quit still routed to this view's `showingQuitConfirmation` state.
     private var openedHeaderContent: some View {
-        IslandHeaderControls(
+        theme.openedHeader(
             providers: openedUsageProviders,
             usesNotchAwareLayout: usesNotchAwareOpenedHeader,
             targetScreen: targetOverlayScreen,
@@ -673,17 +682,17 @@ struct IslandPanelView: View {
     private var openedContent: some View {
         VStack(spacing: 8) {
             if !model.hasAnyInstalledAgent {
-                IslandInstallHooksHint(lang: lang, onTap: { model.showOnboarding() })
+                theme.installHint(lang: lang, onTap: { model.showOnboarding() })
                     .padding(.horizontal, 18)
                     .padding(.top, 8)
             }
 
             if model.shouldShowSessionBootstrapPlaceholder {
-                IslandBootstrapPlaceholder(lang: lang)
+                theme.bootstrapPlaceholder(lang: lang)
                     .padding(.horizontal, 18)
                     .padding(.top, 8)
             } else if model.islandListSessions.isEmpty {
-                IslandEmptyState(lang: lang, hasRecentSessions: !model.recentSessions.isEmpty)
+                theme.emptyState(lang: lang, hasRecentSessions: !model.recentSessions.isEmpty)
                     .padding(.horizontal, 18)
                     .padding(.top, 8)
             } else {
@@ -762,7 +771,7 @@ struct IslandPanelView: View {
     private var sessionList: some View {
         Group {
             if isNotificationMode {
-                IslandNotificationCard(
+                theme.notificationCard(
                     session: model.activeIslandCardSession,
                     isInteractive: model.notchStatus == .opened,
                     stateIndicator: model.islandSessionStateIndicator,
@@ -782,7 +791,7 @@ struct IslandPanelView: View {
                     onMeasuredHeight: { model.measuredNotificationContentHeight = $0 }
                 )
             } else {
-                IslandSessionListScaffold(
+                theme.sessionList(
                     sessions: model.islandListSessions,
                     sections: model.islandSessionSections,
                     group: model.islandSessionGroup,
@@ -951,6 +960,11 @@ struct IslandSessionRow: View {
     /// `IslandActionButtonStyle` its buttons use) declare their own.
     @Environment(\.islandTokens) private var tokens
 
+    /// AB-299: gates the `ConditionalDrawingGroup` rasterization in `rowBody`.
+    /// Only themes that declare `rowIsDrawingGroupSafe` (Classic does) get the
+    /// off-screen render; a blur/glow theme it would flatten opts out.
+    @Environment(\.islandTheme) private var theme
+
     /// AB-244: coarse type ramp for this row's core reading content
     /// (headline, prompt/activity lines, badges, age). `@ScaledMetric`
     /// tracks the system Dynamic Type / "Larger Text" setting; every literal
@@ -1030,7 +1044,7 @@ struct IslandSessionRow: View {
             }
         }
         .opacity(isStaleCompleted ? 0.7 : 1)
-        .modifier(ConditionalDrawingGroup(enabled: useDrawingGroup && !isActionable))
+        .modifier(ConditionalDrawingGroup(enabled: useDrawingGroup && !isActionable && theme.rowIsDrawingGroupSafe))
         .contentShape(Rectangle())
         .animation(.easeInOut(duration: 0.15), value: isHighlighted)
         // AB-242: status tint (dot fill, leading bar, tinted row background,
