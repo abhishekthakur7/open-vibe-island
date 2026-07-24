@@ -1766,6 +1766,8 @@ private struct IslandSessionRow: View {
                     DismissButton(action: onDismiss, lang: lang)
                 }
             }
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
         }
         .padding(.leading, rowLeadingInset)
         .padding(.trailing, sideInset)

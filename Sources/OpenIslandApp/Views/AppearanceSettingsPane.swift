@@ -1168,6 +1168,8 @@ private struct SessionListLivePreviewRow: View {
                                 .fill(.white.opacity(item.phase == .idle ? 0.02 : 0.045))
                         )
                 }
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
             }
             .padding(.horizontal, rowLeadingPadding)
             .padding(.vertical, 11)
