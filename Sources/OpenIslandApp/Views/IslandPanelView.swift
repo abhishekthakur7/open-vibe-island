@@ -191,7 +191,7 @@ private struct ConditionalDrawingGroup: ViewModifier {
 
 /// AB-244: attaches a named VoiceOver action (rotor entry) only when `name`
 /// is non-nil — e.g. a session row's "Dismiss" action, which only exists
-/// for rows that actually got an `onDismiss` closure.
+/// for rows that actually got a `RowActions.dismiss` closure.
 private struct OptionalNamedAccessibilityAction: ViewModifier {
     let name: String?
     let action: () -> Void
@@ -961,24 +961,32 @@ struct IslandPanelView: View {
     private var notificationCardContent: some View {
         VStack(spacing: 0) {
             if let session = model.activeIslandCardSession {
-                IslandSessionRow(
-                    session: session,
-                    stateIndicator: model.islandSessionStateIndicator,
-                    completedStaleThreshold: model.completedStaleThreshold.seconds,
-                    isActionable: true,
-                    useDrawingGroup: model.notchStatus == .opened,
-                    isInteractive: model.notchStatus == .opened,
+                SessionRowContainer(
                     presentation: .notification,
-                    sideInset: sessionListSideInset,
-                    lang: model.lang,
-                    onApprove: { model.approvePermission(for: session.id, action: $0) },
-                    onAnswer: { model.answerQuestion(for: session.id, answer: $0) },
-                    onReply: TerminalTextSender.canReply(to: session, enabled: model.completionReplyEnabled)
-                        ? { model.replyToSession(session, text: $0) } : nil,
-                    onJump: { model.jumpToSession(session) },
-                    keyboardCoordinator: model.overlay,
-                    pulseClock: model.pulseClock
-                )
+                    isInteractive: model.notchStatus == .opened
+                ) { isHighlighted in
+                    IslandSessionRow(
+                        session: session,
+                        stateIndicator: model.islandSessionStateIndicator,
+                        completedStaleThreshold: model.completedStaleThreshold.seconds,
+                        isActionable: true,
+                        useDrawingGroup: model.notchStatus == .opened,
+                        isInteractive: model.notchStatus == .opened,
+                        isHighlighted: isHighlighted,
+                        presentation: .notification,
+                        sideInset: sessionListSideInset,
+                        lang: model.lang,
+                        actions: RowActions(
+                            approve: { model.approvePermission(for: session.id, action: $0) },
+                            answer: { model.answerQuestion(for: session.id, answer: $0) },
+                            reply: TerminalTextSender.canReply(to: session, enabled: model.completionReplyEnabled)
+                                ? { model.replyToSession(session, text: $0) } : nil,
+                            jump: { model.jumpToSession(session) }
+                        ),
+                        keyboardCoordinator: model.overlay,
+                        pulseClock: model.pulseClock
+                    )
+                }
                 .id(notificationCardIdentity(for: session))
 
                 if model.allSessions.count > 1 {
@@ -1022,29 +1030,34 @@ struct IslandPanelView: View {
                 }
 
                 ForEach(section.sessions) { session in
-                    IslandSessionRow(
-                        session: session,
-                        stateIndicator: model.islandSessionStateIndicator,
-                        completedStaleThreshold: model.completedStaleThreshold.seconds,
-                        isActionable: session.phase.requiresAttention || session.id == actionableSessionID,
-                        useDrawingGroup: model.notchStatus == .opened,
-                        isInteractive: model.notchStatus == .opened,
-                        sideInset: sessionListSideInset,
-                        lang: model.lang,
-                        onApprove: { model.approvePermission(for: session.id, action: $0) },
-                        onAnswer: { model.answerQuestion(for: session.id, answer: $0) },
-                        onReply: TerminalTextSender.canReply(to: session, enabled: model.completionReplyEnabled)
-                            ? { model.replyToSession(session, text: $0) } : nil,
-                        onJump: { model.jumpToSession(session) },
-                        // AB-237: dismiss is available on every session row
-                        // (previously gated to `isRemote` even though
-                        // `dismissSession` already works for any session id —
-                        // see `SessionState.dismissSession` / `isDismissedByUser`
-                        // for the undo-safe suppress-not-tombstone semantics).
-                        onDismiss: { model.dismissSession(session.id) },
-                        keyboardCoordinator: model.overlay,
-                        pulseClock: model.pulseClock
-                    )
+                    SessionRowContainer(isInteractive: model.notchStatus == .opened) { isHighlighted in
+                        IslandSessionRow(
+                            session: session,
+                            stateIndicator: model.islandSessionStateIndicator,
+                            completedStaleThreshold: model.completedStaleThreshold.seconds,
+                            isActionable: session.phase.requiresAttention || session.id == actionableSessionID,
+                            useDrawingGroup: model.notchStatus == .opened,
+                            isInteractive: model.notchStatus == .opened,
+                            isHighlighted: isHighlighted,
+                            sideInset: sessionListSideInset,
+                            lang: model.lang,
+                            actions: RowActions(
+                                approve: { model.approvePermission(for: session.id, action: $0) },
+                                answer: { model.answerQuestion(for: session.id, answer: $0) },
+                                reply: TerminalTextSender.canReply(to: session, enabled: model.completionReplyEnabled)
+                                    ? { model.replyToSession(session, text: $0) } : nil,
+                                jump: { model.jumpToSession(session) },
+                                // AB-237: dismiss is available on every session row
+                                // (previously gated to `isRemote` even though
+                                // `dismissSession` already works for any session id —
+                                // see `SessionState.dismissSession` / `isDismissedByUser`
+                                // for the undo-safe suppress-not-tombstone semantics).
+                                dismiss: { model.dismissSession(session.id) }
+                            ),
+                            keyboardCoordinator: model.overlay,
+                            pulseClock: model.pulseClock
+                        )
+                    }
                 }
             }
         }
@@ -1552,11 +1565,6 @@ private struct SessionOverviewItem: Identifiable {
 
 // MARK: - Session row (opened state)
 
-private enum IslandSessionRowPresentation {
-    case list
-    case notification
-}
-
 /// The animated-dot visual, shared by the static (`pulse: 0`) case in
 /// `IslandSessionRow.statusIndicator(for:)` and by `PulsingStatusDot` below.
 /// Kept as a free function (rather than a method on `IslandSessionRow`) so
@@ -1604,14 +1612,12 @@ private struct IslandSessionRow: View {
     var isActionable: Bool = false
     var useDrawingGroup: Bool = true
     var isInteractive: Bool = true
+    /// Hover highlight, owned by the enclosing `SessionRowContainer` (AB-297).
+    let isHighlighted: Bool
     var presentation: IslandSessionRowPresentation = .list
     var sideInset: CGFloat = 16
     var lang: LanguageManager = .shared
-    var onApprove: ((ApprovalAction) -> Void)?
-    var onAnswer: ((QuestionPromptResponse) -> Void)?
-    var onReply: ((String) -> Void)?
-    let onJump: () -> Void
-    var onDismiss: (() -> Void)?
+    let actions: RowActions
     /// Lets the visible question card register its option-selection state
     /// with `OverlayPanelController`'s keyboard shortcut handler (AB-227).
     var keyboardCoordinator: OverlayUICoordinator?
@@ -1619,7 +1625,6 @@ private struct IslandSessionRow: View {
     /// through to `PulsingStatusDot`; rows that don't animate never touch it.
     var pulseClock: PulseClock?
 
-    @State private var isHighlighted = false
     @State private var detailOverride: Bool?
     @State private var replyText: String = ""
 
@@ -1724,10 +1729,6 @@ private struct IslandSessionRow: View {
         .animation(.easeInOut(duration: 0.2), value: session.outcome)
         .animation(.easeInOut(duration: 0.2), value: presence)
         .onTapGesture(perform: handlePrimaryTap)
-        .onHover { hovering in
-            guard isInteractive, allowsRowHoverHighlight else { return }
-            isHighlighted = hovering
-        }
         .onChange(of: isInteractive) { _, interactive in
             if !interactive {
                 detailOverride = nil
@@ -1780,8 +1781,8 @@ private struct IslandSessionRow: View {
                     .foregroundStyle(summaryAgeColor(for: presence))
                     .frame(minWidth: IslandSessionRowMetrics.ageColumnWidth, alignment: .trailing)
                 detailToggleButton(isOpen: showsDetail)
-                if let onDismiss {
-                    DismissButton(action: onDismiss, lang: lang)
+                if let dismiss = actions.dismiss {
+                    DismissButton(action: dismiss, lang: lang)
                 }
             }
             .lineLimit(1)
@@ -1810,12 +1811,12 @@ private struct IslandSessionRow: View {
         .accessibilityAddTraits(isInteractive ? .isButton : [])
         .accessibilityAction {
             guard isInteractive else { return }
-            onJump()
+            actions.jump()
         }
         .accessibilityAction(named: Text(lang.t(showsDetail ? "a11y.session.collapseDetail" : "a11y.session.expandDetail"))) {
             toggleDetail(currentlyOpen: showsDetail)
         }
-        .modifier(OptionalNamedAccessibilityAction(name: onDismiss != nil ? lang.t("a11y.session.dismiss") : nil, action: { onDismiss?() }))
+        .modifier(OptionalNamedAccessibilityAction(name: actions.dismiss != nil ? lang.t("a11y.session.dismiss") : nil, action: { actions.dismiss?() }))
     }
 
     // MARK: - Accessibility (AB-244)
@@ -2226,7 +2227,7 @@ private struct IslandSessionRow: View {
         // silently indistinguishable from a plain "Completed" row.
         session.outcome != .success
             || !completionMessageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            || onReply != nil
+            || actions.reply != nil
     }
 
     @ViewBuilder
@@ -2306,7 +2307,7 @@ private struct IslandSessionRow: View {
                 terminalApprovalCTA
             } else {
                 HStack(spacing: 8) {
-                    Button(session.permissionRequest?.secondaryActionTitle ?? lang.t("approval.deny")) { onApprove?(.deny) }
+                    Button(session.permissionRequest?.secondaryActionTitle ?? lang.t("approval.deny")) { actions.approve?(.deny) }
                         .buttonStyle(IslandActionButtonStyle(kind: .secondary, expands: true))
                         // AB-244: the visible label is often just "No" —
                         // unambiguous on screen next to "Yes", but not out of
@@ -2314,7 +2315,7 @@ private struct IslandSessionRow: View {
                         // clarifying text only when the request didn't
                         // supply its own custom title (which stays as-is).
                         .accessibilityLabel(session.permissionRequest?.secondaryActionTitle ?? lang.t("a11y.approval.deny"))
-                    Button(session.permissionRequest?.primaryActionTitle ?? lang.t("approval.allowOnce")) { onApprove?(.allowOnce) }
+                    Button(session.permissionRequest?.primaryActionTitle ?? lang.t("approval.allowOnce")) { actions.approve?(.allowOnce) }
                         .buttonStyle(IslandActionButtonStyle(kind: .warning, expands: true))
                         .accessibilityLabel(session.permissionRequest?.primaryActionTitle ?? lang.t("a11y.approval.allowOnce"))
                 }
@@ -2338,7 +2339,7 @@ private struct IslandSessionRow: View {
             VStack(spacing: 6) {
                 ForEach(Array(updates.enumerated()), id: \.offset) { _, update in
                     Button(update.displayLabel) {
-                        onApprove?(.allowWithUpdates([update]))
+                        actions.approve?(.allowWithUpdates([update]))
                     }
                     .buttonStyle(IslandActionButtonStyle(kind: .primary, expands: true))
                 }
@@ -2351,7 +2352,7 @@ private struct IslandSessionRow: View {
                     rules: [rule],
                     behavior: .allow
                 )
-                onApprove?(.allowWithUpdates([update]))
+                actions.approve?(.allowWithUpdates([update]))
             }
             .buttonStyle(IslandActionButtonStyle(kind: .primary, expands: true))
         }
@@ -2363,13 +2364,13 @@ private struct IslandSessionRow: View {
     /// `CodexAppServerCoordinator.handleNotification`, the current concrete
     /// case: a Codex.app approval surfaced purely as an app-server status
     /// notification with no matching "submit decision" RPC), so Allow/Deny
-    /// here would silently do nothing. `onJump` already knows how to reach
+    /// here would silently do nothing. `actions.jump` already knows how to reach
     /// wherever the request actually lives (terminal pane or, for Codex.app,
     /// the `codex://threads/<id>` URL scheme) via the same jump mechanism
     /// used everywhere else on this row.
     private var terminalApprovalCTA: some View {
         Button {
-            onJump()
+            actions.jump()
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "arrow.up.forward.app")
@@ -2401,7 +2402,7 @@ private struct IslandSessionRow: View {
             prompt: session.questionPrompt,
             lang: lang,
             keyboardCoordinator: keyboardCoordinator,
-            onAnswer: { onAnswer?($0) }
+            onAnswer: { actions.answer?($0) }
         )
     }
 
@@ -2427,7 +2428,7 @@ private struct IslandSessionRow: View {
                 completionEmptyState
             }
 
-            if onReply != nil {
+            if actions.reply != nil {
                 Rectangle()
                     .fill(.white.opacity(completionDividerOpacity))
                     .frame(height: 1)
@@ -2543,7 +2544,7 @@ private struct IslandSessionRow: View {
         let text = replyText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         replyText = ""
-        onReply?(text)
+        actions.reply?(text)
     }
 
     // MARK: - Actionable helpers
@@ -2695,10 +2696,6 @@ private struct IslandSessionRow: View {
         }
     }
 
-    private var allowsRowHoverHighlight: Bool {
-        presentation != .notification
-    }
-
     /// Prompt line for manually expanded inactive rows (bypasses time-based filter).
     private var expandedPromptLineText: String? {
         guard detailOverride == true, let prompt = session.spotlightPromptText else { return nil }
@@ -2718,7 +2715,7 @@ private struct IslandSessionRow: View {
 
     private func handlePrimaryTap() {
         guard isInteractive else { return }
-        onJump()
+        actions.jump()
     }
 
     private func detailToggleButton(isOpen: Bool) -> some View {
