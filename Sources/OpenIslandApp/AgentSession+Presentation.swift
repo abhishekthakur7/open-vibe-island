@@ -380,6 +380,8 @@ extension AgentSession {
         "opus": "Opus",
         "sonnet": "Sonnet",
         "haiku": "Haiku",
+        "fable": "Fable",
+        "mythos": "Mythos",
         "gemini": "Gemini",
         "grok": "Grok",
         "llama": "Llama",
