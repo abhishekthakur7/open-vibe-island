@@ -1743,7 +1743,7 @@ private struct IslandSessionRow: View {
 
             Spacer(minLength: 10)
 
-            HStack(spacing: 6) {
+            HStack(spacing: IslandSessionRowMetrics.badgeSpacing) {
                 agentBadge
                 if let modelBadge = session.displayModelName {
                     sideBadge(modelBadge)
@@ -1760,7 +1760,7 @@ private struct IslandSessionRow: View {
                 Text(ageBadgeText(at: referenceDate))
                     .font(.system(size: 10.5, weight: .medium, design: .monospaced))
                     .foregroundStyle(summaryAgeColor(for: presence))
-                    .frame(minWidth: 30, alignment: .trailing)
+                    .frame(minWidth: IslandSessionRowMetrics.ageColumnWidth, alignment: .trailing)
                 detailToggleButton(isOpen: showsDetail)
                 if let onDismiss {
                     DismissButton(action: onDismiss, lang: lang)
@@ -1960,6 +1960,7 @@ private struct IslandSessionRow: View {
         return Text(agentBadgeTitle)
             .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
             .foregroundStyle(tint.opacity(notificationChromeOpacity))
+            .frame(minWidth: IslandSessionRowMetrics.agentTitleWidth)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(tint.opacity(notificationBadgeFillOpacity), in: Capsule())
@@ -2709,7 +2710,10 @@ private struct IslandSessionRow: View {
             Image(systemName: "chevron.down")
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(isOpen || isHighlighted ? .white.opacity(0.68) : .white.opacity(0.42))
-                .frame(width: 28, height: 28)
+                .frame(
+                    width: IslandSessionRowMetrics.detailToggleColumnWidth,
+                    height: IslandSessionRowMetrics.trailingControlHeight
+                )
                 .background(
                     Circle()
                         .fill(.white.opacity(detailToggleFillOpacity(isOpen: isOpen)))
@@ -3524,6 +3528,11 @@ private struct DismissButton: View {
             Image(systemName: "xmark.circle.fill")
                 .font(.system(size: 12))
                 .foregroundStyle(.white.opacity(isHovered ? 0.8 : 0.4))
+                .frame(
+                    width: IslandSessionRowMetrics.dismissColumnWidth,
+                    height: IslandSessionRowMetrics.trailingControlHeight
+                )
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
