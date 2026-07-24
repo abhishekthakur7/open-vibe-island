@@ -33,11 +33,10 @@ enum IslandAnimationToken: Equatable, Sendable {
 
 /// Motion half of the island theme token layer.
 ///
-/// Values are lifted verbatim from the file-private animation constants in
+/// Values were lifted verbatim from the file-private animation constants in
 /// `IslandPanelView` that drive the closed ↔ opened ↔ popping transitions.
-///
-/// Nothing consumes these yet — later tickets route views through the token
-/// layer one region at a time.
+/// Since AB-295 that view reads them from here and those constants are gone,
+/// so this is the only definition left.
 struct IslandMotionTokens: Equatable, Sendable {
     /// Closed → opened transition.
     var openAnimation: IslandAnimationToken

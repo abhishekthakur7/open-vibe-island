@@ -6,16 +6,16 @@ import OpenIslandCore
 
 /// Drift pins for `IslandThemeTokens.classic`.
 ///
-/// The token layer has no consumers yet, so its only guarantee is that
-/// `.classic` reproduces today's look exactly. Every token is compared
-/// against the live constant it was lifted from — `V6Palette`,
-/// `IslandDesignPalette`, `NotchShape`, `IslandChromeMetrics` — so a change to
-/// either side fails here.
+/// The guarantee is that `.classic` reproduces today's look exactly. Tokens
+/// whose legacy constant still has un-migrated call sites are compared against
+/// that live constant — `V6Palette`, `IslandDesignPalette`, `NotchShape`,
+/// `IslandChromeMetrics` — so a change to either side fails here.
 ///
-/// The opened-surface shadow and the open/close/pop animations live as
-/// file-private constants inside `IslandPanelView.swift` and are therefore not
-/// reachable from tests. Those are pinned against literals, with the source
-/// site named in a comment.
+/// The opened-surface shadow and the open/close/pop animations no longer have
+/// a second definition to compare against: AB-295 routed `IslandPanelView`
+/// through the tokens and deleted the file-private constants they were lifted
+/// from, making the token the single source. Those stay pinned against
+/// literals, which is now a pin on the shipping values themselves.
 struct IslandThemeTokensTests {
 
     // MARK: - Colors
@@ -154,12 +154,13 @@ struct IslandThemeTokensTests {
         #expect(metrics.closedHoverScale == IslandChromeMetrics.closedHoverScale)
     }
 
-    /// Literal pin: the opened-surface shadow is applied inline in
-    /// `IslandPanelView.swift` as `.shadow(color: .black.opacity(0.36), radius: 22, y: 12)`.
-    /// It has no named constant to compare against, and this ticket may not
-    /// modify existing files to introduce one.
+    /// Literal pin: `IslandPanelView` used to apply this inline as
+    /// `.shadow(color: .black.opacity(0.36), radius: 22, y: 12)` in both the
+    /// morph and the Reduce Motion path. Since AB-295 both sites read
+    /// `surfaceShadow`, so this token is the only definition left and the
+    /// literals here are what keep it from drifting.
     @Test
-    func classicSurfaceShadowMatchesIslandPanelViewLiterals() {
+    func classicSurfaceShadowMatchesTheShippingOpenedSurface() {
         let shadow = IslandThemeTokens.classic.metrics.surfaceShadow
 
         #expect(shadow.color == Color.black)
@@ -172,12 +173,13 @@ struct IslandThemeTokensTests {
     // MARK: - Motion
 
     /// Literal pin: `openAnimation` / `closeAnimation` / `popAnimation` /
-    /// `openedSurfaceUnmountDelay` are file-private constants in
-    /// `IslandPanelView.swift`, so they are not reachable from tests. The
-    /// parameters are pinned here, plus the resolved `Animation` values, which
-    /// SwiftUI compares structurally.
+    /// `openedSurfaceUnmountDelay` used to be file-private constants in
+    /// `IslandPanelView.swift`. AB-295 pointed that view at these tokens and
+    /// deleted the constants, so the parameters pinned here — plus the
+    /// resolved `Animation` values below, which SwiftUI compares structurally
+    /// — are the only definition of the island's transition motion.
     @Test
-    func classicMotionMatchesIslandPanelViewLiterals() {
+    func classicMotionMatchesTheShippingNotchTransitions() {
         let motion = IslandThemeTokens.classic.motion
 
         #expect(motion.openAnimation == .spring(response: 0.42, dampingFraction: 0.8, blendDuration: 0))
