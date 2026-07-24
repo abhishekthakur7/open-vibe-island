@@ -77,15 +77,6 @@ extension AgentSession {
         displayCurrentToolName
     }
 
-    var spotlightTrackingLabel: String? {
-        guard let transcriptPath = trackingTranscriptPath?.trimmedForSurface,
-              !transcriptPath.isEmpty else {
-            return nil
-        }
-
-        return URL(fileURLWithPath: transcriptPath).lastPathComponent
-    }
-
     var spotlightStatusLabel: String {
         switch phase {
         case .running:

@@ -231,8 +231,10 @@
 "island.showAll" = "Show all %lld sessions";
 "island.collapseList" = "Collapse list";
 "island.usageWaiting" = "Usage waiting";
+"island.transcript.label" = "Transcript";
 "island.transcript.open" = "Open transcript";
 "island.transcript.reveal" = "Reveal in Finder";
+"island.transcript.copyPath" = "Copy Path";
 
 /* Island Panel - Approval */
 "approval.toolPermissionRequested" = "Tool permission requested";
@@ -276,6 +278,7 @@
 "a11y.session.collapseDetail" = "Collapse session detail";
 "a11y.session.dismiss" = "Dismiss session";
 "a11y.session.summary" = "%@, %@, %@, %@";
+"a11y.transcript" = "Transcript, %@";
 "a11y.phase.running" = "running";
 "a11y.phase.waitingForApproval" = "waiting for permission";
 "a11y.phase.waitingForAnswer" = "waiting for an answer";
