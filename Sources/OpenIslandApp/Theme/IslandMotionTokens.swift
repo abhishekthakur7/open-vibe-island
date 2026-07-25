@@ -64,3 +64,18 @@ extension IslandMotionTokens {
         openedSurfaceUnmountDelay: 0.36
     )
 }
+
+// MARK: - Poured Island
+
+extension IslandMotionTokens {
+    /// A softer, slightly slower "poured" spring — the liquid-glass slab
+    /// eases out of the notch and settles rather than snapping. The unmount
+    /// delay grows to match the longer close so the surface never tears down
+    /// mid-animation.
+    static let poured = IslandMotionTokens(
+        openAnimation: .spring(response: 0.5, dampingFraction: 0.84, blendDuration: 0),
+        closeAnimation: .smooth(duration: 0.34, extraBounce: 0),
+        popAnimation: .spring(response: 0.34, dampingFraction: 0.55, blendDuration: 0),
+        openedSurfaceUnmountDelay: 0.4
+    )
+}

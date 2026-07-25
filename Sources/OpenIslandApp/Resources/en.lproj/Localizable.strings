@@ -188,6 +188,8 @@
 /* Themes */
 "theme.classic.name" = "Classic";
 "theme.classic.descriptor" = "The original ink-and-paper island.";
+"theme.poured.name" = "Poured Island";
+"theme.poured.descriptor" = "Liquid glass poured from the notch.";
 
 /* Settings - Shortcuts */
 "settings.shortcuts.global.section" = "Global Hotkey";

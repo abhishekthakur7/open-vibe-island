@@ -4,6 +4,14 @@ struct NotchShape: Shape {
     var topCornerRadius: CGFloat
     var bottomCornerRadius: CGFloat
 
+    /// Concave fillet at the top (notch-junction) corners, in points (AB-300).
+    /// `0` reproduces the plain concave top corner Open Island has always
+    /// shipped; a positive value deepens and softens the transition into a
+    /// "poured" fillet. Deliberately *not* part of `animatableData`: the fillet
+    /// is a constant per-theme identity, only the corner radii interpolate
+    /// across the closed↔opened morph.
+    var filletRadius: CGFloat = 0
+
     var animatableData: AnimatablePair<CGFloat, CGFloat> {
         get { AnimatablePair(topCornerRadius, bottomCornerRadius) }
         set {
@@ -21,10 +29,44 @@ struct NotchShape: Shape {
         // Start at top-left, after the inward curve
         path.move(to: CGPoint(x: rect.minX, y: rect.minY))
 
-        // Top-left inward curve (concave, mimics notch edge)
-        path.addQuadCurve(
-            to: CGPoint(x: rect.minX + topR, y: rect.minY + topR),
-            control: CGPoint(x: rect.minX + topR, y: rect.minY)
+        guard filletRadius > 0 else {
+            // Classic path — byte-identical to before AB-300.
+            path.addQuadCurve(
+                to: CGPoint(x: rect.minX + topR, y: rect.minY + topR),
+                control: CGPoint(x: rect.minX + topR, y: rect.minY)
+            )
+            path.addLine(to: CGPoint(x: rect.minX + topR, y: rect.maxY - botR))
+            path.addQuadCurve(
+                to: CGPoint(x: rect.minX + topR + botR, y: rect.maxY),
+                control: CGPoint(x: rect.minX + topR, y: rect.maxY)
+            )
+            path.addLine(to: CGPoint(x: rect.maxX - topR - botR, y: rect.maxY))
+            path.addQuadCurve(
+                to: CGPoint(x: rect.maxX - topR, y: rect.maxY - botR),
+                control: CGPoint(x: rect.maxX - topR, y: rect.maxY)
+            )
+            path.addLine(to: CGPoint(x: rect.maxX - topR, y: rect.minY + topR))
+            path.addQuadCurve(
+                to: CGPoint(x: rect.maxX, y: rect.minY),
+                control: CGPoint(x: rect.maxX - topR, y: rect.minY)
+            )
+            path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+            path.closeSubpath()
+            return path
+        }
+
+        // Filleted ("poured") path: the top edge lingers near the menu bar and
+        // the wall drops away through a deeper concave curve, so the stem
+        // merges into the panel body instead of turning a hard concave corner.
+        // The fillet is clamped so the two top curves never meet the bottom
+        // corners, keeping the outline free of self-intersections at any size.
+        let f = min(filletRadius, rect.height / 2 - botR, rect.width / 4)
+
+        // Top-left concave fillet
+        path.addCurve(
+            to: CGPoint(x: rect.minX + topR, y: rect.minY + topR + f),
+            control1: CGPoint(x: rect.minX + topR, y: rect.minY),
+            control2: CGPoint(x: rect.minX + topR, y: rect.minY + f)
         )
 
         // Left edge down to bottom-left corner
@@ -45,13 +87,14 @@ struct NotchShape: Shape {
             control: CGPoint(x: rect.maxX - topR, y: rect.maxY)
         )
 
-        // Right edge up to top-right inward curve
-        path.addLine(to: CGPoint(x: rect.maxX - topR, y: rect.minY + topR))
+        // Right edge up to the top-right concave fillet
+        path.addLine(to: CGPoint(x: rect.maxX - topR, y: rect.minY + topR + f))
 
-        // Top-right inward curve (concave)
-        path.addQuadCurve(
+        // Top-right concave fillet
+        path.addCurve(
             to: CGPoint(x: rect.maxX, y: rect.minY),
-            control: CGPoint(x: rect.maxX - topR, y: rect.minY)
+            control1: CGPoint(x: rect.maxX - topR, y: rect.minY + f),
+            control2: CGPoint(x: rect.maxX - topR, y: rect.minY)
         )
 
         // Top edge back to start

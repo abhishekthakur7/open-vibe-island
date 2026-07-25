@@ -36,6 +36,63 @@ struct ThemeSelectionTests {
         #expect(ThemeRegistry.theme(id: "does-not-exist").id == ThemeRegistry.default.id)
     }
 
+    // MARK: - Poured Island (AB-300)
+
+    @Test
+    func pouredIsRegisteredAndSelectableButNotDefault() {
+        // Registered and resolvable from the Lab switch...
+        #expect(ThemeRegistry.all.contains { $0.id == "poured" })
+        #expect(ThemeRegistry.theme(id: "poured").id == "poured")
+        // ...but Classic remains the default until Poured 5/5 flips it.
+        #expect(ThemeRegistry.default.id == "classic")
+    }
+
+    @Test
+    func selectingPouredResolvesTheLiveTheme() {
+        let model = AppModel()
+        model.islandThemeID = "poured"
+        #expect(model.islandTheme.id == "poured")
+        #expect(model.islandTheme.tokens == .poured)
+    }
+
+    @Test
+    func pouredGridGeometryReusesClassicStatics() {
+        // Poured does not deviate from Classic's closed-grid geometry, so it
+        // stays pinned by the same `AgentsGridLayoutTests` — no new vectors.
+        let geometry = PouredIslandTheme().agentsGridGeometry
+        for n in 0...20 {
+            #expect(geometry.balancedRows(n) == V6RightSlotView.balancedRows(n))
+        }
+        for rowCount in 1...3 {
+            let strategy = geometry.cellGeometry(rowCount)
+            let statics = V6RightSlotView.cellGeometry(rowCount: rowCount)
+            #expect(strategy.cell == statics.cell)
+            #expect(strategy.gap == statics.gap)
+            #expect(strategy.radius == statics.radius)
+        }
+    }
+
+    @Test
+    func pouredChromeMetricsCarryLargerShadowInsets() {
+        // The deeper glass shadow needs more room inside the overlay window,
+        // and those insets flow into `OverlayPanelController` panel sizing.
+        let metrics = PouredIslandTheme().tokens.metrics
+        #expect(metrics.filletRadius > 0)
+        #expect(metrics.openedShadowHorizontalInset > IslandChromeMetrics.openedShadowHorizontalInset)
+        #expect(metrics.openedShadowBottomInset > IslandChromeMetrics.openedShadowBottomInset)
+    }
+
+    @Test
+    func pouredMaterialSuppliesGlassConfiguration() {
+        // A liquid-glass identity: a specular top edge and a lighter ink tint
+        // than Classic so more of the blur reads through.
+        let material = PouredIslandTheme().tokens.material
+        #expect(material.specularTopEdge != nil)
+        #expect(material.tintOpacity < IslandMaterialTokens.classic.tintOpacity)
+        // Classic stays flat and unlit.
+        #expect(IslandMaterialTokens.classic.specularTopEdge == nil)
+    }
+
     // MARK: - Persistence (AC #4)
 
     @Test

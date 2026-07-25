@@ -453,7 +453,8 @@ struct IslandPanelView: View {
         let surfaceShape = OpenedIslandSurfaceShape(
             topProfile: usesNotchAwareOpenedHeader ? .notch : .topBar,
             topCornerRadius: tokens.metrics.openedTopRadius,
-            bottomCornerRadius: tokens.metrics.openedBottomRadius
+            bottomCornerRadius: tokens.metrics.openedBottomRadius,
+            filletRadius: tokens.metrics.filletRadius
         )
         let shadow = tokens.metrics.surfaceShadow
 
@@ -601,7 +602,8 @@ struct IslandPanelView: View {
         let shape = OpenedIslandSurfaceShape(
             topProfile: topProfile,
             topCornerRadius: opened ? tokens.metrics.openedTopRadius : 0,
-            bottomCornerRadius: opened ? tokens.metrics.openedBottomRadius : (closedNotchHeight / 2)
+            bottomCornerRadius: opened ? tokens.metrics.openedBottomRadius : (closedNotchHeight / 2),
+            filletRadius: tokens.metrics.filletRadius
         )
         let shadow = tokens.metrics.surfaceShadow
         let closedLeadingInset = closedNotchHeight / 2
