@@ -226,6 +226,93 @@ struct AppearancePreviewFixturesTests {
         #expect(codex.peakUsagePercentage == 92)
         #expect(codex.windows[0].resetsAt == Self.now.addingTimeInterval(19 * 3_600))
     }
+
+    // MARK: - Preview scenario mapping (stage 2)
+
+    @Test
+    func scenarioContentMapsEachScenarioToItsFixtureSet() {
+        let now = Self.now
+        let lang = LanguageManager()
+
+        func content(_ scenario: AppearancePreviewScenario) -> AppearancePreviewScenarioContent {
+            AppearancePreviewFixtures.scenarioContent(scenario, now: now, lang: lang)
+        }
+
+        // list: the baseline five, no hero, no meters.
+        let list = content(.list)
+        #expect(list.sessions == AppearancePreviewFixtures.sessions(now: now, lang: lang))
+        #expect(list.actionableSessionID == nil)
+        #expect(list.usageProviders == nil)
+
+        // Each single-card scenario surfaces its fixture as the actionable hero.
+        let cardCases: [(AppearancePreviewScenario, AgentSession)] = [
+            (.permissionCommand, AppearancePreviewFixtures.permissionCommand(now: now)),
+            (.permissionDiff, AppearancePreviewFixtures.permissionDiff(now: now)),
+            (.codexApproval, AppearancePreviewFixtures.codexTerminalApproval(now: now)),
+            (.questionMulti, AppearancePreviewFixtures.questionMulti(now: now)),
+            (.subagents, AppearancePreviewFixtures.subagentsAndTasks(now: now)),
+        ]
+        for (scenario, fixture) in cardCases {
+            let resolved = content(scenario)
+            #expect(resolved.sessions == [fixture], "\(scenario.rawValue) fixture mismatch")
+            #expect(resolved.actionableSessionID == fixture.id, "\(scenario.rawValue) missing hero id")
+            #expect(resolved.usageProviders == nil)
+        }
+
+        // completed variants: both outcomes, interrupted is the expanded hero.
+        let completed = content(.completedVariants)
+        #expect(completed.sessions.map(\.id) == [
+            AppearancePreviewFixtures.completedInterrupted(now: now).id,
+            AppearancePreviewFixtures.completedFailed(now: now).id,
+        ])
+        #expect(completed.actionableSessionID == AppearancePreviewFixtures.completedInterrupted(now: now).id)
+        #expect(completed.usageProviders == nil)
+
+        // duplicates: the whole trio, no single hero.
+        let duplicates = content(.duplicates)
+        #expect(duplicates.sessions == AppearancePreviewFixtures.duplicateWorkspaceTrio(now: now))
+        #expect(duplicates.actionableSessionID == nil)
+        #expect(duplicates.usageProviders == nil)
+
+        // meters: baseline sessions + the fixture usage providers (34/78/92).
+        let meters = content(.meters)
+        #expect(meters.sessions == AppearancePreviewFixtures.sessions(now: now, lang: lang))
+        #expect(meters.actionableSessionID == nil)
+        #expect(meters.usageProviders?.map(\.id) == ["claude", "codex"])
+        #expect(meters.usageProviders?[0].peakUsagePercentage == 78)
+        #expect(meters.usageProviders?[1].peakUsagePercentage == 92)
+
+        // empty: no sessions, no hero, no meters.
+        let empty = content(.empty)
+        #expect(empty.sessions.isEmpty)
+        #expect(empty.actionableSessionID == nil)
+        #expect(empty.usageProviders == nil)
+    }
+
+    @Test
+    func onlyMetersScenarioCarriesUsageProviders() {
+        let lang = LanguageManager()
+        for scenario in AppearancePreviewScenario.allCases {
+            let content = AppearancePreviewFixtures.scenarioContent(scenario, now: Self.now, lang: lang)
+            if scenario == .meters {
+                #expect(content.usageProviders?.isEmpty == false)
+            } else {
+                #expect(content.usageProviders == nil, "\(scenario.rawValue) leaked usage providers")
+            }
+        }
+    }
+
+    @Test
+    func everyScenarioLabelKeyResolvesInEnglish() {
+        let lang = LanguageManager()
+        for scenario in AppearancePreviewScenario.allCases {
+            let label = lang.t(scenario.labelKey)
+            // A missing key falls through to the raw key string; a resolved key
+            // never equals its own dotted key.
+            #expect(label != scenario.labelKey, "missing localization for \(scenario.labelKey)")
+            #expect(!label.isEmpty)
+        }
+    }
 }
 
 /// AB-326: the new debug scenarios must stay demo-only and self-consistent

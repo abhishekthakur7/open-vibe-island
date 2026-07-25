@@ -655,3 +655,132 @@ enum AppearancePreviewFixtures {
         ]
     }
 }
+
+// MARK: - Appearance preview scenarios (AB-326 stage 2)
+
+/// The scenarios the Settings appearance session-list preview can render. Each
+/// case maps — through the pure ``AppearancePreviewFixtures/scenarioContent(_:now:lang:)``
+/// resolver — to a fixture session set, an optional actionable session id (so a
+/// permission / question / completion *card* renders rather than a collapsed
+/// row), and optional usage providers (only the ``meters`` case populates the
+/// header meters).
+enum AppearancePreviewScenario: String, CaseIterable, Identifiable, Sendable {
+    case list
+    case permissionCommand
+    case permissionDiff
+    case codexApproval
+    case questionMulti
+    case subagents
+    case completedVariants
+    case duplicates
+    case meters
+    case empty
+
+    var id: String { rawValue }
+
+    /// Localization key for the picker label (en / zh-Hans / zh-Hant).
+    var labelKey: String {
+        "settings.appearance.previewScenario.\(rawValue)"
+    }
+}
+
+/// The resolved inputs a scenario feeds into the session-list preview stage.
+struct AppearancePreviewScenarioContent {
+    /// The fixture sessions the preview lists.
+    let sessions: [AgentSession]
+
+    /// The session whose actionable (approval / question / completion) card the
+    /// preview should expand. `nil` for the plain list / duplicates / meters /
+    /// empty scenarios, where no single row is the hero.
+    let actionableSessionID: String?
+
+    /// Usage providers injected into the preview header. Non-`nil` only for the
+    /// `meters` scenario; every other scenario keeps the header's default
+    /// (headerless) behaviour.
+    let usageProviders: [UsageProviderPresentation]?
+}
+
+extension AppearancePreviewFixtures {
+    /// Pure scenario → preview-content mapping. Deterministic for a given `now`
+    /// (it only composes the `now`-injected fixtures above), so the picker and
+    /// its unit test resolve identical content.
+    static func scenarioContent(
+        _ scenario: AppearancePreviewScenario,
+        now: Date,
+        lang: LanguageManager
+    ) -> AppearancePreviewScenarioContent {
+        switch scenario {
+        case .list:
+            return AppearancePreviewScenarioContent(
+                sessions: sessions(now: now, lang: lang),
+                actionableSessionID: nil,
+                usageProviders: nil
+            )
+        case .permissionCommand:
+            let session = permissionCommand(now: now)
+            return AppearancePreviewScenarioContent(
+                sessions: [session],
+                actionableSessionID: session.id,
+                usageProviders: nil
+            )
+        case .permissionDiff:
+            let session = permissionDiff(now: now)
+            return AppearancePreviewScenarioContent(
+                sessions: [session],
+                actionableSessionID: session.id,
+                usageProviders: nil
+            )
+        case .codexApproval:
+            let session = codexTerminalApproval(now: now)
+            return AppearancePreviewScenarioContent(
+                sessions: [session],
+                actionableSessionID: session.id,
+                usageProviders: nil
+            )
+        case .questionMulti:
+            let session = questionMulti(now: now)
+            return AppearancePreviewScenarioContent(
+                sessions: [session],
+                actionableSessionID: session.id,
+                usageProviders: nil
+            )
+        case .subagents:
+            let session = subagentsAndTasks(now: now)
+            return AppearancePreviewScenarioContent(
+                sessions: [session],
+                actionableSessionID: session.id,
+                usageProviders: nil
+            )
+        case .completedVariants:
+            // Both outcomes in one list. `actionableSessionID` can only expand
+            // one row (the scaffold keys a single hero), so the interrupted card
+            // opens fully while the failed row stays outcome-differentiated but
+            // collapsed — the two treatments are visible side by side.
+            let interrupted = completedInterrupted(now: now)
+            let failed = completedFailed(now: now)
+            return AppearancePreviewScenarioContent(
+                sessions: [interrupted, failed],
+                actionableSessionID: interrupted.id,
+                usageProviders: nil
+            )
+        case .duplicates:
+            return AppearancePreviewScenarioContent(
+                sessions: duplicateWorkspaceTrio(now: now),
+                actionableSessionID: nil,
+                usageProviders: nil
+            )
+        case .meters:
+            return AppearancePreviewScenarioContent(
+                sessions: sessions(now: now, lang: lang),
+                actionableSessionID: nil,
+                usageProviders: usageProviders(now: now)
+            )
+        case .empty:
+            return AppearancePreviewScenarioContent(
+                sessions: empty,
+                actionableSessionID: nil,
+                usageProviders: nil
+            )
+        }
+    }
+}
