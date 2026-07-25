@@ -326,6 +326,18 @@
 "island.activity.verb.replying" = "正在回复";
 "island.activity.verb.working" = "正在处理";
 
+/* Island Panel - Closed pill label vocabulary (AB-322).
+   Only the fixed words localize — workspace names, commands and file names
+   are data and are interpolated raw. */
+"island.closed.label.working" = "%lld 个进行中";
+"island.closed.label.agents" = "%lld 个子代理";
+"island.closed.label.approve" = "批准 %@？";
+"island.closed.label.approvalNeeded" = "需要批准";
+"island.closed.label.answerNeeded" = "需要回答";
+"island.closed.label.done" = "已完成";
+"island.closed.label.interrupted" = "已中断";
+"island.closed.label.failed" = "已失败";
+
 /* Island Panel - Session List */
 "island.sessionList.title" = "会话";
 "island.sessionOverview.total" = "总计";

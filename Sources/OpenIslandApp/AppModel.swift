@@ -1083,24 +1083,25 @@ final class AppModel {
     /// displays, beside the physical notch on MacBook (AB-241). Respects the
     /// `islandCenterLabel` user preference, which is `.off` by default on
     /// the notch profile.
+    ///
+    /// The decision itself lives in the pure `IslandClosedLabelResolver`
+    /// (AB-322) so it can be unit-tested against exact strings; this stays a
+    /// thin adapter that feeds it live state.
     func islandClosedLabel() -> String? {
-        guard islandCenterLabel != .off,
-              let session = islandClosedSpotlight else { return nil }
+        islandClosedLabel(at: .now)
+    }
 
-        switch islandCenterLabel {
-        case .off:
-            return nil
-        case .sessionName:
-            let workspace = session.jumpTarget?.workspaceName ?? ""
-            if !workspace.isEmpty { return workspace }
-            return session.title.isEmpty ? session.tool.displayName : session.title
-        case .agentAction:
-            let action = session.displayCurrentToolName
-            if let action, !action.isEmpty {
-                return "\(session.tool.displayName) · \(action)"
-            }
-            return session.tool.displayName
-        }
+    /// Time-injectable form of ``islandClosedLabel()`` — `referenceDate` drives
+    /// the outcome settle window (`Done · …` / `Interrupted · …` / `Failed · …`),
+    /// mirroring the `spotlightShowsDetailLines(at:)` seam.
+    func islandClosedLabel(at referenceDate: Date) -> String? {
+        IslandClosedLabelResolver.label(
+            spotlight: islandClosedSpotlight,
+            runningCount: liveRunningCount,
+            preference: islandCenterLabel,
+            language: lang,
+            now: referenceDate
+        )
     }
 
     /// Right-slot payload derived from the user's `islandRightSlot`
