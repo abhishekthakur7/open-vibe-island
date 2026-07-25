@@ -188,6 +188,8 @@
 /* Themes */
 "theme.classic.name" = "經典";
 "theme.classic.descriptor" = "最初的墨與紙風格靈動島。";
+"theme.poured.name" = "流光島";
+"theme.poured.descriptor" = "從瀏海傾瀉而出的液態玻璃。";
 
 /* Settings - Shortcuts */
 "settings.shortcuts.global.section" = "全域快捷鍵";

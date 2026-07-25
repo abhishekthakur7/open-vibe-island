@@ -16,6 +16,12 @@ struct OpenedIslandSurfaceShape: Shape {
     var topCornerRadius: CGFloat = NotchShape.openedTopRadius
     var bottomCornerRadius: CGFloat = NotchShape.openedBottomRadius
 
+    /// Concave notch-junction fillet (AB-300), forwarded to `NotchShape`. Only
+    /// meaningful for the `.notch` profile — the `.topBar` variant has no
+    /// physical notch to merge with, so it renders matched radii with no
+    /// fillet regardless of this value.
+    var filletRadius: CGFloat = 0
+
     var animatableData: AnimatablePair<CGFloat, CGFloat> {
         get { AnimatablePair(topCornerRadius, bottomCornerRadius) }
         set {
@@ -29,7 +35,8 @@ struct OpenedIslandSurfaceShape: Shape {
         case .notch:
             return NotchShape(
                 topCornerRadius: topCornerRadius,
-                bottomCornerRadius: bottomCornerRadius
+                bottomCornerRadius: bottomCornerRadius,
+                filletRadius: filletRadius
             )
             .path(in: rect)
         case .topBar:

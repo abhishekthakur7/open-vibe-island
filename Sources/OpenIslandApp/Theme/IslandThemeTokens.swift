@@ -19,16 +19,32 @@ struct IslandThemeTokens: Equatable, Sendable {
     var colors: IslandColorTokens
     var metrics: IslandMetricsTokens
     var motion: IslandMotionTokens
+    var material: IslandMaterialTokens
 }
 
 // MARK: - Classic
 
 extension IslandThemeTokens {
     /// The look Open Island ships today: ink/paper island, v6 status tints,
-    /// 22pt opened radii, spring open / smooth close.
+    /// 22pt opened radii, spring open / smooth close, `.hudWindow` vibrancy.
     static let classic = IslandThemeTokens(
         colors: .classic,
         metrics: .classic,
-        motion: .classic
+        motion: .classic,
+        material: .classic
+    )
+}
+
+// MARK: - Poured Island
+
+extension IslandThemeTokens {
+    /// Poured Island (liquid glass): cool frosted identity, filleted opened
+    /// shape, deep soft shadow, lighter vibrancy tint with a specular top edge,
+    /// and a softer "poured" open/close spring.
+    static let poured = IslandThemeTokens(
+        colors: .poured,
+        metrics: .poured,
+        motion: .poured,
+        material: .poured
     )
 }

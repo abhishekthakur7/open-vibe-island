@@ -53,6 +53,13 @@ struct IslandMetricsTokens: Equatable, Sendable {
 
     /// Scale applied to the closed pill while the pointer hovers it.
     var closedHoverScale: CGFloat
+
+    /// Concave fillet radius at the notch junction of the opened (`.notch`)
+    /// profile — the "poured" curve that merges the black stem into the panel
+    /// body. `0` reproduces the plain concave top corner Classic ships; a
+    /// positive value deepens and softens the transition. Ignored by the
+    /// top-bar profile, which has no physical notch to merge with.
+    var filletRadius: CGFloat
 }
 
 // MARK: - Classic
@@ -73,6 +80,32 @@ extension IslandMetricsTokens {
         openedShadowBottomInset: 22,
         closedShadowHorizontalInset: 12,
         closedShadowBottomInset: 14,
-        closedHoverScale: 1.028
+        closedHoverScale: 1.028,
+        filletRadius: 0
+    )
+}
+
+// MARK: - Poured Island
+
+extension IslandMetricsTokens {
+    /// Poured Island's chrome: slightly larger opened radii, a concave notch
+    /// fillet, and a deeper/softer drop shadow. The shadow insets grow to
+    /// match so the larger blur is never clipped inside the overlay window —
+    /// these flow into `OverlayPanelController`'s panel sizing.
+    static let poured = IslandMetricsTokens(
+        openedTopRadius: 26,
+        openedBottomRadius: 26,
+        surfaceShadow: IslandShadowToken(
+            color: .black,
+            opacity: 0.5,
+            radius: 34,
+            yOffset: 18
+        ),
+        openedShadowHorizontalInset: 28,
+        openedShadowBottomInset: 34,
+        closedShadowHorizontalInset: 16,
+        closedShadowBottomInset: 18,
+        closedHoverScale: 1.03,
+        filletRadius: 12
     )
 }

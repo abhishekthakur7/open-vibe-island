@@ -188,3 +188,37 @@ extension IslandColorTokens {
     private static let classicPaper = Color(red: 0xf1 / 255.0, green: 0xea / 255.0, blue: 0xd9 / 255.0)
     private static let classicWarning = Color(red: 0.85, green: 0.55, blue: 0.15)
 }
+
+// MARK: - Poured Island
+
+extension IslandColorTokens {
+    /// Poured Island's cool liquid-glass identity: a blue-black ink under the
+    /// frosted slab and a cool near-white for glyphs and labels. The vivid
+    /// status tints are shared with Classic — they already read cleanly on a
+    /// dark surface and keep the two themes' status semantics identical — while
+    /// the neutral surface tones go cool to match the glass. Hairlines are a
+    /// touch stronger so dividers survive the added translucency.
+    static let poured = IslandColorTokens(
+        surfaceInk: pouredInk,
+        paper: pouredPaper,
+        surfaceText: .white,
+        statusRunning: classic.statusRunning,
+        statusCompleted: classic.statusCompleted,
+        statusWaitingForApproval: classic.statusWaitingForApproval,
+        statusWaitingForAnswer: classic.statusWaitingForAnswer,
+        statusWaitingAggregate: classic.statusWaitingAggregate,
+        statusWarning: classic.statusWarning,
+        statusInterrupted: classic.statusInterrupted,
+        statusFailed: classic.statusFailed,
+        statusIdle: pouredPaper.opacity(0.35),
+        statusInactive: pouredPaper.opacity(0.38),
+        secondaryTextOpacity: 0.6,
+        tertiaryTextOpacity: 0.5,
+        increasedContrastTextBoost: 0.24,
+        hairlineOpacity: 0.08,
+        hairlineOpacityIncreasedContrast: 0.24
+    )
+
+    private static let pouredInk = Color(red: 0x0b / 255.0, green: 0x0e / 255.0, blue: 0x16 / 255.0)
+    private static let pouredPaper = Color(red: 0xf2 / 255.0, green: 0xf5 / 255.0, blue: 0xfb / 255.0)
+}

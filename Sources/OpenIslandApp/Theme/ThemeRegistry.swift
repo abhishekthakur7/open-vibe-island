@@ -10,8 +10,11 @@ import Foundation
 enum ThemeRegistry {
 
     /// Every theme, in picker order. Classic is first, so it's the default.
+    /// Poured Island is registered and selectable but not the default — the
+    /// default flips to it in the final Poured slice (AB-300, poured 5/5).
     static let all: [any IslandTheme] = [
         ClassicTheme(),
+        PouredIslandTheme(),
     ]
 
     /// The default theme a fresh install and every unrecoverable lookup use.

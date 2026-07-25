@@ -259,7 +259,7 @@ struct V6CenterLabelView: View {
 /// fit the text), this lane has a hard width cap — long text truncates
 /// gracefully instead of pushing the pill past the safe zone beside the
 /// physical notch.
-private struct V6NotchLaneLabelView: View {
+struct V6NotchLaneLabelView: View {
     let text: String
     let maxWidth: CGFloat
     @Environment(\.islandTokens) private var tokens
