@@ -352,8 +352,16 @@ struct IslandPanelView: View {
         )
         let panelShadowHorizontalInset = chromeInsets.horizontal
         let panelShadowBottomInset = chromeInsets.bottom
-        let layoutWidth = max(0, availableSize.width - (panelShadowHorizontalInset * 2))
-        let layoutHeight = max(0, availableSize.height - panelShadowBottomInset)
+        // The surface rect the padding below carves out, taken from the same
+        // seam rather than recomputed here — it is `contentRect(in:metrics:)`
+        // (what the controller hit-tests against) with the vertical axis
+        // flipped, so the drawn surface and the interactive area cannot drift.
+        let surfaceRect = IslandChromeLayout.surfaceRect(
+            inWindowOfSize: availableSize,
+            metrics: tokens.metrics
+        )
+        let layoutWidth = surfaceRect.width
+        let layoutHeight = surfaceRect.height
 
         let outerHorizontalPadding: CGFloat = 0
         let outerBottomPadding: CGFloat = 0

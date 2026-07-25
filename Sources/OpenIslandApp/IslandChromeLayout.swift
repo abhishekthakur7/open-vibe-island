@@ -130,6 +130,24 @@ enum IslandChromeLayout {
         )
     }
 
+    /// The rect the island surface actually renders into, in the top-left-origin
+    /// space SwiftUI lays out in (`IslandPanelView`'s `GeometryReader`).
+    ///
+    /// This is `contentRect(in:metrics:)`'s sibling: same rectangle, opposite
+    /// vertical convention. The view sizes its surface from this while
+    /// `OverlayPanelController` answers hit tests from `contentRect`, so the two
+    /// are the same numbers by construction — `IslandChromeLayoutTests` pins the
+    /// flip so a change to one without the other fails.
+    static func surfaceRect(inWindowOfSize windowSize: CGSize, metrics: IslandMetricsTokens) -> CGRect {
+        let insets = insets(forWindowWidth: windowSize.width, metrics: metrics)
+        return CGRect(
+            x: insets.horizontal,
+            y: 0,
+            width: max(0, windowSize.width - (insets.horizontal * 2)),
+            height: max(0, windowSize.height - insets.bottom)
+        )
+    }
+
     // MARK: - Closed pill placement
 
     /// Where the closed pill's surface sits inside an overlay window that is
