@@ -422,3 +422,10 @@
 "a11y.agentsGrid.idle" = "%lld idle";
 "a11y.agentsGrid.more" = "%lld more";
 "a11y.agentsGrid.countBadge" = "%lld sessions";
+
+/* AB-322 — closed-pill right slot: attention / task / usage badges */
+"a11y.rightSlot.attention.permission" = "%lld waiting for approval";
+"a11y.rightSlot.attention.question" = "%lld waiting for an answer";
+"a11y.rightSlot.tasks" = "%1$lld of %2$lld tasks done";
+"a11y.rightSlot.subagents" = "%lld subagents";
+"a11y.rightSlot.usage" = "%1$@ %2$@ usage %3$lld percent";

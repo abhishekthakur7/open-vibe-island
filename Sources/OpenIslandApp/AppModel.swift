@@ -1104,10 +1104,27 @@ final class AppModel {
         )
     }
 
-    /// Right-slot payload derived from the user's `islandRightSlot`
-    /// preference and current live state. Returns nil when the preference
-    /// is `.none` or there's nothing meaningful to show.
+    /// Right-slot payload for the closed pill.
+    ///
+    /// AB-322: what the agents are *doing* outranks the user's resting
+    /// preference — attention first, then the spotlight session's task /
+    /// subagent progress, then a critical usage window, and only then the
+    /// shipped `.count` / `.agents` / none rendering. The ladder itself lives in
+    /// the pure `IslandRightSlotResolver`; this stays a thin adapter that feeds
+    /// it live state.
     func islandClosedRightSlotContent() -> IslandRightSlotContent? {
+        IslandRightSlotResolver.content(
+            attention: IslandRightSlotResolver.attentionReading(for: surfacedSessions),
+            spotlightTasks: IslandRightSlotResolver.taskReading(for: islandClosedSpotlight),
+            worstUsage: IslandRightSlotResolver.worstUsage(in: islandUsageProviders),
+            preferred: islandPreferredRightSlotContent()
+        )
+    }
+
+    /// The right-slot rendering the user's `islandRightSlot` preference asks
+    /// for, ignoring the AB-322 priority ladder. Returns nil when the
+    /// preference is `.none` or there's nothing to count.
+    func islandPreferredRightSlotContent() -> IslandRightSlotContent? {
         let sessions = surfacedSessions
         switch islandRightSlot {
         case .none:
@@ -1140,6 +1157,71 @@ final class AppModel {
             }
             return cells.isEmpty ? nil : .agents(cells)
         }
+    }
+
+    /// Usage providers and their windows, in the shape both the opened header's
+    /// chips and the closed pill's usage badge read.
+    ///
+    /// Gated by `islandUsageDisplay`: a user who hid usage in the opened panel
+    /// has said they don't want to be told about rate limits, and the closed
+    /// pill must not shout what the panel is keeping quiet. Codex additionally
+    /// respects `showCodexUsage`. (AB-322 — lifted out of `IslandPanelView`'s
+    /// private `openedUsageProviders` so both surfaces derive from one place.)
+    var islandUsageProviders: [UsageProviderPresentation] {
+        guard islandUsageDisplay == .compact else { return [] }
+
+        var providers: [UsageProviderPresentation] = []
+
+        if let snapshot = claudeUsageSnapshot, snapshot.isEmpty == false {
+            var windows: [UsageWindowPresentation] = []
+
+            if let fiveHour = snapshot.fiveHour {
+                windows.append(
+                    UsageWindowPresentation(
+                        id: "claude-5h",
+                        label: "5h",
+                        usedPercentage: fiveHour.usedPercentage,
+                        resetsAt: fiveHour.resetsAt
+                    )
+                )
+            }
+
+            if let sevenDay = snapshot.sevenDay {
+                windows.append(
+                    UsageWindowPresentation(
+                        id: "claude-7d",
+                        label: "7d",
+                        usedPercentage: sevenDay.usedPercentage,
+                        resetsAt: sevenDay.resetsAt
+                    )
+                )
+            }
+
+            if windows.isEmpty == false {
+                providers.append(
+                    UsageProviderPresentation(id: "claude", title: "Claude", windows: windows)
+                )
+            }
+        }
+
+        if showCodexUsage, let snapshot = codexUsageSnapshot, snapshot.isEmpty == false {
+            let windows = snapshot.windows.map { window in
+                UsageWindowPresentation(
+                    id: "codex-\(window.key)",
+                    label: window.label,
+                    usedPercentage: window.usedPercentage,
+                    resetsAt: window.resetsAt
+                )
+            }
+
+            if windows.isEmpty == false {
+                providers.append(
+                    UsageProviderPresentation(id: "codex", title: "Codex", windows: windows)
+                )
+            }
+        }
+
+        return providers
     }
 
     private func stampAgentsGridObservationTickets(for sessions: [AgentSession]) {

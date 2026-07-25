@@ -421,3 +421,10 @@
 "a11y.agentsGrid.idle" = "%lld 個閒置";
 "a11y.agentsGrid.more" = "還有 %lld 個";
 "a11y.agentsGrid.countBadge" = "%lld 個工作階段";
+
+/* AB-322 — closed-pill right slot: attention / task / usage badges */
+"a11y.rightSlot.attention.permission" = "%lld 個等待授權";
+"a11y.rightSlot.attention.question" = "%lld 個等待回答";
+"a11y.rightSlot.tasks" = "已完成 %2$lld 項中的 %1$lld 項";
+"a11y.rightSlot.subagents" = "%lld 個子代理";
+"a11y.rightSlot.usage" = "%1$@ %2$@ 用量 %3$lld%%";

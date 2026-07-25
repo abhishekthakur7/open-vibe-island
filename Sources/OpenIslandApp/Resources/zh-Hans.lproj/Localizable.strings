@@ -422,3 +422,10 @@
 "a11y.agentsGrid.idle" = "%lld 个空闲";
 "a11y.agentsGrid.more" = "还有 %lld 个";
 "a11y.agentsGrid.countBadge" = "%lld 个会话";
+
+/* AB-322 — closed-pill right slot: attention / task / usage badges */
+"a11y.rightSlot.attention.permission" = "%lld 个等待授权";
+"a11y.rightSlot.attention.question" = "%lld 个等待回答";
+"a11y.rightSlot.tasks" = "已完成 %2$lld 项中的 %1$lld 项";
+"a11y.rightSlot.subagents" = "%lld 个子智能体";
+"a11y.rightSlot.usage" = "%1$@ %2$@ 用量 %3$lld%%";
