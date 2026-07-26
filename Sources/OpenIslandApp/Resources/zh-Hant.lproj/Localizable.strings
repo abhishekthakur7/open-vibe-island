@@ -265,9 +265,9 @@
 "island.flightDeck.annunciator.run" = "執行";
 "island.flightDeck.annunciator.done" = "完成";
 "island.flightDeck.annunciator.idle" = "閒置";
+"island.flightDeck.column.status" = "狀態";
 "island.flightDeck.column.session" = "工作階段";
 "island.flightDeck.column.model" = "模型";
-"island.flightDeck.column.app" = "應用程式";
 "island.flightDeck.column.time" = "時間";
 "island.flightDeck.row.jump" = "跳轉";
 "island.flightDeck.footer.bridgeLink" = "橋接連結";

@@ -265,9 +265,9 @@
 "island.flightDeck.annunciator.run" = "Run";
 "island.flightDeck.annunciator.done" = "Done";
 "island.flightDeck.annunciator.idle" = "Idle";
+"island.flightDeck.column.status" = "Status";
 "island.flightDeck.column.session" = "Session";
 "island.flightDeck.column.model" = "Model";
-"island.flightDeck.column.app" = "App";
 "island.flightDeck.column.time" = "Time";
 "island.flightDeck.row.jump" = "Jump";
 "island.flightDeck.footer.bridgeLink" = "Bridge Link";

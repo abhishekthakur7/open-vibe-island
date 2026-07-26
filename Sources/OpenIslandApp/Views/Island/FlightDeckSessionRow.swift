@@ -11,9 +11,11 @@ import OpenIslandCore
 /// carries a colored **STATUS LANE** on its left edge like an EICAS warning
 /// light (red alert / green run / blue done / gray idle); the live lane pulses
 /// off the shared clock and holds steady under Reduce Motion. The body is
-/// typeset on the SESSION / MODEL / APP / TIME column grid from flightdeck 2/4:
-/// the trailing model, app and time cells hold fixed lanes so they land on the
-/// same x under their captions across every visible row, and the chevron and
+/// typeset on the STATUS / SESSION / MODEL / TIME column grid (AB-337 re-registers
+/// it — a STATUS text-code column joins the leading edge and APP folds into an
+/// SSH chip): the leading STATUS cell and trailing model / time cells hold fixed
+/// lanes so they land on the same x under their captions across every visible
+/// row, and the chevron and
 /// dismiss controls sit in reserved lanes so the registers never shift. Agent
 /// identity is a small neutral mono mark so the lane's state colour always wins.
 ///
@@ -88,18 +90,30 @@ struct FlightDeckSessionRow: View {
 
 // MARK: - Pure, testable row logic
 
-/// The fixed trailing lanes for the Flight Deck column grid. Every registered
-/// column holds a constant width so the model, app and time cells land on the
-/// same x under their SESSION / MODEL / APP / TIME captions across every visible
+/// The fixed lanes for the Flight Deck column grid. Every registered column
+/// holds a constant width so the STATUS, model and time cells land on the same x
+/// under their `STATUS | SESSION | MODEL | TIME` captions across every visible
 /// row — the "exact vertical registers" the design language is built on
-/// (AB-313 AC #2). Literal points, deliberately not type-scaled, for the same
-/// reason `IslandSessionRowMetrics` isn't. The `columnCaptionStrip` in
-/// `FlightDeckSessionListScaffold` draws from these exact constants so the
-/// captions and the cells share one geometry.
+/// (AB-337 · SPEC §3-Slot3 / §4). Literal points, deliberately not type-scaled,
+/// for the same reason `IslandSessionRowMetrics` isn't. The `columnCaptionStrip`
+/// in `FlightDeckSessionListScaffold` draws from these exact constants so the
+/// captions and the cells share one geometry and can never drift.
+///
+/// AB-337 re-registers the grid: a **STATUS** text-code column joins the leading
+/// edge, and the shipped **APP** column is gone — a remote session now reads via
+/// an `SSH` chip on the session cell, and the terminal app name moves to the
+/// expanded detail (§3-Slot3).
 enum FlightDeckSessionRowGrid {
+    /// The leading STATUS column: a status lamp + its text code (`RUN` / `WARN`
+    /// / …). Fixed so the code register lines up down the list under the STATUS
+    /// caption.
+    static let statusColumnWidth: CGFloat = 58
+    /// The gap between the leading STATUS cell and the flexing SESSION cell —
+    /// shared by the row's summary HStack and the caption strip so the SESSION
+    /// caption lands over the headline.
+    static let leadingColumnGap: CGFloat = 10
     static let columnGap: CGFloat = 8
     static let modelColumnWidth: CGFloat = 66
-    static let appColumnWidth: CGFloat = 54
     static let timeColumnWidth: CGFloat = 44
 
     /// Trailing controls, reserved as fixed lanes in both the row and the
@@ -108,9 +122,11 @@ enum FlightDeckSessionRowGrid {
     static let detailToggleColumnWidth: CGFloat = IslandSessionRowMetrics.detailToggleColumnWidth
     static let dismissColumnWidth: CGFloat = IslandSessionRowMetrics.dismissColumnWidth
 
-    /// The registered cells that must line up vertically across rows.
+    /// The registered fixed-width cells that must line up vertically across rows
+    /// — the leading STATUS lane and the trailing MODEL / TIME lanes. (SESSION
+    /// flexes; the control lanes are reserved clear space.)
     static var registeredColumnWidths: [CGFloat] {
-        [modelColumnWidth, appColumnWidth, timeColumnWidth]
+        [statusColumnWidth, modelColumnWidth, timeColumnWidth]
     }
 }
 
@@ -268,10 +284,40 @@ enum FlightDeckSessionRowFormat {
         }
     }
 
+    /// The STATUS text-code that heads every non-actionable row (SPEC §3-Slot3 ·
+    /// AB-337): a four-glyph EICAS code paired with the status lamp — `RUN`
+    /// (nominal running) / `DONE` (advisory success) / `CAUT` (question, amber) /
+    /// `WARN` (permission, red) / `INTR` (interrupted, amber) / `FAIL` (failed,
+    /// red) / `IDLE` (dim). Inactive presence wins first, so a stale row reads
+    /// `IDLE` regardless of its stored phase/outcome — the same idle-wins rule
+    /// `lanePriority` follows, keeping the code, the lane and the lamp in lock-step.
+    static func statusCode(
+        phase: SessionPhase,
+        presence: IslandSessionPresence,
+        outcome: SessionOutcome
+    ) -> String {
+        if presence == .inactive { return "IDLE" }
+        switch phase {
+        case .running:
+            return "RUN"
+        case .waitingForApproval:
+            return "WARN"
+        case .waitingForAnswer:
+            return "CAUT"
+        case .completed:
+            switch outcome {
+            case .success: return "DONE"
+            case .interrupted: return "INTR"
+            case .failed: return "FAIL"
+            }
+        }
+    }
+
     /// Every readable point size the Flight Deck row draws, for the ≥10pt-floor
-    /// assertion (AC #6). The scaled reading roles sit above 10; the fixed
-    /// tabular columns sit at exactly the 10.5 mono lane.
-    static let readableTextSizes: [CGFloat] = [13.2, 11, 10.5]
+    /// assertion (AC #6). The sans headline (13.5) and sans narration (12) sit
+    /// above the floor; the mono tabular columns sit at the 10.5 lane; the mono
+    /// STATUS code sits at the 10pt floor.
+    static let readableTextSizes: [CGFloat] = [13.5, 12, 10.5, 10]
 }
 
 // MARK: - Actionable surface logic (AB-314)
@@ -402,6 +448,15 @@ private struct FlightDeckRowContent: View {
         .system(size: size * typeScale, weight: weight, design: .monospaced)
     }
 
+    /// The sans companion to `scaledFont` (AB-337 · SPEC §2): the narration
+    /// typeface for prose the reader *reads* — the session / workspace name and
+    /// the activity narration — scaled off the same one reference so it tracks
+    /// Dynamic Type alongside the mono value columns. Every value (durations,
+    /// ages, codes, placards) keeps `scaledFont`.
+    private func sansScaled(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        .system(size: size * typeScale, weight: weight, design: .default)
+    }
+
     private static let ageRefreshInterval: TimeInterval = 30
 
     var body: some View {
@@ -485,25 +540,38 @@ private struct FlightDeckRowContent: View {
         isExpanded: Bool,
         referenceDate: Date
     ) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            if showsLeadingMark {
-                leadingMark(for: presence)
-                    .frame(width: 18, alignment: .top)
-            }
+        HStack(alignment: .top, spacing: FlightDeckSessionRowGrid.leadingColumnGap) {
+            statusCell(for: presence)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(displayHeadline)
-                    .font(scaledFont(13.2, weight: .semibold))
-                    .foregroundStyle(titleColor(for: presence))
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    // Full name one hover away — the column truncates, the
-                    // tooltip does not (AC #2).
-                    .help(session.spotlightWorkspaceName)
+                HStack(spacing: 6) {
+                    Text(displayHeadline)
+                        // AB-337 · SPEC §2: the session / workspace name is sans
+                        // narration — the reader *reads* it — not the mono value
+                        // columns beside it. 13.5pt, semibold, −0.01em.
+                        .font(sansScaled(FlightDeckTypography.sessionNameSize, weight: .semibold))
+                        .tracking(FlightDeckTypography.sessionNameTracking)
+                        .foregroundStyle(titleColor(for: presence))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .layoutPriority(1)
+                        // Full name one hover away — the column truncates, the
+                        // tooltip does not (AC #2).
+                        .help(session.spotlightWorkspaceName)
+
+                    // AB-337 · SPEC §3-Slot3: the APP column is folded into a chip
+                    // on the session cell — a remote session flags `SSH` here; the
+                    // terminal app name moves to the expanded detail (Part 2's
+                    // §4D metagrid). Chips for branch / mode / subagents are Part 2.
+                    if session.isRemote {
+                        FlightDeckRowChip(text: "SSH", lang: lang)
+                    }
+                }
 
                 if showsSubLine, let subLine = summarySubLineText(presence: presence) {
                     Text(subLine)
-                        .font(scaledFont(11, weight: .medium))
+                        // Narration prose — sans, 12pt (SPEC §2).
+                        .font(sansScaled(FlightDeckTypography.narrationSize, weight: .medium))
                         .foregroundStyle(subLineColor(for: presence))
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -549,9 +617,6 @@ private struct FlightDeckRowContent: View {
             columnText(session.displayModelName, presence: presence, alignment: .leading)
                 .frame(width: FlightDeckSessionRowGrid.modelColumnWidth, alignment: .leading)
 
-            columnText(appColumnText, presence: presence, alignment: .leading)
-                .frame(width: FlightDeckSessionRowGrid.appColumnWidth, alignment: .leading)
-
             Text(ageBadgeText(at: referenceDate))
                 .font(.system(size: 10.5, weight: .medium, design: .monospaced))
                 .foregroundStyle(columnColor(for: presence))
@@ -586,6 +651,49 @@ private struct FlightDeckRowContent: View {
             .lineLimit(1)
             .truncationMode(.tail)
             .multilineTextAlignment(alignment)
+    }
+
+    // MARK: - STATUS column (lamp + text code)
+
+    /// The leading STATUS column (AB-337 · SPEC §3-Slot3): the row's status
+    /// **lamp** (the indicator-preference mark) paired with its **text code**
+    /// (`RUN` / `DONE` / `CAUT` / `WARN` / `INTR` / `FAIL` / `IDLE`), mono 10pt /
+    /// 700 / 0.08em. The lamp's *glow* is the always-present left-edge
+    /// `FlightDeckStatusLane` (AB-336) — this column adds the code beside it and
+    /// does not duplicate that self-lit lamp. Fixed to `statusColumnWidth` so the
+    /// code register lines up down the list under the STATUS caption.
+    private func statusCell(for presence: IslandSessionPresence) -> some View {
+        HStack(spacing: 5) {
+            if showsLeadingMark {
+                leadingMark(for: presence)
+            }
+            Text(statusCodeText(for: presence))
+                .font(scaledFont(FlightDeckTypography.statusCodeSize, weight: .bold))
+                .tracking(FlightDeckTypography.statusCodeTracking)
+                .foregroundStyle(statusCodeColor(for: presence))
+                .lineLimit(1)
+                .fixedSize()
+                .padding(.top, 1)
+                .accessibilityHidden(true)
+        }
+        .frame(width: FlightDeckSessionRowGrid.statusColumnWidth, alignment: .leading)
+    }
+
+    private func statusCodeText(for presence: IslandSessionPresence) -> String {
+        FlightDeckSessionRowFormat.statusCode(
+            phase: session.phase,
+            presence: presence,
+            outcome: session.outcome
+        )
+    }
+
+    /// The code inherits the status hue so `WARN` reads red and `CAUT` amber even
+    /// with the lamp glowing beside it; an idle row's code recedes to the dim
+    /// idle grey. It never dips below the readable secondary-text ink.
+    private func statusCodeColor(for presence: IslandSessionPresence) -> Color {
+        presence == .inactive
+            ? tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity))
+            : statusTint(for: presence).opacity(increasesContrast ? 1 : 0.92)
     }
 
     // MARK: - Expanded details (chevron open)
@@ -797,13 +905,6 @@ private struct FlightDeckRowContent: View {
         )
     }
 
-    private var appColumnText: String? {
-        FlightDeckSessionRowFormat.appColumnText(
-            isRemote: session.isRemote,
-            terminalBadge: session.spotlightTerminalBadge
-        )
-    }
-
     private func summarySubLineText(presence: IslandSessionPresence) -> String? {
         if presence == .running {
             return runningLineText
@@ -932,7 +1033,9 @@ private struct FlightDeckRowContent: View {
 
     private var detailLeadingInset: CGFloat {
         if presentation == .notification { return sideInset }
-        return showsLeadingMark ? sideInset + 28 : sideInset
+        // Indent the expanded detail under the SESSION cell — past the leading
+        // STATUS column and its gap — so it aligns with the headline above it.
+        return sideInset + FlightDeckSessionRowGrid.statusColumnWidth + FlightDeckSessionRowGrid.leadingColumnGap
     }
 }
 
@@ -1120,6 +1223,41 @@ private struct FlightDeckOptionalNamedAccessibilityAction: ViewModifier {
     }
 }
 
+// MARK: - Row chip
+
+/// A small mono placard chip that rides beside the session name (AB-337). Part 1
+/// uses it for the `SSH` remote flag folded out of the removed APP column; Part 2
+/// adds the branch / permission-mode / `⚙ N SUB` chips through the same grammar.
+/// A caps mono micro-label in a chamfered hairline frame — a value placard, so it
+/// stays Latin + letterspaced on Latin and neutralizes for CJK via
+/// `FlightDeckText`, and holds the 10pt floor.
+private struct FlightDeckRowChip: View {
+    let text: String
+    let lang: LanguageManager
+
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    private var increasesContrast: Bool { colorSchemeContrast == .increased }
+
+    @Environment(\.islandTokens) private var tokens
+
+    var body: some View {
+        Text(FlightDeckText.caps(text, lang: lang))
+            .font(.system(size: FlightDeckTypography.microLabelSize, weight: .semibold, design: .monospaced))
+            .tracking(FlightDeckText.tracking(0.6, lang: lang))
+            .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, 5)
+            .padding(.vertical, 1)
+            .background(FlightDeckChamferedRectangle(chamfer: 2.5).fill(FlightDeckSurfaces.tile))
+            .overlay(
+                FlightDeckChamferedRectangle(chamfer: 2.5)
+                    .strokeBorder(FlightDeckSurfaces.hairline(tier: 2, increaseContrast: increasesContrast), lineWidth: 1)
+            )
+            .accessibilityHidden(true)
+    }
+}
+
 // MARK: - Chamfer geometry
 
 /// A rectangle with its four corners cut at 45° — the Flight Deck idiom's answer
@@ -1190,6 +1328,15 @@ private struct FlightDeckActionableRowContent: View {
         .system(size: size * typeScale, weight: weight, design: .monospaced)
     }
 
+    /// The sans companion to `scaledFont` (AB-337 · SPEC §2): the narration
+    /// typeface for prose the reader *reads* — the session / workspace name and
+    /// the activity narration — scaled off the same one reference so it tracks
+    /// Dynamic Type alongside the mono value columns. Every value (durations,
+    /// ages, codes, placards) keeps `scaledFont`.
+    private func sansScaled(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        .system(size: size * typeScale, weight: weight, design: .default)
+    }
+
     private static let ageRefreshInterval: TimeInterval = 30
 
     var body: some View {
@@ -1225,19 +1372,33 @@ private struct FlightDeckActionableRowContent: View {
     // MARK: - Header (mono tabular idiom)
 
     private func header(referenceDate: Date) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            if showsLeadingStatusIndicator {
-                Image(systemName: FlightDeckSessionRowFormat.statusGlyphName(phase: session.phase, outcome: session.outcome))
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(statusTint)
-                    .frame(width: 18, alignment: .top)
-                    .padding(.top, 1)
-                    .accessibilityHidden(true)
+        HStack(alignment: .top, spacing: FlightDeckSessionRowGrid.leadingColumnGap) {
+            // Reserve the leading STATUS column so an actionable list row's
+            // headline registers under the SESSION caption alongside the
+            // non-actionable rows (AB-337). The annunciator header below carries
+            // the WARN / CAUT status, so the column holds only the indicator
+            // glyph, not a code. The notification card has no column grid, so it
+            // reserves nothing.
+            if presentation == .list {
+                Group {
+                    if showsLeadingStatusIndicator {
+                        Image(systemName: FlightDeckSessionRowFormat.statusGlyphName(phase: session.phase, outcome: session.outcome))
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(statusTint)
+                            .padding(.top, 1)
+                            .accessibilityHidden(true)
+                    }
+                }
+                .frame(width: FlightDeckSessionRowGrid.statusColumnWidth, alignment: .leading)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(displayHeadline)
-                    .font(scaledFont(13.2, weight: .semibold))
+                    // AB-337 · SPEC §2: the session name is sans narration, matching
+                    // the non-actionable row so an alarm still reads as one of the
+                    // annunciator grid — 13.5pt semibold, −0.01em.
+                    .font(sansScaled(FlightDeckTypography.sessionNameSize, weight: .semibold))
+                    .tracking(FlightDeckTypography.sessionNameTracking)
                     .foregroundStyle(tokens.colors.paper)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -1245,7 +1406,8 @@ private struct FlightDeckActionableRowContent: View {
 
                 if let promptLine = headerPromptLineText {
                     Text(promptLine)
-                        .font(scaledFont(11, weight: .medium))
+                        // Narration prose — sans, 12pt (SPEC §2).
+                        .font(sansScaled(FlightDeckTypography.narrationSize, weight: .medium))
                         .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.secondaryTextOpacity)))
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -1585,12 +1747,10 @@ private struct FlightDeckActionableRowContent: View {
 
     private var detailLeadingInset: CGFloat {
         if presentation == .notification { return sideInset }
-        switch stateIndicator {
-        case .bar, .tint:
-            return sideInset
-        case .animatedDot, .glyph:
-            return sideInset + 28
-        }
+        // Indent the alarm / completion interior under the SESSION cell — past the
+        // reserved leading STATUS column and its gap — so it aligns with the
+        // headline above it and with the non-actionable rows (AB-337).
+        return sideInset + FlightDeckSessionRowGrid.statusColumnWidth + FlightDeckSessionRowGrid.leadingColumnGap
     }
 
     private var rowFillColor: Color {

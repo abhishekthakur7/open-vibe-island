@@ -155,16 +155,60 @@ struct FlightDeckSessionRowTests {
         #expect(FlightDeckSessionRowFormat.steadyLaneGlowIntensity(restingOpacity: idle) == 0)
     }
 
-    // MARK: - One column grid (AC #2)
+    // MARK: - STATUS code column (AB-337 · SPEC §3-Slot3)
+
+    /// The STATUS text-code that heads each row is a pure function of
+    /// phase / presence / outcome — the code + lamp pair pinned here so the code
+    /// can never drift from the lamp's colour. Inactive presence wins first
+    /// (idle-wins, mirroring `lanePriority`); otherwise phase → code, with the
+    /// completion outcome splitting `DONE` / `INTR` / `FAIL`.
+    @Test
+    func statusCodePairsPhaseOutcomeToTheEICASCode() {
+        // Running → RUN (nominal); fresh success → DONE (advisory).
+        #expect(FlightDeckSessionRowFormat.statusCode(phase: .running, presence: .running, outcome: .success) == "RUN")
+        #expect(FlightDeckSessionRowFormat.statusCode(phase: .completed, presence: .active, outcome: .success) == "DONE")
+        // Attention phases: permission is the red WARN, question the amber CAUT.
+        #expect(FlightDeckSessionRowFormat.statusCode(phase: .waitingForApproval, presence: .active, outcome: .success) == "WARN")
+        #expect(FlightDeckSessionRowFormat.statusCode(phase: .waitingForAnswer, presence: .active, outcome: .success) == "CAUT")
+        // Non-success completions split into the amber INTR and the red FAIL.
+        #expect(FlightDeckSessionRowFormat.statusCode(phase: .completed, presence: .active, outcome: .interrupted) == "INTR")
+        #expect(FlightDeckSessionRowFormat.statusCode(phase: .completed, presence: .active, outcome: .failed) == "FAIL")
+        // Inactive presence recedes to IDLE regardless of the stored phase/outcome
+        // — a stale completed or a stale running row both read IDLE (idle-wins).
+        #expect(FlightDeckSessionRowFormat.statusCode(phase: .completed, presence: .inactive, outcome: .failed) == "IDLE")
+        #expect(FlightDeckSessionRowFormat.statusCode(phase: .running, presence: .inactive, outcome: .success) == "IDLE")
+        #expect(FlightDeckSessionRowFormat.statusCode(phase: .waitingForApproval, presence: .inactive, outcome: .success) == "IDLE")
+
+        // Every code is a short (≤4-glyph) uppercase Latin EICAS placard — the
+        // fixed-width column the caption registers over depends on it.
+        let codes = [
+            FlightDeckSessionRowFormat.statusCode(phase: .running, presence: .running, outcome: .success),
+            FlightDeckSessionRowFormat.statusCode(phase: .completed, presence: .active, outcome: .success),
+            FlightDeckSessionRowFormat.statusCode(phase: .waitingForApproval, presence: .active, outcome: .success),
+            FlightDeckSessionRowFormat.statusCode(phase: .waitingForAnswer, presence: .active, outcome: .success),
+            FlightDeckSessionRowFormat.statusCode(phase: .completed, presence: .active, outcome: .interrupted),
+            FlightDeckSessionRowFormat.statusCode(phase: .completed, presence: .active, outcome: .failed),
+            FlightDeckSessionRowFormat.statusCode(phase: .running, presence: .inactive, outcome: .success),
+        ]
+        #expect(codes.allSatisfy { !$0.isEmpty && $0.count <= 4 && $0 == $0.uppercased() })
+    }
+
+    // MARK: - One column grid (AC #2 · AB-337)
 
     @Test
     func registeredTrailingColumnsHaveFixedNonZeroLanes() {
-        // Model, app and time each hold a constant lane so they land on the same
-        // x under their captions across every row — the "exact vertical registers"
-        // the grid is built on. A zero-width lane would collapse the register.
+        // The leading STATUS lane, and the trailing model and time lanes, each
+        // hold a constant width so they land on the same x under their captions
+        // across every row — the "exact vertical registers" the grid is built on.
+        // A zero-width lane would collapse the register. AB-337 re-registers the
+        // grid to STATUS | SESSION | MODEL | TIME (APP folded into the SSH chip),
+        // so the STATUS column is now one of the fixed lanes.
         for width in FlightDeckSessionRowGrid.registeredColumnWidths {
             #expect(width > 0)
         }
+        #expect(FlightDeckSessionRowGrid.statusColumnWidth > 0)
+        #expect(FlightDeckSessionRowGrid.registeredColumnWidths.contains(FlightDeckSessionRowGrid.statusColumnWidth))
+        #expect(FlightDeckSessionRowGrid.leadingColumnGap > 0)
         // The reserved control lanes match the shared trailing-cluster metrics so
         // the caption strip and the row share one trailing geometry.
         #expect(FlightDeckSessionRowGrid.detailToggleColumnWidth == IslandSessionRowMetrics.detailToggleColumnWidth)

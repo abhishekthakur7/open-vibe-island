@@ -3,8 +3,8 @@ import OpenIslandCore
 
 /// Flight Deck's session-list chrome (AB-312): the sessions summary as a strip of
 /// **annunciator tiles** (ATTN / RUN / DONE / IDLE, each lit when its count is
-/// non-zero and dark at zero), a column-caption strip (SESSION / MODEL / APP /
-/// TIME) over the list, the section headers for all four grouping modes, the
+/// non-zero and dark at zero), a column-caption strip (STATUS / SESSION / MODEL
+/// / TIME — AB-337) over the list, the section headers for all four grouping modes, the
 /// scrollable list of rows, and a **BRIDGE LINK** footer wired to the real
 /// bridge-socket state.
 ///
@@ -20,9 +20,8 @@ import OpenIslandCore
 /// Rows are built through the active theme's `sessionRow` factory (the shared
 /// scaffold's exact path), so the Flight Deck list inherits the theme's
 /// `FlightDeckSessionRow` (AB-313): every non-actionable row carries a status
-/// lane on the SESSION / MODEL / APP / TIME column grid, registered directly
-/// under this strip's captions. Actionable rows still route to Classic through
-/// the row's thin seam until AB-314.
+/// lane on the STATUS / SESSION / MODEL / TIME column grid (AB-337), registered
+/// directly under this strip's captions.
 struct FlightDeckSessionListScaffold: View {
     /// Cap for the scrollable region — kept in sync with the shared scaffold so
     /// the opened surface's height math is identical across themes.
@@ -185,22 +184,27 @@ struct FlightDeckSessionListScaffold: View {
 
     // MARK: - Column-caption strip
 
-    /// The SESSION / MODEL / APP / TIME column captions over the list. As of
-    /// AB-313 the captions and the rows share one geometry: the SESSION caption
-    /// flexes over the flexing headline, and the MODEL / APP / TIME captions sit
-    /// at the exact `FlightDeckSessionRowGrid` lane widths (with the chevron and
-    /// dismiss control lanes reserved as clear trailing space) so each caption
-    /// lands directly over its cell across every row.
+    /// The STATUS / SESSION / MODEL / TIME column captions over the list. As of
+    /// AB-337 the strip leads with a **STATUS** caption over the new status-code
+    /// column and the shipped **APP** caption is gone (APP folded into the row's
+    /// `SSH` chip). The captions and the rows share one geometry: the leading
+    /// STATUS caption sits at the fixed `statusColumnWidth`, the SESSION caption
+    /// flexes over the flexing headline, and the MODEL / TIME captions sit at the
+    /// exact `FlightDeckSessionRowGrid` lane widths (with the chevron and dismiss
+    /// control lanes reserved as clear trailing space) so each caption lands
+    /// directly over its cell across every row — one source, captions and rows
+    /// cannot drift.
     private var columnCaptionStrip: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: FlightDeckSessionRowGrid.leadingColumnGap) {
+            columnCaption(lang.t("island.flightDeck.column.status"))
+                .frame(width: FlightDeckSessionRowGrid.statusColumnWidth, alignment: .leading)
+
             columnCaption(lang.t("island.flightDeck.column.session"))
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             HStack(spacing: FlightDeckSessionRowGrid.columnGap) {
                 columnCaption(lang.t("island.flightDeck.column.model"))
                     .frame(width: FlightDeckSessionRowGrid.modelColumnWidth, alignment: .leading)
-                columnCaption(lang.t("island.flightDeck.column.app"))
-                    .frame(width: FlightDeckSessionRowGrid.appColumnWidth, alignment: .leading)
                 columnCaption(lang.t("island.flightDeck.column.time"))
                     .frame(width: FlightDeckSessionRowGrid.timeColumnWidth, alignment: .trailing)
                 // Reserve the chevron + dismiss control lanes so the TIME caption
