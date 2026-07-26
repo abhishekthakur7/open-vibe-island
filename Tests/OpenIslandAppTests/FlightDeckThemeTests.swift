@@ -226,7 +226,7 @@ struct FlightDeckThemeTests {
         #expect(FlightDeckText.tracking(0.9, lang: zhHant) == 0)
     }
 
-    // MARK: - 12-tick gauge colour + placard bands (AB-312 AC #1)
+    // MARK: - Tape gauge colour + placard bands + threshold geometry (AB-338 AC #1)
 
     @Test
     func tickGaugeColoursBandOnTheExactUsageCutoffs() {
@@ -253,9 +253,14 @@ struct FlightDeckThemeTests {
     }
 
     @Test
-    func tickGaugeIsTwelveSegments() {
-        // The ticket pins a 12-tick segmented gauge.
-        #expect(FlightDeckTickGauge(fraction: 0.5, color: .green, isCritical: false).segments == 12)
+    func tapeGaugePinsThresholdTicksAtSeventyAndNinety() {
+        // AB-338 replaced the fixed 12-segment lane (retired
+        // `tickGaugeIsTwelveSegments`) with a continuous tape gauge whose two
+        // threshold ticks sit at fixed fractions of the track width regardless of
+        // fill: a hairline caution tick at 70% and a red critical tick at 90%.
+        #expect(FlightDeckTapeGauge.hairlineTickPosition == 0.70)
+        #expect(FlightDeckTapeGauge.criticalTickPosition == 0.90)
+        #expect(FlightDeckTapeGauge.thresholdTicks == [0.70, 0.90])
     }
 
     // MARK: - Theme name / descriptor localize (AC #1)
