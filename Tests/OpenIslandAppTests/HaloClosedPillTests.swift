@@ -195,6 +195,26 @@ struct HaloClosedPillTests {
         #expect(HaloPillLabelTone.segments(for: "   ", ambient: .idle).isEmpty)
         #expect(HaloPillLabelTone.segments(for: "", ambient: .working(manyWorking: false)).isEmpty)
     }
+
+    // MARK: - Right-slot task roll-up (SPEC §G′)
+
+    /// A running subagent fan-out rolls up to the **nodes** form carrying the
+    /// subagent count (the G′ `3` + nodes glyph) — never the nested list, never a
+    /// frozen fraction.
+    @Test
+    func taskCounterWithSubagentsRollsUpToNodesCount() {
+        #expect(HaloRightSlotForm.task(completed: 2, total: 5, subagents: 3) == .nodes(3))
+        // The subagent count wins even when there is also a todo list in flight.
+        #expect(HaloRightSlotForm.task(completed: 0, total: 0, subagents: 1) == .nodes(1))
+    }
+
+    /// With no fan-out the counter falls back to the todo **fraction** (`2/5`), so
+    /// a plain todo run reads as progress rather than an empty nodes glyph.
+    @Test
+    func taskCounterWithoutSubagentsFallsBackToFraction() {
+        #expect(HaloRightSlotForm.task(completed: 2, total: 5, subagents: 0) == .fraction(completed: 2, total: 5))
+        #expect(HaloRightSlotForm.task(completed: 0, total: 0, subagents: 0) == .fraction(completed: 0, total: 0))
+    }
 }
 
 // MARK: - Closed-pill width regression (the AB-338 / T12 contract)

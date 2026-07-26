@@ -605,53 +605,345 @@ private struct HaloClosedPillLabel: View {
     }
 }
 
-// MARK: - Right slot (Part 1: degrade to the neutral count badge)
+// MARK: - Right slot (Part 2 · SPEC §5A A2′/A3/A4 · §G′ · §I′)
 
-/// Halo's closed-pill right slot. **Part 1** ships the neutral mono `×N` count
-/// badge and degrades the four AB-322 kinds (attention capsule, task counter,
-/// usage filament) *and* the bloomed agents grid to it — the same interim degrade
-/// the sibling themes used before their own right-slot ticket. **Part 2** restyles
-/// each kind (`.attentionCount` → `.cnt.hot`/`.cnt.q` capsule, `.taskCounter` →
-/// subagent nodes, `.usage` → crit filament, `.agents` → the bloomed-circle grid).
-/// The pill's outer width math is untouched — these render inside the slot the
-/// fluid layout already reserved.
+/// Halo's closed-pill right slot. Each AB-322 content kind gets its own Halo
+/// rendering on the void (SPEC-halo §5A A2′/A3/A4 · §G′ · §I′ · mockup `.agrid` /
+/// `.cnt.hot` / `.cnt.q`), replacing the Part-1 interim `×N` degrade:
+///
+/// - **`.agents`** — the A2′ bloomed-circle mini agents-grid (one light per
+///   session; running = cyan + halo, waiting = amber breathing, idle = t3).
+/// - **`.attentionCount(_, .permission)`** — the loudest badge, the `.cnt.hot`
+///   amber→magenta gradient capsule (ink `#241203`) with its r16 coral glow.
+/// - **`.attentionCount(_, .question)`** — the calmer `.cnt.q` qgold `?` badge
+///   (ink `#241A03`, **no** glow) — distinct from permission by hue AND behavior.
+/// - **`.taskCounter`** — the G′ roll-up: a subagent count + cyan nodes glyph, or
+///   the `2/5` todo fraction when there is no fan-out.
+/// - **`.usage`** — the I′ worst-window crit filament + `Codex 92%` (only ever
+///   surfaced at ≥90 — the shared `usageAlertThreshold`).
+/// - **`.count`** — keeps the neutral mono `×N` badge.
+///
+/// The switch is spelled out (no `default:`) so a future content kind fails the
+/// build here rather than silently rendering wrong. Every variant reuses the
+/// shared `IslandRightSlotContent.fallbackBadge…` VoiceOver summary, and the
+/// pill's outer width math (`V6ClosedPill.*OuterWidth`) is untouched — these
+/// render inside the slot the fluid layout already reserved (the grid's 6pt cells
+/// fit within the width V6 reserves, exactly as the sibling themes' grids do).
 struct HaloRightSlotView: View {
     let content: IslandRightSlotContent
     var lang: LanguageManager = .shared
     @Environment(\.islandTokens) private var tokens
 
     var body: some View {
-        // Every kind degrades to the count badge for Part 1 — spelled out (no
-        // `default:`) so a future content kind fails the build here rather than
-        // silently becoming a number. Part 2 forks these into their own leaves.
         switch content {
-        case .count, .attentionCount, .taskCounter, .usage, .agents:
+        case .count:
             countBadge
+                .accessibilityLabel(content.fallbackBadgeAccessibilityLabel(lang))
+        case .agents(let cells):
+            HaloAgentsGridBody(cells: cells)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(V6RightSlotView.agentsGridAccessibilitySummary(for: cells, lang: lang))
+        case .attentionCount(let count, let kind):
+            HaloAttentionBadge(count: count, kind: kind)
+                .accessibilityLabel(content.fallbackBadgeAccessibilityLabel(lang))
+        case .taskCounter(let completed, let total, let subagents):
+            HaloTaskCounter(form: HaloRightSlotForm.task(completed: completed, total: total, subagents: subagents))
+                .accessibilityLabel(content.fallbackBadgeAccessibilityLabel(lang))
+        case .usage(let percent, let window, let provider):
+            HaloUsageFilament(percent: percent, windowLabel: window, providerTitle: provider)
                 .accessibilityLabel(content.fallbackBadgeAccessibilityLabel(lang))
         }
     }
 
     private var countBadge: some View {
-        Text("×\(badgeCount)")
+        Text("×\(content.fallbackBadgeCount ?? 0)")
             .font(.system(size: HaloTypography.pillValueSize, weight: .regular, design: .monospaced))
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
             .foregroundStyle(tokens.colors.paper.opacity(0.72))
     }
+}
 
-    /// The number the badge shows. `.agents` has no `fallbackBadgeCount` (it owns a
-    /// grid rendering normally), so its interim badge counts the session + overflow
-    /// cells rather than degrading to a bare `×0`.
-    private var badgeCount: Int {
-        if case .agents(let cells) = content {
-            return cells.reduce(0) { acc, cell in
-                switch cell {
-                case .session: return acc + 1
-                case .overflow(let n): return acc + n
+// MARK: - Right-slot content decisions (pure · SPEC §G′)
+
+/// The pure, view-free decisions the Halo right-slot leaves draw from, so the
+/// `HaloClosedPillTests` can pin them without standing up a view. Mirrors
+/// `HaloPillLabelTone` — the paint lives in the leaves, the *shape* of what shows
+/// lives here.
+enum HaloRightSlotForm {
+    /// The `.taskCounter` roll-up (SPEC §G′). A running fan-out surfaces the
+    /// **subagent count + nodes glyph**; with no fan-out it falls back to the
+    /// **todo fraction** (`2/5`) — never a frozen `0/0` beside a nodes glyph.
+    enum Task: Equatable {
+        /// `subagents > 0` — the G′ nodes roll-up (carries the subagent count).
+        case nodes(Int)
+        /// `subagents == 0` — the `completed/total` todo fraction.
+        case fraction(completed: Int, total: Int)
+    }
+
+    static func task(completed: Int, total: Int, subagents: Int) -> Task {
+        subagents > 0 ? .nodes(subagents) : .fraction(completed: completed, total: total)
+    }
+}
+
+// MARK: - Right-slot leaves
+
+/// The A2′ mini agents-grid — one **bloomed light circle** per session in the
+/// theme's `(6pt cell, 3.5 gap, radius 3)` geometry (`HaloTheme.agentsGridGeometry`),
+/// laid out with the shared balanced-row algorithm so the matrix shape matches
+/// every other theme (only the per-tile rendering — a glowing circle, not a flat
+/// square — differs). The circles are always 6pt, so the grid fits within the
+/// width the fluid layout reserved via `V6RightSlotView.intrinsicWidth`.
+private struct HaloAgentsGridBody: View {
+    let cells: [AgentGridCell]
+
+    @Environment(\.islandTheme) private var theme
+
+    var body: some View {
+        let geometry = theme.agentsGridGeometry
+        let rowSizes = geometry.balancedRows(cells.count)
+        let geom = geometry.cellGeometry(rowSizes.count)
+        let rows = V6RightSlotView.splitIntoRows(cells, rowSizes: rowSizes)
+
+        VStack(spacing: geom.gap) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                HStack(spacing: geom.gap) {
+                    ForEach(Array(row.enumerated()), id: \.offset) { _, cell in
+                        HaloAgentsCircle(cell: cell, size: geom.cell, radius: geom.radius)
+                    }
                 }
             }
         }
-        return content.fallbackBadgeCount ?? 0
+        .fixedSize()
+    }
+}
+
+/// One agents-grid circle (A2′ · mockup `.agrid i`). Liveness is carried by
+/// status colour + light, never agent brand (Halo's identity discipline): a
+/// **running** cell lights cyan with the `rgba(80,180,255,.7)` r5 halo, an **idle**
+/// cell dims to the tertiary paper wash (`--t3`), and a **waiting** cell breathes
+/// the attention amber (2s, steady under Reduce Motion). Overflow keeps the
+/// neutral `+N` chip.
+private struct HaloAgentsCircle: View {
+    let cell: AgentGridCell
+    let size: CGFloat
+    let radius: CGFloat
+    @Environment(\.islandTokens) private var tokens
+
+    /// The running cell's halo — `rgba(80,180,255,.7)` r5 (mockup `.agrid i.on`),
+    /// a cooler blue than the cyan fill so it reads as light bleeding past the dot.
+    static let runningGlow = Color(red: 80 / 255.0, green: 180 / 255.0, blue: 255 / 255.0)
+    static let runningGlowRadius: CGFloat = 5
+
+    var body: some View {
+        switch cell {
+        case .session(_, let state):
+            switch state {
+            case .running:
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .fill(tokens.colors.statusRunning)
+                    .frame(width: size, height: size)
+                    .shadow(color: Self.runningGlow.opacity(0.7), radius: Self.runningGlowRadius)
+            case .idle:
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .fill(tokens.colors.paper.opacity(tokens.colors.tertiaryTextOpacity))
+                    .frame(width: size, height: size)
+            case .waiting:
+                HaloWaitingDot(color: tokens.colors.statusWaitingForApproval, size: size, radius: radius)
+            }
+        case .overflow(let n):
+            ZStack {
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .fill(tokens.colors.paper.opacity(0.14))
+                Text("+\(n)")
+                    .font(.system(size: max(5, size * 0.55), weight: .bold, design: .monospaced))
+                    .foregroundStyle(tokens.colors.paper)
+            }
+            .frame(width: size, height: size)
+        }
+    }
+}
+
+/// A waiting agent's grid circle: the `breathe-dot` opacity pulse (`.4 ↔ 1` over
+/// `HaloMotion.gridDot` = 2s). Under Reduce Motion it never acquires the clock —
+/// it holds the peak (fully lit) so the tile stays distinct from idle/running
+/// without animating (the `PouredPulsingStatusDot` rule).
+private struct HaloWaitingDot: View {
+    let color: Color
+    let size: CGFloat
+    let radius: CGFloat
+
+    @State private var breathing = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var opacity: Double {
+        if reduceMotion { return 1 }          // steady peak, never a clock
+        return breathing ? 1.0 : 0.4
+    }
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: radius, style: .continuous)
+            .fill(color)
+            .frame(width: size, height: size)
+            .opacity(opacity)
+            .onAppear {
+                guard !reduceMotion else { return }
+                withAnimation(.easeInOut(duration: HaloMotion.gridDot / 2).repeatForever(autoreverses: true)) {
+                    breathing = true
+                }
+            }
+    }
+}
+
+/// The A3/A4 attention badge — the `.cnt.hot` amber→magenta gradient capsule
+/// (permission, the loudest) or the `.cnt.q` qgold capsule (question). The two are
+/// distinct by **hue and glyph and behavior**, never colour alone: permission
+/// shows the blocked-session **count** on the amber→magenta gradient with its r16
+/// coral glow; question shows a **`?`** on the flat qgold with **no** glow. Dark
+/// inks (`#241203` / `#241A03`) keep the digit legible on the bright fills.
+private struct HaloAttentionBadge: View {
+    let count: Int
+    let kind: IslandAttentionKind
+
+    @Environment(\.islandTokens) private var tokens
+
+    /// `.cnt.hot` ink `#241203` — a near-black warm brown that reads on the bright
+    /// amber→magenta gradient.
+    static let hotInk = Color(red: 0x24 / 255.0, green: 0x12 / 255.0, blue: 0x03 / 255.0)
+    /// `.cnt.q` ink `#241A03` — the question badge's dark ink on qgold.
+    static let questionInk = Color(red: 0x24 / 255.0, green: 0x1A / 255.0, blue: 0x03 / 255.0)
+    /// `.cnt.hot` glow `rgba(255,150,90,.6)` r16 — a hot coral bleed, the only
+    /// right-slot badge that glows (permission is the loudest ambient state).
+    static let hotGlow = Color(red: 255 / 255.0, green: 150 / 255.0, blue: 90 / 255.0)
+    static let hotGlowRadius: CGFloat = 16
+
+    private var text: String { kind == .permission ? "\(count)" : "?" }
+    private var ink: Color { kind == .permission ? Self.hotInk : Self.questionInk }
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 12, weight: .bold, design: .default))
+            .monospacedDigit()
+            .foregroundStyle(ink)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .frame(minWidth: 20, minHeight: 20)
+            .padding(.horizontal, 6)
+            .background(badgeFill)
+            .shadow(
+                color: kind == .permission ? Self.hotGlow.opacity(0.6) : .clear,
+                radius: kind == .permission ? Self.hotGlowRadius : 0
+            )
+    }
+
+    @ViewBuilder
+    private var badgeFill: some View {
+        switch kind {
+        case .permission:
+            Capsule(style: .continuous)
+                .fill(LinearGradient(
+                    colors: [tokens.colors.statusWaitingForApproval, HaloEdge.magenta],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ))
+        case .question:
+            Capsule(style: .continuous)
+                .fill(tokens.colors.statusWaitingForAnswer)
+        }
+    }
+}
+
+/// The G′ task-counter roll-up. A subagent fan-out surfaces as a **cyan nodes
+/// glyph + count** (`⌗ 3` in spirit — the orbiting working-light already says
+/// "alive", so no nested clutter); with no fan-out it falls back to the todo
+/// **fraction** (`2/5`, tabular, neutral paper — progress, not attention).
+private struct HaloTaskCounter: View {
+    let form: HaloRightSlotForm.Task
+
+    @Environment(\.islandTokens) private var tokens
+
+    var body: some View {
+        switch form {
+        case .nodes(let count):
+            HStack(spacing: 4) {
+                Image(systemName: "point.3.connected.trianglepath.dotted")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(tokens.colors.statusRunning)
+                Text("\(count)")
+                    .font(.system(size: HaloTypography.pillLabelSize, weight: .semibold, design: .default))
+                    .monospacedDigit()
+                    .foregroundStyle(tokens.colors.paper.opacity(0.9))
+            }
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+        case .fraction(let completed, let total):
+            Text("\(completed)/\(total)")
+                .font(.system(size: HaloTypography.pillLabelSize, weight: .regular, design: .default))
+                .monospacedDigit()
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .foregroundStyle(tokens.colors.paper.opacity(0.82))
+        }
+    }
+}
+
+/// The I′ usage compression — the single **worst** window, surfaced only once it
+/// is critical (`IslandRightSlotResolver.usageAlertThreshold == 90`). A thin
+/// **light-filament** arc (threshold-tinted, with a soft same-hue glow) + the
+/// provider and percent (`Codex 92%`) in the threshold tint + the window label.
+///
+/// **Deviation (resets-in).** SPEC I′ pairs the percent with an inline resets-in
+/// countdown (`19h`). That needs the window's `resetsAt`, which the shared
+/// `IslandRightSlotContent.usage(percent:windowLabel:providerTitle:)` payload does
+/// **not** carry (it is `.help()`-tooltip-only today — SPEC §5A "hardest detail").
+/// Threading `resetsAt` in would change that shared enum's shape, breaking the
+/// Part-1 width-regression fixture that pins the 3-tuple signature and rippling
+/// across all six themes' pills — out of this Halo-scoped ticket. So the honest
+/// third token is the **window label** (`7d`) the payload does carry, dim; the
+/// full inline countdown lands with the shared payload change (tracked separately).
+private struct HaloUsageFilament: View {
+    let percent: Int
+    let windowLabel: String
+    let providerTitle: String
+
+    @Environment(\.islandTokens) private var tokens
+
+    /// Threshold tint — crit `≥90`, warn `70…90`, else fine. Computed from the
+    /// value so a fixture at any percent reads truthfully, though in production the
+    /// pill only ever shows the crit red (usage earns pill space only at ≥90).
+    private var tint: Color {
+        if percent >= 90 { return HaloEdge.usageCrit }
+        if percent >= 70 { return HaloEdge.usageWarn }
+        return HaloEdge.usageFine
+    }
+
+    private var fraction: Double { min(1, max(0, Double(percent) / 100)) }
+
+    var body: some View {
+        HStack(spacing: 5) {
+            ZStack {
+                Circle()
+                    .stroke(tokens.colors.paper.opacity(0.12), lineWidth: 1.5)
+                Circle()
+                    .trim(from: 0, to: fraction)
+                    .stroke(tint, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .shadow(color: tint.opacity(0.6), radius: 3)
+            }
+            .frame(width: 14, height: 14)
+
+            Text("\(providerTitle) \(percent)%")
+                .font(.system(size: HaloTypography.pillLabelSize, weight: .semibold, design: .default))
+                .monospacedDigit()
+                .foregroundStyle(tint)
+
+            Text(windowLabel)
+                .font(.system(size: HaloTypography.usageKickerSize, weight: .regular, design: .default))
+                .monospacedDigit()
+                .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.tertiaryTextOpacity))
+        }
+        .lineLimit(1)
+        .fixedSize(horizontal: true, vertical: false)
     }
 }
 

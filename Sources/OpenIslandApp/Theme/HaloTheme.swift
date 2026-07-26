@@ -670,8 +670,9 @@ struct HaloTheme: IslandTheme {
     /// bloom is **not** drawn here — `IslandPanelView` composes it via
     /// `surfaceEdgeOverlay(shape:context:)` on the morphing silhouette (AB-341), so
     /// the pill never double-renders the ring; it renders only the wing content.
-    /// (Part 1: the right-slot capsules / bloomed agents-grid still degrade to the
-    /// neutral count badge — Part 2 restyles `HaloRightSlotView`.)
+    /// The right slot forks per kind (`HaloRightSlotView`): the A2′ bloomed-circle
+    /// agents-grid, the `.cnt.hot`/`.cnt.q` attention capsules, the G′ subagent
+    /// nodes roll-up, and the I′ worst-window usage filament.
     func closedPill(
         mode: UnifiedBars.Mode,
         label: String?,
