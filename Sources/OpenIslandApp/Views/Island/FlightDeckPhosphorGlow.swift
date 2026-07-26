@@ -137,6 +137,12 @@ enum FlightDeckMotion {
         static let flashScale: CGFloat = 1.25
         static let flashGlowRadius: CGFloat = 18
         static let settledGlowRadius: CGFloat = 5
+        /// The fraction of the one-shot the nominal flash occupies before the
+        /// lamp has fully crossed to the calm advisory dot: the scale, the wide
+        /// halo and the green→blue crossfade all decay to their settled values by
+        /// this key-time, then the remaining travel is the lamp resting. Small, so
+        /// the flash reads as a quick bloom, not a slow fade.
+        static let flashKeyTime: Double = 0.2
     }
 
     /// The closed-pill attention **bloom** — a per-state colored drop-glow that
@@ -197,5 +203,18 @@ enum FlightDeckMotion {
         guard !reduceMotion, period > 0 else { return Attention.opacityMax }
         let t = easedTriangle(now: now, period: period)
         return Attention.opacityMax - t * (Attention.opacityMax - Attention.opacityMin)
+    }
+
+    /// The success-settle "flash amount" for a one-shot at `progress` (`0 → 1`
+    /// over `Settle.duration`): `1` at the instant of completion (full nominal
+    /// flash — scaled, wide green halo) decaying to `0` by `Settle.flashKeyTime`,
+    /// then held at `0` while the lamp rests as the calm advisory dot. Every
+    /// settle-frame value (scale, halo radius, green→blue crossfade) is a pure
+    /// function of this, so the flash and the settled rest share one clock and a
+    /// snapshot at `progress = 1` is deterministic.
+    static func settleFlashAmount(progress: Double) -> Double {
+        let key = Settle.flashKeyTime
+        guard key > 0 else { return progress <= 0 ? 1 : 0 }
+        return max(0, min(1, 1 - progress / key))
     }
 }

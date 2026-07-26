@@ -211,10 +211,16 @@ struct FlightDeckTheme: IslandTheme {
 
     // MARK: Capability flags
 
-    /// The shell's rows are still Classic's flat views, which are safe to
-    /// rasterize. A later slice that adds glow/motion to the annunciator rows can
-    /// flip this alongside that change.
-    let rowIsDrawingGroupSafe = true
+    /// AB-336: the row status lane is now a self-lit phosphor lamp whose halo
+    /// bleeds *outside* the row silhouette (breathe halo to 11pt, the success
+    /// settle flash to 18pt). A `.drawingGroup()` off-screen render flattens the
+    /// row to its own bounds and would clip that out-of-bounds bleed — the same
+    /// reason Poured is drawing-group-unsafe — so the row opts out of the
+    /// rasterization Classic's flat views can take. (Flight Deck's own row does
+    /// not currently apply `ConditionalDrawingGroup`, so this is a truthful
+    /// capability declaration: any shared rasterization path that consults it must
+    /// not flatten these rows.)
+    let rowIsDrawingGroupSafe = false
 
     /// Flight Deck is unlit hardware, not glass: the opened surface takes the
     /// opaque `surfaceInk` path (`OpenedSurfaceBackground` never builds a vibrancy
