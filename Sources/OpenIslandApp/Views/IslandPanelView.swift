@@ -444,6 +444,13 @@ struct IslandPanelView: View {
             minWidth: 70,
             showsGlyph: showsGlyph
         )
+        // AB-330: the spotlight's phase/outcome the pill needs for its ambient
+        // states (running vs. just-completed, permission vs. question, the
+        // completion verdict) — carried through the environment so the theme's
+        // `closedPill(...)` signature is untouched, the same seam
+        // `islandSessionDisambiguators` uses. A theme that ignores it (every
+        // theme but Poured) renders exactly as before.
+        .environment(\.islandClosedPillActivity, model.islandClosedActivity())
     }
 
     // MARK: - Opened surface
