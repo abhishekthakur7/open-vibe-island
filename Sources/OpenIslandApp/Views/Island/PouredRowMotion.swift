@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import OpenIslandCore
 
 /// Motion + pure presentation vocabulary for the Poured 2.0 **session row**
 /// list state (AB-332, `SPEC-poured-island` §3.3 / §4C · mockup §C).
@@ -126,6 +127,82 @@ enum PouredRowDisambiguation {
         guard let trimmed = raw?.pouredTrimmed, !trimmed.isEmpty else { return nil }
         return trimmed
     }
+}
+
+// MARK: - Subagent live timer (mockup §G `.sa-time` — `0:42`)
+
+/// The `M:SS` clock the expanded subagent list ticks against `startedAt`
+/// (mockup §G `.sa-time` renders `0:42` / `1:15` / `0:08`, not the shipped
+/// row's `42s` / `1m 15s`). Pure and view-free so `PouredRowMotionTests` can
+/// pin the padding without a `TimelineView`.
+///
+/// Minutes are **not** rolled into hours: a subagent that has run 83 minutes
+/// reads `83:20`, an honest live count rather than a truncated `1:23:20` the
+/// tabular column can't align. Negative intervals (a `startedAt` in the future
+/// after a clock nudge) clamp to `0:00`.
+enum PouredSubagentTiming {
+    static func clockLabel(seconds: Int) -> String {
+        let clamped = max(0, seconds)
+        let minutes = clamped / 60
+        let secs = clamped % 60
+        return "\(minutes):" + String(format: "%02d", secs)
+    }
+}
+
+// MARK: - Task rollup (mockup §G nest header + §G′ compressed chip)
+
+/// The done / total split the todo list rolls up to — the nest header
+/// `Tasks · 2 of 5 done` when expanded and the `2/5 tasks` chip when
+/// compressed both read from this. Pure count arithmetic, pinned so the two
+/// surfaces can never disagree about what "done" means (completed only, never
+/// in-progress).
+struct PouredTaskRollup: Equatable {
+    var done: Int
+    var total: Int
+
+    init(done: Int, total: Int) {
+        self.done = done
+        self.total = total
+    }
+
+    init(statuses: [ClaudeTaskInfo.Status]) {
+        self.total = statuses.count
+        self.done = statuses.filter { $0 == .completed }.count
+    }
+}
+
+// MARK: - Pane attachment chip (mockup §D `.chip` — first surfacing of the field)
+
+/// The attachment chip in the expanded detail (mockup §D
+/// `Pane attached` / `Pane stale` / `Detached`). AB-332 is the first surface
+/// to render `SessionAttachmentState` anywhere, so the state→(copy-key, live)
+/// mapping lives here as one pinnable decision rather than a `switch` buried in
+/// the view. `isLive` drives the green status dot; only `.attached` is live.
+enum PouredAttachmentChip {
+    case attached
+    case stale
+    case detached
+
+    init(_ state: SessionAttachmentState) {
+        switch state {
+        case .attached: self = .attached
+        case .stale: self = .stale
+        case .detached: self = .detached
+        }
+    }
+
+    /// Localization key for the chip label — resolved ×3 (en / zh-Hans /
+    /// zh-Hant) in `Localizable.strings`.
+    var localizationKey: String {
+        switch self {
+        case .attached: "poured.detail.attachment.attached"
+        case .stale: "poured.detail.attachment.stale"
+        case .detached: "poured.detail.attachment.detached"
+        }
+    }
+
+    /// Only an attached pane reads as live (green dot); stale/detached recede.
+    var isLive: Bool { self == .attached }
 }
 
 private extension String {

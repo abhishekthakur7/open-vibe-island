@@ -1,4 +1,5 @@
 import Testing
+import OpenIslandCore
 @testable import OpenIslandApp
 
 /// AB-332 (Poured 2.0 session rows, stage 1): pins the row's motion constants
@@ -117,5 +118,63 @@ struct PouredRowMotionTests {
         #expect(PouredRowDisambiguation.suffix(nil) == nil)
         #expect(PouredRowDisambiguation.suffix("") == nil)
         #expect(PouredRowDisambiguation.suffix("   ") == nil)
+    }
+
+    // MARK: - Subagent live timer (mockup §G `.sa-time` — `M:SS`)
+
+    @Test
+    func subagentClockZeroPadsSecondsUnderAMinute() {
+        // Mockup renders `0:42`, `0:08` — not the shipped `42s` / `8s`.
+        #expect(PouredSubagentTiming.clockLabel(seconds: 42) == "0:42")
+        #expect(PouredSubagentTiming.clockLabel(seconds: 8) == "0:08")
+        #expect(PouredSubagentTiming.clockLabel(seconds: 0) == "0:00")
+    }
+
+    @Test
+    func subagentClockCountsMinutesWithoutHourRollover() {
+        #expect(PouredSubagentTiming.clockLabel(seconds: 75) == "1:15")
+        #expect(PouredSubagentTiming.clockLabel(seconds: 600) == "10:00")
+        // 83m20s stays an honest live count, not a truncated 1:23:20.
+        #expect(PouredSubagentTiming.clockLabel(seconds: 5000) == "83:20")
+    }
+
+    @Test
+    func subagentClockClampsNegativeIntervals() {
+        // A `startedAt` nudged into the future clamps to 0:00, never "-1:59".
+        #expect(PouredSubagentTiming.clockLabel(seconds: -5) == "0:00")
+    }
+
+    // MARK: - Task rollup (mockup §G nest header + §G′ chip)
+
+    @Test
+    func taskRollupCountsCompletedOnly() {
+        let rollup = PouredTaskRollup(statuses: [.completed, .completed, .inProgress, .pending, .pending])
+        // "2 of 5 done" — in-progress is not done.
+        #expect(rollup.done == 2)
+        #expect(rollup.total == 5)
+    }
+
+    @Test
+    func taskRollupOnEmptyIsZeroOfZero() {
+        let rollup = PouredTaskRollup(statuses: [])
+        #expect(rollup.done == 0)
+        #expect(rollup.total == 0)
+    }
+
+    // MARK: - Pane attachment chip (mockup §D — first surfacing of the field)
+
+    @Test
+    func attachmentChipMapsStateToCopyAndLiveness() {
+        #expect(PouredAttachmentChip(.attached) == .attached)
+        #expect(PouredAttachmentChip(.attached).localizationKey == "poured.detail.attachment.attached")
+        #expect(PouredAttachmentChip(.attached).isLive)
+
+        #expect(PouredAttachmentChip(.stale) == .stale)
+        #expect(PouredAttachmentChip(.stale).localizationKey == "poured.detail.attachment.stale")
+        #expect(!PouredAttachmentChip(.stale).isLive)
+
+        #expect(PouredAttachmentChip(.detached) == .detached)
+        #expect(PouredAttachmentChip(.detached).localizationKey == "poured.detail.attachment.detached")
+        #expect(!PouredAttachmentChip(.detached).isLive)
     }
 }
