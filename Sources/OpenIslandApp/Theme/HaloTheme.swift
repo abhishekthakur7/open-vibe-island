@@ -695,8 +695,10 @@ struct HaloTheme: IslandTheme {
         ))
     }
 
-    // PART 2 · T25: the notch-split header with light-filament usage arcs +
-    // resets-in inline replaces this delegation.
+    /// Opened header (AB-343 · T24 · SPEC §5C · mockup §C): the notch-split lanes
+    /// (shared geometry) carrying thin light-filament usage arcs with percent +
+    /// resets-in inline (`HaloUsageSummary`, fitted per profile) and the 26pt
+    /// `white@.06` circular mute / settings / quit controls (`HaloHeaderButton`).
     func openedHeader(
         providers: [UsageProviderPresentation],
         usesNotchAwareLayout: Bool,
@@ -707,16 +709,27 @@ struct HaloTheme: IslandTheme {
         onShowSettings: @escaping () -> Void,
         onQuit: @escaping () -> Void
     ) -> AnyView {
-        interim.openedHeader(
-            providers: providers,
-            usesNotchAwareLayout: usesNotchAwareLayout,
-            targetScreen: targetScreen,
-            isSoundMuted: isSoundMuted,
-            lang: lang,
-            onToggleMute: onToggleMute,
-            onShowSettings: onShowSettings,
-            onQuit: onQuit
+        AnyView(
+            HaloHeaderControls(
+                providers: providers,
+                usesNotchAwareLayout: usesNotchAwareLayout,
+                targetScreen: targetScreen,
+                isSoundMuted: isSoundMuted,
+                lang: lang,
+                onToggleMute: onToggleMute,
+                onShowSettings: onShowSettings,
+                onQuit: onQuit
+            )
         )
+    }
+
+    /// Halo's §I full-meter surface (AB-343 · SPEC §5I · mockup §I): the 52pt
+    /// light-filament dials with reset countdowns and threshold words. Hosted by
+    /// the `meters` preview scenario; the compact header filament stays in
+    /// `openedHeader`.
+    func usageMeterCard(providers: [UsageProviderPresentation], lang: LanguageManager) -> AnyView? {
+        guard !providers.isEmpty else { return nil }
+        return AnyView(HaloUsageMeterCard(providers: providers, lang: lang))
     }
 
     // PART 2 · T24: the void row (dot + monogram, narrated activity, edge-lit
@@ -753,8 +766,14 @@ struct HaloTheme: IslandTheme {
         )
     }
 
-    // PART 2 · T25: the hairline-bounded summary strip + "Needs you"-first
-    // sections + quiet footer replace this delegation.
+    /// Halo's session-list chrome (AB-343 · T24 · SPEC §5 Slot 4 · mockup §C):
+    /// `HaloSessionListScaffold` — the hairline-bounded summary strip (non-zero
+    /// buckets + tinted dots), "Needs you"-first section headers, inter-row
+    /// 8%-white hairlines + white@.026 hover wash, and the quiet `N sessions · M
+    /// need you` footer with its passive `Grouped by …` caption. The row slot is
+    /// the AB-344 seam: rows still route through `sessionRow` above (Classic's
+    /// flat row today), so once T24 pt3 lands the void Halo row it drops straight
+    /// into the scaffold with no change here.
     func sessionList(
         sessions: [AgentSession],
         sections: [IslandSessionSection],
@@ -769,19 +788,21 @@ struct HaloTheme: IslandTheme {
         pulseClock: PulseClock?,
         makeActions: @escaping (AgentSession) -> RowActions
     ) -> AnyView {
-        interim.sessionList(
-            sessions: sessions,
-            sections: sections,
-            group: group,
-            stateIndicator: stateIndicator,
-            completedStaleThreshold: completedStaleThreshold,
-            sideInset: sideInset,
-            isInteractive: isInteractive,
-            actionableSessionID: actionableSessionID,
-            lang: lang,
-            keyboardCoordinator: keyboardCoordinator,
-            pulseClock: pulseClock,
-            makeActions: makeActions
+        AnyView(
+            HaloSessionListScaffold(
+                sessions: sessions,
+                sections: sections,
+                group: group,
+                stateIndicator: stateIndicator,
+                completedStaleThreshold: completedStaleThreshold,
+                sideInset: sideInset,
+                isInteractive: isInteractive,
+                actionableSessionID: actionableSessionID,
+                lang: lang,
+                keyboardCoordinator: keyboardCoordinator,
+                pulseClock: pulseClock,
+                makeActions: makeActions
+            )
         )
     }
 

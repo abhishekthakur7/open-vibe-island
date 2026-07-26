@@ -351,6 +351,15 @@
 "island.halo.empty.workspaceOne" = "監視中 · %lld 個工作區";
 "island.halo.empty.workspaceOther" = "監視中 · %lld 個工作區";
 "island.halo.hint.setup" = "設定";
+"island.halo.usage.metersTitle" = "用量";
+"island.halo.usage.fine" = "正常";
+"island.halo.usage.warn" = "偏高";
+"island.halo.usage.critical" = "臨界";
+"island.halo.usage.resetsIn" = "%@ 後重置";
+"island.halo.footer.summary" = "%lld 個工作階段 · %lld 個需要你";
+"island.halo.footer.groupedByState" = "按狀態分組";
+"island.halo.footer.groupedByAgent" = "按代理分組";
+"island.halo.footer.groupedByProject" = "按專案分組";
 
 /* Island Panel - Annual theme rows (AB-317) */
 "island.annual.row.jump" = "跳轉";

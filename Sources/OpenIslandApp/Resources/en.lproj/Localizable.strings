@@ -350,6 +350,15 @@
 "island.halo.empty.workspaceOne" = "Monitoring · %lld workspace";
 "island.halo.empty.workspaceOther" = "Monitoring · %lld workspaces";
 "island.halo.hint.setup" = "SETUP";
+"island.halo.usage.metersTitle" = "Usage";
+"island.halo.usage.fine" = "Fine";
+"island.halo.usage.warn" = "Warn";
+"island.halo.usage.critical" = "Critical";
+"island.halo.usage.resetsIn" = "resets in %@";
+"island.halo.footer.summary" = "%lld sessions · %lld need you";
+"island.halo.footer.groupedByState" = "Grouped by state";
+"island.halo.footer.groupedByAgent" = "Grouped by agent";
+"island.halo.footer.groupedByProject" = "Grouped by project";
 
 /* Island Panel - Annual theme rows (AB-317) */
 "island.annual.row.jump" = "Jump";
