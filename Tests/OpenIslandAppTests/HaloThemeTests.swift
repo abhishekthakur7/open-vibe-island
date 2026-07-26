@@ -364,6 +364,120 @@ struct HaloThemeTests {
         #expect(F.edgeState(phase: .waitingForApproval, presence: .inactive, outcome: .success) == .idle)
     }
 
+    // MARK: - Collapsed-row rail mapping (AB-344 · SPEC §5C/§5D)
+
+    /// The collapsed row's edge-lit rail marks **only** the live / actionable rows —
+    /// running, permission, question — and is absent on every settled or idle row
+    /// (success / interrupted / failed / idle), so a list with nothing live is
+    /// rail-free and calm. Pure logic pinned here so the phase → rail mapping can't
+    /// drift without a rendered row (AB-344 acceptance).
+    @Test
+    func railAppearsOnlyOnLiveAndActionableRows() {
+        typealias F = HaloSessionRowFormat
+        // The three states that draw a rail, each with its distinct style.
+        #expect(F.rail(for: .running) == .running)
+        #expect(F.rail(for: .permission) == .permission)
+        #expect(F.rail(for: .question) == .question)
+        // Every settled / idle state is rail-free.
+        #expect(F.rail(for: .success) == nil)
+        #expect(F.rail(for: .interrupted) == nil)
+        #expect(F.rail(for: .failed) == nil)
+        #expect(F.rail(for: .idle) == nil)
+
+        // Exactly the live/actionable states carry a rail — no more, no fewer.
+        let railed = F.EdgeState.allCases.filter { F.rail(for: $0) != nil }
+        #expect(Set(railed) == [.running, .permission, .question])
+
+        // The three rail styles are distinct (each state reads a different rail).
+        let styles = railed.map { F.rail(for: $0) }
+        #expect(Set(styles).count == 3)
+    }
+
+    // MARK: - Agent monogram derivation (achromatic identity mark)
+
+    /// The achromatic monogram is a single upper-cased identity initial taken from
+    /// the agent's short name — never a hue (identity stays a grey whisper, brief
+    /// §7). The first *alphanumeric* scalar is used so a punctuation-led name still
+    /// yields a readable mark, and an empty / symbol-only name falls back to a
+    /// neutral bullet rather than an empty chip.
+    @Test
+    func monogramIsASingleUppercasedAlphanumericInitial() {
+        typealias F = HaloSessionRowFormat
+        #expect(F.monogram(agentShortName: "CLAUDE") == "C")
+        #expect(F.monogram(agentShortName: "codex") == "C")
+        #expect(F.monogram(agentShortName: "GEMINI") == "G")
+        // Leading punctuation is skipped to the first readable character.
+        #expect(F.monogram(agentShortName: "· kimi") == "K")
+        // Every shipped agent yields a non-empty, single-character mark.
+        for tool in AgentTool.allCases {
+            let mark = F.monogram(agentShortName: tool.shortName)
+            #expect(mark.count == 1)
+            #expect(!mark.isEmpty)
+        }
+        // Degenerate names fall back to the neutral bullet, never an empty string.
+        #expect(F.monogram(agentShortName: "") == "•")
+        #expect(F.monogram(agentShortName: "—") == "•")
+    }
+
+    // MARK: - Subagents & completion formats (Part 2 · §5G/§5H)
+
+    /// AC (§5G): against the shared T08 `subagentsAndTasks` fixtures (`startedAt` at
+    /// −42 / −75 / −8s) the three subagents read `0m 42s` / `1m 15s` / `0m 08s` —
+    /// the exact tabular readouts the ticket pins, matching Flight Deck's own
+    /// `engineElapsedLabel` so the two themes read one span the same way. Minutes
+    /// never roll into hours (a live count stays a minute column) and a negative
+    /// interval clamps to `0m 00s`, never a `-` glyph.
+    @Test
+    func subagentElapsedLabelMatchesTheT08FixtureReadouts() {
+        typealias F = HaloSessionRowFormat
+        #expect(F.subagentElapsedLabel(seconds: 42) == "0m 42s")
+        #expect(F.subagentElapsedLabel(seconds: 75) == "1m 15s")
+        #expect(F.subagentElapsedLabel(seconds: 8) == "0m 08s")
+        #expect(F.subagentElapsedLabel(seconds: 90 * 60) == "90m 00s")
+        #expect(F.subagentElapsedLabel(seconds: -5) == "0m 00s")
+    }
+
+    /// AC (§5H): the completion Duration reads `14m 08s` (the mockup example,
+    /// 848s) as a mono tabular span, rolls into an hours field for a multi-hour run
+    /// (`1h 05m 30s`) so it never reads a misleading `65m 30s`, and clamps a
+    /// negative span (clock skew) to `0m 00s`.
+    @Test
+    func durationLabelFormatsTheCompletionRunLength() {
+        typealias F = HaloSessionRowFormat
+        #expect(F.durationLabel(seconds: 14 * 60 + 8) == "14m 08s")
+        #expect(F.durationLabel(seconds: 43 * 60) == "43m 00s")
+        #expect(F.durationLabel(seconds: 3600 + 5 * 60 + 30) == "1h 05m 30s")
+        #expect(F.durationLabel(seconds: -1) == "0m 00s")
+    }
+
+    /// AC (§5H): the outcome badge maps each `SessionOutcome` to a **distinct**
+    /// glyph — a check for success, a stop for interrupted, a cross for failed — so
+    /// a non-success completion is never carried by hue alone (SPEC §K). The three
+    /// glyphs are pairwise distinct.
+    @Test
+    func outcomeBadgeGlyphsAreDistinctPerOutcome() {
+        typealias O = HaloSessionRowFormat.Outcome
+        #expect(O.success.glyphName == "checkmark")
+        #expect(O.interrupted.glyphName == "stop.fill")
+        #expect(O.failed.glyphName == "xmark")
+        #expect(O(.success) == .success)
+        #expect(O(.interrupted) == .interrupted)
+        #expect(O(.failed) == .failed)
+        let glyphs = O.allCases.map(\.glyphName)
+        #expect(Set(glyphs).count == O.allCases.count)
+    }
+
+    /// AC (§5G): the todo roll-up counts **completed only** as done (never
+    /// in-progress) over the total, so the shared T08 fixture (two completed, one
+    /// in-progress, two pending) reads `2 of 5`. Reuses the shared `PouredTaskRollup`
+    /// so Halo and its siblings can never disagree about what "done" means.
+    @Test
+    func todoRollupReadsTwoOfFiveOnTheT08Fixture() {
+        let rollup = PouredTaskRollup(statuses: [.completed, .completed, .inProgress, .pending, .pending])
+        #expect(rollup.done == 2)
+        #expect(rollup.total == 5)
+    }
+
     // MARK: - Identity strings localize (AC: name/descriptor per language ≠ key)
 
     /// The theme's `name` / `descriptor` resolve to real translations — not the bare

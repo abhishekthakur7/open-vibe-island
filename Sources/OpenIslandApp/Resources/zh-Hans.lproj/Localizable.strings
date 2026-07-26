@@ -360,6 +360,32 @@
 "island.halo.footer.groupedByState" = "按状态分组";
 "island.halo.footer.groupedByAgent" = "按代理分组";
 "island.halo.footer.groupedByProject" = "按项目分组";
+"island.halo.row.jump" = "跳转";
+"island.halo.row.reply" = "回复";
+"island.halo.row.dismiss" = "忽略";
+"island.halo.detail.meta.agent" = "代理";
+"island.halo.detail.meta.model" = "模型";
+"island.halo.detail.meta.permission" = "权限";
+"island.halo.detail.meta.branch" = "分支";
+"island.halo.detail.meta.duration" = "时长";
+"island.halo.detail.meta.terminal" = "终端";
+"island.halo.detail.lastMessage" = "最新消息 · %@";
+"island.halo.detail.result" = "结果";
+"island.halo.done.outcome" = "结果";
+"island.halo.done.duration" = "时长";
+"island.halo.done.model" = "模型";
+"island.halo.done.finished" = "完成于";
+"island.halo.done.finishedAgo" = "%@前";
+"island.halo.outcome.success" = "成功";
+"island.halo.outcome.interrupted" = "已中断";
+"island.halo.outcome.failed" = "失败";
+"island.halo.subagents.header" = "子代理";
+"island.halo.subagents.active" = "%lld 个活跃";
+"island.halo.tasks.progress" = "%1$lld / %2$lld";
+"island.halo.tasks.doing" = "进行中";
+"island.halo.attachment.attached" = "已连接";
+"island.halo.attachment.stale" = "已失效";
+"island.halo.attachment.detached" = "已断开";
 
 /* Island Panel - Annual theme rows (AB-317) */
 "island.annual.row.jump" = "跳转";

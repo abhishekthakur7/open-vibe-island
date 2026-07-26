@@ -442,6 +442,111 @@ enum HaloSessionRowFormat {
         case .idle: return .off
         }
     }
+
+    /// The collapsed row's **edge-lit rail** (SPEC §5C/§5D · mockup `.rail`): a 2pt
+    /// vertical gradient rail in the left margin that marks **only** the live /
+    /// actionable rows — running (cyan→violet), permission (amber→magenta), question
+    /// (qgold) — so attention reads straight down the left of the list. A settled
+    /// row (success / interrupted / failed) and an idle row carry **no** rail, so a
+    /// list with nothing live is rail-free and calm. This is the collapsed-row
+    /// mirror of `edgeMotion` (the perimeter edge-light's channel); it is pure so
+    /// `HaloThemeTests` can pin the phase → rail mapping without rendering a view.
+    enum Rail: CaseIterable {
+        /// Cyan→violet vertical gradient (a running turn).
+        case running
+        /// Amber→magenta vertical gradient (the loudest — a permission request).
+        case permission
+        /// Flat qgold (a question — softer than permission).
+        case question
+    }
+
+    static func rail(for state: EdgeState) -> Rail? {
+        switch state {
+        case .running: return .running
+        case .permission: return .permission
+        case .question: return .question
+        case .success, .interrupted, .failed, .idle: return nil
+        }
+    }
+
+    /// The achromatic **agent monogram** (mockup `.mono-tag`): a single identity
+    /// initial derived from the agent's short name, upper-cased. Identity in Halo is
+    /// a grey whisper — the monogram is **never** brand-colored (brief §7), so this
+    /// carries only the letter, never a hue. The first alphanumeric scalar is taken
+    /// so a punctuation-led name still yields a readable mark; an empty / symbol-only
+    /// name falls back to a neutral bullet. Pure so `HaloThemeTests` pins the
+    /// derivation and it stays stable across agents.
+    static func monogram(agentShortName: String) -> String {
+        guard let initial = agentShortName.unicodeScalars.first(where: {
+            CharacterSet.alphanumerics.contains($0)
+        }) else {
+            return "•"
+        }
+        return String(initial).uppercased()
+    }
+
+    // MARK: - Subagents & completion (Part 2 · SPEC §5G/§5H · mockup §G/§H)
+
+    /// The per-subagent **live elapsed** readout (§5G · AC · mockup `.sti`): the
+    /// wall-clock span `now − startedAt` as a mono tabular `%dm %02ds`. Against the
+    /// shared T08 `subagentsAndTasks` fixtures (`startedAt` at −42 / −75 / −8s) the
+    /// three engines read `0m 42s` / `1m 15s` / `0m 08s`. Minutes are **not** rolled
+    /// into hours — a long subagent stays an honest tabular count the column can
+    /// still align (`90m 00s`) — and a negative interval (a clock nudge) clamps to
+    /// `0m 00s` rather than printing a `-`. This is the same idiom Flight Deck's
+    /// `engineElapsedLabel` pins, so the two themes read one span the same way; kept
+    /// pure so `HaloThemeTests` can pin the fixture readouts without rendering.
+    static func subagentElapsedLabel(seconds: Int) -> String {
+        let clamped = max(0, seconds)
+        return String(format: "%dm %02ds", clamped / 60, clamped % 60)
+    }
+
+    /// The completion **Duration** readout (§5H · AC · mockup `.mv tnum`): the run
+    /// length as a mono tabular string. A sub-hour run reads `%dm %02ds` (`14m 08s`,
+    /// the mockup example = 848s), and a longer run rolls into an hours field
+    /// (`1h 05m 30s`) so a multi-hour session never reads a misleading `65m 30s`. A
+    /// negative span (clock skew) clamps to `0m 00s`. Distinct from
+    /// `subagentElapsedLabel` only in the hour-roll: a subagent is a live count that
+    /// stays in minutes, a completed run is a settled total that earns hours.
+    static func durationLabel(seconds: Int) -> String {
+        let clamped = max(0, seconds)
+        let hours = clamped / 3600
+        let minutes = (clamped % 3600) / 60
+        let secs = clamped % 60
+        if hours > 0 {
+            return String(format: "%dh %02dm %02ds", hours, minutes, secs)
+        }
+        return String(format: "%dm %02ds", minutes, secs)
+    }
+
+    /// A completed row's **outcome badge** shape (§5H · AC · mockup `.outc`): the
+    /// glyph + which status slot tints it. Success is a check on the green slot,
+    /// interrupted a stop on the interrupted (warn) slot, failed a cross on the
+    /// failed (red) slot — so a non-success completion never reads the same as a
+    /// clean finish (glyph **and** hue differ, never colour alone, SPEC §K). Pure so
+    /// `HaloThemeTests` pins the outcome → (glyph, slot) mapping.
+    enum Outcome: CaseIterable {
+        case success
+        case interrupted
+        case failed
+
+        init(_ outcome: SessionOutcome) {
+            switch outcome {
+            case .success: self = .success
+            case .interrupted: self = .interrupted
+            case .failed: self = .failed
+            }
+        }
+
+        /// The SF Symbol the badge carries — distinct per outcome.
+        var glyphName: String {
+            switch self {
+            case .success: return "checkmark"
+            case .interrupted: return "stop.fill"
+            case .failed: return "xmark"
+            }
+        }
+    }
 }
 
 // MARK: - Token axes (SPEC-halo §1 — pinned by HaloThemeTests)
@@ -732,8 +837,15 @@ struct HaloTheme: IslandTheme {
         return AnyView(HaloUsageMeterCard(providers: providers, lang: lang))
     }
 
-    // PART 2 · T24: the void row (dot + monogram, narrated activity, edge-lit
-    // rail, permission/question heroes, completion body) replaces this delegation.
+    /// The collapsed void row (AB-344 · T25 · SPEC §5C/§5D · mockup §C/§D):
+    /// `HaloSessionRow` — the `lead` (bloomed status dot + achromatic monogram),
+    /// the `body` (workspace title + T05 branch disambiguator, the T03 narrated
+    /// activity with a live-cyan verb, meta chips + Jump), the tabular age, the
+    /// hover-reveal dismiss, and the phase-mapped edge-lit rail (running / permission
+    /// / question only). The Part-2 seam: the expanded per-row detail and the
+    /// actionable heroes (permission command/diff, question options, completion body,
+    /// subagent nests) mount **below** this summary — AB-345 adds them here without
+    /// touching the collapsed row.
     func sessionRow(
         session: AgentSession,
         stateIndicator: IslandSessionStateIndicator,
@@ -749,7 +861,7 @@ struct HaloTheme: IslandTheme {
         keyboardCoordinator: OverlayUICoordinator?,
         pulseClock: PulseClock?
     ) -> AnyView {
-        interim.sessionRow(
+        AnyView(HaloSessionRow(
             session: session,
             stateIndicator: stateIndicator,
             completedStaleThreshold: completedStaleThreshold,
@@ -763,7 +875,7 @@ struct HaloTheme: IslandTheme {
             actions: actions,
             keyboardCoordinator: keyboardCoordinator,
             pulseClock: pulseClock
-        )
+        ))
     }
 
     /// Halo's session-list chrome (AB-343 · T24 · SPEC §5 Slot 4 · mockup §C):

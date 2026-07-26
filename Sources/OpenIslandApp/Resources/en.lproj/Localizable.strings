@@ -359,6 +359,32 @@
 "island.halo.footer.groupedByState" = "Grouped by state";
 "island.halo.footer.groupedByAgent" = "Grouped by agent";
 "island.halo.footer.groupedByProject" = "Grouped by project";
+"island.halo.row.jump" = "Jump";
+"island.halo.row.reply" = "Reply";
+"island.halo.row.dismiss" = "Dismiss";
+"island.halo.detail.meta.agent" = "Agent";
+"island.halo.detail.meta.model" = "Model";
+"island.halo.detail.meta.permission" = "Permission";
+"island.halo.detail.meta.branch" = "Branch";
+"island.halo.detail.meta.duration" = "Duration";
+"island.halo.detail.meta.terminal" = "Terminal";
+"island.halo.detail.lastMessage" = "Last message · %@";
+"island.halo.detail.result" = "Result";
+"island.halo.done.outcome" = "Outcome";
+"island.halo.done.duration" = "Duration";
+"island.halo.done.model" = "Model";
+"island.halo.done.finished" = "Finished";
+"island.halo.done.finishedAgo" = "%@ ago";
+"island.halo.outcome.success" = "Success";
+"island.halo.outcome.interrupted" = "Interrupted";
+"island.halo.outcome.failed" = "Failed";
+"island.halo.subagents.header" = "Subagents";
+"island.halo.subagents.active" = "%lld active";
+"island.halo.tasks.progress" = "%1$lld of %2$lld";
+"island.halo.tasks.doing" = "in progress";
+"island.halo.attachment.attached" = "attached";
+"island.halo.attachment.stale" = "stale";
+"island.halo.attachment.detached" = "detached";
 
 /* Island Panel - Annual theme rows (AB-317) */
 "island.annual.row.jump" = "Jump";
