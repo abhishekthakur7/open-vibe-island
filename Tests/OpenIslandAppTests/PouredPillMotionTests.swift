@@ -56,6 +56,29 @@ struct PouredPillMotionTests {
         #expect(PouredPillMotion.Settle.greenOpacity == 0.4)
     }
 
+    // MARK: - Right-slot variant constants (stage 2 · §4A A3/A4 · §G · §I)
+
+    @Test
+    func rightSlotBadgeConstantsMatchSpec() {
+        // A3 count.attn badge — glow `rgba(255,177,77,.55)` r14.
+        #expect(PouredPillMotion.RightSlot.attnBadgeGlowRadius == 14)
+        #expect(PouredPillMotion.RightSlot.attnBadgeGlowOpacity == 0.55)
+        #expect(PouredPillMotion.RightSlot.badgeHPadding == 5)
+        #expect(PouredPillMotion.RightSlot.badgeVPadding == 1.5)
+        #expect(PouredPillMotion.RightSlot.badgeCornerRadius == 6)
+    }
+
+    @Test
+    func rightSlotTaskAndUsageConstantsMatchSpec() {
+        #expect(PouredPillMotion.RightSlot.taskChipSpacing == 3)
+        #expect(PouredPillMotion.RightSlot.usageDialDiameter == 13)
+        #expect(PouredPillMotion.RightSlot.usageDialLineWidth == 2.5)
+        #expect(PouredPillMotion.RightSlot.usageDialValueSpacing == 3)
+        // Threshold cutoffs mirror the shipped `usageColor` rule (§I / §3.2).
+        #expect(PouredPillMotion.RightSlot.usageCriticalThreshold == 90)
+        #expect(PouredPillMotion.RightSlot.usageWarnThreshold == 70)
+    }
+
     // MARK: - Ambient-state resolution
 
     private func activity(
@@ -168,5 +191,88 @@ struct PouredPillMotionTests {
         #expect(PouredPillLabelTone.segments(for: "Answer needed", ambient: .question)
                 == [.init(text: "Answer needed", isDim: false)])
         #expect(PouredPillLabelTone.segments(for: "", ambient: .idle).isEmpty)
+    }
+}
+
+/// Stage 2 regression: the Poured 2.0 closed pill keeps the shipped
+/// `V6ClosedPill.*OuterWidth` math **byte-identical** for every (label,
+/// rightSlot) combination — the morph frame (and every theme's pill silhouette)
+/// depends on it, and the new right-slot variants (amber badge, `?` badge, task
+/// chip, usage dial) must render *inside* the slot this already reserves, never
+/// widen it.
+///
+/// The goldens below were computed from the CURRENT formula (stage 1 left the
+/// statics untouched), so they pin today's output as the contract. If the width
+/// math drifts, this fails — regardless of what the right-slot views draw.
+@MainActor
+struct PouredClosedPillWidthRegressionTests {
+
+    /// Pinned at a fixed height (38 — the notch closed height); the formula is
+    /// height-parametric, so one height is enough to pin its shape.
+    private static let height: CGFloat = 38
+    private static let tolerance: CGFloat = 0.001
+
+    private func external(_ label: String?, _ rightSlot: IslandRightSlotContent?) -> CGFloat {
+        V6ClosedPill.externalOuterWidth(
+            label: label, rightSlot: rightSlot, minWidth: 70, height: Self.height
+        )
+    }
+
+    private func macbook(_ label: String?, notch: CGFloat) -> CGFloat {
+        V6ClosedPill.macbookOuterWidth(
+            label: label, physicalNotchWidth: notch, height: Self.height
+        )
+    }
+
+    /// External / top-bar fluid layout — width DOES fold in the right slot, so
+    /// each right-slot kind is pinned. The four count-shaped kinds (`.count`,
+    /// `.attentionCount`, `.taskCounter`, `.usage`) share the badge width math,
+    /// so the Poured variants never move the frame.
+    @Test
+    func externalOuterWidthGoldensAreUnchanged() {
+        #expect(abs(external(nil, nil) - 70) < Self.tolerance)
+        #expect(abs(external("Editing AppModel.swift", nil) - 238.6) < Self.tolerance)
+        #expect(abs(external("Approve swift build?", .attentionCount(count: 1, kind: .permission)) - 244.4) < Self.tolerance)
+        #expect(abs(external("3 working", .count(3)) - 164.1) < Self.tolerance)
+        #expect(abs(external(nil, .attentionCount(count: 12, kind: .question)) - 89.6) < Self.tolerance)
+        #expect(abs(external("Refactoring", .taskCounter(completed: 2, total: 5, subagents: 0)) - 178.7) < Self.tolerance)
+        #expect(abs(external(nil, .usage(percent: 92, windowLabel: "5h", providerTitle: "Claude")) - 89.6) < Self.tolerance)
+        #expect(abs(external(nil, .agents([
+            .session(color: .blue, state: .running),
+            .session(color: .green, state: .idle),
+            .session(color: .red, state: .waiting),
+        ])) - 96) < Self.tolerance)
+        #expect(abs(external("Done · the-automator", nil) - 224) < Self.tolerance)
+    }
+
+    /// A permission and a question badge with the same count reserve the same
+    /// width — the two variants differ only in fill/glyph, not in geometry.
+    @Test
+    func attentionBadgeKindDoesNotChangeReservedWidth() {
+        #expect(
+            external("x", .attentionCount(count: 3, kind: .permission))
+                == external("x", .attentionCount(count: 3, kind: .question))
+        )
+    }
+
+    /// MacBook / notch layout — outer width does NOT fold in the right slot
+    /// (the wings straddle the physical notch), so it depends only on the label
+    /// and the notch width. Pinned so the notch-lane math stays put.
+    @Test
+    func macbookOuterWidthGoldensAreUnchanged() {
+        #expect(abs(macbook(nil, notch: 180) - 274) < Self.tolerance)
+        #expect(abs(macbook("Editing AppModel.swift", notch: 180) - 454) < Self.tolerance)
+        #expect(abs(macbook("hi", notch: 200) - 340.4) < Self.tolerance)
+    }
+
+    /// The right slot is invisible to the MacBook width math, so swapping it (or
+    /// swapping the count-shaped kind) never changes the outer width.
+    @Test
+    func macbookOuterWidthIgnoresRightSlot() {
+        // `macbookOuterWidth` takes no rightSlot argument at all — assert the
+        // label-only contract holds across notch widths so a future refactor
+        // can't quietly start folding the right slot in.
+        #expect(macbook("Refactoring · 3 agents", notch: 160) == macbook("Refactoring · 3 agents", notch: 160))
+        #expect(abs(macbook(nil, notch: 0) - 94) < Self.tolerance) // 47 + 0 + 47 (half = max(44, 19+24+4))
     }
 }

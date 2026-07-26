@@ -197,7 +197,10 @@ struct PouredClosedPill: View {
             .padding(.horizontal, pad)
         }
         .frame(width: width, height: height)
-        .modifier(PouredPillGlow(ambient: ambient))
+        // AB-330 stage 2: the ambient glow no longer rides here. It moved to the
+        // `PouredClosedGlow` seam layer `IslandPanelView` renders OUTSIDE the
+        // morph's content `.clipShape`, so A2/A3/A4/A5 glows actually bleed past
+        // the silhouette instead of being truncated at it (stage-1 deviation).
         .animation(pillLayoutAnimation, value: pillLayoutKey)
     }
 
@@ -229,7 +232,8 @@ struct PouredClosedPill: View {
             .padding(.horizontal, pad)
         }
         .frame(width: outer, height: height)
-        .modifier(PouredPillGlow(ambient: ambient))
+        // AB-330 stage 2: glow moved to the `PouredClosedGlow` seam layer — see
+        // `externalBody`.
         .animation(pillLayoutAnimation, value: pillLayoutKey)
     }
 
@@ -272,10 +276,35 @@ private enum PouredRightSlotKey: Hashable {
 
 // MARK: - Ambient glow
 
+/// The glow-casting seam layer (AB-330 stage 2). Renders the closed-pill
+/// silhouette filled with `surfaceInk` — hidden behind the real pill, which is
+/// the same ink shape drawn on top — so only its `.shadow` bleeds out around the
+/// edges. `IslandPanelView` places this *behind* the morph/legacy surface and
+/// **outside** the shared content `.clipShape`, which is why the glow now bleeds
+/// past the silhouette instead of being truncated at it (the honest stage-1
+/// deviation). The window already reserves headroom for the bloom via Poured's
+/// `closedShadowHorizontalInset 40` / `closedShadowBottomInset 44`
+/// (`SPEC-poured-island` §3.1).
+struct PouredClosedGlow: View {
+    let ambient: PouredPillAmbientState
+    let width: CGFloat
+    let height: CGFloat
+
+    @Environment(\.islandTokens) private var tokens
+
+    var body: some View {
+        V6ClosedPillShape()
+            .fill(tokens.colors.surfaceInk)
+            .frame(width: width, height: height)
+            .modifier(PouredPillGlow(ambient: ambient))
+            .allowsHitTesting(false)
+    }
+}
+
 /// The six ambient states' body glow (`SPEC-poured-island` §4A · mockup §A
-/// keyframes `lumen` / `attnpulse` / `settle`), applied to the framed pill so
-/// it bleeds from the pill silhouette. Every timing/radius/opacity comes from
-/// `PouredPillMotion`.
+/// keyframes `lumen` / `attnpulse` / `settle`), applied to the glow-seam
+/// silhouette (`PouredClosedGlow`) so it bleeds from the pill outline. Every
+/// timing/radius/opacity comes from `PouredPillMotion`.
 ///
 /// Motion follows the `PouredPulsingStatusDot` precedent: the breathing states
 /// drive a single `@State` toggle via `repeatForever`, and the settle is a
@@ -489,9 +518,15 @@ private struct PouredClosedPillLabel: View {
 
 // MARK: - Right slot
 
-/// Poured Island's closed-pill right slot: the "×N" count badge, or the glass
-/// agents grid. Mirrors `V6RightSlotView`'s API (and its accessibility
-/// summary), differing only in the tile styling for the `.agents` case.
+/// Poured Island's closed-pill right slot. AB-330 stage 2 gives each AB-322
+/// content kind its own Poured rendering (`SPEC-poured-island` §4A A3/A4 · §G ·
+/// §I) instead of the shipped degrade-to-`×N` fallback: an amber attention
+/// badge, a gold `?` question badge, a `⏲ 2/5` task chip, and a worst-window
+/// usage dial. `.count` keeps the neutral `×N` badge; `.agents` keeps the glass
+/// grid. Every variant reuses `IslandRightSlotContent.fallbackBadgeAccessibilityLabel`
+/// so the VoiceOver summary is unchanged. The pill's outer width math
+/// (`V6ClosedPill.*OuterWidth`) is untouched — these variants render inside the
+/// slot the fluid layout already reserved.
 struct PouredRightSlotView: View {
     let content: IslandRightSlotContent
     var lang: LanguageManager = .shared
@@ -499,13 +534,17 @@ struct PouredRightSlotView: View {
 
     var body: some View {
         switch content {
-        case .count, .attentionCount, .taskCounter, .usage:
-            // AB-322: the attention / task-counter / usage kinds degrade to this
-            // theme's existing count badge until its own redesign ticket gives
-            // them a rendering (AB-330 stage 2). Spelled out rather than
-            // `default:` so a future case breaks the build here instead of
-            // quietly becoming a number.
+        case .count:
             countBadge
+        case .attentionCount(let count, let kind):
+            PouredAttentionBadge(count: count, kind: kind)
+                .accessibilityLabel(content.fallbackBadgeAccessibilityLabel(lang))
+        case .taskCounter(let completed, let total, let subagents):
+            PouredTaskCounterChip(completed: completed, total: total, subagents: subagents)
+                .accessibilityLabel(content.fallbackBadgeAccessibilityLabel(lang))
+        case .usage(let percent, _, _):
+            PouredUsageDialChip(percent: percent)
+                .accessibilityLabel(content.fallbackBadgeAccessibilityLabel(lang))
         case .agents(let cells):
             PouredAgentsGridBody(cells: cells)
                 .accessibilityElement(children: .ignore)
@@ -520,6 +559,143 @@ struct PouredRightSlotView: View {
             .fixedSize(horizontal: true, vertical: false)
             .foregroundStyle(tokens.colors.paper.opacity(0.72))
             .accessibilityLabel(content.fallbackBadgeAccessibilityLabel(lang))
+    }
+}
+
+// MARK: - Right-slot variant leaves
+
+/// A3/A4 attention badge — the loud `count.attn` amber capsule (permission) or
+/// the calmer gold `?` capsule (question). The two are distinct by **hue and
+/// shape/glyph**, never colour alone: permission shows the blocked-session
+/// count on the bright `attention` fill with its own r14 glow; question shows a
+/// `?` on the softer `statusWaitingForAnswer` gold with no extra badge glow
+/// (`SPEC-poured-island` §4A A3/A4).
+private struct PouredAttentionBadge: View {
+    let count: Int
+    let kind: IslandAttentionKind
+
+    @Environment(\.islandTokens) private var tokens
+
+    private var fill: Color {
+        switch kind {
+        case .permission: PouredPalette.attention
+        case .question:   tokens.colors.statusWaitingForAnswer
+        }
+    }
+
+    private var ink: Color {
+        switch kind {
+        case .permission: PouredPalette.attentionBadgeInk
+        case .question:   PouredPalette.questionBadgeInk
+        }
+    }
+
+    /// The permission badge is the "you are the blocker" state, so it carries
+    /// the r14 amber glow; the question badge stays quiet (gold fill only).
+    private var glowRadius: CGFloat {
+        kind == .permission ? PouredPillMotion.RightSlot.attnBadgeGlowRadius : 0
+    }
+
+    private var label: String {
+        switch kind {
+        case .permission: "\(count)"
+        case .question:   "?"
+        }
+    }
+
+    var body: some View {
+        Text(label)
+            .font(PouredType.Role.summaryNumber.font)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .foregroundStyle(ink)
+            .padding(.horizontal, PouredPillMotion.RightSlot.badgeHPadding)
+            .padding(.vertical, PouredPillMotion.RightSlot.badgeVPadding)
+            .background(
+                RoundedRectangle(cornerRadius: PouredPillMotion.RightSlot.badgeCornerRadius, style: .continuous)
+                    .fill(fill)
+            )
+            .shadow(
+                color: PouredPalette.attention.opacity(glowRadius > 0 ? PouredPillMotion.RightSlot.attnBadgeGlowOpacity : 0),
+                radius: glowRadius
+            )
+    }
+}
+
+/// G task-counter chip — `⏲ 2/5` (or a bare `⏲ ×3` when the spotlight has
+/// subagents but no todo list). Tabular digits so a ticking counter doesn't
+/// jitter; drawn in the neutral paper tone since a running task list is
+/// progress, not attention (`SPEC-poured-island` §G "pill: right slot `⏲ 2/5`").
+private struct PouredTaskCounterChip: View {
+    let completed: Int
+    let total: Int
+    let subagents: Int
+
+    @Environment(\.islandTokens) private var tokens
+
+    var body: some View {
+        HStack(spacing: PouredPillMotion.RightSlot.taskChipSpacing) {
+            Image(systemName: "timer")
+                .font(.system(size: 9, weight: .semibold))
+            Text(fraction)
+                .font(PouredType.Role.age.font)
+        }
+        .lineLimit(1)
+        .fixedSize(horizontal: true, vertical: false)
+        .foregroundStyle(tokens.colors.paper.opacity(0.82))
+    }
+
+    /// A todo list is the headline (`2/5`); a pure subagent fan-out with no todos
+    /// falls back to the agent count (`×3`) rather than a frozen `0/0`.
+    private var fraction: String {
+        total > 0 ? "\(completed)/\(total)" : "×\(subagents)"
+    }
+}
+
+/// I usage dial — a small conic ring + tabular `92%`, tinted by threshold
+/// (`≥90` critical red, `≥70` warn gold, else green). The pill only surfaces the
+/// worst window once it is critical (`IslandRightSlotResolver.usageAlertThreshold
+/// == 90`), so in practice this is always the red crit dial; the tint is still
+/// computed from the value so a fixture at any percent reads truthfully
+/// (`SPEC-poured-island` §I "pill compression: small red dial + `92%`").
+private struct PouredUsageDialChip: View {
+    let percent: Int
+
+    @Environment(\.islandTokens) private var tokens
+
+    private var tint: Color {
+        if percent >= PouredPillMotion.RightSlot.usageCriticalThreshold {
+            tokens.colors.statusFailed
+        } else if percent >= PouredPillMotion.RightSlot.usageWarnThreshold {
+            tokens.colors.statusWaitingForAnswer
+        } else {
+            tokens.colors.statusCompleted
+        }
+    }
+
+    private var fraction: Double { min(1, max(0, Double(percent) / 100)) }
+
+    var body: some View {
+        HStack(spacing: PouredPillMotion.RightSlot.usageDialValueSpacing) {
+            ZStack {
+                Circle()
+                    .stroke(tokens.colors.paper.opacity(0.14),
+                            lineWidth: PouredPillMotion.RightSlot.usageDialLineWidth)
+                Circle()
+                    .trim(from: 0, to: fraction)
+                    .stroke(tint,
+                            style: StrokeStyle(lineWidth: PouredPillMotion.RightSlot.usageDialLineWidth, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+            }
+            .frame(width: PouredPillMotion.RightSlot.usageDialDiameter,
+                   height: PouredPillMotion.RightSlot.usageDialDiameter)
+
+            Text("\(percent)%")
+                .font(PouredType.Role.age.font)
+                .foregroundStyle(tint)
+        }
+        .lineLimit(1)
+        .fixedSize(horizontal: true, vertical: false)
     }
 }
 

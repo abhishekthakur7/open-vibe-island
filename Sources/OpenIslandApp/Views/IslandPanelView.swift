@@ -453,6 +453,48 @@ struct IslandPanelView: View {
         .environment(\.islandClosedPillActivity, model.islandClosedActivity())
     }
 
+    /// AB-330: the closed pill's ambient glow layer for the active theme, or an
+    /// empty view when the theme casts none (every theme but Poured). Rendered
+    /// behind the closed surface and OUTSIDE its clip in both the morph and the
+    /// Reduce Motion crossfade, so a glow that bleeds past the silhouette is not
+    /// truncated. `width` is the closed pill's own outer width so the glow's
+    /// silhouette sits exactly under the real pill (its ink fill is occluded; the
+    /// `.shadow` is all that shows).
+    @ViewBuilder
+    private func closedAmbientGlow(width: CGFloat) -> some View {
+        if let glow = theme.closedSurfaceGlow(
+            mode: model.islandClosedMode,
+            rightSlot: model.islandClosedRightSlotContent(),
+            activity: model.islandClosedActivity(),
+            width: width,
+            height: closedNotchHeight
+        ) {
+            glow
+        }
+    }
+
+    /// The closed pill's own outer width for the current display placement —
+    /// the same `V6ClosedPill.*OuterWidth` math the morph animates from, reused
+    /// here so the Reduce Motion path can size the glow seam without duplicating
+    /// the formula.
+    private func closedPillOuterWidth() -> CGFloat {
+        let layout: V6ClosedLayout = isExternalDisplayPlacement ? .external : .macbook
+        let physicalNotchWidth: CGFloat = targetOverlayScreen?.notchSize.width ?? 180
+        let label = model.islandClosedLabel()
+        return layout == .macbook
+            ? V6ClosedPill.macbookOuterWidth(
+                label: label,
+                physicalNotchWidth: physicalNotchWidth,
+                height: closedNotchHeight
+            )
+            : V6ClosedPill.externalOuterWidth(
+                label: label,
+                rightSlot: model.islandClosedRightSlotContent(),
+                minWidth: 70,
+                height: closedNotchHeight
+            )
+    }
+
     // MARK: - Opened surface
 
     /// Header + session-list content only — no background, shape, shadow, or
@@ -545,7 +587,20 @@ struct IslandPanelView: View {
     /// it if both branches were ever simultaneously mounted).
     @ViewBuilder
     private func islandGlyphOverlay(opened: Bool, closedLeadingInset: CGFloat) -> some View {
-        UnifiedBars(mode: model.islandClosedMode, size: 24)
+        // AB-330: the traveling glyph *is* the closed pill's left indicator in
+        // the morph path (the pill draws a transparent placeholder), so it takes
+        // the active theme's ambient tint — running blue, question gold, etc.
+        // `nil` for every theme but Poured, where `UnifiedBars` keeps its own
+        // paper tone exactly as before.
+        UnifiedBars(
+            mode: model.islandClosedMode,
+            size: 24,
+            tint: theme.closedGlyphTint(
+                mode: model.islandClosedMode,
+                rightSlot: model.islandClosedRightSlotContent(),
+                activity: model.islandClosedActivity()
+            )
+        )
             .frame(width: 24, height: 24)
             .padding(.leading, opened && travelsGlyphOnOpen ? Self.openedGlyphLeadingInset : closedLeadingInset)
             .padding(.top, max(0, (closedNotchHeight - 24) / 2))
@@ -579,6 +634,13 @@ struct IslandPanelView: View {
     @ViewBuilder
     private func legacyCrossfadeSurface(openedWidth: CGFloat, openedHeight: CGFloat) -> some View {
         ZStack(alignment: .top) {
+            // AB-330: same closed-pill ambient glow seam as the morph path, so
+            // the bleed survives Reduce Motion too (it holds its peak/quiet frame
+            // statically — see `PouredPillGlow`). `nil` for every theme but
+            // Poured, leaving this path byte-identical for them.
+            closedAmbientGlow(width: closedPillOuterWidth())
+                .opacity(usesOpenedVisualState ? 0 : 1)
+
             if shouldRenderOpenedSurface {
                 openedSurface(width: openedWidth, height: openedHeight)
                     .opacity(usesOpenedVisualState ? 1 : 0)
@@ -656,6 +718,15 @@ struct IslandPanelView: View {
         let closedLeadingInset = closedNotchHeight / 2
 
         ZStack(alignment: .top) {
+            // AB-330: the closed pill's ambient glow, cast by the theme (Poured)
+            // as a sibling *behind* the surface and OUTSIDE the content clip
+            // below, so it bleeds past the silhouette instead of being truncated
+            // at it. Sized to the closed pill and faded out as the panel opens.
+            // Every other theme returns `nil` here, so this adds nothing to their
+            // render tree.
+            closedAmbientGlow(width: closedWidth)
+                .opacity(opened ? 0 : 1)
+
             // One clip shape drives the whole transition. The fill
             // crossfades between the closed pill's flat ink and the opened
             // surface's vibrancy, but the silhouette — the thing that

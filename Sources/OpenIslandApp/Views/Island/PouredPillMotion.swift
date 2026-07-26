@@ -95,4 +95,41 @@ enum PouredPillMotion {
         static let greenOpacity: Double = 0.4
         // Tail (`100%`) fades to `0 0 0` — no glow — so no constants needed.
     }
+
+    // MARK: Right-slot chips (A3 count-attn · A4 `?` · G task-counter · I usage dial)
+
+    /// Geometry for the Poured 2.0 closed-pill right-slot variants
+    /// (`SPEC-poured-island` §4A A3/A4 · §G · §I). Colours live at the view site
+    /// (`PouredPalette` badge inks + status tokens); this table is geometry only,
+    /// so it stays a pure vector `PouredPillMotionTests` can pin.
+    enum RightSlot {
+        /// Capsule padding + corner for the `count.attn` / `?` badges.
+        static let badgeHPadding: CGFloat = 5
+        static let badgeVPadding: CGFloat = 1.5
+        static let badgeCornerRadius: CGFloat = 6
+
+        /// A3 `count.attn` badge glow — `rgba(255,177,77,.55)` r14 (`SPEC` §4A A3
+        /// "glow `rgba(255,177,77,.55)` r14"). The badge is the loud one; the `?`
+        /// question badge carries the calmer gold fill with no extra badge glow.
+        static let attnBadgeGlowRadius: CGFloat = 14
+        static let attnBadgeGlowOpacity: Double = 0.55
+
+        /// Task-counter chip (`⏲ 2/5`) — the gap between the timer glyph and the
+        /// tabular `done/total` fraction.
+        static let taskChipSpacing: CGFloat = 3
+
+        /// Worst-window usage dial (`SPEC` §I "small dial + `92%`"): a compact
+        /// conic ring beside the tabular percentage.
+        static let usageDialDiameter: CGFloat = 13
+        static let usageDialLineWidth: CGFloat = 2.5
+        static let usageDialValueSpacing: CGFloat = 3
+
+        /// Usage threshold cutoffs (`SPEC` §I / §3.2 — the shipped `usageColor`
+        /// rule): `≥ critical` red, `≥ warn` gold, else green. The pill only ever
+        /// receives `≥ critical` per `IslandRightSlotResolver.usageAlertThreshold`,
+        /// but the tint is computed from these so an off-threshold fixture is
+        /// still coloured truthfully.
+        static let usageCriticalThreshold: Int = 90
+        static let usageWarnThreshold: Int = 70
+    }
 }
