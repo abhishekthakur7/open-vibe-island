@@ -44,19 +44,19 @@ Keep all work incremental, reviewable, and reversible. Every meaningful round of
 ## Branching And Worktree Rules
 
 - Treat `/Users/wangruobing/Personal/open-island` on `main` as the shared integration worktree.
-- Never edit, commit, or push directly on `main`. All changes must go through a feature branch and PR before integration.
-- Use the shared `main` worktree only to inspect repository state, fetch, update with `git pull --ff-only`, and run final verification after PRs merge.
+- Never edit or commit new work directly on `main`. Develop on a feature branch, then integrate by squash-merging the branch to `main` and pushing — no PR required.
+- Use the shared `main` worktree only to inspect repository state, fetch, update with `git pull --ff-only`, perform the squash-merge + push, and run final verification after merges.
 - Create one worktree per branch and one branch per worktree. Never attach two worktrees to the same branch.
 - Create new worktrees from `origin/main`, not from a locally drifted feature branch.
 - Use sibling worktree paths named like `/Users/wangruobing/Personal/open-island-<topic>`.
 - Use branch names that match the workstream, such as `feat/<topic>`, `fix/<topic>`, `docs/<topic>`, or `investigate/<topic>`.
 - Keep each worktree focused on one coherent slice with a narrow file ownership area when possible.
 - Rebase or merge the latest `origin/main` into the feature branch before integrating it back.
-- Integrate completed work through a PR targeting `main`, then update the shared `main` worktree with `git pull --ff-only`.
-- PRs are ready-for-review by default unless explicitly requested as draft or clearly marked WIP.
+- Integrate completed work by squash-merging the feature branch into `main` (one commit per coherent change) and pushing `origin main` directly; PRs are used only when the user explicitly asks for remote review.
+- When a PR is requested, it is ready-for-review by default unless explicitly requested as draft or clearly marked WIP.
 - Remove merged worktrees and delete merged branches after the integration round is complete.
 - If multiple agents are working in parallel, assign each agent its own worktree instead of sharing one checkout.
-- All PRs must target `main`. Do not chain PRs through another feature branch unless the user explicitly requests that structure.
+- Integrate every branch into `main` directly. Do not chain feature branches off one another unless the user explicitly requests that structure — wait for the prerequisite to land on `main`, then branch from it.
 
 See [docs/worktree-workflow.md](/Users/wangruobing/Personal/open-island/docs/worktree-workflow.md) for the concrete commands and lifecycle.
 

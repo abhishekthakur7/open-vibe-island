@@ -15,13 +15,13 @@ This repository should use Git worktrees as the default shape for development.
 
 - Path: `/Users/wangruobing/Personal/open-island`
 - Branch: `main`
-- Purpose: fetch, mirror `main` after PR merges, and verify
+- Purpose: fetch, integrate finished branches into `main`, and verify
 
 Rules:
 
 - Do not start feature work here.
-- Do not edit, commit, or push directly on `main`.
-- Only use this worktree to inspect the overall state, fetch, update local `main` with `git pull --ff-only`, and run final verification after PRs merge.
+- Do not edit files or author new commits directly on `main` — the only commits made here are squash-merge commits of finished topic branches.
+- Use this worktree to inspect the overall state, fetch, update local `main` with `git pull --ff-only`, perform squash-merges + pushes, and run final verification after merges.
 
 ### 2. Topic worktrees
 
@@ -80,27 +80,25 @@ If rebase is risky for that slice, merge `origin/main` into the topic branch exp
 
 ## Integrate back into `main`
 
-First make sure the topic worktree is committed and verified.
+First make sure the topic worktree is committed and verified (build + full test suite — the local gate).
 
-Push the feature branch and open a PR targeting `main`.
-
-- Open a normal ready-for-review PR by default.
-- Open a draft PR only when the user explicitly asks for draft mode, or when the branch is intentionally WIP or has known verification gaps.
-- If a PR is opened as draft, state why in the PR body or final summary.
-
-After the PR merges, return to the integration worktree:
+Then, from the integration worktree, squash-merge and push directly:
 
 ```bash
-git switch main
 git fetch origin
 git pull --ff-only origin main
+git merge --squash <branch-name>
+git commit -m "<conventional message> (<ticket>)"
+git push origin main
 ```
+
+- One squash commit per coherent change, conventional message, ticket reference included.
+- PRs are optional: open one only when the user explicitly asks for remote review. In that case it is ready-for-review by default; draft only on explicit request or intentional WIP, with the reason stated.
 
 ## Push policy
 
 - Push topic branches when you want backup, review, or collaboration.
-- Do not push `main` directly. Merge through PRs, then update the integration worktree with `git pull --ff-only`.
-- Tooling defaults do not override this policy; for example, a publish helper that defaults to draft PRs must still follow the repository default above.
+- `main` is pushed directly as part of the squash-merge integration above. Never force-push `main`.
 
 ## Cleanup
 
