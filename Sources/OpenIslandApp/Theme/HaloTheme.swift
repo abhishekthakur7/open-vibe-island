@@ -231,10 +231,30 @@ enum HaloEdge {
 
     // MARK: Washes (below the token model)
 
-    /// Code-block inset stroke (`--hair2 white@.05`).
+    /// Code-block inset stroke (`--hair2 white@.05`). Also the edge-light's own
+    /// off-band wash (the `white@.05` filler between an orbiting/segmented state's
+    /// coloured stops — SPEC §1a working / failure tables).
     static let hair2 = Color.white.opacity(0.05)
     /// Mono-block whisper fill (`--lift white@.028`).
     static let lift = Color.white.opacity(0.028)
+
+    // MARK: Bloom hues (AB-341 · SPEC §1a bloom column)
+
+    /// The colored `.shadow` glow each state casts is a **separate** hue from its
+    /// edge stops (a warmer, softer bloom rgba), so it reads as *light bleeding*
+    /// past the silhouette rather than a fatter stroke. Pinned to the mockup rgba
+    /// by `HaloEdgeLightTests`; the per-state opacity/radius live in the edge-light
+    /// model + `HaloMetrics`.
+    ///
+    /// Working glow `rgba(96,150,255,·)` — a cooler blue than the cyan→violet edge.
+    static let workingBloom = Color(red: 96 / 255.0, green: 150 / 255.0, blue: 255 / 255.0)
+    /// Permission glow `rgba(255,120,90,·)` — a hotter coral than the amber edge
+    /// (the loudest bloom, the only one that bleeds far outside the silhouette).
+    static let permissionBloom = Color(red: 255 / 255.0, green: 120 / 255.0, blue: 90 / 255.0)
+    /// Question glow `rgba(255,207,122,·)` — the qgold hue, a steady soft halo.
+    static let questionBloom = Color(red: 255 / 255.0, green: 207 / 255.0, blue: 122 / 255.0)
+    /// Success glow `rgba(95,227,154,·)` — the green hue, blooms then dissolves.
+    static let successBloom = Color(red: 95 / 255.0, green: 227 / 255.0, blue: 154 / 255.0)
 }
 
 /// Halo's view-level geometry constants (SPEC-halo §1b · AB-340).
@@ -263,6 +283,29 @@ enum HaloMetrics {
     static let gridGap: CGFloat = 3.5
     /// Agents-grid cell corner radius (`gridCell / 2` → bloomed circle).
     static let gridRadius: CGFloat = 3
+
+    // MARK: Edge-light bloom radii (AB-341 · SPEC §1a bloom column)
+
+    /// The mockup's bloom shadows are CSS `0 0 <blur> <spread>` — but SwiftUI's
+    /// `.shadow(radius:)` has **no spread**, and the mockup's spreads are all
+    /// *negative* (a tighter halo). We map each to an effective SwiftUI radius of
+    /// `≈ (blur + spread) / 2` (halving CSS blur to SwiftUI's Gaussian σ, then
+    /// applying the negative spread as a further tightening), then pin the tuned
+    /// value here. These are **judged-by-eye** against `06-halo.html`; the final
+    /// "reads across the room" pass is a dev-app manual sign-off item (SPEC §6.4).
+    ///
+    /// Working steady glow — mockup `0 0 26 -10` → `(26-10)/2 = 8`.
+    static let workingBloomRadius: CGFloat = 8
+    /// Permission bloompulse **min** — mockup `r20 -4` → `(20-4)/2 = 8`.
+    static let permissionBloomRadiusMin: CGFloat = 8
+    /// Permission bloompulse **max** — mockup `r46 -4` → `(46-4)/2 = 21`. The
+    /// loudest bloom; the grown `closedShadowInset` tokens (44pt) contain it.
+    static let permissionBloomRadiusMax: CGFloat = 21
+    /// Question steady glow — mockup `0 0 22 -10` → `(22-10)/2 = 6`.
+    static let questionBloomRadius: CGFloat = 6
+    /// Success okbloom **peak** — mockup `r40 → 0` (no spread) → `40/2 = 20`,
+    /// dissolving to 0 over the 3s one-shot.
+    static let successBloomRadiusMax: CGFloat = 20
 }
 
 /// Halo's ambient / stateful motion periods (SPEC-halo §1c · §K · AB-340).
@@ -594,6 +637,22 @@ struct HaloTheme: IslandTheme {
             balancedRows: { V6RightSlotView.balancedRows($0) },
             cellGeometry: { _ in (cell: HaloMetrics.gridCell, gap: HaloMetrics.gridGap, radius: HaloMetrics.gridRadius) }
         )
+    }
+
+    // MARK: Surface edge-light (AB-341 · T22)
+
+    /// The living prismatic perimeter edge-light — Halo's whole state channel
+    /// (SPEC §3a). Returns `HaloEdgeLight`, which masks a per-state `AngularGradient`
+    /// with `shape.stroke(lineWidth: HaloMetrics.edge)` on the **same** morphing
+    /// `OpenedIslandSurfaceShape` the open/close transition animates, so the ring
+    /// and silhouette interpolate in lockstep. `context` carries the resolved "one
+    /// loud thing" ambient state, closed-vs-opened, and the surface size. This is
+    /// the one theme that overrides the default-nil hook.
+    func surfaceEdgeOverlay(
+        shape: OpenedIslandSurfaceShape,
+        context: IslandSurfaceEdgeContext
+    ) -> AnyView? {
+        AnyView(HaloEdgeLight(shape: shape, context: context))
     }
 
     // MARK: Slot factories (interim — delegated to Classic until T22–T25)

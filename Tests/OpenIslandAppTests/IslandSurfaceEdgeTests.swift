@@ -38,19 +38,22 @@ struct IslandSurfaceEdgeTests {
 
     // MARK: - Hook default nil (byte-identical surfaces)
 
-    /// Every registered theme returns `nil` from the surface edge hook, so the
-    /// morph / Reduce-Motion surfaces render byte-identically — the AC's "no
-    /// shipped theme changes" pin. A premature Part-2 override that leaks into a
-    /// shipped theme (or a registration of Halo before it is complete) trips this.
+    /// Every **registered** (shipped) theme returns `nil` from the surface edge
+    /// hook, so the morph / Reduce-Motion surfaces render byte-identically — the
+    /// AC's "no shipped theme changes" pin. Halo (still unregistered until T26) is
+    /// the sole overrider: Part 2 flips it to trace the `HaloEdgeLight` ring, so
+    /// here it returns non-nil. A premature override that leaks into a shipped
+    /// theme (or a registration of Halo before it is complete) trips this.
     @Test
-    func everyRegisteredThemeReturnsNilEdgeOverlay() {
+    func onlyHaloTracesAnEdgeOverlayEveryShippedThemeStaysNil() {
         let shape = OpenedIslandSurfaceShape(
             topProfile: .notch,
             topCornerRadius: 0,
             bottomCornerRadius: 12,
             filletRadius: 0
         )
-        // Exercise several states/presentations — the default must be nil for all.
+        // Exercise several states/presentations — the default must be nil for all
+        // shipped themes, and non-nil for Halo, across every state/presentation.
         for state in IslandSurfaceEdgeState.allCases {
             for isOpened in [true, false] {
                 let context = IslandSurfaceEdgeContext(
@@ -61,12 +64,15 @@ struct IslandSurfaceEdgeTests {
                 for theme in ThemeRegistry.all {
                     #expect(
                         theme.surfaceEdgeOverlay(shape: shape, context: context) == nil,
-                        "\(theme.id) must trace no edge overlay in Part 1 (state: \(state), opened: \(isOpened))"
+                        "\(theme.id) must trace no edge overlay (state: \(state), opened: \(isOpened))"
                     )
                 }
-                // Halo is unregistered in Part 1 and does not override the hook
-                // yet, so it takes the same nil default (Part 2 flips this).
-                #expect(HaloTheme().surfaceEdgeOverlay(shape: shape, context: context) == nil)
+                // Halo overrides the hook in Part 2 — the one theme whose whole
+                // identity is the living edge — so it returns the ring for every state.
+                #expect(
+                    HaloTheme().surfaceEdgeOverlay(shape: shape, context: context) != nil,
+                    "Halo must trace the edge-light (state: \(state), opened: \(isOpened))"
+                )
             }
         }
     }
