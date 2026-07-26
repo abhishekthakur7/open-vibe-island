@@ -283,6 +283,14 @@
 "island.flightDeck.approval.allow" = "允許";
 "island.flightDeck.approval.deny" = "拒絕";
 
+/* Island Panel - Poured Island 2.0 usage meters (AB-331) */
+"island.poured.usage.metersTitle" = "用量 · 顯示重置時間";
+"island.poured.usage.fine" = "正常";
+"island.poured.usage.warn" = "警告";
+"island.poured.usage.critical" = "臨界";
+"island.poured.usage.resets" = "%@ 後重置";
+"island.poured.usage.resetsIn" = "%@ 後重置";
+
 /* Island Panel - Annual theme (AB-316) */
 "island.annual.usage.healthy" = "正常";
 "island.annual.usage.elevated" = "偏高";
