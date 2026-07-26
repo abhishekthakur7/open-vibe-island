@@ -20,6 +20,7 @@ enum ThemeRegistry {
         InstrumentTheme(),
         FlightDeckTheme(),
         AnnualTheme(),
+        HaloTheme(),
     ]
 
     /// The default theme a fresh install and every unrecoverable lookup use.

@@ -97,6 +97,18 @@ struct HaloEdgeLight: View {
                 }
             }
         }
+        // Glow-travel emphasis handoff (§3b step 4): when the surface is **open**
+        // and the loud state is an attention one, the perimeter edge dims to a
+        // luminous floor while the hero card grows its **own** amber ring — so the
+        // light reads as *condensing* from the whole silhouette into the card
+        // boundary rather than two separate lights. Both ends stay amber (nothing
+        // goes dark mid-handoff), and the cross-fade is timed to the open spring by
+        // animating on `isOpened`. Closed / non-attention states hold full opacity,
+        // so this is a no-op everywhere except the open attention surface.
+        .opacity(HaloEdgeLightModel.perimeterOpenHandoffOpacity(
+            for: context.state, isOpened: context.isOpened
+        ))
+        .animation(IslandMotionTokens.halo.openAnimation.animation, value: context.isOpened)
     }
 
     /// The still frame the non-animated branches paint, straight off the pure model
@@ -238,8 +250,8 @@ private struct HaloSuccessEdge: View {
 /// `.clipShape` — the point of Halo's grown shadow-inset window tokens). The crisp
 /// bloom stroke sits directly under the gradient ring (identical 1.5pt path), so
 /// only its shadow — the glow — extends beyond the edge.
-private struct HaloEdgeRing: View {
-    let shape: OpenedIslandSurfaceShape
+struct HaloEdgeRing<S: Shape>: View {
+    let shape: S
     let stops: [HaloEdgeStop]
     let angle: Double
     let edgeOpacity: Double
@@ -301,6 +313,32 @@ enum HaloEdgeLightModel {
     /// The success `okedge` dissolve (`1 → .12`) — full to a hairline over 3s.
     static let successOpacityStart: Double = 1.0
     static let successOpacityEnd: Double = 0.12
+
+    /// The perimeter edge's opacity floor once the surface opens on an **attention**
+    /// state (the glow-travel handoff, §3b step 4). The whole silhouette edge dims
+    /// to this luminous floor as the hero card grows its own amber ring, so the
+    /// light reads as *condensing* into the card — never going dark (both ends stay
+    /// amber). Only permission / question dim; every other state (and the closed
+    /// pill) holds full `1.0`.
+    static let perimeterOpenHandoffFloor: Double = 0.55
+
+    /// The perimeter-edge opacity for the glow-travel handoff (§3b step 4): the
+    /// `perimeterOpenHandoffFloor` when the surface is **open** on an attention
+    /// state, else fully opaque. Pure so the linear open→condense relationship is
+    /// pinned without rendering; the view animates the transition on the open
+    /// spring by keying it to `isOpened`.
+    static func perimeterOpenHandoffOpacity(
+        for state: IslandSurfaceEdgeState,
+        isOpened: Bool
+    ) -> Double {
+        guard isOpened else { return 1.0 }
+        switch state {
+        case .permission, .question:
+            return perimeterOpenHandoffFloor
+        case .idle, .working, .success, .failure:
+            return 1.0
+        }
+    }
 
     // MARK: Bloom opacity ranges (SPEC §1a bloom column)
 

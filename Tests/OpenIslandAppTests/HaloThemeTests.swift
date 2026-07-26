@@ -17,19 +17,29 @@ import OpenIslandCore
 @MainActor
 struct HaloThemeTests {
 
-    // MARK: - Interim registry state (AC: theme not in `all`; id falls back)
+    // MARK: - Registry position (AC: appended after Annual, non-default)
 
-    /// T26 performs the one-line registration once the theme is complete, so in
-    /// the interim Halo is **not** in `ThemeRegistry.all` and a lookup by its id
-    /// falls back to the default (existing behavior — no hiding mechanism needed).
-    /// This assertion pins that interim state so a premature registration is caught.
+    /// T26 (AB-345) registers Halo: appended to `ThemeRegistry.all` **after**
+    /// `AnnualTheme()`, **non-default**. Poured Island stays `all[0]` (the product's
+    /// face), and `theme(id:)` now resolves the real theme instead of falling back.
+    /// This pins the position so a reorder (or a change of default) is caught.
     @Test
-    func haloIsNotYetRegisteredAndFallsBackToDefault() {
-        #expect(HaloTheme().id == "halo")
-        #expect(!ThemeRegistry.all.contains { $0.id == "halo" })
-        // Unknown id → default (Poured, the product's face).
-        #expect(ThemeRegistry.theme(id: "halo").id == ThemeRegistry.default.id)
-        #expect(ThemeRegistry.theme(id: "halo").id != "halo")
+    func haloIsRegisteredAfterAnnualAndIsNotTheDefault() {
+        let ids = ThemeRegistry.all.map(\.id)
+        // Present and resolvable by id.
+        #expect(ids.contains("halo"))
+        #expect(ThemeRegistry.theme(id: "halo").id == "halo")
+        // Full registry order (spec §7): Halo appended last, after Annual.
+        #expect(ids == ["poured", "classic", "instrument", "flightDeck", "annual", "halo"])
+        let haloIndex = ids.firstIndex(of: "halo")
+        let annualIndex = ids.firstIndex(of: AnnualTheme().id)
+        #expect(haloIndex != nil && annualIndex != nil)
+        #expect(haloIndex == ids.count - 1)          // last entry
+        #expect(annualIndex! + 1 == haloIndex!)       // directly after Annual
+        // Non-default: Poured stays the product's face at slot 0.
+        #expect(ThemeRegistry.default.id == "poured")
+        #expect(ThemeRegistry.default.id != "halo")
+        #expect(ids.first == "poured")
     }
 
     // MARK: - Surface: the pure-black void (the defining value)
@@ -541,5 +551,45 @@ struct HaloThemeTests {
                 #expect(!resolved.isEmpty)
             }
         }
+    }
+
+    // MARK: - §5F question q-tag format (pure)
+
+    /// The `.q-tag` chip label (§5F) is the first question's `header` when it names a
+    /// real category, capped at ≤12 graphemes. A long header truncates; a `nil`
+    /// prompt yields no chip; the generic "Answer needed" umbrella is replaced by the
+    /// localized `Question` fallback so the chip never echoes the annunciator title.
+    @Test
+    func questionTagResolvesHeaderCappedWithFallback() {
+        let lang = LanguageManager()
+        lang.language = .en
+
+        // No prompt → no chip.
+        #expect(HaloQuestionFormat.tag(for: nil, lang: lang) == nil)
+
+        // A real category header passes through verbatim (≤12 chars).
+        let auth = QuestionPrompt(
+            title: "Bridge design",
+            questions: [QuestionPromptItem(question: "Which auth?", header: "Auth", options: [QuestionOption(label: "A")])]
+        )
+        #expect(HaloQuestionFormat.tag(for: auth, lang: lang) == "Auth")
+
+        // A long header is truncated to the 12-char cap.
+        let long = QuestionPrompt(
+            title: "T",
+            questions: [QuestionPromptItem(question: "Q", header: "Authentication strategy", options: [QuestionOption(label: "A")])]
+        )
+        let longTag = HaloQuestionFormat.tag(for: long, lang: lang)
+        #expect(longTag != nil)
+        #expect((longTag?.count ?? 0) <= HaloQuestionFormat.maxTagLength)
+        #expect(longTag == "Authenticati")
+
+        // An empty / generic header falls back to the localized "Question" tag.
+        let generic = QuestionPrompt(
+            title: "T",
+            questions: [QuestionPromptItem(question: "Q", header: "", options: [QuestionOption(label: "A")])]
+        )
+        #expect(HaloQuestionFormat.tag(for: generic, lang: lang) == lang.t("island.halo.question.tag"))
+        #expect(HaloQuestionFormat.tag(for: generic, lang: lang) == "Question")
     }
 }

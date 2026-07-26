@@ -387,6 +387,19 @@
 "island.halo.attachment.stale" = "已失效";
 "island.halo.attachment.detached" = "已斷開";
 
+/* Island Panel - Halo permission hero (AB-345 · §5E) */
+"island.halo.approval.permissionNeeded" = "需要授權";
+"island.halo.approval.approveFileEdit" = "核准檔案編輯";
+"island.halo.approval.approvalWaiting" = "等待核准";
+"island.halo.approval.allowOnce" = "允許一次";
+"island.halo.approval.deny" = "拒絕";
+"island.halo.approval.jumpToCodex" = "跳轉到 Codex";
+"island.halo.approval.codexNote" = "Codex 的核准在應用程式內完成。跳轉到 Codex 查看此請求。";
+"island.halo.approval.diffFile" = "%1$@ · 變更 %2$lld 處";
+"island.halo.approval.diffFileFallback" = "檔案";
+"island.halo.question.title" = "有個問題請你決定";
+"island.halo.question.tag" = "問題";
+
 /* Island Panel - Annual theme rows (AB-317) */
 "island.annual.row.jump" = "跳轉";
 

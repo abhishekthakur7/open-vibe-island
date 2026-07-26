@@ -387,6 +387,12 @@ private extension View {
             .environment(\.islandTheme, theme)
             .environment(\.islandTokens, theme.tokens)
             .environment(\.colorScheme, .dark)
+            // Freeze Halo's animated edge-light at its settled phase (orbit 0 /
+            // pulse 0) so an edge-bearing surface rasterizes deterministically
+            // (SPEC-halo §6.3). Only `HaloEdgeLight` reads this key, and it is
+            // nil-defaulted, so every non-Halo theme rasterizes byte-identically —
+            // their prior goldens are unaffected.
+            .environment(\.haloEdgePhase, .frozen)
             .transaction { $0.disablesAnimations = true }
     }
 }

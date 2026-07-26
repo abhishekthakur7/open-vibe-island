@@ -549,6 +549,192 @@ enum HaloSessionRowFormat {
     }
 }
 
+/// Pure, view-free format rules for the Halo permission / question **hero**
+/// (§5E/§5F · mockup `.hero`). Split out — like `HaloSessionRowFormat` and
+/// `FlightDeckApprovalFormat` — so the AC-bearing decisions (which keycap a button
+/// prints, the ring / glow params, the claude-vs-codex capability fork, the T10
+/// command-token palette) are unit-testable without rendering a SwiftUI view.
+///
+/// **Keycaps track real handlers.** The in-app approval shortcuts (⌘Y / ⌘⇧Y / ⌘N)
+/// are the ones `OverlayPanelController` actually registers, so the buttons print
+/// them. There is **no** ⌘J handler, so the Codex jump button prints no keycap —
+/// a glyph must never advertise a shortcut that does not fire.
+enum HaloHeroFormat {
+
+    // MARK: Attention tint
+
+    /// The two hero tints — permission (amber, hottest) and question (qgold,
+    /// softer). Each resolves its own inset-ring / glow / conic-gradient hues. The
+    /// question tint is consumed by the §5F hero the next slice adds.
+    enum Tint: CaseIterable { case permission, question }
+
+    // MARK: Capability fork (claude-vs-codex)
+
+    /// The action layout the hero draws, forked by whether the agent can resolve
+    /// the request out-of-process. Claude approves in-app (Allow once / Deny +
+    /// scoped always-allow); Codex (`requiresTerminalApproval`) cannot, so the hero
+    /// is honest — no fake Approve, a single cool-blue jump-to-approve (E3).
+    enum Layout: Equatable { case approveDeny, jumpToApprove }
+
+    static func layout(requiresTerminalApproval: Bool) -> Layout {
+        requiresTerminalApproval ? .jumpToApprove : .approveDeny
+    }
+
+    // MARK: Variant (command / diff / terminal)
+
+    /// Which body the permission hero draws: a syntax-lit command block, an inline
+    /// file diff, or a terminal-approval (Codex) command. A file-diff request draws
+    /// the diff; a Codex request is always the terminal variant regardless of body.
+    enum Variant: Equatable { case command, diff, terminal }
+
+    static func variant(hasFileDiff: Bool, requiresTerminalApproval: Bool) -> Variant {
+        if requiresTerminalApproval { return .terminal }
+        return hasFileDiff ? .diff : .command
+    }
+
+    /// The annunciator chip glyph per variant (never colour alone): a warning
+    /// triangle for a command / terminal approval, a pencil for a file edit.
+    static func annunciatorGlyph(_ variant: Variant) -> String {
+        switch variant {
+        case .command, .terminal: return "exclamationmark.triangle"
+        case .diff: return "square.and.pencil"
+        }
+    }
+
+    // MARK: Keycaps (track the REAL registered shortcuts — ⌘Y / ⌘⇧Y / ⌘N)
+
+    /// The in-app approval shortcuts, each paired with the **real** glyphs the
+    /// registered `OverlayPanelController` handler fires (⌘Y / ⌘⇧Y / ⌘N). Mirrors
+    /// `FlightDeckApprovalFormat.Shortcut`; there is no ⌘J (the Codex jump button
+    /// prints no keycap because no jump shortcut is registered).
+    enum Shortcut: CaseIterable {
+        case allowOnce, alwaysAllow, deny
+
+        /// The key-hint glyphs printed on the keycap chip, in order.
+        var glyphs: [String] {
+            switch self {
+            case .allowOnce: return ["⌘", "Y"]
+            case .alwaysAllow: return ["⌘", "⇧", "Y"]
+            case .deny: return ["⌘", "N"]
+            }
+        }
+
+        /// The joined glyph string (e.g. `⌘⇧Y`) — the a11y / test-facing form.
+        var glyphString: String { glyphs.joined() }
+    }
+
+    // MARK: Ring params (§5E · mockup `.hero`)
+
+    /// Hero-card corner radius (`heroRadius 16`).
+    static let ringRadius: CGFloat = HaloMetrics.heroRadius
+    /// Ring stroke width (`heroRingWidth 1.5`).
+    static let ringWidth: CGFloat = HaloMetrics.heroRingWidth
+    /// The `::before` ring pulse period (`edgepulse 2.2s`).
+    static let pulsePeriod: TimeInterval = HaloMotion.heroRing
+    /// Outer-glow effective radius — mockup `0 0 48 -8` under the T22
+    /// spread-equivalence rule `(blur + spread) / 2 = (48 − 8) / 2`.
+    static let glowRadius: CGFloat = 20
+    /// The `::before` ring rides the `.55 ↔ 1` edge pulse; Reduce Motion pins it at
+    /// the **peak** so attention stays loudest statically (§3c).
+    static let pulseMinOpacity: Double = HaloEdgeLightModel.pulseOpacityMin
+    static let pulseMaxOpacity: Double = HaloEdgeLightModel.pulseOpacityMax
+    /// The conic gradient's `from` angle (mockup `from 44deg`).
+    static let conicAngle: Double = 44
+
+    // MARK: Colours (per-tint ring / glow, compared by `==` in tests)
+
+    /// The static inset ring hue (`rgba(255,160,80,.55)` permission / qgold@.5).
+    static func insetRingColor(_ tint: Tint) -> Color {
+        switch tint {
+        case .permission: return Color(red: 255 / 255.0, green: 160 / 255.0, blue: 80 / 255.0).opacity(0.55)
+        case .question: return IslandColorTokens.halo.statusWaitingForAnswer.opacity(0.5)
+        }
+    }
+
+    /// The outer-glow hue (`rgba(255,140,80,.5)` permission / qgold@.4).
+    static func glowColor(_ tint: Tint) -> Color {
+        switch tint {
+        case .permission: return Color(red: 255 / 255.0, green: 140 / 255.0, blue: 80 / 255.0).opacity(0.5)
+        case .question: return IslandColorTokens.halo.statusWaitingForAnswer.opacity(0.4)
+        }
+    }
+
+    /// The pulsing conic-gradient stops (`from 44°`): amber→magenta→amber for
+    /// permission, qgold→`#ffe0a8`→qgold for question. Reuses the `HaloEdgeStop`
+    /// value the T22 masked-ring engine consumes so the hero rides the same ring
+    /// component.
+    static func conicStops(_ tint: Tint) -> [HaloEdgeStop] {
+        switch tint {
+        case .permission:
+            let amber = IslandColorTokens.halo.statusWaitingForApproval
+            return [HaloEdgeStop(amber, 0), HaloEdgeStop(HaloEdge.magenta, 198), HaloEdgeStop(amber, 360)]
+        case .question:
+            let qgold = IslandColorTokens.halo.statusWaitingForAnswer
+            let warm = Color(red: 255 / 255.0, green: 224 / 255.0, blue: 168 / 255.0)  // #ffe0a8
+            return [HaloEdgeStop(qgold, 0), HaloEdgeStop(warm, 198), HaloEdgeStop(qgold, 360)]
+        }
+    }
+
+    // MARK: Command-token palette (§5E · E1 — the T10 tokenizer's kinds → hues)
+
+    /// The syntax palette the shipped `ShellCommandTokenizer` (T10) consumes for
+    /// the `.cmd` block: command `#f4f6fb`/600, subcommand cyan, flag `#8fb6ff`,
+    /// string green, path white@.5. `plain` inherits the block ink (`#c6ccd8`).
+    static let commandPalette: [ShellCommandTokenizer.Kind: Color] = [
+        .command: Color(red: 0xF4 / 255.0, green: 0xF6 / 255.0, blue: 0xFB / 255.0),
+        .subcommand: IslandColorTokens.halo.statusRunning,
+        .flag: Color(red: 0x8F / 255.0, green: 0xB6 / 255.0, blue: 0xFF / 255.0),
+        .string: IslandColorTokens.halo.statusCompleted,
+        .path: Color.white.opacity(0.5),
+    ]
+
+    /// The command role is the only weighted token (600); everything else inherits
+    /// the block's regular mono weight.
+    static let commandWeights: [ShellCommandTokenizer.Kind: Font.Weight] = [.command: .semibold]
+
+    /// The `$ ` prompt hue (amber@.65 — `rgba(255,160,80,.65)`).
+    static let promptColor = Color(red: 255 / 255.0, green: 160 / 255.0, blue: 80 / 255.0).opacity(0.65)
+
+    /// The block ink the un-tokenized command text inherits (`#c6ccd8`).
+    static let commandInk = Color(red: 0xC6 / 255.0, green: 0xCC / 255.0, blue: 0xD8 / 255.0)
+}
+
+/// Pure presentation logic for the §5F question hero's Halo-specific chrome — the
+/// `.q-tag` category chip. The question *interior* (numbered options, multi-select,
+/// freeform, submit, digit hints) is the shared, un-restyled
+/// `StructuredQuestionPromptView` (T07); Halo only wraps it in the qgold ring shell
+/// and stamps this one chip. Isolated here so the ≤12-char cap and generic fallback
+/// are unit-testable without rendering a view.
+enum HaloQuestionFormat {
+
+    /// The maximum q-tag length (mockup `.q-tag` "≤12 chars", e.g. `Auth`,
+    /// `Platforms`). Longer headers are truncated (grapheme-safe, no ellipsis — the
+    /// chip is a category marker, not prose).
+    static let maxTagLength = 12
+
+    /// The `.q-tag` category label for a prompt: the first question's `header`
+    /// (`Auth`, `Scope`) when it carries a real category, else a generic `Question`
+    /// fallback. Always ≤ ``maxTagLength`` graphemes. `nil` only when there is no
+    /// prompt at all (the hero then renders no chip).
+    ///
+    /// The header is treated as generic — and replaced by the fallback — when it is
+    /// empty or equals the shared "Answer needed" umbrella string, so the chip never
+    /// echoes the annunciator's own title.
+    static func tag(for prompt: QuestionPrompt?, lang: LanguageManager = .shared) -> String? {
+        guard prompt != nil else { return nil }
+        let generic = lang.t("island.halo.question.tag")
+        let header = prompt?.questions.first?.header.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let answerNeeded = lang.t("question.answerNeeded")
+        let source: String
+        if header.isEmpty || header.caseInsensitiveCompare(answerNeeded) == .orderedSame {
+            source = generic
+        } else {
+            source = header
+        }
+        return String(source.prefix(maxTagLength))
+    }
+}
+
 // MARK: - Token axes (SPEC-halo §1 — pinned by HaloThemeTests)
 
 extension IslandColorTokens {
@@ -691,17 +877,16 @@ extension IslandThemeTokens {
 /// than blank. The quiet slots (empty / bootstrap / install) are likewise interim
 /// Classic delegations, finished in Part 2.
 ///
-/// **Not registered in `ThemeRegistry.all`.** T21–T25 build Halo unregistered
-/// (tests instantiate `HaloTheme()` directly); T26 performs the one-line
-/// registration once the theme is complete. So `ThemeRegistry.theme(id: "halo")`
-/// falls back to the default in the interim — an existing-behavior assertion in
-/// `HaloThemeTests` documents it.
+/// **Registered in `ThemeRegistry.all`** (T26, AB-345): appended **after**
+/// `AnnualTheme()`, **non-default** — Poured Island stays `all[0]` (the product's
+/// face). The registration is the one-line append the architecture doc describes;
+/// `HaloThemeTests` pins its registry position and that it never displaces the
+/// default. T21–T25 built Halo unregistered (tests instantiate `HaloTheme()`
+/// directly); this final slice completes the heroes and flips the registration.
 struct HaloTheme: IslandTheme {
 
-    /// Interim delegate for the slots Part 1 does not restyle yet. Replaced
-    /// slot-by-slot by T22–T25 (rows / pill / header / heroes) and Part 2 (the
-    /// quiet slots). Every `// PART 2 · T2x` comment below marks a delegation the
-    /// later slice removes.
+    /// Interim delegate for any shared slot Halo does not itself restyle. Every
+    /// `// PART 2 · T2x` comment below marks a delegation a later slice removed.
     private let interim = ClassicTheme()
 
     // MARK: Identity

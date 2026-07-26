@@ -38,14 +38,14 @@ struct IslandSurfaceEdgeTests {
 
     // MARK: - Hook default nil (byte-identical surfaces)
 
-    /// Every **registered** (shipped) theme returns `nil` from the surface edge
+    /// Every shipped theme **except Halo** returns `nil` from the surface edge
     /// hook, so the morph / Reduce-Motion surfaces render byte-identically — the
-    /// AC's "no shipped theme changes" pin. Halo (still unregistered until T26) is
-    /// the sole overrider: Part 2 flips it to trace the `HaloEdgeLight` ring, so
-    /// here it returns non-nil. A premature override that leaks into a shipped
-    /// theme (or a registration of Halo before it is complete) trips this.
+    /// AC's "no other theme changes" pin. Halo (now registered — T26/AB-345) is the
+    /// sole overrider: its whole identity is the living edge, so it traces the
+    /// `HaloEdgeLight` ring for every state. A stray override that leaks into any
+    /// other theme trips the loop.
     @Test
-    func onlyHaloTracesAnEdgeOverlayEveryShippedThemeStaysNil() {
+    func onlyHaloTracesAnEdgeOverlayEveryOtherThemeStaysNil() {
         let shape = OpenedIslandSurfaceShape(
             topProfile: .notch,
             topCornerRadius: 0,
@@ -61,7 +61,7 @@ struct IslandSurfaceEdgeTests {
                     isOpened: isOpened,
                     size: CGSize(width: 540, height: 260)
                 )
-                for theme in ThemeRegistry.all {
+                for theme in ThemeRegistry.all where theme.id != "halo" {
                     #expect(
                         theme.surfaceEdgeOverlay(shape: shape, context: context) == nil,
                         "\(theme.id) must trace no edge overlay (state: \(state), opened: \(isOpened))"

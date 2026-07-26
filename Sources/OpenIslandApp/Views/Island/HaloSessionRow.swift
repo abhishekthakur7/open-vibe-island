@@ -62,7 +62,9 @@ struct HaloSessionRow: View {
             presentation: presentation,
             sideInset: sideInset,
             lang: lang,
-            actions: actions
+            actions: actions,
+            keyboardCoordinator: keyboardCoordinator,
+            pulseClock: pulseClock
         )
     }
 }
@@ -83,6 +85,15 @@ private struct HaloRowContent: View {
     let sideInset: CGFloat
     let lang: LanguageManager
     let actions: RowActions
+    /// Threaded from `HaloSessionRow` for the Part-2 heroes (AB-345): the question
+    /// hero (§5F) registers digit / Enter handlers against it. The permission hero
+    /// (§5E) reads only the real approval shortcuts (registered centrally in
+    /// `OverlayPanelController`), so it consumes none of this directly.
+    var keyboardCoordinator: OverlayUICoordinator?
+    /// Shared 15fps clock, threaded for the heroes; the permission hero drives its
+    /// 2.2s card-ring pulse off its own leaf animation, so this is the seam the
+    /// question hero consumes.
+    var pulseClock: PulseClock?
 
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     private var increasesContrast: Bool { colorSchemeContrast == .increased }
@@ -541,7 +552,20 @@ private struct HaloRowContent: View {
             case .success, .interrupted, .failed:
                 completionBody(edgeState: edgeState, referenceDate: referenceDate)
                     .padding(.top, 11)
-            case .running, .permission, .question, .idle:
+            case .permission:
+                // §5E permission hero — the void body + amber ring + command/diff
+                // + Allow/Deny (or Codex jump-to-approve). The other end of the
+                // glow-travel handoff (§3b): the perimeter edge dims as this ring
+                // grows.
+                permissionHero()
+                    .padding(.top, 11)
+            case .question:
+                // §5F question hero — the qgold ring shell around the shared,
+                // un-restyled T07 question interior (numbered options, multi-select
+                // squares, freeform-last, digit hints) + the `.q-tag` category chip.
+                questionHero()
+                    .padding(.top, 11)
+            case .running, .idle:
                 sessionDetailBody(presence: presence, referenceDate: referenceDate)
             }
         }
@@ -987,6 +1011,38 @@ private struct HaloRowContent: View {
         guard !text.isEmpty else { return }
         replyText = ""
         actions.reply?(text)
+    }
+
+    // MARK: Permission hero (§5E · mockup §E)
+
+    /// The §5E permission hero: `HaloPermissionHero` drawn on the void — the amber
+    /// inset ring + outer glow + pulsing 2.2s card ring, the annunciator head, the
+    /// syntax-lit command **or** inline diff body, and the action rail forked by the
+    /// agent's capability (Claude → Allow once / Deny + scoped always-allow rows;
+    /// Codex → an honest cool-blue jump-to-approve, no fake Approve). The card ring
+    /// is the condensing end of the glow-travel handoff (§3b): as it grows, the
+    /// perimeter edge dims (see `HaloEdgeLightModel.perimeterOpenHandoffOpacity`).
+    private func permissionHero() -> some View {
+        HaloPermissionHero(session: session, lang: lang, actions: actions)
+    }
+
+    // MARK: Question hero (§5F · mockup §F)
+
+    /// The §5F question hero: `HaloQuestionHero` wraps the shared, un-restyled
+    /// `StructuredQuestionPromptView` (T07) in the qgold ring shell. Halo restyles
+    /// **only** the chrome (the qgold ring + glow + 2.2s pulse + the annunciator head
+    /// + the `.q-tag` chip); the numbered options, multi-select squares, freeform-
+    /// last row, submit, and 1–9 / Enter digit hints are the shared contract drawn
+    /// at the unified 0.5 selection-ring opacity. The threaded `keyboardCoordinator`
+    /// is handed straight to the shared view so the overlay's digit/Enter monitor
+    /// drives it (single-question prompts only, its own gate).
+    private func questionHero() -> some View {
+        HaloQuestionHero(
+            session: session,
+            lang: lang,
+            actions: actions,
+            keyboardCoordinator: keyboardCoordinator
+        )
     }
 
     // MARK: Metadata grid (§5D/§5H · mockup `.mgrid` / `.mcell`)
@@ -1565,5 +1621,783 @@ private struct HaloOptionalNamedAccessibilityAction: ViewModifier {
         } else {
             content
         }
+    }
+}
+
+// MARK: - Permission / question hero (§5E/§5F · mockup `.hero`)
+
+/// The reusable hero chrome (§5E/§5F · mockup `.hero`): a pure-#000 void body with
+/// the **static inset attention ring** + **outer glow** + the **pulsing 2.2s masked
+/// ring**, and the annunciator head (chip glyph + title/subtitle + agent who-line).
+/// The body slot is filled by the caller — the permission command/diff + actions
+/// here (§5E), the question options in §5F. Extracted so the two heroes share one
+/// boundary: the next slice builds its question hero as `HaloHeroShell(tint: .question,
+/// …) { options }` with no change to this chrome.
+private struct HaloHeroShell<HeroBody: View>: View {
+    let tint: HaloHeroFormat.Tint
+    let annunciatorGlyph: String
+    let title: String
+    let subtitle: String?
+    let monogram: String
+    let modelName: String?
+    let tokens: IslandThemeTokens
+    let increasesContrast: Bool
+    @ViewBuilder let content: () -> HeroBody
+
+    private var attentionColor: Color {
+        tint == .permission ? tokens.colors.statusWaitingForApproval : tokens.colors.statusWaitingForAnswer
+    }
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: HaloHeroFormat.ringRadius, style: .continuous)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 11) {
+            head
+            content()
+        }
+        .padding(EdgeInsets(top: 15, leading: 16, bottom: 16, trailing: 16))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        // The void body + the outer glow that bleeds past the silhouette (mockup
+        // `0 0 48px -8px` → radius 20 via the T22 spread-equivalence rule). The
+        // black fill is what casts the coloured shadow.
+        .background(
+            shape
+                .fill(Color.black)
+                .shadow(color: HaloHeroFormat.glowColor(tint), radius: HaloHeroFormat.glowRadius)
+        )
+        // The static inset attention ring (mockup `box-shadow: inset 0 0 0 1.5px`).
+        .overlay(shape.strokeBorder(HaloHeroFormat.insetRingColor(tint), lineWidth: HaloHeroFormat.ringWidth))
+        // The pulsing conic masked ring (mockup `::before`, 2.2s) — the condensed
+        // light. Reduce Motion pins it static at peak inside the leaf.
+        .overlay(HaloHeroPulseRing(tint: tint))
+        .accessibilityElement(children: .contain)
+    }
+
+    private var head: some View {
+        HStack(alignment: .top, spacing: 10) {
+            // Annunciator chip (mockup `.annunc`): the state glyph in a tinted well.
+            ZStack {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(attentionColor.opacity(0.1))
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(attentionColor.opacity(0.3), lineWidth: 1)
+                Image(systemName: annunciatorGlyph)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(attentionColor)
+            }
+            .frame(width: 26, height: 26)
+            .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 2) {
+                // Weight 650 in the SPEC — approximated at `.semibold` (SwiftUI has
+                // no 650). The warm cream text is the hero's identity on the void.
+                Text(title)
+                    .font(.system(size: HaloTypography.heroTitleSize, weight: .semibold))
+                    .tracking(HaloTypography.heroTitleSize * -0.01)
+                    .foregroundStyle(titleColor)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let subtitle, !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.system(size: HaloTypography.heroSubtitleSize, weight: .regular))
+                        .foregroundStyle(subtitleColor)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            // Who-line (mockup `.who`): the achromatic monogram + model name.
+            HStack(spacing: 6) {
+                HaloAgentMonogram(text: monogram, tokens: tokens, increasesContrast: increasesContrast)
+                if let modelName, !modelName.isEmpty {
+                    Text(modelName)
+                        .font(.system(size: 10.5, weight: .regular))
+                        .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
+                        .lineLimit(1)
+                }
+            }
+            .fixedSize(horizontal: true, vertical: false)
+        }
+    }
+
+    /// The warm cream hero title (mockup `.ht` `#ffe6c8` permission / `#fff0d4`
+    /// question) — the one place a warm off-white replaces the paper ramp, because
+    /// the hero is the theme's most-polished attention frame.
+    private var titleColor: Color {
+        tint == .permission
+            ? Color(red: 0xFF / 255.0, green: 0xE6 / 255.0, blue: 0xC8 / 255.0)
+            : Color(red: 0xFF / 255.0, green: 0xF0 / 255.0, blue: 0xD4 / 255.0)
+    }
+
+    private var subtitleColor: Color {
+        tint == .permission
+            ? Color(red: 255 / 255.0, green: 214 / 255.0, blue: 170 / 255.0).opacity(0.72)
+            : Color(red: 255 / 255.0, green: 224 / 255.0, blue: 180 / 255.0).opacity(0.72)
+    }
+}
+
+/// The hero card's pulsing masked ring (mockup `.hero::before`): the **T22
+/// `HaloEdgeRing` component** driven with the hero's amber→magenta (qgold→warm)
+/// conic on the 16pt-radius card, its opacity breathing `.55↔1` over 2.2s. Reduce
+/// Motion pins it at the peak (loudest static, §3c) and never acquires the
+/// animation — the `HaloQuestionEdge` lifecycle pattern.
+private struct HaloHeroPulseRing: View {
+    let tint: HaloHeroFormat.Tint
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var pulse: Double = 0
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: HaloHeroFormat.ringRadius, style: .continuous)
+    }
+
+    private var edgeOpacity: Double {
+        if reduceMotion { return HaloHeroFormat.pulseMaxOpacity }
+        return HaloHeroFormat.pulseMinOpacity
+            + (HaloHeroFormat.pulseMaxOpacity - HaloHeroFormat.pulseMinOpacity) * pulse
+    }
+
+    var body: some View {
+        HaloEdgeRing(
+            shape: shape,
+            stops: HaloHeroFormat.conicStops(tint),
+            angle: HaloHeroFormat.conicAngle,
+            edgeOpacity: edgeOpacity,
+            bloom: nil
+        )
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: HaloHeroFormat.pulsePeriod).repeatForever(autoreverses: true)) {
+                pulse = 1
+            }
+        }
+    }
+}
+
+/// The §5E permission hero body: forked by the agent's capability (Claude Allow
+/// once / Deny + scoped always-allow vs Codex jump-to-approve) and by body (a
+/// syntax-lit command block vs an inline diff). Every button's keycap tracks the
+/// **real** registered shortcut (⌘Y / ⌘⇧Y / ⌘N); the Codex jump carries none (no
+/// ⌘J handler is registered). The approval calls are the exact `RowActions.approve`
+/// round-trips the shared shortcuts fire, so the hero and the keyboard agree.
+private struct HaloPermissionHero: View {
+    let session: AgentSession
+    let lang: LanguageManager
+    let actions: RowActions
+
+    @Environment(\.islandTokens) private var tokens
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    private var increasesContrast: Bool { colorSchemeContrast == .increased }
+
+    private var request: PermissionRequest? { session.permissionRequest }
+    private var requiresTerminalApproval: Bool { request?.requiresTerminalApproval == true }
+
+    private var diffResult: PermissionDiffResult? {
+        guard let source = request?.fileDiffSource else { return nil }
+        let result = PermissionDiff.compute(oldText: source.oldText, newText: source.newText)
+        return result.isEmpty ? nil : result
+    }
+
+    private var variant: HaloHeroFormat.Variant {
+        HaloHeroFormat.variant(hasFileDiff: diffResult != nil, requiresTerminalApproval: requiresTerminalApproval)
+    }
+
+    private var layout: HaloHeroFormat.Layout {
+        HaloHeroFormat.layout(requiresTerminalApproval: requiresTerminalApproval)
+    }
+
+    var body: some View {
+        HaloHeroShell(
+            tint: .permission,
+            annunciatorGlyph: HaloHeroFormat.annunciatorGlyph(variant),
+            title: heroTitle,
+            subtitle: heroSubtitle,
+            monogram: HaloSessionRowFormat.monogram(agentShortName: session.tool.shortName),
+            modelName: session.displayModelName,
+            tokens: tokens,
+            increasesContrast: increasesContrast
+        ) {
+            VStack(alignment: .leading, spacing: 0) {
+                if let diffResult {
+                    HaloHeroDiff(result: diffResult, affectedPath: request?.affectedPath, lang: lang, tokens: tokens, increasesContrast: increasesContrast)
+                } else {
+                    HaloHeroCommand(session: session, tokens: tokens)
+                }
+
+                switch layout {
+                case .approveDeny:
+                    approveDenyActions
+                    scopeRows
+                case .jumpToApprove:
+                    codexNote
+                    jumpToApproveAction
+                }
+            }
+        }
+    }
+
+    // MARK: Head text
+
+    private var heroTitle: String {
+        switch variant {
+        case .command: return lang.t("island.halo.approval.permissionNeeded")
+        case .diff: return lang.t("island.halo.approval.approveFileEdit")
+        case .terminal: return lang.t("island.halo.approval.approvalWaiting")
+        }
+    }
+
+    /// The subtitle is the request's own human phrase (`the-automator wants to run a
+    /// command`) — the honest field, never a fabricated line. Hidden when empty.
+    private var heroSubtitle: String? {
+        guard let summary = request?.summary.trimmingCharacters(in: .whitespacesAndNewlines), !summary.isEmpty else {
+            return nil
+        }
+        return summary
+    }
+
+    // MARK: Action rail (Claude)
+
+    private var approveDenyActions: some View {
+        HStack(spacing: 8) {
+            HaloHeroButton(
+                title: lang.t("island.halo.approval.allowOnce"),
+                keycaps: HaloHeroFormat.Shortcut.allowOnce.glyphs,
+                kind: .primary,
+                accessibilityLabel: request?.primaryActionTitle ?? lang.t("a11y.approval.allowOnce"),
+                action: { actions.approve?(.allowOnce) }
+            )
+            HaloHeroButton(
+                title: lang.t("island.halo.approval.deny"),
+                keycaps: HaloHeroFormat.Shortcut.deny.glyphs,
+                kind: .deny,
+                accessibilityLabel: request?.secondaryActionTitle ?? lang.t("a11y.approval.deny"),
+                action: { actions.approve?(.deny) }
+            )
+        }
+        .padding(.top, 13)
+    }
+
+    /// The scoped always-allow rows (mockup `.scopes`): one per real Claude
+    /// `suggestedUpdate` (with its human label), else the generic session-scoped
+    /// fallback — the exact rule ⌘⇧Y fires. The first row carries the ⌘⇧Y keycap.
+    @ViewBuilder
+    private var scopeRows: some View {
+        if let updates = request?.suggestedUpdates, !updates.isEmpty {
+            scopeContainer {
+                ForEach(Array(updates.enumerated()), id: \.offset) { index, update in
+                    HaloScopeRow(
+                        label: update.displayLabel,
+                        keycaps: index == 0 ? HaloHeroFormat.Shortcut.alwaysAllow.glyphs : nil,
+                        tokens: tokens,
+                        increasesContrast: increasesContrast,
+                        action: { actions.approve?(.allowWithUpdates([update])) }
+                    )
+                }
+            }
+        } else if let toolName = request?.toolName {
+            scopeContainer {
+                HaloScopeRow(
+                    label: lang.t("approval.alwaysAllow", toolName),
+                    keycaps: HaloHeroFormat.Shortcut.alwaysAllow.glyphs,
+                    tokens: tokens,
+                    increasesContrast: increasesContrast,
+                    action: {
+                        let rule = ClaudePermissionRuleValue(toolName: toolName)
+                        let update = ClaudePermissionUpdate.addRules(
+                            destination: .session,
+                            rules: [rule],
+                            behavior: .allow
+                        )
+                        actions.approve?(.allowWithUpdates([update]))
+                    }
+                )
+            }
+        }
+    }
+
+    private func scopeContainer<Rows: View>(@ViewBuilder rows: () -> Rows) -> some View {
+        VStack(spacing: 1) {
+            rows()
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .strokeBorder(HaloEdge.hair2, lineWidth: 1)
+        )
+        .padding(.top, 11)
+    }
+
+    // MARK: Action rail (Codex — honest jump-to-approve)
+
+    private var codexNote: some View {
+        HaloCodexNote(text: lang.t("island.halo.approval.codexNote"), tokens: tokens)
+            .padding(.top, 11)
+    }
+
+    private var jumpToApproveAction: some View {
+        HaloHeroButton(
+            title: lang.t("island.halo.approval.jumpToCodex"),
+            keycaps: nil,   // No ⌘J handler is registered — a glyph must track a real shortcut.
+            kind: .codex,
+            accessibilityLabel: lang.t("island.halo.approval.jumpToCodex"),
+            action: { actions.jump() }
+        )
+        .padding(.top, 13)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// The §5F question hero (mockup §F): the qgold ring shell around the **shared,
+/// un-restyled** `StructuredQuestionPromptView` (T07). Halo owns only the chrome —
+/// the qgold inset ring + outer glow + 2.2s pulsing masked ring (via `HaloHeroShell`
+/// with the `.question` tint), the annunciator head, and the `.q-tag` category chip.
+/// The interior — numbered options, the ring+tick selection at the unified 0.5
+/// opacity, multi-select squares, the freeform "Other…" pinned last, the submit
+/// button, and the 1–9 / Enter digit hints — is the shared contract, restructured by
+/// nobody. The `keyboardCoordinator` is passed straight through so the overlay's
+/// digit/Enter monitor drives the interior (single-question prompts, its own gate).
+private struct HaloQuestionHero: View {
+    let session: AgentSession
+    let lang: LanguageManager
+    let actions: RowActions
+    let keyboardCoordinator: OverlayUICoordinator?
+
+    @Environment(\.islandTokens) private var tokens
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    private var increasesContrast: Bool { colorSchemeContrast == .increased }
+
+    private var tag: String? {
+        HaloQuestionFormat.tag(for: session.questionPrompt, lang: lang)
+    }
+
+    var body: some View {
+        HaloHeroShell(
+            tint: .question,
+            annunciatorGlyph: "questionmark.circle",
+            title: lang.t("island.halo.question.title"),
+            subtitle: nil,
+            monogram: HaloSessionRowFormat.monogram(agentShortName: session.tool.shortName),
+            modelName: session.displayModelName,
+            tokens: tokens,
+            increasesContrast: increasesContrast
+        ) {
+            VStack(alignment: .leading, spacing: 11) {
+                if let tag {
+                    HaloQuestionTag(text: tag)
+                }
+                // The shared T07 interior — passed the prompt, language, the keyboard
+                // coordinator, and the answer round-trip. Not restyled: its qgold
+                // tint, 0.5 selection ring, square multi-select markers, and digit
+                // hints come from the shared view reading `statusWaitingForAnswer`.
+                StructuredQuestionPromptView(
+                    prompt: session.questionPrompt,
+                    lang: lang,
+                    keyboardCoordinator: keyboardCoordinator,
+                    onAnswer: { actions.answer?($0) }
+                )
+            }
+        }
+    }
+}
+
+/// The `.q-tag` category chip (mockup `.q-tag`): a ≤12-char uppercase label on a
+/// solid qgold pill with dark `#2A2003` ink — the one warm-on-warm marker that names
+/// the question's topic (`Auth`, `Scope`). 10pt/700, `0.05em` tracking. The text is
+/// already capped + fallback-resolved by `HaloQuestionFormat.tag`.
+private struct HaloQuestionTag: View {
+    let text: String
+
+    private static let ink = Color(red: 0x2A / 255.0, green: 0x20 / 255.0, blue: 0x03 / 255.0)
+
+    var body: some View {
+        Text(text.uppercased())
+            .font(.system(size: HaloTypography.nestHeaderSize, weight: .bold))
+            .tracking(HaloTypography.nestHeaderSize * 0.05)
+            .foregroundStyle(Self.ink)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2)
+            .background(
+                Capsule(style: .continuous).fill(IslandColorTokens.halo.statusWaitingForAnswer)
+            )
+            .accessibilityHidden(true)
+    }
+}
+
+/// The syntax-lit command block (mockup `.cmd`): a `$ ` amber prompt + the shipped
+/// `ShellCommandTokenizer` (T10) coloured through the Halo hero palette (command
+/// `#f4f6fb`/600, subcommand cyan, flag `#8fb6ff`, string green, path white@.5), on
+/// the whisper `lift` surface with a hairline inset. Falls back to a plain mono
+/// summary line when there is no command preview to tokenize.
+private struct HaloHeroCommand: View {
+    let session: AgentSession
+    let tokens: IslandThemeTokens
+
+    var body: some View {
+        commandText
+            .font(.system(size: HaloTypography.commandSize, weight: .regular, design: .monospaced))
+            .foregroundStyle(HaloHeroFormat.commandInk)
+            .lineSpacing(4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 9, style: .continuous).fill(HaloEdge.lift)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .strokeBorder(HaloEdge.hair2, lineWidth: 1)
+            )
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(accessibilityText)
+    }
+
+    private var preview: String? {
+        guard let text = session.currentCommandPreviewText?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else {
+            return nil
+        }
+        return text
+    }
+
+    private var commandText: Text {
+        if let preview {
+            let highlighted = ShellCommandTokenizer.attributed(
+                preview,
+                palette: HaloHeroFormat.commandPalette,
+                weights: HaloHeroFormat.commandWeights,
+                baseFont: .system(size: HaloTypography.commandSize, weight: .regular, design: .monospaced)
+            )
+            return Text("$ ").foregroundColor(HaloHeroFormat.promptColor) + Text(highlighted)
+        }
+        return Text(fallback)
+    }
+
+    private var fallback: String {
+        (session.permissionRequest?.summary ?? session.summary).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var accessibilityText: String {
+        preview ?? fallback
+    }
+}
+
+/// The inline diff (mockup `.diff`): the shared `PermissionDiffResult` model
+/// rendered in the Halo idiom — a filename header, then gutter-numbered lines
+/// tinted per kind (del `rgba(224,89,108,.11)` text `#f2b0ba`, add
+/// `rgba(95,227,154,.11)` text `#a7ecc6`, context white@.5), capped + scrolled by
+/// `AutoHeightScrollView` so a long diff never runs the card off the panel. Reuses
+/// the diff *computation* (`PermissionDiff`), themed to the void here rather than
+/// the shared `PermissionDiffPreview` (which carries no gutter).
+private struct HaloHeroDiff: View {
+    let result: PermissionDiffResult
+    let affectedPath: String?
+    let lang: LanguageManager
+    let tokens: IslandThemeTokens
+    let increasesContrast: Bool
+
+    private static let maxRenderedLines = 500
+    private static let maxHeight: CGFloat = 180
+
+    private static let delText = Color(red: 0xF2 / 255.0, green: 0xB0 / 255.0, blue: 0xBA / 255.0)
+    private static let addText = Color(red: 0xA7 / 255.0, green: 0xEC / 255.0, blue: 0xC6 / 255.0)
+    private static let del = Color(red: 224 / 255.0, green: 89 / 255.0, blue: 108 / 255.0)
+    private static let add = Color(red: 95 / 255.0, green: 227 / 255.0, blue: 154 / 255.0)
+
+    /// A rendered diff line with its gutter number (new-side line numbering: a
+    /// running counter that advances on every non-removed line). Sequential from 1
+    /// — the honest position within the shown diff, since the model carries no
+    /// original hunk offsets.
+    private struct GutterLine: Identifiable {
+        let id: Int
+        let line: PermissionDiffLine
+        let gutter: Int
+    }
+
+    private var gutterLines: [GutterLine] {
+        var counter = 1
+        var out: [GutterLine] = []
+        for (index, line) in result.lines.prefix(Self.maxRenderedLines).enumerated() {
+            out.append(GutterLine(id: index, line: line, gutter: counter))
+            if line.kind != .removed { counter += 1 }
+        }
+        return out
+    }
+
+    private var hiddenLineCount: Int {
+        result.lines.count - min(result.lines.count, Self.maxRenderedLines)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            header
+            AutoHeightScrollView(maxHeight: Self.maxHeight) {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(gutterLines) { row in
+                        diffRow(row)
+                    }
+                    if hiddenLineCount > 0 {
+                        Text(lang.t("approval.diffMoreLines", hiddenLineCount))
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(tokens.colors.paper.opacity(0.42))
+                            .padding(.horizontal, 11)
+                            .padding(.vertical, 2)
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+        }
+        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(HaloEdge.lift))
+        .overlay(
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .strokeBorder(HaloEdge.hair2, lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+    }
+
+    private var header: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "doc.text")
+                .font(.system(size: 10.5, weight: .regular))
+                .opacity(0.7)
+                .accessibilityHidden(true)
+            Text(lang.t("island.halo.approval.diffFile", fileName, result.addedCount + result.removedCount))
+                .font(.system(size: 10.5, weight: .regular))
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+        .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
+        .padding(.horizontal, 11)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Color.white.opacity(0.08)).frame(height: 1)
+        }
+    }
+
+    private func diffRow(_ row: GutterLine) -> some View {
+        HStack(alignment: .top, spacing: 0) {
+            Text("\(row.gutter)")
+                .foregroundStyle(gutterColor(row.line.kind))
+                .frame(width: 22, alignment: .trailing)
+                .padding(.trailing, 10)
+            Text(row.line.text.isEmpty ? " " : row.line.text)
+                .foregroundStyle(textColor(row.line.kind))
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .font(.system(size: HaloTypography.diffSize, weight: .regular, design: .monospaced))
+        .padding(.leading, 8)
+        .padding(.trailing, 11)
+        .padding(.vertical, 1)
+        .background(rowBackground(row.line.kind))
+    }
+
+    private func gutterColor(_ kind: PermissionDiffLine.Kind) -> Color {
+        switch kind {
+        case .removed: return Self.del.opacity(0.6)
+        case .added: return Self.add.opacity(0.7)
+        case .unchanged: return tokens.colors.paper.opacity(tokens.colors.tertiaryTextOpacity)
+        }
+    }
+
+    private func textColor(_ kind: PermissionDiffLine.Kind) -> Color {
+        switch kind {
+        case .removed: return Self.delText
+        case .added: return Self.addText
+        case .unchanged: return Color.white.opacity(0.5)
+        }
+    }
+
+    private func rowBackground(_ kind: PermissionDiffLine.Kind) -> Color {
+        switch kind {
+        case .removed: return Self.del.opacity(0.11)
+        case .added: return Self.add.opacity(0.11)
+        case .unchanged: return .clear
+        }
+    }
+
+    private var fileName: String {
+        guard let path = affectedPath?.trimmingCharacters(in: .whitespacesAndNewlines), !path.isEmpty else {
+            return lang.t("island.halo.approval.diffFileFallback")
+        }
+        return (path as NSString).lastPathComponent
+    }
+}
+
+/// A key-hint chip (mockup `.kc kbd`): black@.3 fill, inset white@.16 ring,
+/// white@.78 text, 10pt/600, one chip per glyph. On a light (primary) button it
+/// inverts to a dark amber-ink chip so it stays legible on the gradient.
+private struct HaloKeycap: View {
+    let glyphs: [String]
+    var onLightButton: Bool = false
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(Array(glyphs.enumerated()), id: \.offset) { _, glyph in
+                Text(glyph)
+                    .font(.system(size: HaloTypography.keycapSize, weight: .semibold))
+                    .foregroundStyle(textColor)
+                    .frame(minWidth: 15, minHeight: 16)
+                    .padding(.horizontal, 3)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4, style: .continuous).fill(fillColor)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .strokeBorder(ringColor, lineWidth: 1)
+                    )
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var darkInk: Color { Color(red: 0x60 / 255.0, green: 0x3C / 255.0, blue: 0x0E / 255.0) }
+    private var darkFill: Color { Color(red: 0x3A / 255.0, green: 0x22 / 255.0, blue: 0x05 / 255.0) }
+
+    private var textColor: Color { onLightButton ? darkInk : Color.white.opacity(0.78) }
+    private var fillColor: Color { onLightButton ? darkFill.opacity(0.22) : Color.black.opacity(0.3) }
+    private var ringColor: Color { onLightButton ? darkFill.opacity(0.35) : Color.white.opacity(0.16) }
+}
+
+/// A hero action button (mockup `.btn`): the primary amber gradient (`Allow once`),
+/// the translucent-red `deny`, or the cool-blue Codex gradient (`Jump to Codex`).
+/// Each carries a trailing keycap chip printing the **real** registered shortcut —
+/// or none, for the Codex jump (no ⌘J handler).
+private struct HaloHeroButton: View {
+    enum Kind { case primary, deny, codex }
+
+    let title: String
+    let keycaps: [String]?
+    let kind: Kind
+    let accessibilityLabel: String
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                if let keycaps {
+                    HaloKeycap(glyphs: keycaps, onLightButton: kind == .primary)
+                }
+            }
+            .foregroundStyle(foreground)
+            .padding(.horizontal, 13)
+            .padding(.vertical, 8)
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(background))
+            .brightness(isHovered && kind != .deny ? 0.05 : 0)
+            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private var foreground: Color {
+        switch kind {
+        case .primary: return Color(red: 0x3A / 255.0, green: 0x22 / 255.0, blue: 0x05 / 255.0)
+        case .deny: return Color(red: 0xF0 / 255.0, green: 0xA6 / 255.0, blue: 0xB0 / 255.0)
+        case .codex: return Color(red: 0x04 / 255.0, green: 0x23 / 255.0, blue: 0x3A / 255.0)
+        }
+    }
+
+    private var background: AnyShapeStyle {
+        switch kind {
+        case .primary:
+            return AnyShapeStyle(LinearGradient(
+                colors: [Color(red: 0xFF / 255.0, green: 0xCE / 255.0, blue: 0x8A / 255.0),
+                         Color(red: 0xFF / 255.0, green: 0xAB / 255.0, blue: 0x54 / 255.0)],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            ))
+        case .deny:
+            return AnyShapeStyle(Color(red: 224 / 255.0, green: 89 / 255.0, blue: 108 / 255.0).opacity(isHovered ? 0.22 : 0.13))
+        case .codex:
+            return AnyShapeStyle(LinearGradient(
+                colors: [Color(red: 0x7E / 255.0, green: 0xC9 / 255.0, blue: 0xFF / 255.0),
+                         Color(red: 0x4A / 255.0, green: 0xA3 / 255.0, blue: 0xDF / 255.0)],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            ))
+        }
+    }
+}
+
+/// A scoped always-allow row (mockup `.scope`): a check glyph + the human rule
+/// label + an optional trailing keycap, on a whisper fill that warms amber on
+/// hover. Fires the exact `allowWithUpdates` round-trip ⌘⇧Y would.
+private struct HaloScopeRow: View {
+    let label: String
+    let keycaps: [String]?
+    let tokens: IslandThemeTokens
+    let increasesContrast: Bool
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(isHovered ? tokens.colors.statusWaitingForApproval : tokens.colors.paper.opacity(tokens.colors.tertiaryTextOpacity))
+                    .frame(width: 14)
+                    .accessibilityHidden(true)
+                Text(label)
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundStyle(tokens.colors.paper.opacity(isHovered ? tokens.colors.text(0.96, increaseContrast: increasesContrast) : tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                Spacer(minLength: 8)
+                if let keycaps {
+                    HaloKeycap(glyphs: keycaps)
+                }
+            }
+            .padding(.horizontal, 11)
+            .padding(.vertical, 9)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(isHovered ? tokens.colors.statusWaitingForApproval.opacity(0.08) : Color.white.opacity(0.018))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .accessibilityLabel(label)
+    }
+}
+
+/// The Codex jump-to-approve note (mockup `.codex-note`): a cool-blue info panel
+/// (`rgba(80,170,255,.09)` fill, `rgba(80,170,255,.24)` ring) explaining that Codex
+/// approvals happen in-app — the honest alternative to a fake Approve button.
+private struct HaloCodexNote: View {
+    let text: String
+    let tokens: IslandThemeTokens
+
+    private var blue: Color { Color(red: 80 / 255.0, green: 170 / 255.0, blue: 255 / 255.0) }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "arrow.up.forward")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(tokens.colors.statusRunning)
+                .accessibilityHidden(true)
+            Text(text)
+                .font(.system(size: 12, weight: .regular))
+                .foregroundStyle(Color(red: 0xBF / 255.0, green: 0xE0 / 255.0, blue: 0xF6 / 255.0))
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(blue.opacity(0.09)))
+        .overlay(
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .strokeBorder(blue.opacity(0.24), lineWidth: 1)
+        )
     }
 }

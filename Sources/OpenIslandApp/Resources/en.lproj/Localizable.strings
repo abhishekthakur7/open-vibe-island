@@ -386,6 +386,19 @@
 "island.halo.attachment.stale" = "stale";
 "island.halo.attachment.detached" = "detached";
 
+/* Island Panel - Halo permission hero (AB-345 · §5E) */
+"island.halo.approval.permissionNeeded" = "Permission needed";
+"island.halo.approval.approveFileEdit" = "Approve file edit";
+"island.halo.approval.approvalWaiting" = "Approval waiting";
+"island.halo.approval.allowOnce" = "Allow once";
+"island.halo.approval.deny" = "Deny";
+"island.halo.approval.jumpToCodex" = "Jump to Codex";
+"island.halo.approval.codexNote" = "Codex approvals happen inside the app. Jump to Codex to review this request.";
+"island.halo.approval.diffFile" = "%1$@ · %2$lld changed";
+"island.halo.approval.diffFileFallback" = "File";
+"island.halo.question.title" = "A question for you";
+"island.halo.question.tag" = "Question";
+
 /* Island Panel - Annual theme rows (AB-317) */
 "island.annual.row.jump" = "Jump";
 
