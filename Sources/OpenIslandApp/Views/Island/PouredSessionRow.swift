@@ -87,6 +87,11 @@ private struct PouredRowContent: View {
 
     @Environment(\.islandTokens) private var tokens
 
+    /// AB-333: Reduce Transparency flattens the question gold wash to opaque
+    /// `surfaceInk` (so text keeps contrast without the translucent amber tint),
+    /// mirroring the approval hero's own `reduceTransparency` branch.
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     /// AB-332: list-level duplicate-workspace disambiguators (AB-323), injected
     /// by `IslandPanelView`. Empty (the default) means "no collisions" and the
     /// title line renders the workspace name alone.
@@ -131,7 +136,12 @@ private struct PouredRowContent: View {
                         .padding(.leading, detailLeadingInset)
                         .padding(.trailing, sideInset)
                         .padding(.bottom, 13)
-                    transcriptFootnote
+                    // A completed row carries its transcript inside the §4H action
+                    // rail, so the shared footnote would double it up — only the
+                    // approval / question heroes keep the transcript as a footnote.
+                    if session.phase != .completed {
+                        transcriptFootnote
+                    }
                 } else {
                     // §4D: the quiet session-detail — metadata grid, last
                     // assistant message as rich prose, jump-primary + transcript
@@ -848,10 +858,16 @@ private struct PouredRowContent: View {
 
     // MARK: - Question action area
 
-    /// The structured question card is fully token-driven and already reads on
-    /// glass, so Poured reuses it verbatim — that keeps the 1–9 / Enter keyboard
-    /// wiring, multi-select toggles, freeform + quick-reply fields and submit
-    /// behaviour identical to Classic (AB-303).
+    /// The T07 shared interior (`StructuredQuestionPromptView`) wrapped in the
+    /// Poured `.q-hero` gold chrome (`SPEC` §4F · mockup `.q-hero`): a gold-tinted
+    /// vertical wash (`rgba(52,44,22,.4)→rgba(26,22,12,.5)`) under a 1pt inset
+    /// `rgba(255,213,138,.24)` ring at radius 18. The interior's semantics are
+    /// untouched — the gold header (`statusWaitingForAnswer` = `#ffd58a`) and the
+    /// `1.5pt rgba(255,213,138,.5)` selection ring are already token-driven inside
+    /// the shared view (AB-325), and the digit-select / Enter keyboard wiring keeps
+    /// flowing through `keyboardCoordinator` exactly as before. Under Reduce
+    /// Transparency the wash flattens to opaque `surfaceInk` so the amber tint can
+    /// never erode the option text's contrast.
     private var questionActionBody: some View {
         StructuredQuestionPromptView(
             prompt: session.questionPrompt,
@@ -859,22 +875,47 @@ private struct PouredRowContent: View {
             keyboardCoordinator: keyboardCoordinator,
             onAnswer: { actions.answer?($0) }
         )
+        .padding(3)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(questionHeroWash)
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(PouredQuestionColors.ring, lineWidth: 1)
+        )
+    }
+
+    @ViewBuilder
+    private var questionHeroWash: some View {
+        let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+        if reduceTransparency || increasesContrast {
+            shape.fill(tokens.colors.surfaceInk)
+        } else {
+            shape.fill(
+                LinearGradient(
+                    colors: [PouredQuestionColors.washTop, PouredQuestionColors.washBottom],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+        }
     }
 
     // MARK: - Completion action area
 
-    /// The completion card, restyled for glass: the markdown body resolves its
-    /// text / link / code colours from `.completionCard(tokens.colors)` (already
-    /// token-driven, so links and code read on the frosted surface), scrolls
-    /// within the same 160pt cap, and the reply input / send stay wired to
+    /// The completion card, rebuilt to `SPEC` §4H (mockup §H): a tinted-pill
+    /// outcome badge with tabular duration + `finished … ago`, the result as rich
+    /// prose (the shared `.completionCard` Markdown path — `<strong>` + inline
+    /// `code`), the reply input where supported, and a calm action rail (Jump
+    /// primary, Transcript / Dismiss ghosts). The badge now renders for **every**
+    /// outcome — `Success` too — so a clean completion is as legible as a failed
+    /// one; the markdown / link / code colours still resolve from
+    /// `.completionCard(tokens.colors)` and the reply stays wired to
     /// `actions.reply` exactly as Classic.
     private var completionActionBody: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if !completionMessageText.trimmedForRow.isEmpty {
-                if session.outcome != .success {
-                    completionOutcomeBanner
-                }
+            completionOutcomeHeader
 
+            if !completionMessageText.trimmedForRow.isEmpty {
                 AutoHeightScrollView(maxHeight: 160) {
                     Markdown(completionMessageText)
                         .markdownTheme(.completionCard(tokens.colors))
@@ -882,10 +923,9 @@ private struct PouredRowContent: View {
                         .markdownInlineImageProvider(.noNetwork)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                         .padding(.horizontal, 14)
-                        .padding(.vertical, 9)
+                        .padding(.top, 2)
+                        .padding(.bottom, 9)
                 }
-            } else {
-                completionEmptyState
             }
 
             if actions.reply != nil {
@@ -895,6 +935,12 @@ private struct PouredRowContent: View {
 
                 completionReplyInput
             }
+
+            Rectangle()
+                .fill(.white.opacity(0.05))
+                .frame(height: 1)
+
+            completionActionRail
         }
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -907,65 +953,135 @@ private struct PouredRowContent: View {
     }
 
     private var completionHasExpandedBody: Bool {
-        // A non-success outcome always earns the expanded card — even with no
-        // message body — so an interrupted/failed completion isn't silently
-        // indistinguishable from a plain "Completed" row.
-        session.outcome != .success
-            || !completionMessageText.trimmedForRow.isEmpty
-            || actions.reply != nil
+        // Every completed actionable row now earns the expanded card — the
+        // outcome badge + action rail are always worth showing, and a non-success
+        // outcome must never be indistinguishable from a plain "Completed" row.
+        true
     }
 
     private var completionDoneOpacity: Double {
         presentation == .notification ? 0.82 : 0.96
     }
 
-    private var completionOutcomeBanner: some View {
-        HStack(spacing: 6) {
-            Image(systemName: completionOutcomeGlyphName)
-                .font(.system(size: 10.5, weight: .bold))
-                .accessibilityHidden(true)
-            Text(completionOutcomeLabel)
-                .font(.system(size: 11, weight: .bold))
+    /// §4H header: the outcome badge beside its tabular duration / finished-ago
+    /// meta line.
+    private var completionOutcomeHeader: some View {
+        HStack(alignment: .center, spacing: 10) {
+            PouredOutcomeBadge(
+                glyphName: completionOutcomeGlyphName,
+                label: completionOutcomeLabel,
+                tint: completionOutcomeTint.opacity(completionDoneOpacity),
+                fill: completionOutcomeFill
+            )
+            completionMetaLine
             Spacer(minLength: 0)
         }
-        .foregroundStyle(completionOutcomeTint.opacity(completionDoneOpacity))
         .padding(.horizontal, 14)
-        .padding(.top, 10)
-        .padding(.bottom, 4)
+        .padding(.top, 11)
+        .padding(.bottom, 9)
     }
 
-    /// Only ever rendered from `completionOutcomeBanner`, which is gated on
-    /// `session.outcome != .success` — "stop" is just the glyph for the
-    /// remaining `.interrupted` case.
+    /// Tabular `43m duration · finished 12m ago` (`SPEC` §4H). Duration is derived
+    /// from `firstSeenAt → updatedAt` (the run's own length, frozen at completion,
+    /// so it never drifts with wall-clock time) and is shown only when the run
+    /// actually lasted a minute or more; finished-ago reuses the row's age
+    /// vocabulary.
+    @ViewBuilder
+    private var completionMetaLine: some View {
+        let finishedAgo = lang.t("poured.completion.finishedAgo", session.spotlightAgeBadge)
+        HStack(spacing: 7) {
+            if let duration = completionDurationText {
+                Text(lang.t("poured.completion.duration", duration))
+                Text("·").foregroundStyle(tokens.colors.paper.opacity(0.28))
+            }
+            Text(finishedAgo)
+        }
+        .font(PouredType.Role.metaChip.font)
+        .monospacedDigit()
+        .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
+        .lineLimit(1)
+    }
+
+    /// Run length (`43m`), or `nil` for a sub-minute run where a duration chip
+    /// would read as noise.
+    private var completionDurationText: String? {
+        let seconds = session.updatedAt.timeIntervalSince(session.firstSeenAt)
+        guard seconds >= 60 else { return nil }
+        return session.elapsedRunningLabel(at: session.updatedAt)
+    }
+
+    /// §4H action rail: Jump primary + Transcript / Dismiss ghosts. The transcript
+    /// rides here (not the shared footnote) for completed rows, so it isn't shown
+    /// twice.
+    private var completionActionRail: some View {
+        HStack(spacing: 10) {
+            Button(action: handlePrimaryTap) {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.up.forward")
+                        .font(.system(size: 11.5, weight: .bold))
+                        .accessibilityHidden(true)
+                    Text(lang.t("poured.detail.jump"))
+                        .font(PouredType.Role.jumpChip.font)
+                        .lineLimit(1)
+                }
+            }
+            .buttonStyle(PouredJumpButtonStyle())
+            .accessibilityLabel(lang.t("poured.detail.jump"))
+
+            if let transcriptPath = trimmedTranscriptPath {
+                TranscriptAffordance(
+                    path: transcriptPath,
+                    workspace: session.spotlightWorkspaceName,
+                    lang: lang
+                )
+            }
+
+            Spacer(minLength: 8)
+
+            if let dismiss = actions.dismiss {
+                Button(action: dismiss) {
+                    Text(lang.t("poured.completion.dismiss"))
+                        .font(.system(size: 12, weight: .medium))
+                        .lineLimit(1)
+                }
+                .buttonStyle(PouredGhostButtonStyle(role: .quiet))
+                .accessibilityLabel(lang.t("a11y.session.dismiss"))
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+    }
+
     private var completionOutcomeGlyphName: String {
-        session.outcome == .failed ? "xmark.circle.fill" : "stop.circle.fill"
+        switch session.outcome {
+        case .success: "checkmark"
+        case .interrupted: "stop.fill"
+        case .failed: "xmark"
+        }
     }
 
     private var completionOutcomeTint: Color {
         tokens.colors.statusTint(for: .completed, outcome: session.outcome)
     }
 
+    /// The tinted-pill background under the outcome badge (`.outcome.ok/.intr/.fail`).
+    private var completionOutcomeFill: Color {
+        switch session.outcome {
+        case .success: PouredCompletionColors.successFill
+        case .interrupted: PouredCompletionColors.interruptedFill
+        case .failed: PouredCompletionColors.failedFill
+        }
+    }
+
     private var completionOutcomeLabel: String {
         switch session.outcome {
         case .success:
-            lang.t("completion.done")
+            lang.t("poured.completion.success")
         case .interrupted:
             lang.t("completion.interrupted")
         case .failed:
             lang.t("completion.failed")
         }
-    }
-
-    private var completionEmptyState: some View {
-        HStack {
-            Text(completionOutcomeLabel)
-                .font(.system(size: 11.5, weight: .bold))
-                .foregroundStyle(completionOutcomeTint.opacity(completionDoneOpacity))
-
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
     }
 
     @ViewBuilder
@@ -2024,6 +2140,32 @@ private enum PouredApprovalColors {
     static let diffContextGutter = Color(red: 0xF2/255, green: 0xF5/255, blue: 0xFB/255).opacity(0.3)
 }
 
+/// The question hero (`.q-hero`) gold chrome (`SPEC` §4F · mockup `.q-hero`).
+/// The header chip fill and selection ring live inside the shared
+/// `StructuredQuestionPromptView` (token-driven, `statusWaitingForAnswer`), so
+/// this table only carries the outer wash + ring the Poured wrapper adds.
+private enum PouredQuestionColors {
+    /// `.q-hero` gradient top — `rgba(52,44,22,.4)`.
+    static let washTop = Color(red: 0x34/255, green: 0x2C/255, blue: 0x16/255).opacity(0.4)
+    /// `.q-hero` gradient bottom — `rgba(26,22,12,.5)`.
+    static let washBottom = Color(red: 0x1A/255, green: 0x16/255, blue: 0x0C/255).opacity(0.5)
+    /// `.q-hero` inset ring — `rgba(255,213,138,.24)` (the `#ffd58a` gold at .24).
+    static let ring = Color(red: 0xFF/255, green: 0xD5/255, blue: 0x8A/255).opacity(0.24)
+}
+
+/// The completion outcome badge (`.outcome`) fills (`SPEC` §4H · mockup
+/// `.outcome.ok/.intr/.fail`). Text tints come from the shared status tokens
+/// (`statusCompleted` / `statusWarning` / `statusFailed`); only the tinted pill
+/// backgrounds are Poured-local here.
+private enum PouredCompletionColors {
+    /// `.outcome.ok` background — `rgba(111,185,130,.14)`.
+    static let successFill = Color(red: 0x6F/255, green: 0xB9/255, blue: 0x82/255).opacity(0.14)
+    /// `.outcome.intr` background — `rgba(217,140,38,.16)`.
+    static let interruptedFill = Color(red: 0xD9/255, green: 0x8C/255, blue: 0x26/255).opacity(0.16)
+    /// `.outcome.fail` background — `rgba(219,82,82,.16)`.
+    static let failedFill = Color(red: 0xDB/255, green: 0x52/255, blue: 0x52/255).opacity(0.16)
+}
+
 /// Wraps the approval card in Poured's pulsing hero glow (`heropulse`, `SPEC`
 /// §4E E1). Isolated as a modifier so the 15fps `PulseClock` read invalidates
 /// only the glow (not the buttons inside), and so Reduce Motion — or a missing
@@ -2214,6 +2356,80 @@ private struct PouredJumpButtonStyle: ButtonStyle {
             )
             .opacity(configuration.isPressed ? 0.82 : 1)
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
+    }
+}
+
+// MARK: - Ghost secondary button (mockup §H `.btn.ghost`)
+
+/// A calm ghost secondary (`SPEC` §4H · mockup `.btn.ghost`): a low-contrast
+/// `rgba(242,245,251,.08)` fill that lifts to `.14` on hover, text at `t1`
+/// (`.standard`) or `t3` (`.quiet`, e.g. Dismiss). Deliberately quiet so it never
+/// competes with the amber/blue primaries.
+private struct PouredGhostButtonStyle: ButtonStyle {
+    enum Role { case standard, quiet }
+    var role: Role = .standard
+
+    func makeBody(configuration: Configuration) -> some View {
+        // `@State` (hover) + `@Environment` (tokens / contrast) can only be read
+        // from a real `View`, not the `ButtonStyle` struct — so the label is a
+        // nested view.
+        PouredGhostButtonLabel(role: role, configuration: configuration)
+    }
+
+    private struct PouredGhostButtonLabel: View {
+        let role: Role
+        let configuration: Configuration
+
+        @Environment(\.islandTokens) private var tokens
+        @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+        @State private var isHovering = false
+
+        var body: some View {
+            let increaseContrast = colorSchemeContrast == .increased
+            let inkOpacity = role == .quiet
+                ? tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increaseContrast)
+                : tokens.colors.text(0.96, increaseContrast: increaseContrast)
+            configuration.label
+                .foregroundStyle(tokens.colors.paper.opacity(inkOpacity))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 11, style: .continuous)
+                        .fill(Color(red: 0xF2/255, green: 0xF5/255, blue: 0xFB/255)
+                            .opacity(isHovering ? 0.14 : 0.08))
+                )
+                .opacity(configuration.isPressed ? 0.82 : 1)
+                .onHover { isHovering = $0 }
+        }
+    }
+}
+
+// MARK: - Outcome badge (mockup §H `.outcome`)
+
+/// The completion outcome pill (`SPEC` §4H · mockup `.outcome.ok/.intr/.fail`):
+/// a glyph + label at the `outcomeBadge` role (10.5/650), the status tint on its
+/// matching tinted-pill fill. State is glyph + colour, never colour alone.
+private struct PouredOutcomeBadge: View {
+    let glyphName: String
+    let label: String
+    let tint: Color
+    let fill: Color
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: glyphName)
+                .font(.system(size: 9, weight: .bold))
+                .accessibilityHidden(true)
+            Text(label)
+                .font(PouredType.Role.outcomeBadge.font)
+                .lineLimit(1)
+        }
+        .foregroundStyle(tint)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 3)
+        .background(Capsule().fill(fill))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(label)
     }
 }
 

@@ -81,6 +81,7 @@
 "settings.appearance.previewScenario.codexApproval" = "Codex 终端审批";
 "settings.appearance.previewScenario.questionMulti" = "提问 · 多项";
 "settings.appearance.previewScenario.subagents" = "子代理与任务";
+"settings.appearance.previewScenario.completedSuccess" = "完成 · 成功";
 "settings.appearance.previewScenario.completedVariants" = "完成状态变体";
 "settings.appearance.previewScenario.duplicates" = "重复工作区";
 "settings.appearance.previewScenario.meters" = "用量计量";
@@ -439,6 +440,10 @@
 "completion.done" = "完成";
 "completion.interrupted" = "已中断";
 "completion.failed" = "失败";
+"poured.completion.success" = "成功";
+"poured.completion.duration" = "耗时 %@";
+"poured.completion.finishedAgo" = "%@前完成";
+"poured.completion.dismiss" = "关闭";
 "completion.replyPlaceholder" = "回复 %@…";
 
 /* Island Panel - Badges */
