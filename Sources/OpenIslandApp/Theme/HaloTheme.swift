@@ -751,39 +751,40 @@ struct HaloTheme: IslandTheme {
         )
     }
 
-    // MARK: Quiet slots (MINIMAL stubs — finished in Part 2)
+    // MARK: Quiet slots (Part 2 — rendered on the pure-black void, no box fills)
 
-    // PART 2: `HaloEmptyState` — 34pt static monitor glyph (t3), "All quiet"
-    // (14/600), subtitle (12/400), and a `● Monitoring · N workspaces` pill (idle
-    // dot + hairline ring) where N is `workspaceCount` (the AB-326 seam: distinct
-    // workspace names across current + recent sessions; render `Monitoring` alone
-    // when the count is unavailable, never a fake number). Delegated to Classic in
-    // the interim so the panel is never blank; `workspaceCount` /
-    // `installedAgentNames` are ignored until Part 2 consumes them.
+    /// `HaloEmptyState` — a 34pt static monitor glyph (t3), `All quiet` (14/600), a
+    /// confident subtitle (12/400), and a `● Monitoring · N workspaces` pill (idle
+    /// dot + hairline ring). `N` is `workspaceCount` — the AB-326 seam: distinct
+    /// workspace names across current + recent sessions; the pill falls back to a
+    /// bare `Monitoring` when the count is unavailable, never a fabricated number.
+    /// `installedAgentNames` is accepted for signature parity but unused (the
+    /// monitoring pill already answers "is this working?").
     func emptyState(
         lang: LanguageManager,
         hasRecentSessions: Bool,
         workspaceCount: Int,
         installedAgentNames: [String]
     ) -> AnyView {
-        interim.emptyState(
+        AnyView(HaloEmptyState(
             lang: lang,
             hasRecentSessions: hasRecentSessions,
-            workspaceCount: workspaceCount,
-            installedAgentNames: installedAgentNames
-        )
+            workspaceCount: workspaceCount
+        ))
     }
 
-    // PART 2: `HaloBootstrapPlaceholder` — the void shell shown while probing
-    // terminals on cold launch (trivially flash-safe since #000 is opaque).
+    /// `HaloBootstrapPlaceholder` — the void shell shown while probing terminals on
+    /// cold launch. Shares the empty-state identity; trivially flash-safe since the
+    /// `#000` void is fully opaque (no gradient/material fade to flash a non-black
+    /// fill before it mounts).
     func bootstrapPlaceholder(lang: LanguageManager) -> AnyView {
-        interim.bootstrapPlaceholder(lang: lang)
+        AnyView(HaloBootstrapPlaceholder(lang: lang))
     }
 
-    // PART 2: `HaloInstallHooksHint` — a quiet hairline line + `SETUP` tap CTA,
-    // with **NO edge-light / no glow** (a hint is not an attention state —
-    // color = state discipline, brief §7).
+    /// `HaloInstallHooksHint` — a quiet hairline line + `SETUP` tap CTA, with **NO
+    /// edge-light / no glow** (a hint is not an attention state — color = state
+    /// discipline, brief §7). The view contains no `.shadow` modifier.
     func installHint(lang: LanguageManager, onTap: @escaping () -> Void) -> AnyView {
-        interim.installHint(lang: lang, onTap: onTap)
+        AnyView(HaloInstallHooksHint(lang: lang, onTap: onTap))
     }
 }

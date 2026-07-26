@@ -210,6 +210,8 @@
 "theme.flightDeck.descriptor" = "Avionics annunciator panel.";
 "theme.annual.name" = "Annual";
 "theme.annual.descriptor" = "Editorial Swiss typographic calm.";
+"theme.halo.name" = "Halo";
+"theme.halo.descriptor" = "Prismatic edge-light on a true-black void.";
 
 /* Settings - Shortcuts */
 "settings.shortcuts.global.section" = "Global Hotkey";
@@ -340,6 +342,14 @@
 "island.annual.state.empty" = "No sessions";
 "island.annual.state.loading" = "Loading";
 "island.annual.hint.setup" = "Setup";
+
+/* Island Panel - Halo theme (AB-340) */
+"island.halo.empty.allQuiet" = "All quiet";
+"island.halo.empty.watching" = "No active agent sessions. Open Island is watching your terminals and IDEs — it'll light up the moment one needs you.";
+"island.halo.empty.monitoring" = "Monitoring";
+"island.halo.empty.workspaceOne" = "Monitoring · %lld workspace";
+"island.halo.empty.workspaceOther" = "Monitoring · %lld workspaces";
+"island.halo.hint.setup" = "SETUP";
 
 /* Island Panel - Annual theme rows (AB-317) */
 "island.annual.row.jump" = "Jump";

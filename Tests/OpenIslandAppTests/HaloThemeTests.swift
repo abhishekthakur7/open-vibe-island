@@ -363,4 +363,69 @@ struct HaloThemeTests {
         #expect(F.edgeState(phase: .running, presence: .inactive, outcome: .success) == .idle)
         #expect(F.edgeState(phase: .waitingForApproval, presence: .inactive, outcome: .success) == .idle)
     }
+
+    // MARK: - Identity strings localize (AC: name/descriptor per language ≠ key)
+
+    /// The theme's `name` / `descriptor` resolve to real translations — not the bare
+    /// key — in English and both Chinese scripts (mirrors `AnnualThemeTests`). The
+    /// drafted values (`Halo` / `Prismatic edge-light on a true-black void.`) are
+    /// implemented as specced; naming is flagged as pending user confirmation.
+    @Test
+    func themeNameAndDescriptorLocalizeInEveryLanguage() {
+        let originalLanguage = UserDefaults.standard.string(forKey: "appLanguage")
+        defer {
+            if let originalLanguage {
+                UserDefaults.standard.set(originalLanguage, forKey: "appLanguage")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "appLanguage")
+            }
+        }
+
+        let theme = HaloTheme()
+        for language in [LanguageManager.AppLanguage.en, .zhHans, .zhHant] {
+            let manager = LanguageManager()
+            manager.language = language
+            let name = theme.name(manager)
+            let descriptor = theme.descriptor(manager)
+            #expect(!name.isEmpty)
+            #expect(name != "theme.halo.name", "name is unlocalized in \(language)")
+            #expect(!descriptor.isEmpty)
+            #expect(descriptor != "theme.halo.descriptor", "descriptor is unlocalized in \(language)")
+        }
+    }
+
+    /// Every Halo quiet-slot copy key (empty-state title / confident subtitle /
+    /// monitoring pill singular+plural / SETUP CTA) resolves to a real translation
+    /// in English and both Chinese scripts, so the void frame never renders a bare
+    /// key. The `%lld` workspace pill keys carry a real localized template.
+    @Test
+    func haloQuietSlotStringsLocalizeInEveryLanguage() {
+        let originalLanguage = UserDefaults.standard.string(forKey: "appLanguage")
+        defer {
+            if let originalLanguage {
+                UserDefaults.standard.set(originalLanguage, forKey: "appLanguage")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "appLanguage")
+            }
+        }
+
+        let keys = [
+            "island.halo.empty.allQuiet",
+            "island.halo.empty.watching",
+            "island.halo.empty.monitoring",
+            "island.halo.empty.workspaceOne",
+            "island.halo.empty.workspaceOther",
+            "island.halo.hint.setup",
+        ]
+
+        for language in [LanguageManager.AppLanguage.en, .zhHans, .zhHant] {
+            let manager = LanguageManager()
+            manager.language = language
+            for key in keys {
+                let resolved = manager.t(key)
+                #expect(resolved != key, "\(key) is unlocalized in \(language)")
+                #expect(!resolved.isEmpty)
+            }
+        }
+    }
 }
