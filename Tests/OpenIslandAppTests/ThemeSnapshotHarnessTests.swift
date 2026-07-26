@@ -104,6 +104,74 @@ final class ThemeSnapshotHarnessTests: XCTestCase {
         )
     }
 
+    // MARK: - Flight Deck hero surfaces (AB-339)
+
+    /// Flight Deck · engine cluster + todo list · notch (540pt). The §4G interior
+    /// of the non-actionable spotlight: three engines (`EXPLORE` / `GENERAL` /
+    /// `PLAN` placards + breathing lamps + task lines + per-subagent elapsed) and
+    /// the `2 / 5 DONE` todo well (blue check + strikethrough / green breathing box
+    /// / dim hollow). The engine elapsed and the row uptime are `now`-anchored
+    /// fixtures (`startedAt = now − 42/75/8`), so — like the permission `HELD`
+    /// counter this suite already pins — they resolve to the same `0m 42s` /
+    /// `1m 15s` / `0m 08s` every run and the golden stays stable. English only.
+    func testFlightDeckEngineClusterNotch() throws {
+        try ThemeSnapshotting.assertSnapshot(
+            theme: FlightDeckTheme(),
+            slot: .sessionList(scenario: .subagents),
+            profile: .notch,
+            named: "flightdeck-engine-cluster-notch"
+        )
+    }
+
+    /// Flight Deck · completion (advisory blue) · notch (540pt). The §4H `SUCCESS`
+    /// badge + prose result + donestats grid (Outcome `✓ Success` / Duration
+    /// `43m 12s` = `updatedAt − firstSeenAt`, a fixed fixture delta / Agent — no
+    /// Files stat). The settled advisory lane is born completed (settle one-shot at
+    /// rest, not re-flashing), so the frame is time-stable. English only.
+    func testFlightDeckCompletionSuccessNotch() throws {
+        try ThemeSnapshotting.assertSnapshot(
+            theme: FlightDeckTheme(),
+            slot: .sessionList(scenario: .completedSuccess),
+            profile: .notch,
+            named: "flightdeck-completion-success-notch"
+        )
+    }
+
+    /// Flight Deck · empty state · **ALL SYSTEMS NOMINAL** · notch (540pt) **and**
+    /// top-bar (520pt). The §4J confident tone flip: the lamp grid (one lit lamp
+    /// captured at its breathing peak — the model layer holds the target, so no
+    /// clock reaches the bitmap — + three dark), the bright heading, the monitoring
+    /// copy, and the `BRIDGE LINK · MONITORING · 0 SESSIONS` sysline in its live
+    /// nominal variant (the harness injects `islandBridgeIsLive = true`). Fully
+    /// static — no counter, no age badge — so the pin is deterministic. English only.
+    func testFlightDeckEmptyNominalNotch() throws {
+        try ThemeSnapshotting.assertSnapshot(
+            theme: FlightDeckTheme(),
+            slot: .sessionList(scenario: .empty),
+            profile: .notch,
+            named: "flightdeck-empty-nominal-notch"
+        )
+    }
+
+    func testFlightDeckEmptyNominalTopBar() throws {
+        try ThemeSnapshotting.assertSnapshot(
+            theme: FlightDeckTheme(),
+            slot: .sessionList(scenario: .empty),
+            profile: .topBar,
+            named: "flightdeck-empty-nominal-topbar"
+        )
+    }
+
+    // NOTE (AB-339): the §4G closed-pill **subagents wing** (`3 subagents · 2/5`,
+    // the `.taskCounter` right slot → `FlightDeckTaskCounterChip`) is *not* pinned
+    // here. The harness `.closedPill` slot renders the theme-agnostic
+    // `V6ClosedPill`, which resolves `.taskCounter` through the shared
+    // `V6RightSlotView` (the `×N` degradation), never the Flight Deck
+    // `FlightDeckRightSlotView` that draws the wing — so a pill golden would show
+    // `×5`, not the FD wing. The wing is verified by eye against the running
+    // overlay + covered by `IslandRightSlotContentTests` (the `.taskCounter`
+    // payload) and `FlightDeckThemeTests` (its badge width math).
+
     // NOTE (AB-338): the tape gauges' three bands (NOM 34% / CAUT 78% / CRIT 92%)
     // are driven by the `.meters` scenario and were verified by eye against a
     // recorded render, but that scenario is deliberately *not* pinned as a

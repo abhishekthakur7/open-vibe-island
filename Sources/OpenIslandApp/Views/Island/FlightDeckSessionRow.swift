@@ -364,10 +364,50 @@ enum FlightDeckSessionRowFormat {
     }
 
     /// Every readable point size the Flight Deck row draws, for the ≥10pt-floor
-    /// assertion (AC #6). The sans headline (13.5), sans narration (12) and sans
-    /// assistant body (13) sit above the floor; the mono tabular columns sit at the
-    /// 10.5 lane; the mono STATUS code and metacell key sit at the 10pt floor.
-    static let readableTextSizes: [CGFloat] = [13.5, 13, 12, 10.5, 10]
+    /// assertion (AC #6). The sans headline (13.5), sans assistant body (13), sans
+    /// todo label (12.5), sans narration / engine task (12 / 11.5) sit above the
+    /// floor; the mono tabular columns sit at the 10.5 lane; the mono STATUS code,
+    /// engine placard, todo progress and metacell key sit at the 10pt floor.
+    static let readableTextSizes: [CGFloat] = [13.5, 13, 12.5, 12, 11.5, 10.5, 10]
+
+    // MARK: - Engine cluster + todo (§4G · AB-339)
+
+    /// The per-subagent elapsed readout (§4G · AC): `now − startedAt` as a mono
+    /// tabular `%dm %02ds` — against the T08 fixtures (`startedAt` at −42 / −75 /
+    /// −8s) the three engines read `0m 42s` / `1m 15s` / `0m 08s`. The Flight Deck
+    /// idiom is `0m 42s`, not Poured's `M:SS` clock (`PouredSubagentTiming`), so the
+    /// two themes read the same span in their own type. Minutes are **not** rolled
+    /// into hours — a 90-minute subagent reads `90m 00s`, an honest live count the
+    /// tabular column can still align — and a negative interval (a `startedAt`
+    /// nudged into the future) clamps to `0m 00s`.
+    static func engineElapsedLabel(seconds: Int) -> String {
+        let clamped = max(0, seconds)
+        return String(format: "%dm %02ds", clamped / 60, clamped % 60)
+    }
+
+    /// The engine **type placard** (§4G · AC · mockup `.etype`): the subagent's
+    /// `agentType` reduced to its leading token and uppercased — `Explore` →
+    /// `EXPLORE`, `general-purpose` → `GENERAL`, `Plan` → `PLAN` — so the placard
+    /// stays an EICAS-short Latin code. Split on `-` / `_` / space so a compound
+    /// type reads as its head. A subagent with no type falls back to a neutral
+    /// `AGENT` placard rather than inventing a name. The value is Latin; the
+    /// CJK-neutral tracking is applied at the render site (AB-337 convention).
+    static func enginePlacard(agentType: String?) -> String {
+        guard let raw = agentType?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+            return "AGENT"
+        }
+        let leading = raw.split(whereSeparator: { $0 == "-" || $0 == "_" || $0 == " " })
+            .first
+            .map(String.init) ?? raw
+        return leading.uppercased()
+    }
+
+    // Honesty (BRIEF §3): an engine renders its **type / task / elapsed only**.
+    // Subagents expose `startedAt` / `agentType` / `taskDescription` and nothing
+    // else — there is NO progress signal, so the mockup's per-engine arc-fill %
+    // (`.earc`) is dropped rather than faked, and there are NO per-engine tool
+    // counts (subagents don't report tool activity). The one number an engine
+    // shows is the wall-clock elapsed, which is real.
 }
 
 // MARK: - Actionable surface logic (AB-314)
@@ -464,6 +504,29 @@ enum FlightDeckApprovalFormat {
         let total = Int(elapsed)
         return String(format: "%dm %02ds", total / 60, total % 60)
     }
+
+    // MARK: - Completion donestats (§4H · AB-339)
+
+    /// The completion **Duration** donestat (§4H · AC): the run length
+    /// `updatedAt − firstSeenAt` as a mono tabular string. Reads `%dm %02ds` for a
+    /// sub-hour run (`43m 12s`, the mockup's example; the T08 `completedSuccess`
+    /// fixture sits at exactly 43 min → `43m 00s`) and rolls into an hours field
+    /// for a longer session (`1h 05m 30s`) so a multi-hour run stays honest rather
+    /// than reading `65m 30s`. A negative span (clock skew) clamps to `0m 00s`.
+    ///
+    /// Honesty (BRIEF §3): the donestats grid carries Outcome / Duration / Agent
+    /// only — the mockup's **`Files 3 changed`** stat is dropped, there is no
+    /// files-changed count on the session to source it from.
+    static func donestatDurationLabel(seconds: Int) -> String {
+        let clamped = max(0, seconds)
+        let hours = clamped / 3600
+        let minutes = (clamped % 3600) / 60
+        let secs = clamped % 60
+        if hours > 0 {
+            return String(format: "%dh %02dm %02ds", hours, minutes, secs)
+        }
+        return String(format: "%dm %02ds", minutes, secs)
+    }
 }
 
 // MARK: - Row content
@@ -481,6 +544,11 @@ private struct FlightDeckRowContent: View {
     let actions: RowActions
 
     @State private var expandedOverride: Bool?
+
+    /// Harness/preview seam (AB-339): when set, an expandable row is born expanded
+    /// so a snapshot can pin the §4G engine cluster / §4D metagrid that otherwise
+    /// only open on a tap. Defaults to `false` — production rows open collapsed.
+    @Environment(\.islandRowExpandedByDefault) private var expandedByDefault
 
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     private var increasesContrast: Bool { colorSchemeContrast == .increased }
@@ -532,7 +600,7 @@ private struct FlightDeckRowContent: View {
         let isRunning = presence == .running
         let isIdle = presence == .inactive
         let showsSubLine = FlightDeckSessionRowFormat.showsSubLine(isRunning: isRunning, isIdle: isIdle)
-        let isExpanded = (expandedOverride ?? false) && isInteractive
+        let isExpanded = (expandedOverride ?? expandedByDefault) && isInteractive
         let priority = FlightDeckSessionRowFormat.lanePriority(
             phase: session.phase,
             presence: presence,
@@ -781,6 +849,16 @@ private struct FlightDeckRowContent: View {
     private func expandedDetails(presence: IslandSessionPresence, referenceDate: Date) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             metagrid(referenceDate: referenceDate)
+
+            // §4G engine cluster + todo list (AB-339): the orchestration detail a
+            // running fan-out earns, drawn between the metagrid and the last
+            // message. Absent when the session isn't fanning out (no invented rows).
+            if let subagents = activeSubagents {
+                engineCluster(subagents, referenceDate: referenceDate)
+            }
+            if let tasks = activeTasks {
+                todoList(tasks)
+            }
 
             if let message = lastAssistantMessageForDetail {
                 assistantMessageCard(message)
@@ -1152,6 +1230,226 @@ private struct FlightDeckRowContent: View {
         return subagents.count
     }
 
+    /// The active subagents driving the §4G engine cluster, or `nil` when the
+    /// session isn't fanning out (so the detail draws no empty cluster).
+    private var activeSubagents: [ClaudeSubagentInfo]? {
+        guard let subagents = session.claudeMetadata?.activeSubagents, !subagents.isEmpty else {
+            return nil
+        }
+        return subagents
+    }
+
+    /// The active todo items driving the §4G todo list, or `nil` when there are
+    /// none.
+    private var activeTasks: [ClaudeTaskInfo]? {
+        guard let tasks = session.claudeMetadata?.activeTasks, !tasks.isEmpty else {
+            return nil
+        }
+        return tasks
+    }
+
+    // MARK: - §4G engine cluster (AC · AB-339)
+
+    /// The engine cluster (SPEC §4G · mockup `.engines`): one **engine** per active
+    /// subagent — a chamfered tile carrying the uppercased type placard
+    /// (`EXPLORE` / `GENERAL` / `PLAN`, nominal green) beside a breathing phosphor
+    /// lamp (the AB-336 primitive, 2.0s), the task line as sans prose, and the
+    /// per-subagent elapsed as mono tabular, live from `startedAt`. NO arc-fill %
+    /// and NO per-engine tool count — subagents carry no progress signal, so the
+    /// engine shows only what's real (see `FlightDeckSessionRowFormat`, BRIEF §3).
+    private func engineCluster(_ subagents: [ClaudeSubagentInfo], referenceDate: Date) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(FlightDeckText.caps(lang.t("island.flightDeck.engine.header"), lang: lang))
+                .font(.system(size: FlightDeckTypography.microLabelSize, weight: .semibold, design: .default))
+                .tracking(FlightDeckText.tracking(1.0, lang: lang))
+                .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
+
+            FlightDeckMetaFlow(spacing: 6) {
+                ForEach(subagents, id: \.agentID) { sub in
+                    engineTile(sub, referenceDate: referenceDate)
+                }
+            }
+        }
+    }
+
+    private func engineTile(_ sub: ClaudeSubagentInfo, referenceDate: Date) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 6) {
+                Text(FlightDeckSessionRowFormat.enginePlacard(agentType: sub.agentType))
+                    // The type placard is a Latin EICAS code — mono, nominal green,
+                    // letterspaced on Latin and neutralized for CJK.
+                    .font(.system(size: FlightDeckTypography.microLabelSize, weight: .bold, design: .monospaced))
+                    .tracking(FlightDeckText.tracking(0.6, lang: lang))
+                    .foregroundStyle(tokens.colors.statusRunning)
+                    .lineLimit(1)
+                    .fixedSize()
+
+                Spacer(minLength: 8)
+
+                FlightDeckEngineLamp(color: tokens.colors.statusRunning)
+            }
+
+            if let task = sub.taskDescription?.flightDeckTrimmed, !task.isEmpty {
+                Text(task)
+                    // Task line — sans prose the reader reads (SPEC §2).
+                    .font(sansScaled(11.5, weight: .regular))
+                    .foregroundStyle(tokens.colors.paper.opacity(contrastText(0.92)))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            engineElapsed(sub, referenceDate: referenceDate)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 9)
+        .frame(minWidth: 120, maxWidth: 168, alignment: .leading)
+        .background(FlightDeckChamferedRectangle(chamfer: 3).fill(FlightDeckSurfaces.tile))
+        .overlay(
+            FlightDeckChamferedRectangle(chamfer: 3)
+                .strokeBorder(FlightDeckSurfaces.hairline(tier: 2, increaseContrast: increasesContrast), lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+    }
+
+    /// The per-subagent elapsed readout — mono tabular, ticking live off a ≤1s
+    /// `TimelineView` against `startedAt`. Absent when the subagent carries no
+    /// `startedAt` (nothing to count from).
+    @ViewBuilder
+    private func engineElapsed(_ sub: ClaudeSubagentInfo, referenceDate: Date) -> some View {
+        if let started = sub.startedAt {
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                Text(FlightDeckSessionRowFormat.engineElapsedLabel(
+                    seconds: Int(context.date.timeIntervalSince(started))
+                ))
+                .font(.system(size: 10.5, weight: .semibold, design: .monospaced).monospacedDigit())
+                .foregroundStyle(tokens.colors.paper.opacity(contrastText(0.86)))
+            }
+        }
+    }
+
+    // MARK: - §4G todo list (AC · AB-339)
+
+    /// The todo list (SPEC §4G · mockup `.todos`): a recessed well headed by a
+    /// caps `TASK LIST` label + a `N / M DONE` tabular progress readout, then one
+    /// row per task. `done` = advisory-blue check + strikethrough; `doing` =
+    /// nominal-green breathing box (the AB-336 phosphor primitive); `pending` = a
+    /// dim hollow box. Every state carries an **icon + text**, never colour alone
+    /// (§K redundancy).
+    private func todoList(_ tasks: [ClaudeTaskInfo]) -> some View {
+        let rollup = PouredTaskRollup(statuses: tasks.map(\.status))
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                Text(FlightDeckText.caps(lang.t("island.flightDeck.engine.taskList"), lang: lang))
+                    .font(.system(size: FlightDeckTypography.microLabelSize, weight: .semibold, design: .default))
+                    .tracking(FlightDeckText.tracking(1.0, lang: lang))
+                    .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
+                Spacer(minLength: 8)
+                // `2 / 5 DONE` — DONE is a Latin EICAS placard (CJK-neutral), the
+                // digits are mono tabular so the count never jitters.
+                Text(lang.t("island.flightDeck.engine.todoProgress", rollup.done, rollup.total))
+                    .font(.system(size: FlightDeckTypography.microLabelSize, weight: .semibold, design: .monospaced).monospacedDigit())
+                    .tracking(FlightDeckText.tracking(0.6, lang: lang))
+                    .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.secondaryTextOpacity)))
+            }
+            .padding(.horizontal, 11)
+            .padding(.vertical, 8)
+            .background(FlightDeckSurfaces.tile)
+
+            ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
+                if index > 0 {
+                    Rectangle()
+                        .fill(FlightDeckSurfaces.hairline(tier: 1, increaseContrast: increasesContrast))
+                        .frame(height: 1)
+                }
+                todoRow(task)
+            }
+        }
+        .background(FlightDeckChamferedRectangle(chamfer: 4).fill(FlightDeckSurfaces.well))
+        .overlay(
+            FlightDeckChamferedRectangle(chamfer: 4)
+                .strokeBorder(FlightDeckSurfaces.hairline(tier: 2, increaseContrast: increasesContrast), lineWidth: 1)
+        )
+    }
+
+    private func todoRow(_ task: ClaudeTaskInfo) -> some View {
+        HStack(spacing: 10) {
+            todoBox(task.status)
+                .frame(width: 14, height: 14)
+
+            Text(task.title)
+                .font(sansScaled(12.5, weight: .regular))
+                .foregroundStyle(todoTitleColor(task.status))
+                .strikethrough(task.status == .completed)
+                .lineLimit(1)
+                .truncationMode(.tail)
+
+            Spacer(minLength: 8)
+
+            // The state name in words — the icon+text redundancy so a task's state
+            // never rides on colour alone (§K). Latin/localized caps micro-label.
+            Text(FlightDeckText.caps(lang.t(todoStateKey(task.status)), lang: lang))
+                .font(.system(size: FlightDeckTypography.microLabelSize, weight: .semibold, design: .monospaced))
+                .tracking(FlightDeckText.tracking(0.6, lang: lang))
+                .foregroundStyle(todoTagColor(task.status))
+                .fixedSize()
+        }
+        .padding(.horizontal, 11)
+        .padding(.vertical, 8)
+        .accessibilityElement(children: .combine)
+    }
+
+    /// The todo status box: a filled advisory check (done), a breathing nominal
+    /// box (doing, the AB-336 phosphor primitive), or a dim hollow square (pending).
+    @ViewBuilder
+    private func todoBox(_ status: ClaudeTaskInfo.Status) -> some View {
+        switch status {
+        case .completed:
+            ZStack {
+                FlightDeckChamferedRectangle(chamfer: 2)
+                    .fill(tokens.colors.statusCompleted)
+                Image(systemName: "checkmark")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(tokens.colors.surfaceInk)
+            }
+        case .inProgress:
+            FlightDeckEngineLamp(color: tokens.colors.statusRunning, side: 12, chamfer: 2)
+        case .pending:
+            FlightDeckChamferedRectangle(chamfer: 2)
+                .strokeBorder(FlightDeckSurfaces.hairline(tier: 3, increaseContrast: increasesContrast), lineWidth: 1)
+        }
+    }
+
+    private func todoTitleColor(_ status: ClaudeTaskInfo.Status) -> Color {
+        switch status {
+        case .completed:
+            return tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity))
+        case .inProgress:
+            return tokens.colors.paper.opacity(contrastText(0.96))
+        case .pending:
+            return tokens.colors.paper.opacity(contrastText(tokens.colors.secondaryTextOpacity))
+        }
+    }
+
+    private func todoTagColor(_ status: ClaudeTaskInfo.Status) -> Color {
+        switch status {
+        case .completed:
+            return tokens.colors.statusCompleted.opacity(increasesContrast ? 1 : 0.9)
+        case .inProgress:
+            return tokens.colors.statusRunning
+        case .pending:
+            return tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity))
+        }
+    }
+
+    private func todoStateKey(_ status: ClaudeTaskInfo.Status) -> String {
+        switch status {
+        case .completed:  return "island.flightDeck.engine.todoDone"
+        case .inProgress: return "island.flightDeck.engine.todoDoing"
+        case .pending:    return "island.flightDeck.engine.todoPending"
+        }
+    }
+
     // MARK: - Narration (T03 verb map · AC #2)
 
     /// The row's narrated activity, tone-split into `verb` (tinted `#4AC99E`) /
@@ -1485,6 +1783,47 @@ private struct FlightDeckStatusLane: View {
         withAnimation(.easeInOut(duration: period / 2).repeatForever(autoreverses: true)) {
             breathePhase = true
         }
+    }
+}
+
+/// A breathing engine lamp (AB-339 · §4G): the same self-lit phosphor breathe
+/// the closed-pill running lamp and the status lane run (AB-336), re-expressed as
+/// a small chamfered square for the engine-cluster tiles and the doing-todo box.
+/// Opacity `0.86 → 1.0` with a phosphor halo swelling `5 → 11pt` once per
+/// `FlightDeckMotion.Breathe.period` (2.0s), ease-in-out, driven by a single
+/// clock-free `@State` toggle (`FlightDeckRunningLight` precedent). Under Reduce
+/// Motion no animation is started and the lamp holds its lit peak — never dark,
+/// never even acquiring a clock.
+private struct FlightDeckEngineLamp: View {
+    let color: Color
+    var side: CGFloat = 8
+    var chamfer: CGFloat = 1.5
+
+    @State private var breathing = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var lit: Bool { reduceMotion || breathing }
+
+    var body: some View {
+        FlightDeckChamferedRectangle(chamfer: chamfer)
+            .fill(color)
+            .opacity(lit ? FlightDeckMotion.Breathe.opacityMax : FlightDeckMotion.Breathe.opacityMin)
+            .frame(width: side, height: side)
+            .phosphorGlow(
+                shape: FlightDeckChamferedRectangle(chamfer: chamfer),
+                tint: color,
+                radius: lit ? FlightDeckMotion.Breathe.glowRadiusMax : FlightDeckMotion.Breathe.glowRadiusMin,
+                intensity: lit ? 0.7 : 0.5
+            )
+            .accessibilityHidden(true)
+            .onAppear {
+                guard !reduceMotion else { return }
+                withAnimation(
+                    .easeInOut(duration: FlightDeckMotion.Breathe.period / 2).repeatForever(autoreverses: true)
+                ) {
+                    breathing = true
+                }
+            }
     }
 }
 
@@ -1889,9 +2228,12 @@ private struct FlightDeckActionableRowContent: View {
     }
 
     private var completionHasExpandedBody: Bool {
-        session.outcome != .success
-            || !completionMessageText.isEmpty
-            || actions.reply != nil
+        // §4H (AB-339): a success completion now always earns its body — the
+        // SUCCESS badge + donestats grid (Outcome / Duration / Agent) are real
+        // content even without a result message, so a bare success no longer
+        // collapses to a header-only row. Non-success always shows (banner +
+        // outcome); a reply affordance always shows.
+        true
     }
 
     @ViewBuilder
@@ -1938,11 +2280,16 @@ private struct FlightDeckActionableRowContent: View {
 
     private var completionBody: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if !completionMessageText.isEmpty {
-                if session.outcome != .success {
-                    completionOutcomeBanner
-                }
+            // §4H header: the advisory-blue SUCCESS badge for a clean finish, the
+            // amber `⊘ INTR` / red `✕ FAIL` outcome banner otherwise (distinct
+            // glyphs — the pinned test stays green).
+            if session.outcome == .success {
+                completionSuccessBadge
+            } else {
+                completionOutcomeBanner
+            }
 
+            if !completionMessageText.isEmpty {
                 AutoHeightScrollView(maxHeight: 160) {
                     Markdown(completionMessageText)
                         .markdownTheme(.completionCard(tokens.colors))
@@ -1952,8 +2299,12 @@ private struct FlightDeckActionableRowContent: View {
                         .padding(.horizontal, 12)
                         .padding(.vertical, 9)
                 }
-            } else {
-                completionEmptyState
+            }
+
+            // Donestats grid (§4H) — Outcome / Duration / Agent, mono tabular. NO
+            // Files stat (dropped, no data source — see `FlightDeckApprovalFormat`).
+            if session.outcome == .success {
+                completionDonestats
             }
 
             if actions.reply != nil {
@@ -1987,16 +2338,90 @@ private struct FlightDeckActionableRowContent: View {
         .padding(.bottom, 4)
     }
 
-    private var completionEmptyState: some View {
-        HStack {
-            Text(FlightDeckText.caps(completionOutcomeLabel, lang: lang))
-                .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+    /// The §4H `SUCCESS` badge (mockup `.donebadge`): an advisory-blue check + a
+    /// stenciled `SUCCESS` placard, the confident head of a clean completion. The
+    /// glyph carries the state alongside the word, never colour alone (§K).
+    private var completionSuccessBadge: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "checkmark")
+                .font(.system(size: 10.5, weight: .bold))
+                .accessibilityHidden(true)
+            Text(FlightDeckText.caps(lang.t("island.flightDeck.done.success"), lang: lang))
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
                 .tracking(FlightDeckText.tracking(0.8, lang: lang))
-                .foregroundStyle(statusTint.opacity(0.96))
             Spacer(minLength: 0)
         }
+        .foregroundStyle(tokens.colors.statusCompleted.opacity(increasesContrast ? 1 : 0.96))
         .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.top, 10)
+        .padding(.bottom, 4)
+    }
+
+    /// The §4H donestats grid (mockup `.donestats`): three chamfered tiles —
+    /// **Outcome** (`✓ Success`, advisory blue), **Duration** (mono tabular,
+    /// `updatedAt − firstSeenAt`) and **Agent** — laid across the card. NO **Files**
+    /// stat: the mockup's `3 changed` has no data source, so it's dropped rather
+    /// than faked (BRIEF §3).
+    private var completionDonestats: some View {
+        HStack(spacing: 6) {
+            donestat(key: lang.t("island.flightDeck.done.outcome")) {
+                HStack(spacing: 4) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
+                        .accessibilityHidden(true)
+                    Text(lang.t("island.flightDeck.done.success"))
+                        .font(.system(size: 13, weight: .medium, design: .monospaced))
+                        .lineLimit(1)
+                }
+                .foregroundStyle(tokens.colors.statusCompleted.opacity(increasesContrast ? 1 : 0.96))
+            }
+
+            donestat(key: lang.t("island.flightDeck.done.duration")) {
+                Text(completionDurationLabel)
+                    .font(.system(size: 13, weight: .medium, design: .monospaced).monospacedDigit())
+                    .foregroundStyle(tokens.colors.paper.opacity(contrastText(0.92)))
+                    .lineLimit(1)
+            }
+
+            donestat(key: lang.t("island.flightDeck.detail.agent")) {
+                Text(agentBadgeTitle)
+                    .font(.system(size: 13, weight: .medium, design: .monospaced))
+                    .foregroundStyle(tokens.colors.paper.opacity(contrastText(0.92)))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 6)
+        .padding(.bottom, 12)
+    }
+
+    private func donestat<Value: View>(key: String, @ViewBuilder value: () -> Value) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(FlightDeckText.caps(key, lang: lang))
+                .font(.system(size: FlightDeckTypography.microLabelSize, weight: .semibold, design: .default))
+                .tracking(FlightDeckText.tracking(1.0, lang: lang))
+                .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
+            value()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 8)
+        .background(FlightDeckChamferedRectangle(chamfer: 3).fill(FlightDeckSurfaces.well))
+        .overlay(
+            FlightDeckChamferedRectangle(chamfer: 3)
+                .strokeBorder(FlightDeckSurfaces.hairline(tier: 1, increaseContrast: increasesContrast), lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+    }
+
+    /// The completion Duration donestat value — `updatedAt − firstSeenAt` as a mono
+    /// tabular span (§4H · AC). Against the T08 `completedSuccess` fixture (43-min
+    /// run) this reads `43m 00s`.
+    private var completionDurationLabel: String {
+        FlightDeckApprovalFormat.donestatDurationLabel(
+            seconds: Int(session.updatedAt.timeIntervalSince(session.firstSeenAt))
+        )
     }
 
     @ViewBuilder

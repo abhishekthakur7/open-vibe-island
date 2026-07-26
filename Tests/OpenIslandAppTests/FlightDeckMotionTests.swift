@@ -34,6 +34,16 @@ struct FlightDeckMotionTests {
         #expect(FlightDeckMotion.Attention.opacityMin == 0.28)
     }
 
+    /// AB-339 §4J / §4K: the empty-state monitoring lamp breathes on a distinctly
+    /// *slower* 2.6s heartbeat than the 2.0s running breathe — the mockup
+    /// `.empty .lampgrid .l.on` `animation:phosphor 2.6s`. A resting monitor must
+    /// read calmer than a working engine, so the two cadences must not collapse.
+    @Test
+    func monitorPeriodIsTheSlowEmptyStateHeartbeat() {
+        #expect(FlightDeckMotion.Monitor.period == 2.6)
+        #expect(FlightDeckMotion.Monitor.period > FlightDeckMotion.Breathe.period)
+    }
+
     /// AC #4: lamp snap-on latches instantly (≤ 1 frame, no fade-in) and decays
     /// softly (~120ms) — the mockup `snapon` `steps(1,end)`.
     @Test

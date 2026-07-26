@@ -1,11 +1,14 @@
 import SwiftUI
 import OpenIslandCore
 
-/// Flight Deck's cold-launch bootstrap placeholder (AB-312): the spinner and
-/// "checking terminals" copy the app shows while probing terminal ownership,
-/// framed in the same squared hairline panel as the empty state so the two
-/// pre-list states share one avionics identity, headed by an uppercase "STANDBY"
-/// caption. Copy and spinner behavior are unchanged; the caption's casing and
+/// Flight Deck's cold-launch bootstrap placeholder (AB-312, tone-aligned AB-339 ·
+/// SPEC-flight-deck Slot 7): the spinner and "checking terminals" copy the app
+/// shows while probing terminal ownership, framed in the same squared hairline
+/// panel as the ALL SYSTEMS NOMINAL empty state so the two pre-list states share
+/// one avionics identity — the empty state's "power on, monitoring" idiom, here
+/// still spinning up. Headed by an uppercase **STANDBY** caption reusing the
+/// shared `island.flightDeck.pill.standby` string (AB-338) rather than a private
+/// copy. Copy and spinner behavior are unchanged; the caption's casing and
 /// tracking neutralize for CJK.
 struct FlightDeckBootstrapPlaceholder: View {
     let lang: LanguageManager
@@ -18,7 +21,7 @@ struct FlightDeckBootstrapPlaceholder: View {
     var body: some View {
         VStack(spacing: 10) {
             Spacer()
-            Text(FlightDeckText.caps(lang.t("island.flightDeck.state.standby"), lang: lang))
+            Text(FlightDeckText.caps(lang.t("island.flightDeck.pill.standby"), lang: lang))
                 .font(FlightDeckTypography.microLabel)
                 .tracking(FlightDeckText.tracking(1.6, lang: lang))
                 .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))

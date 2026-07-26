@@ -297,6 +297,61 @@ struct FlightDeckSessionRowTests {
         }
     }
 
+    // MARK: - §4G engine cluster (AB-339)
+
+    /// AC: against the T08 `subagentsAndTasks` fixtures (`startedAt` at −42 / −75 /
+    /// −8s) the three engines read `0m 42s` / `1m 15s` / `0m 08s`. Pins the exact
+    /// Flight Deck elapsed idiom (`0m 42s`, not Poured's `0:42`) the spec's
+    /// illustrative `3m 04s` corrected away from.
+    @Test
+    func engineElapsedLabelMatchesTheFixtureReadouts() {
+        #expect(FlightDeckSessionRowFormat.engineElapsedLabel(seconds: 42) == "0m 42s")
+        #expect(FlightDeckSessionRowFormat.engineElapsedLabel(seconds: 75) == "1m 15s")
+        #expect(FlightDeckSessionRowFormat.engineElapsedLabel(seconds: 8) == "0m 08s")
+        // Minutes never roll into hours — a long subagent stays a tabular count.
+        #expect(FlightDeckSessionRowFormat.engineElapsedLabel(seconds: 90 * 60) == "90m 00s")
+        // A negative interval (clock nudge) clamps to zero, never a `-` glyph.
+        #expect(FlightDeckSessionRowFormat.engineElapsedLabel(seconds: -5) == "0m 00s")
+    }
+
+    /// AC: the type placard uppercases the leading token of `agentType` —
+    /// `Explore` → `EXPLORE`, `general-purpose` → `GENERAL`, `Plan` → `PLAN` — so
+    /// the three fixture engines read the spec placards, and a typeless subagent
+    /// falls back to a neutral `AGENT` rather than inventing a name.
+    @Test
+    func enginePlacardReducesAgentTypeToItsEICASHead() {
+        #expect(FlightDeckSessionRowFormat.enginePlacard(agentType: "Explore") == "EXPLORE")
+        #expect(FlightDeckSessionRowFormat.enginePlacard(agentType: "general-purpose") == "GENERAL")
+        #expect(FlightDeckSessionRowFormat.enginePlacard(agentType: "Plan") == "PLAN")
+        #expect(FlightDeckSessionRowFormat.enginePlacard(agentType: nil) == "AGENT")
+        #expect(FlightDeckSessionRowFormat.enginePlacard(agentType: "  ") == "AGENT")
+    }
+
+    /// AC: the todo header rolls up to `2 / 5 DONE` against the shared T08 fixture
+    /// (two completed, one in-progress, two pending). Reuses the shared
+    /// `PouredTaskRollup` so the two themes can never disagree about what "done"
+    /// means (completed only, never in-progress).
+    @Test
+    func todoRollupCountsDoneOverTotal() {
+        let rollup = PouredTaskRollup(statuses: [.completed, .completed, .inProgress, .pending, .pending])
+        #expect(rollup.done == 2)
+        #expect(rollup.total == 5)
+    }
+
+    // MARK: - §4H completion donestats (AB-339)
+
+    /// AC: the Duration donestat formats `updatedAt − firstSeenAt` as a mono
+    /// tabular span. `43m 12s` (2592s) pins the mockup example; the T08
+    /// `completedSuccess` fixture (exactly 43 min) reads `43m 00s`; a multi-hour
+    /// run rolls into an hours field; a negative span clamps to zero.
+    @Test
+    func donestatDurationLabelFormatsTheRunLength() {
+        #expect(FlightDeckApprovalFormat.donestatDurationLabel(seconds: 43 * 60 + 12) == "43m 12s")
+        #expect(FlightDeckApprovalFormat.donestatDurationLabel(seconds: 43 * 60) == "43m 00s")
+        #expect(FlightDeckApprovalFormat.donestatDurationLabel(seconds: 3600 + 5 * 60 + 30) == "1h 05m 30s")
+        #expect(FlightDeckApprovalFormat.donestatDurationLabel(seconds: -1) == "0m 00s")
+    }
+
     // MARK: - MASTER CAUTION approval surfaces (AB-314)
 
     /// AC #1 / #2: the ALLOW / always-allow / DENY switches must print the

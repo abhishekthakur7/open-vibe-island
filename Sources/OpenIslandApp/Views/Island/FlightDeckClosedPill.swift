@@ -433,12 +433,16 @@ struct FlightDeckRightSlotView: View {
 
     var body: some View {
         switch content {
-        case .count, .taskCounter:
-            // AB-322: `.count` is the neutral badge; the `.taskCounter` engine
-            // cluster is still owned by T20 (AB-339), so it degrades to the count
-            // badge here. Spelled out rather than `default:` so a future case
-            // breaks the build here instead of quietly becoming a number.
+        case .count:
+            // The neutral `×N` badge.
             countBadge
+        case .taskCounter(let completed, let total, let subagents):
+            // AB-339 · SPEC §4G compression: the whole engine cluster rolls up to
+            // the wing `3 subagents · 2/5` when this session is the pill spotlight
+            // (mockup §G′). Upgrades the AB-322 `×N` degradation to the FD idiom —
+            // a verb-tinted subagent count + a mono tabular todo fraction.
+            FlightDeckTaskCounterChip(completed: completed, total: total, subagents: subagents, lang: lang)
+                .accessibilityLabel(content.fallbackBadgeAccessibilityLabel(lang))
         case .attentionCount(let count, let kind):
             // AB-338 · SPEC §4A A3/A4: the `.seg` attention segment — a red
             // `⚠ ACK ×N` (permission, 1.0s pulse) / amber `? ANSWER ×N`
@@ -596,6 +600,44 @@ private struct FlightDeckUsageMiniTape: View {
             Text("\(percent)%")
                 .font(.system(size: FlightDeckTypography.countSize, weight: .bold, design: .monospaced))
                 .foregroundStyle(tint)
+        }
+        .lineLimit(1)
+        .fixedSize(horizontal: true, vertical: false)
+    }
+}
+
+// MARK: - Task counter chip (AB-339 · SPEC §4G compression · mockup §G′)
+
+/// The §4G engine-cluster compression: when a fanning-out session is the pill
+/// spotlight, the whole cluster rolls up to the wing `3 subagents · 2/5` — the
+/// **subagent count** as verb-tinted nominal-green sans prose (mockup `.verb`)
+/// and the **todo fraction** as a mono tabular `2/5` in dim paper. A pure
+/// subagent fan-out with no todos (`total == 0`) drops the fraction and shows the
+/// subagent count alone rather than a frozen `0/0`. Sizing follows the AB-338
+/// wing precedent (the richer `.usage` / `.attentionCount` slots): the FD slot
+/// renders its own idiom at `.fixedSize`, the shared pill width math (unchanged)
+/// reserves the badge lane.
+private struct FlightDeckTaskCounterChip: View {
+    let completed: Int
+    let total: Int
+    let subagents: Int
+    var lang: LanguageManager = .shared
+
+    @Environment(\.islandTokens) private var tokens
+
+    var body: some View {
+        HStack(spacing: 4) {
+            // "3 subagents" — the verb-tinted nominal-green count phrase (reuses
+            // the shared `%lld subagents` string, localized ×3).
+            Text(lang.t("poured.subagents.count", subagents))
+                .font(.system(size: FlightDeckTypography.countSize, weight: .medium, design: .default))
+                .foregroundStyle(tokens.colors.statusRunning)
+
+            if total > 0 {
+                Text("· \(completed)/\(total)")
+                    .font(.system(size: FlightDeckTypography.countSize, weight: .semibold, design: .monospaced).monospacedDigit())
+                    .foregroundStyle(tokens.colors.paper.opacity(0.7))
+            }
         }
         .lineLimit(1)
         .fixedSize(horizontal: true, vertical: false)
