@@ -43,6 +43,8 @@ struct FlightDeckSessionListScaffold: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     private var increasesContrast: Bool { colorSchemeContrast == .increased }
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     @Environment(\.islandTokens) private var tokens
     @Environment(\.islandTheme) private var theme
 
@@ -98,8 +100,21 @@ struct FlightDeckSessionListScaffold: View {
                             pulseClock: pulseClock
                         )
                     }
+                    // AB-337 · §4K: relay-snap settle when a row is inserted into
+                    // the already-mounted list. The transition never plays on the
+                    // list's initial appearance (that arrives under the panel's own
+                    // open morph), only on a genuine insert; the drive animation is
+                    // nil under Reduce Motion, so a reduced-motion insert snaps —
+                    // no clock is touched.
+                    .transition(FlightDeckRowEntrance.transition)
                 }
             }
+            // Keyed to the section's row-id set so an insert/remove animates the
+            // matching row's transition (and the neighbours settling around it).
+            .animation(
+                reduceMotion ? nil : FlightDeckRowEntrance.animation,
+                value: section.sessions.map(\.id)
+            )
         }
     }
 
