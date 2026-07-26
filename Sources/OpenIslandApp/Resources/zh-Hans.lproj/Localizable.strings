@@ -291,6 +291,13 @@
 "island.poured.usage.resets" = "%@ 后重置";
 "island.poured.usage.resetsIn" = "%@ 后重置";
 
+/* Island Panel - Poured Island 2.0 list footer + empty state (AB-331) */
+"island.poured.footer.groupedByState" = "按状态分组";
+"island.poured.footer.groupedByAgent" = "按代理分组";
+"island.poured.footer.groupedByProject" = "按项目分组";
+"island.poured.footer.idle" = "别处一切安静 · %lld 个空闲";
+"island.poured.empty.hooksInstalled" = "已为 %@ 安装 Hooks";
+
 /* Island Panel - Annual theme (AB-316) */
 "island.annual.usage.healthy" = "正常";
 "island.annual.usage.elevated" = "偏高";

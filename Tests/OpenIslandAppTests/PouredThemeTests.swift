@@ -533,4 +533,66 @@ struct PouredThemeTests {
         #expect(en.t("island.poured.usage.resets", "2h 10m").contains("2h 10m"))
         #expect(en.t("island.poured.usage.resetsIn", "3d 4h").contains("3d 4h"))
     }
+
+    // MARK: - Scaffold footer + empty-state strings localize (AB-331)
+
+    /// The list-footer grouping captions, the trailing idle readout, and the
+    /// empty-state "Hooks installed for …" pill all resolve to real
+    /// translations in English and both Chinese scripts, and the count / joined
+    /// list interpolate through their `%lld` / `%@` arguments.
+    @Test
+    func pouredFooterAndEmptyStringsLocalizeInEveryLanguage() {
+        let originalLanguage = UserDefaults.standard.string(forKey: "appLanguage")
+        defer {
+            if let originalLanguage {
+                UserDefaults.standard.set(originalLanguage, forKey: "appLanguage")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "appLanguage")
+            }
+        }
+
+        let keys = [
+            "island.poured.footer.groupedByState",
+            "island.poured.footer.groupedByAgent",
+            "island.poured.footer.groupedByProject",
+            "island.poured.footer.idle",
+            "island.poured.empty.hooksInstalled",
+        ]
+
+        for language in [LanguageManager.AppLanguage.en, .zhHans, .zhHant] {
+            let manager = LanguageManager()
+            manager.language = language
+            for key in keys {
+                let resolved = manager.t(key)
+                #expect(resolved != key, "\(key) is unlocalized in \(language)")
+                #expect(!resolved.isEmpty)
+            }
+        }
+
+        let en = LanguageManager()
+        en.language = .en
+        // The idle count interpolates through `%lld`.
+        #expect(en.t("island.poured.footer.idle", 0).contains("0"))
+        #expect(en.t("island.poured.footer.idle", 3).contains("3"))
+        // The joined installed-agents list interpolates through `%@`.
+        #expect(en.t("island.poured.empty.hooksInstalled", "Claude, Codex").contains("Claude, Codex"))
+    }
+
+    // MARK: - §I meter-card hosting seam (AB-331)
+
+    /// The full §I meter card is hosted only by Poured, and only when there are
+    /// usage windows to show: `usageMeterCard` returns the card for Poured with
+    /// providers, `nil` for Poured with none, and `nil` for every other theme
+    /// (they carry no full-meter surface, so the `meters` preview keeps drawing
+    /// only their compact header ring).
+    @Test @MainActor
+    func usageMeterCardHostsOnlyForPouredWithProviders() {
+        let lang = LanguageManager()
+        let providers = AppearancePreviewFixtures.usageProviders(now: Date())
+        #expect(!providers.isEmpty)
+
+        #expect(PouredIslandTheme().usageMeterCard(providers: providers, lang: lang) != nil)
+        #expect(PouredIslandTheme().usageMeterCard(providers: [], lang: lang) == nil)
+        #expect(ClassicTheme().usageMeterCard(providers: providers, lang: lang) == nil)
+    }
 }
