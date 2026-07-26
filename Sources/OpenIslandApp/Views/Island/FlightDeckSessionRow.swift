@@ -293,28 +293,26 @@ enum FlightDeckApprovalFormat {
     /// ≥10pt-floor assertion (AC #7).
     static let readableTextSizes: [CGFloat] = [13.2, 12.5, 11.5, 11, 10.5, 10]
 
-    // MARK: - Annunciator beacon (AB-334)
+    // MARK: - Annunciator beacon (AB-334 · retimed AB-336)
 
-    /// Beacon-lamp pulse periods, seconds. EICAS retiming (AB-334): the red
-    /// **WARNING** lamp on a held permission throbs faster (a 1.0s alarm cadence)
-    /// than the amber **CAUTION** lamp on a question (a calmer 1.2s), so the two
-    /// annunciators are distinguishable by rhythm as well as colour.
-    static let permissionBeaconPeriod: Double = 1.0
-    static let questionBeaconPeriod: Double = 1.2
+    /// Beacon-lamp pulse periods, seconds. EICAS retiming: the red **WARNING**
+    /// lamp on a held permission throbs faster (a 1.0s alarm cadence) than the
+    /// amber **CAUTION** lamp on a question (a calmer 1.2s), so the two
+    /// annunciators are distinguishable by rhythm as well as colour. AB-336 folds
+    /// these into `FlightDeckMotion.Attention` so the pill bloom, the beacons and
+    /// the motion strip share one source of truth — these stay the beacon's
+    /// public names but read straight off the motion enum.
+    static let permissionBeaconPeriod: Double = FlightDeckMotion.Attention.warningPeriod
+    static let questionBeaconPeriod: Double = FlightDeckMotion.Attention.cautionPeriod
 
-    /// The annunciator beacon-lamp brightness (AB-334). A smooth triangle breathe
-    /// off wall-clock time at the lamp's own `period` (each lamp is retimed
-    /// independently, which the shared fixed-period `PulseClock` can't express), so
-    /// the lamp swells from a dim floor to fully lit and back once per period.
-    /// Reduce Motion pins it to steady full brightness — a lit lamp, never dark.
+    /// The annunciator beacon-lamp brightness. AB-336 routes it through the shared
+    /// `FlightDeckMotion.attentionLevel` ramp (mockup `attn`: opacity `1.0 → 0.28`
+    /// at the lamp's own `period`), a pure function of wall-clock time so the red
+    /// (1.0s) and amber (1.2s) lamps retime independently — something the shared
+    /// fixed-period `PulseClock` can't express. Reduce Motion pins it to the peak
+    /// (`opacityMax`) — a lit lamp, never dark.
     static func beaconLevel(now: Date, period: Double, reduceMotion: Bool) -> Double {
-        let litLevel = 1.0
-        guard !reduceMotion, period > 0 else { return litLevel }
-        let cyclePosition = now.timeIntervalSinceReferenceDate
-            .truncatingRemainder(dividingBy: period) / period            // 0 … 1
-        let phase = cyclePosition < 0 ? cyclePosition + 1 : cyclePosition // guard negatives
-        let triangle = phase < 0.5 ? phase * 2 : (1 - phase) * 2          // 0 → 1 → 0
-        return 0.4 + triangle * 0.6                                       // 0.40 … 1.0
+        FlightDeckMotion.attentionLevel(now: now, period: period, reduceMotion: reduceMotion)
     }
 
     // MARK: - HELD count-up (AB-334)
@@ -1884,13 +1882,19 @@ private struct FlightDeckCautionGlow: View {
         }
     }
 
+    /// The alarm halo is now the shared `FlightDeckPhosphorGlow` primitive
+    /// (AB-336) at the caution block's radius (9) — the same blur/bleed the
+    /// shipped inline halo drew, so the MASTER WARNING / CAUTION goldens are
+    /// unchanged, but there is one glow technique across the theme now.
+    static let haloRadius: CGFloat = 9
+
     func halo(opacity: Double) -> some View {
-        FlightDeckChamferedRectangle(chamfer: chamfer)
-            .fill(color)
-            .blur(radius: 9)
-            .opacity(opacity)
-            .padding(-2)
-            .accessibilityHidden(true)
+        FlightDeckPhosphorGlow(
+            shape: FlightDeckChamferedRectangle(chamfer: chamfer),
+            tint: color,
+            radius: Self.haloRadius,
+            intensity: opacity
+        )
     }
 }
 
@@ -1900,14 +1904,14 @@ private struct FlightDeckPulsingGlow: View {
     let pulseClock: PulseClock
 
     var body: some View {
-        FlightDeckChamferedRectangle(chamfer: chamfer)
-            .fill(color)
-            .blur(radius: 9)
-            .opacity(FlightDeckApprovalFormat.glowOpacity(phase: pulseClock.phase, reduceMotion: false))
-            .padding(-2)
-            .onAppear { pulseClock.acquire() }
-            .onDisappear { pulseClock.release() }
-            .accessibilityHidden(true)
+        FlightDeckPhosphorGlow(
+            shape: FlightDeckChamferedRectangle(chamfer: chamfer),
+            tint: color,
+            radius: FlightDeckCautionGlow.haloRadius,
+            intensity: FlightDeckApprovalFormat.glowOpacity(phase: pulseClock.phase, reduceMotion: false)
+        )
+        .onAppear { pulseClock.acquire() }
+        .onDisappear { pulseClock.release() }
     }
 }
 

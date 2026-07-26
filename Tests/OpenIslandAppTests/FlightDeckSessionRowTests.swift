@@ -275,40 +275,43 @@ struct FlightDeckSessionRowTests {
         )
     }
 
-    /// AC #4: the beacon pulses only with motion. Under Reduce Motion it is pinned
-    /// to steady full brightness (a lit lamp, never dark); with motion it breathes
-    /// through a legible, in-range band and returns to its start after one period.
+    /// AC #4: the beacon pulses only with motion, now on the shared `attn` ramp
+    /// (AB-336). Under Reduce Motion it is pinned to the lit peak (`opacityMax`, a
+    /// lit lamp never dark); with motion it is brightest at the cycle boundary and
+    /// dimmest mid-cycle (the mockup `attn` opacity `1.0 → 0.28`), stays in that
+    /// band, and returns to its start after one period.
     @Test
     func beaconLevelIsGatedByReduceMotion() {
         let period = FlightDeckApprovalFormat.permissionBeaconPeriod
         let base = Date(timeIntervalSinceReferenceDate: 0)
 
-        // Reduce Motion: one steady lit level across the whole cycle.
+        // Reduce Motion: one steady lit level (the peak) across the whole cycle.
         for offset in stride(from: 0.0, through: period, by: period / 8) {
             let value = FlightDeckApprovalFormat.beaconLevel(
                 now: base.addingTimeInterval(offset), period: period, reduceMotion: true
             )
-            #expect(value == 1.0)
+            #expect(value == FlightDeckMotion.Attention.opacityMax)
         }
 
-        // With motion it breathes: the trough (cycle start) is dimmer than the
-        // crest (half a period in), and every level stays a visible, in-range value.
-        let trough = FlightDeckApprovalFormat.beaconLevel(now: base, period: period, reduceMotion: false)
-        let crest = FlightDeckApprovalFormat.beaconLevel(
+        // With motion (`attn` ramp): brightest at the cycle boundary, dimmest half
+        // a period in; every level stays inside the [opacityMin, opacityMax] band.
+        let boundary = FlightDeckApprovalFormat.beaconLevel(now: base, period: period, reduceMotion: false)
+        let mid = FlightDeckApprovalFormat.beaconLevel(
             now: base.addingTimeInterval(period / 2), period: period, reduceMotion: false
         )
-        #expect(crest > trough)
+        #expect(boundary > mid)
         for offset in stride(from: 0.0, through: period, by: period / 16) {
             let value = FlightDeckApprovalFormat.beaconLevel(
                 now: base.addingTimeInterval(offset), period: period, reduceMotion: false
             )
-            #expect(value > 0 && value <= 1)
+            #expect(value >= FlightDeckMotion.Attention.opacityMin - 0.0001)
+            #expect(value <= FlightDeckMotion.Attention.opacityMax + 0.0001)
         }
         // Periodic: the level is identical exactly one period later.
         let full = FlightDeckApprovalFormat.beaconLevel(
             now: base.addingTimeInterval(period), period: period, reduceMotion: false
         )
-        #expect(abs(full - trough) < 0.0001)
+        #expect(abs(full - boundary) < 0.0001)
     }
 
     // MARK: - HELD count-up (AB-334)

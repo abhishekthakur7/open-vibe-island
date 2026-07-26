@@ -262,6 +262,25 @@ struct FlightDeckTheme: IslandTheme {
         )
     }
 
+    /// The closed-pill attention bloom seam (AB-336). Folds the spotlight into
+    /// `FlightDeckPillBloom`; for the two attention states (held permission /
+    /// open question) it returns the `FlightDeckClosedGlow` seam so the coloured
+    /// bloom bleeds *outside* the morph's content clip (mockup `.attn-perm` /
+    /// `.attn-caut`). Every other state casts no glow — `nil`, the flat-hardware
+    /// default — so the closed-surface render tree stays byte-identical there.
+    func closedSurfaceGlow(
+        mode: UnifiedBars.Mode,
+        rightSlot: IslandRightSlotContent?,
+        activity: IslandClosedPillActivity?,
+        width: CGFloat,
+        height: CGFloat
+    ) -> AnyView? {
+        guard let bloom = FlightDeckPillBloom.resolve(activity: activity, mode: mode, rightSlot: rightSlot) else {
+            return nil
+        }
+        return AnyView(FlightDeckClosedGlow(bloom: bloom, width: width, height: height))
+    }
+
     // MARK: Flight Deck opened header + 12-tick gauge usage (AB-312)
 
     /// The opened header: usage as 12-tick segmented gauges with numeric readouts
