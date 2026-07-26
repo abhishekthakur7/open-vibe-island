@@ -396,6 +396,9 @@
 "approval.diffUpdated" = "Updated";
 "approval.diffMoreLines" = "…and %lld more lines";
 "approval.respondInTerminal" = "Respond in terminal";
+"approval.jumpToCodex" = "Jump to Codex to approve";
+"approval.codexApprovesInApp" = "Codex approves in-app. Open the pane to allow or deny there.";
+"approval.autoCollapseCountdown" = "Auto-collapses in %llds · hover pauses";
 
 
 /* Island Panel - Subagents & Tasks */

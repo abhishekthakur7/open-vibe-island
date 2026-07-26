@@ -396,6 +396,9 @@
 "approval.diffUpdated" = "已更新";
 "approval.diffMoreLines" = "……還有 %lld 行";
 "approval.respondInTerminal" = "前往終端處理";
+"approval.jumpToCodex" = "前往 Codex 批准";
+"approval.codexApprovesInApp" = "Codex 在應用程式內批准。開啟面板以在那裡允許或拒絕。";
+"approval.autoCollapseCountdown" = "%lld 秒後自動收合 · 停留可暫停";
 
 /* Island Panel - Subagents & Tasks */
 "subagents.title" = "子代理 (%lld)";

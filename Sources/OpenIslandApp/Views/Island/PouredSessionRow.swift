@@ -829,7 +829,13 @@ private struct PouredRowContent: View {
     private var embeddedDetailBody: some View {
         switch session.phase {
         case .waitingForApproval:
-            PouredApprovalCard(session: session, lang: lang, actions: actions, pulseClock: pulseClock)
+            PouredApprovalCard(
+                session: session,
+                lang: lang,
+                actions: actions,
+                pulseClock: pulseClock,
+                presentation: presentation
+            )
         case .waitingForAnswer:
             questionActionBody
         case .completed:
@@ -1348,158 +1354,330 @@ private struct PouredApprovalCard: View {
     let lang: LanguageManager
     let actions: RowActions
     let pulseClock: PulseClock?
+    var presentation: IslandSessionRowPresentation = .list
 
     @Environment(\.islandTokens) private var tokens
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     private var increasesContrast: Bool { colorSchemeContrast == .increased }
 
-    /// The hero glow is warm amber (`statusWarning`) so the permission card
-    /// reads as the loudest, warmest surface next to the cool running/done/idle
-    /// rows.
-    private var amber: Color { tokens.colors.statusWarning }
+    /// E3: a Codex terminal-approval request can't round-trip through the bridge
+    /// (the ⌘Y / ⌘⇧Y / ⌘N handler deliberately no-ops for it), so the hero drops
+    /// every Approve/Deny affordance for a single honest "jump to approve" CTA and
+    /// re-tints cool blue.
+    private var requiresTerminalApproval: Bool {
+        session.permissionRequest?.requiresTerminalApproval == true
+    }
+
+    /// The hero's accent: amber `PouredPalette.attention` for a normal request,
+    /// Codex blue `#4aa3df` for the terminal-approval variant (`SPEC` §4E E1/E3).
+    private var accent: Color {
+        requiresTerminalApproval ? PouredApprovalColors.codexBlue : PouredPalette.attention
+    }
+
+    private var borderOpacity: Double {
+        (reduceTransparency || increasesContrast) ? 0.7 : PouredPillMotion.Hero.borderOpacity
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(lang.t("approval.toolPermissionRequested"))
-                .font(.system(size: 12.5, weight: .semibold))
-                .foregroundStyle(tokens.colors.paper.opacity(contrastText(0.9)))
+        VStack(alignment: .leading, spacing: 10) {
+            heroHead
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text(commandPreviewText)
-                    .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(tokens.colors.paper.opacity(contrastText(0.82)))
+            if let commandText {
+                commandBlock(commandText)
+            }
+
+            if let effectText {
+                Text(effectText)
+                    .font(PouredType.Role.heroSubtitle.font)
+                    .foregroundStyle(PouredApprovalColors.effectInk)
                     .fixedSize(horizontal: false, vertical: true)
-
-                if let path = affectedPath {
-                    Text(path)
-                        .font(.system(size: 10.5, weight: .medium))
-                        .foregroundStyle(tokens.colors.paper.opacity(contrastText(0.5)))
-                        .lineLimit(1)
-                }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .fixedSize(horizontal: false, vertical: true)
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Color.white.opacity(0.06))
-            )
 
-            // AB-235: only for Edit/Write requests whose `tool_input` carried
-            // enough to compute a diff; the shared renderer's token-driven +/−
-            // colours already read on glass, within its 500-line / 180pt caps.
+            // AB-235 / E2: Edit/Write requests carry captured old/new text; the
+            // Poured-side wrapper renders that diff with gutter line numbers and
+            // Poured's del/add tints. The diff *engine* (`PermissionDiff`) is
+            // reused verbatim — only the presentation is Poured-local.
             if let diffResult = permissionDiffResult {
-                PermissionDiffPreview(result: diffResult, lang: lang)
+                PouredPermissionDiff(result: diffResult, lang: lang)
             }
 
-            if session.permissionRequest?.requiresTerminalApproval == true {
+            if requiresTerminalApproval {
+                codexNote
                 terminalApprovalCTA
             } else {
-                HStack(spacing: 8) {
-                    Button(session.permissionRequest?.secondaryActionTitle ?? lang.t("approval.deny")) { actions.approve?(.deny) }
-                        .buttonStyle(IslandActionButtonStyle(kind: .secondary, expands: true))
-                        .accessibilityLabel(session.permissionRequest?.secondaryActionTitle ?? lang.t("a11y.approval.deny"))
-                    Button(session.permissionRequest?.primaryActionTitle ?? lang.t("approval.allowOnce")) { actions.approve?(.allowOnce) }
-                        .buttonStyle(IslandActionButtonStyle(kind: .warning, expands: true))
-                        .accessibilityLabel(session.permissionRequest?.primaryActionTitle ?? lang.t("a11y.approval.allowOnce"))
-                }
-
+                actionButtons
                 alwaysAllowOptions
+            }
+
+            // E4: the shared `IslandNotificationCard` stays unchanged, so the
+            // honest auto-collapse countdown is printed here, inside the hero, when
+            // it renders in the notification presentation.
+            if presentation == .notification {
+                notificationCountdownFooter
             }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardFill)
         .overlay(
-            RoundedRectangle(cornerRadius: 13, style: .continuous)
-                .strokeBorder(amber.opacity(reduceTransparency ? 0.75 : 0.5), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .strokeBorder(accent.opacity(borderOpacity), lineWidth: PouredPillMotion.Hero.borderWidth)
         )
-        .modifier(PouredAmberGlow(tint: amber, pulseClock: pulseClock))
+        .modifier(PouredAmberGlow(tint: accent, pulseClock: pulseClock))
         // The buttons carry their own labels/actions; group the surrounding
         // copy so VoiceOver reads the card, then reaches Allow / Deny.
         .accessibilityElement(children: .contain)
     }
 
-    /// A warm amber wash over the frosted slab. Under Reduce Transparency the
-    /// wash sits on an opaque ink base so the card never relies on the glass
-    /// showing through to stay legible (AB-303).
-    @ViewBuilder
-    private var cardFill: some View {
-        let shape = RoundedRectangle(cornerRadius: 13, style: .continuous)
-        ZStack {
-            if reduceTransparency {
-                shape.fill(tokens.colors.surfaceInk)
-                shape.fill(amber.opacity(0.22))
-            } else {
-                shape.fill(amber.opacity(0.1))
-            }
+    // MARK: Hero head
+
+    /// The event "headline": an accent-tinted glyph chip beside the hero title,
+    /// with the effect-tone subtitle when the request names one (`SPEC` §4E,
+    /// mockup `.hero-head`).
+    private var heroHead: some View {
+        HStack(alignment: .center, spacing: 9) {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(accent.opacity(0.16))
+                .frame(width: 24, height: 24)
+                .overlay(
+                    Image(systemName: requiresTerminalApproval ? "arrow.up.forward.app.fill" : "chevron.left.forwardslash.chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(accent)
+                )
+                .accessibilityHidden(true)
+
+            Text(lang.t("approval.toolPermissionRequested"))
+                .font(PouredType.Role.heroTitle.font)
+                .tracking(PouredType.Role.heroTitle.spec.trackingPoints)
+                .foregroundStyle(requiresTerminalApproval ? PouredApprovalColors.codexTitleInk : PouredApprovalColors.titleInk)
+
+            Spacer(minLength: 0)
         }
     }
 
-    /// AB-235: scoped always-allow options (one button per suggested update) or
-    /// the generic session-scoped "Always allow <tool>" fallback. Choosing one
-    /// fires `RowActions.approve(.allowWithUpdates(...))` with exactly that
-    /// update — the same call ⌘⇧Y drives.
+    // MARK: Command block (syntax spans — T10)
+
+    /// The command awaiting approval, syntax-highlighted through the shipped
+    /// `ShellCommandTokenizer` (T10 / AB-328): command `#f2f5fb`/600, subcommand
+    /// `#8fd0ff`, flags `#6ea7ff`, strings `#7fd39a`, paths `#f2f5fb`@0.55; plain
+    /// runs inherit the block's `#c9cedb` (`SPEC` §4E / mockup `.cmd`).
+    private func commandBlock(_ command: String) -> some View {
+        let highlighted = ShellCommandTokenizer.attributed(
+            command,
+            palette: PouredApprovalColors.syntaxPalette,
+            weights: [.command: .semibold],
+            baseFont: PouredType.Role.commandBlock.font
+        )
+        return (Text("$ ").foregroundStyle(accent.opacity(0.7)) + Text(highlighted))
+            .font(PouredType.Role.commandBlock.font)
+            .foregroundStyle(PouredApprovalColors.commandInk)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(reduceTransparency ? tokens.colors.surfaceInk : PouredApprovalColors.codeSurface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(.white.opacity(0.06), lineWidth: 1)
+                    )
+            )
+            .textSelection(.enabled)
+    }
+
+    // MARK: Buttons + keycaps
+
+    /// `Allow once ⌘Y` (amber gradient) beside `Deny ⌘N`. The keycap glyphs are
+    /// sourced from `PouredApprovalShortcut`, which mirrors the real
+    /// `OverlayPanelController` handler (⌘Y / ⌘N), never the mockup's ⏎/⎋.
+    private var actionButtons: some View {
+        HStack(spacing: 8) {
+            Button {
+                actions.approve?(.allowOnce)
+            } label: {
+                PouredApprovalButtonLabel(
+                    title: session.permissionRequest?.primaryActionTitle ?? lang.t("approval.allowOnce"),
+                    shortcut: .allowOnce,
+                    kind: .allow
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(session.permissionRequest?.primaryActionTitle ?? lang.t("a11y.approval.allowOnce"))
+
+            Button {
+                actions.approve?(.deny)
+            } label: {
+                PouredApprovalButtonLabel(
+                    title: session.permissionRequest?.secondaryActionTitle ?? lang.t("approval.deny"),
+                    shortcut: .deny,
+                    kind: .deny
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(session.permissionRequest?.secondaryActionTitle ?? lang.t("a11y.approval.deny"))
+        }
+    }
+
+    // MARK: Scoped always-allow rows
+
+    /// AB-235 / E1: scoped always-allow options rendered from the request's real
+    /// `suggestedUpdates` (their human `displayLabel`s), or the generic
+    /// session-scoped fallback. The FIRST row carries the `⌘⇧Y` key-hint the
+    /// always-allow shortcut fires. Each choice sends exactly its update — the
+    /// same call `⌘⇧Y` drives.
     @ViewBuilder
     private var alwaysAllowOptions: some View {
         if let updates = session.permissionRequest?.suggestedUpdates, !updates.isEmpty {
-            VStack(spacing: 6) {
-                ForEach(Array(updates.enumerated()), id: \.offset) { _, update in
-                    Button(update.displayLabel) {
+            VStack(spacing: 1) {
+                ForEach(Array(updates.enumerated()), id: \.offset) { index, update in
+                    PouredScopeRow(label: update.displayLabel, showsKeycap: index == 0) {
                         actions.approve?(.allowWithUpdates([update]))
                     }
-                    .buttonStyle(IslandActionButtonStyle(kind: .primary, expands: true))
                 }
             }
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(.white.opacity(0.05), lineWidth: 1)
+            )
         } else if let toolName = session.permissionRequest?.toolName {
-            Button(lang.t("approval.alwaysAllow", toolName)) {
-                let rule = ClaudePermissionRuleValue(toolName: toolName)
-                let update = ClaudePermissionUpdate.addRules(
-                    destination: .session,
-                    rules: [rule],
-                    behavior: .allow
-                )
-                actions.approve?(.allowWithUpdates([update]))
+            VStack(spacing: 1) {
+                PouredScopeRow(label: lang.t("approval.alwaysAllow", toolName), showsKeycap: true) {
+                    let rule = ClaudePermissionRuleValue(toolName: toolName)
+                    let update = ClaudePermissionUpdate.addRules(
+                        destination: .session,
+                        rules: [rule],
+                        behavior: .allow
+                    )
+                    actions.approve?(.allowWithUpdates([update]))
+                }
             }
-            .buttonStyle(IslandActionButtonStyle(kind: .primary, expands: true))
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(.white.opacity(0.05), lineWidth: 1)
+            )
         }
     }
 
-    /// AB-235: shown instead of Deny/Allow when `requiresTerminalApproval` is
-    /// set — the decision can't be round-tripped through the bridge, so the CTA
-    /// jumps to wherever the request lives (terminal pane or `codex://` URL).
+    // MARK: Codex (E3)
+
+    /// E3: the blue "approves in-app" note that makes the terminal-approval
+    /// variant honest about where the decision actually happens.
+    private var codexNote: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "arrow.up.forward.app")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(PouredApprovalColors.codexBlue)
+                .accessibilityHidden(true)
+            Text(lang.t("approval.codexApprovesInApp"))
+                .font(PouredType.Role.optionDesc.font)
+                .foregroundStyle(PouredApprovalColors.codexNoteInk)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(PouredApprovalColors.codexBlue.opacity(0.1))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(PouredApprovalColors.codexBlue.opacity(0.25), lineWidth: 1)
+                )
+        )
+    }
+
+    /// E3: the single honest CTA when `requiresTerminalApproval` is set. No
+    /// keycap — the ⌘Y / ⌘⇧Y / ⌘N handler intentionally no-ops for terminal
+    /// approval, so printing one would be a fake affordance.
     private var terminalApprovalCTA: some View {
         Button {
             actions.jump()
         } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "arrow.up.forward.app")
-                    .font(.system(size: 11, weight: .semibold))
+            HStack(spacing: 7) {
+                Image(systemName: "arrow.up.forward")
+                    .font(.system(size: 12, weight: .bold))
                     .accessibilityHidden(true)
-                Text(lang.t("approval.respondInTerminal"))
+                Text(terminalApprovalCTATitle)
+                    .font(.system(size: 13, weight: .semibold))
             }
+            .foregroundStyle(PouredApprovalColors.codexButtonInk)
             .frame(maxWidth: .infinity)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .background(
+                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [PouredApprovalColors.codexButtonTop, PouredApprovalColors.codexBlue],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+            )
         }
-        .buttonStyle(IslandActionButtonStyle(kind: .primary, expands: true))
+        .buttonStyle(.plain)
     }
 
-    private var affectedPath: String? {
-        guard let path = session.permissionRequest?.affectedPath.trimmingCharacters(in: .whitespacesAndNewlines),
-              !path.isEmpty else {
-            return nil
-        }
-        return path
+    private var terminalApprovalCTATitle: String {
+        session.tool == .codex ? lang.t("approval.jumpToCodex") : lang.t("approval.respondInTerminal")
     }
 
-    private var commandPreviewText: String {
+    // MARK: Notification footer (E4)
+
+    /// E4: the honest auto-collapse countdown printed under the hero in the
+    /// notification presentation. The value is read from the coordinator's real
+    /// delay (10s), not the mockup's stale "8s".
+    private var notificationCountdownFooter: some View {
+        Text(lang.t("approval.autoCollapseCountdown", Int(OverlayUICoordinator.notificationSurfaceAutoCollapseDelay)))
+            .font(PouredType.Role.heroSubtitle.font)
+            .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 2)
+    }
+
+    // MARK: Fill
+
+    /// The accent wash over the frosted slab. Under Reduce Transparency the wash
+    /// sits on an opaque ink base so the card never relies on the glass showing
+    /// through to stay legible (AB-303).
+    @ViewBuilder
+    private var cardFill: some View {
+        let shape = RoundedRectangle(cornerRadius: 15, style: .continuous)
+        ZStack {
+            if reduceTransparency {
+                shape.fill(tokens.colors.surfaceInk)
+                shape.fill(accent.opacity(0.22))
+            } else {
+                shape.fill(
+                    LinearGradient(
+                        colors: [accent.opacity(0.16), accent.opacity(0.08)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+            }
+        }
+    }
+
+    // MARK: Content
+
+    private var commandText: String? {
         let preview = session.currentCommandPreviewText?.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let preview, !preview.isEmpty {
-            return "$ \(preview)"
-        }
-        return (session.permissionRequest?.summary ?? session.summary)
+        guard let preview, !preview.isEmpty else { return nil }
+        return preview
+    }
+
+    /// The plain-English effect line. Prefers the request summary; suppressed
+    /// when it is empty or merely echoes the command already shown above.
+    private var effectText: String? {
+        let summary = (session.permissionRequest?.summary ?? session.summary)
             .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !summary.isEmpty, summary != commandText else { return nil }
+        return summary
     }
 
     /// Computes the diff lazily from the request's captured old/new text
@@ -1511,16 +1689,347 @@ private struct PouredApprovalCard: View {
         let result = PermissionDiff.compute(oldText: source.oldText, newText: source.newText)
         return result.isEmpty ? nil : result
     }
+}
 
-    private func contrastText(_ base: Double) -> Double {
-        tokens.colors.text(base, increaseContrast: increasesContrast)
+/// The three approval decisions the Poured hero exposes, each paired with the
+/// **real** registered `OverlayPanelController` shortcut it fires. The glyph
+/// strings printed on the keycaps must stay in lock-step with that handler
+/// (`⌘Y` / `⌘⇧Y` / `⌘N`), never the mockup's ⏎/⎋.
+private enum PouredApprovalShortcut {
+    case allowOnce
+    case alwaysAllow
+    case deny
+
+    /// The key-hint glyphs printed on the keycap, in order.
+    var glyphs: [String] {
+        switch self {
+        case .allowOnce: ["⌘", "Y"]
+        case .alwaysAllow: ["⌘", "⇧", "Y"]
+        case .deny: ["⌘", "N"]
+        }
     }
 }
 
-/// Wraps the approval card in Poured's pulsing amber glow. Isolated as a
-/// modifier so the 15fps `PulseClock` read invalidates only the glow (not the
-/// buttons inside), and so Reduce Motion — or a missing clock — renders a
-/// static-but-still-loud glow rather than a breathing one (AB-303).
+/// The Poured keycap chip (`SPEC` §2 `.kc kbd` role, 10pt/600) — first keycap
+/// rendering in Poured. Two visual variants: a light chip for dark buttons /
+/// scope rows, an ink chip for the amber primary (so it reads on the light
+/// gradient), per the mockup `.kc kbd` / `.btn.primary .kc kbd`.
+private struct PouredKeycapRow: View {
+    let shortcut: PouredApprovalShortcut
+    var onAmber: Bool = false
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(Array(shortcut.glyphs.enumerated()), id: \.offset) { _, glyph in
+                Text(glyph)
+                    .font(PouredType.Role.keycap.font)
+                    .foregroundStyle(onAmber ? PouredApprovalColors.keycapInkOnAmber : PouredApprovalColors.keycapInk)
+                    .frame(minWidth: 15, minHeight: 16)
+                    .padding(.horizontal, 3)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .fill(onAmber ? PouredApprovalColors.keycapFillOnAmber : PouredApprovalColors.keycapFill)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                    .strokeBorder(onAmber ? PouredApprovalColors.keycapStrokeOnAmber : PouredApprovalColors.keycapStroke, lineWidth: 1)
+                            )
+                    )
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+/// The Allow / Deny button label: title + keycap, filled per its kind. Amber
+/// gradient for `.allow` (`#ffce8a→#ffb14d`, ink `#3a2405`), red-wash for
+/// `.deny` (`rgba(219,82,82,.14)`, text `#f0a8a8`) — `SPEC` §4E.
+private struct PouredApprovalButtonLabel: View {
+    enum Kind { case allow, deny }
+
+    let title: String
+    let shortcut: PouredApprovalShortcut
+    let kind: Kind
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .lineLimit(1)
+            PouredKeycapRow(shortcut: shortcut, onAmber: kind == .allow)
+        }
+        .foregroundStyle(kind == .allow ? PouredApprovalColors.allowInk : PouredApprovalColors.denyInk)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(buttonBackground)
+    }
+
+    @ViewBuilder
+    private var buttonBackground: some View {
+        let shape = RoundedRectangle(cornerRadius: 11, style: .continuous)
+        switch kind {
+        case .allow:
+            shape.fill(
+                LinearGradient(
+                    colors: [PouredApprovalColors.allowTop, PouredApprovalColors.allowBottom],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+        case .deny:
+            shape.fill(PouredApprovalColors.denyFill)
+        }
+    }
+}
+
+/// One scoped always-allow row (mockup `.scope`): a lock glyph, the real human
+/// `displayLabel`, and — on the first row — the `⌘⇧Y` key-hint.
+private struct PouredScopeRow: View {
+    let label: String
+    let showsKeycap: Bool
+    let action: () -> Void
+
+    @Environment(\.islandTokens) private var tokens
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    private var increasesContrast: Bool { colorSchemeContrast == .increased }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
+                    .accessibilityHidden(true)
+                Text(label)
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 6)
+                if showsKeycap {
+                    PouredKeycapRow(shortcut: .alwaysAllow)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 11)
+            .padding(.vertical, 9)
+            .background(Color.white.opacity(0.02))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// E2 (Poured-side): the captured Edit/Write diff rendered with gutter line
+/// numbers and Poured's del/add tints. Consumes `PermissionDiffResult` straight
+/// off the shared `PermissionDiff` engine — it does not fork the engine, and it
+/// leaves the shared `PermissionDiffPreview` untouched (`SPEC` §4E E2).
+private struct PouredPermissionDiff: View {
+    let result: PermissionDiffResult
+    let lang: LanguageManager
+
+    @Environment(\.islandTokens) private var tokens
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    private static let maxRenderedLines = 500
+    private static let maxHeight: CGFloat = 180
+
+    private var renderedLines: [PermissionDiffLine] {
+        Array(result.lines.prefix(Self.maxRenderedLines))
+    }
+
+    private var hiddenLineCount: Int {
+        result.lines.count - renderedLines.count
+    }
+
+    /// The rendered lines paired with a running gutter number. Removed lines
+    /// number against the old file, added/unchanged against the new — the
+    /// familiar unified-diff gutter (`SPEC` §4E E2 "gutter line numbers").
+    private var numberedLines: [(index: Int, line: PermissionDiffLine, gutter: Int)] {
+        var out: [(index: Int, line: PermissionDiffLine, gutter: Int)] = []
+        var oldNo = 1
+        var newNo = 1
+        for (index, line) in renderedLines.enumerated() {
+            let gutter: Int
+            switch line.kind {
+            case .removed:
+                gutter = oldNo
+                oldNo += 1
+            case .added:
+                gutter = newNo
+                newNo += 1
+            case .unchanged:
+                gutter = newNo
+                oldNo += 1
+                newNo += 1
+            }
+            out.append((index, line, gutter))
+        }
+        return out
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            header
+
+            AutoHeightScrollView(maxHeight: Self.maxHeight) {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(numberedLines, id: \.index) { entry in
+                        row(entry.line, gutter: entry.gutter)
+                    }
+
+                    if hiddenLineCount > 0 {
+                        Text(lang.t("approval.diffMoreLines", hiddenLineCount))
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(PouredApprovalColors.diffContextInk)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 3)
+                    }
+                }
+                .padding(.vertical, 3)
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(reduceTransparency ? tokens.colors.surfaceInk : PouredApprovalColors.codeSurface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(.white.opacity(0.06), lineWidth: 1)
+                )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private var header: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "doc.text")
+                .font(.system(size: 10, weight: .semibold))
+                .accessibilityHidden(true)
+            Text(lang.t("approval.diffUpdated"))
+            Text("+\(result.addedCount)")
+                .foregroundStyle(PouredApprovalColors.diffAddInk)
+            Text("\u{2212}\(result.removedCount)")
+                .foregroundStyle(PouredApprovalColors.diffDelInk)
+        }
+        .font(.system(size: 10.5, weight: .semibold))
+        .foregroundStyle(tokens.colors.paper.opacity(0.6))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.white.opacity(0.03))
+    }
+
+    private func row(_ line: PermissionDiffLine, gutter: Int) -> some View {
+        HStack(alignment: .top, spacing: 0) {
+            Text("\(gutter)")
+                .frame(width: 26, alignment: .trailing)
+                .padding(.trailing, 10)
+                .foregroundStyle(gutterColor(line.kind))
+            Text(markerPrefix(line.kind) + (line.text.isEmpty ? " " : line.text))
+                .foregroundStyle(textColor(line.kind))
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .font(PouredType.Role.diff.font)
+        .padding(.leading, 8)
+        .padding(.trailing, 10)
+        .padding(.vertical, 1)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(rowBackground(line.kind))
+    }
+
+    private func markerPrefix(_ kind: PermissionDiffLine.Kind) -> String {
+        switch kind {
+        case .added: "+ "
+        case .removed: "\u{2212} "
+        case .unchanged: "  "
+        }
+    }
+
+    private func gutterColor(_ kind: PermissionDiffLine.Kind) -> Color {
+        switch kind {
+        case .added: PouredApprovalColors.diffAddGutter
+        case .removed: PouredApprovalColors.diffDelGutter
+        case .unchanged: PouredApprovalColors.diffContextGutter
+        }
+    }
+
+    private func textColor(_ kind: PermissionDiffLine.Kind) -> Color {
+        switch kind {
+        case .added: PouredApprovalColors.diffAddInk
+        case .removed: PouredApprovalColors.diffDelInk
+        case .unchanged: PouredApprovalColors.diffContextInk
+        }
+    }
+
+    private func rowBackground(_ kind: PermissionDiffLine.Kind) -> Color {
+        switch kind {
+        case .added: PouredApprovalColors.diffAddFill
+        case .removed: PouredApprovalColors.diffDelFill
+        case .unchanged: .clear
+        }
+    }
+}
+
+/// The Poured permission hero's literal colour palette (`SPEC` §4E / mockup
+/// `01-poured-island.html`). Theme-local like `PouredPalette` — these are exact
+/// hero hexes, not status tokens, so they live beside the view rather than on the
+/// token layer.
+private enum PouredApprovalColors {
+    // Hero head / effect line
+    static let titleInk = Color(red: 0xFF/255, green: 0xE6/255, blue: 0xC2/255)             // #ffe6c2
+    static let codexTitleInk = Color(red: 0xCF/255, green: 0xE8/255, blue: 0xFB/255)        // #cfe8fb
+    static let effectInk = Color(red: 0xFF/255, green: 0xD6/255, blue: 0xA0/255).opacity(0.75) // rgba(255,214,160,.75)
+
+    // Command block
+    static let commandInk = Color(red: 0xC9/255, green: 0xCE/255, blue: 0xDB/255)           // #c9cedb (plain runs)
+    static let codeSurface = Color(red: 0x06/255, green: 0x08/255, blue: 0x0D/255).opacity(0.6) // rgba(6,8,13,.6)
+    static let syntaxPalette: [ShellCommandTokenizer.Kind: Color] = [
+        .command: Color(red: 0xF2/255, green: 0xF5/255, blue: 0xFB/255),                    // #f2f5fb
+        .subcommand: Color(red: 0x8F/255, green: 0xD0/255, blue: 0xFF/255),                 // #8fd0ff
+        .flag: Color(red: 0x6E/255, green: 0xA7/255, blue: 0xFF/255),                       // #6ea7ff
+        .string: Color(red: 0x7F/255, green: 0xD3/255, blue: 0x9A/255),                     // #7fd39a
+        .path: Color(red: 0xF2/255, green: 0xF5/255, blue: 0xFB/255).opacity(0.55),         // rgba(242,245,251,.55)
+    ]
+
+    // Buttons
+    static let allowTop = Color(red: 0xFF/255, green: 0xCE/255, blue: 0x8A/255)             // #ffce8a
+    static let allowBottom = Color(red: 0xFF/255, green: 0xB1/255, blue: 0x4D/255)          // #ffb14d
+    static let allowInk = Color(red: 0x3A/255, green: 0x24/255, blue: 0x05/255)             // #3a2405
+    static let denyFill = Color(red: 0xDB/255, green: 0x52/255, blue: 0x52/255).opacity(0.14) // rgba(219,82,82,.14)
+    static let denyInk = Color(red: 0xF0/255, green: 0xA8/255, blue: 0xA8/255)              // #f0a8a8
+
+    // Keycaps
+    static let keycapFill = Color.black.opacity(0.28)
+    static let keycapStroke = Color.white.opacity(0.14)
+    static let keycapInk = Color.white.opacity(0.75)
+    static let keycapFillOnAmber = Color(red: 0x3A/255, green: 0x24/255, blue: 0x05/255).opacity(0.25) // rgba(58,36,5,.25)
+    static let keycapStrokeOnAmber = Color(red: 0x3A/255, green: 0x24/255, blue: 0x05/255).opacity(0.3)
+    static let keycapInkOnAmber = Color(red: 0x5A/255, green: 0x3A/255, blue: 0x0C/255)     // #5a3a0c
+
+    // Codex (E3)
+    static let codexBlue = Color(red: 0x4A/255, green: 0xA3/255, blue: 0xDF/255)            // #4aa3df
+    static let codexButtonTop = Color(red: 0x8F/255, green: 0xCC/255, blue: 0xF0/255)       // #8fccf0
+    static let codexButtonInk = Color(red: 0x06/255, green: 0x21/255, blue: 0x33/255)       // #062133
+    static let codexNoteInk = Color(red: 0xBF/255, green: 0xE0/255, blue: 0xF6/255)         // #bfe0f6
+
+    // Diff (E2)
+    static let diffDelFill = Color(red: 0xDB/255, green: 0x52/255, blue: 0x52/255).opacity(0.13) // rgba(219,82,82,.13)
+    static let diffDelInk = Color(red: 0xF0/255, green: 0xB3/255, blue: 0xB3/255)           // #f0b3b3
+    static let diffDelGutter = Color(red: 0xDB/255, green: 0x52/255, blue: 0x52/255).opacity(0.6)
+    static let diffAddFill = Color(red: 0x6F/255, green: 0xB9/255, blue: 0x82/255).opacity(0.14) // rgba(111,185,130,.14)
+    static let diffAddInk = Color(red: 0xA8/255, green: 0xE0/255, blue: 0xBB/255)           // #a8e0bb
+    static let diffAddGutter = Color(red: 0x6F/255, green: 0xB9/255, blue: 0x82/255).opacity(0.7)
+    static let diffContextInk = Color(red: 0xF2/255, green: 0xF5/255, blue: 0xFB/255).opacity(0.55)
+    static let diffContextGutter = Color(red: 0xF2/255, green: 0xF5/255, blue: 0xFB/255).opacity(0.3)
+}
+
+/// Wraps the approval card in Poured's pulsing hero glow (`heropulse`, `SPEC`
+/// §4E E1). Isolated as a modifier so the 15fps `PulseClock` read invalidates
+/// only the glow (not the buttons inside), and so Reduce Motion — or a missing
+/// clock — renders a static-but-still-loud glow (the wide ambient layer is
+/// always present) rather than a breathing one. The tint is supplied by the
+/// card (amber `attention`, or Codex blue), keeping this geometry-only.
 private struct PouredAmberGlow: ViewModifier {
     let tint: Color
     let pulseClock: PulseClock?
@@ -1534,9 +2043,16 @@ private struct PouredAmberGlow: ViewModifier {
     }
 
     func body(content: Content) -> some View {
+        let hero = PouredPillMotion.Hero.self
+        let ambientOpacity = hero.ambientOpacityMin + (hero.ambientOpacityMax - hero.ambientOpacityMin) * pulse
         content
-            .shadow(color: tint.opacity(0.34 + pulse * 0.26), radius: 10 + pulse * 8)
-            .shadow(color: tint.opacity(0.18 + pulse * 0.16), radius: 20 + pulse * 10)
+            // Wide ambient "event" bloom (mockup 0 0 42px -6px), always present.
+            .shadow(color: tint.opacity(ambientOpacity), radius: hero.ambientRadius)
+            // Retuned breathing layers (r10+8·pulse / r20+10·pulse), retinted.
+            .shadow(color: tint.opacity(hero.innerOpacityBase + pulse * hero.innerOpacityPulse),
+                    radius: hero.innerRadiusBase + pulse * hero.innerRadiusPulse)
+            .shadow(color: tint.opacity(hero.outerOpacityBase + pulse * hero.outerOpacityPulse),
+                    radius: hero.outerRadiusBase + pulse * hero.outerRadiusPulse)
             .onAppear { if animates { pulseClock?.acquire() } }
             .onDisappear { if animates { pulseClock?.release() } }
     }
