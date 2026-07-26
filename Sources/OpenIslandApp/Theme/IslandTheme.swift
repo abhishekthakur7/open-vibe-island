@@ -235,6 +235,35 @@ protocol IslandTheme: Sendable {
         rightSlot: IslandRightSlotContent?,
         activity: IslandClosedPillActivity?
     ) -> Color?
+
+    // MARK: Surface edge-light seam (AB-341)
+
+    /// A living chrome overlay a theme traces around the **morphing surface
+    /// silhouette** — the perimeter edge-light Halo uses as its whole state
+    /// channel (SPEC-halo §3a). Composed ONLY at the `IslandPanelView` surface
+    /// level and ALWAYS handed the single morphing `OpenedIslandSurfaceShape`
+    /// (the exact instance the open/close transition animates), so the returned
+    /// overlay can mask an `AngularGradient` with `shape.stroke(...)` and the
+    /// ring interpolates in lockstep with the silhouette — never a crossfade.
+    /// That shape renders the CLOSED pill silhouette too (`topCornerRadius: 0`,
+    /// `bottomCornerRadius: closedNotchHeight/2`), which is why `V6ClosedPillShape`
+    /// is deliberately **not** a parameter and the pill's own slot view never
+    /// double-renders the ring. `context` carries the resolved ambient state,
+    /// closed-vs-opened, and the surface geometry.
+    ///
+    /// The overlay is placed **unclipped** on top of the surface frame, so a
+    /// theme's blooms (colored `.shadow`) bleed past the silhouette — the point
+    /// of the grown shadow-inset window tokens (SPEC-halo §1b).
+    ///
+    /// Returns `nil` — the default every shipped theme takes — for no edge
+    /// chrome, so the surface render tree stays byte-identical. **Declared here
+    /// (not only in the extension)** for the same dynamic-dispatch reason as the
+    /// AB-330 closed-pill seams: a call through `any IslandTheme` must dispatch
+    /// to the conformer's override, not statically bind to the extension default.
+    func surfaceEdgeOverlay(
+        shape: OpenedIslandSurfaceShape,
+        context: IslandSurfaceEdgeContext
+    ) -> AnyView?
 }
 
 // MARK: - Closed-pill ambient seam defaults (AB-330)
@@ -259,6 +288,14 @@ extension IslandTheme {
     /// Default: no dedicated full-meter surface. Every theme but Poured takes
     /// this, so the `meters` preview keeps drawing only the compact header ring.
     func usageMeterCard(providers: [UsageProviderPresentation], lang: LanguageManager) -> AnyView? { nil }
+
+    /// Default: no surface edge-light. Every shipped theme takes this, so the
+    /// morph / Reduce-Motion surfaces stay byte-identical (AB-341). Halo (Part 2)
+    /// overrides it with the `HaloEdgeLight` masked-gradient ring.
+    func surfaceEdgeOverlay(
+        shape: OpenedIslandSurfaceShape,
+        context: IslandSurfaceEdgeContext
+    ) -> AnyView? { nil }
 }
 
 /// The closed-island agents-grid geometry a theme supplies. Expressed as plain
