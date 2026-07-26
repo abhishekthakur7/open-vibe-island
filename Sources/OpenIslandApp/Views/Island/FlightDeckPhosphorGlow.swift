@@ -102,6 +102,18 @@ enum FlightDeckMotion {
         static let glowRadiusMax: CGFloat = 11
     }
 
+    /// Empty-state monitoring "heartbeat" (§4J · mockup `.empty .lampgrid .l.on`
+    /// `animation:phosphor 2.6s`): the single lit lamp in the ALL SYSTEMS NOMINAL
+    /// grid breathes on the same opacity/halo envelope as `Breathe` but on a
+    /// distinctly **slower 2.6s** period, so a resting monitor reads calmer than a
+    /// 2.0s working engine — the empty panel is "power on, monitoring", not busy.
+    /// Steady lit under Reduce Motion (the ramp is gated at the call site the same
+    /// way the running breathe is). Named here so the empty-state cadence can't
+    /// drift off the mockup keyframe.
+    enum Monitor {
+        static let period: Double = 2.6
+    }
+
     /// Master-alarm attention pulse (`@keyframes attn`): opacity ramps
     /// `1.0 → 0.28` and back, warning-red on a faster 1.0s cadence and
     /// caution-amber on a calmer 1.2s so the two annunciators are told apart by

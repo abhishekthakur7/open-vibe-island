@@ -519,6 +519,62 @@ struct FlightDeckThemeTests {
         }
     }
 
+    /// AB-339 §4J: the empty-state "ALL SYSTEMS NOMINAL" heading, the monitoring
+    /// copy line, and the sysline `MONITORING` token all resolve to real
+    /// translations in every locale — the CJK coverage the snapshot harness can't
+    /// give (it pins English only, AB-334). A missing zh value would surface a raw
+    /// key on the confident empty panel.
+    @Test
+    func emptyStateNominalStringsLocalizeInEveryLanguage() {
+        let originalLanguage = UserDefaults.standard.string(forKey: "appLanguage")
+        defer {
+            if let originalLanguage {
+                UserDefaults.standard.set(originalLanguage, forKey: "appLanguage")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "appLanguage")
+            }
+        }
+
+        let keys = [
+            "island.flightDeck.empty.nominal",
+            "island.flightDeck.empty.copy",
+            "island.flightDeck.empty.monitoring",
+        ]
+        for language in [LanguageManager.AppLanguage.en, .zhHans, .zhHant] {
+            let manager = LanguageManager()
+            manager.language = language
+            for key in keys {
+                let resolved = manager.t(key)
+                #expect(resolved != key)
+                #expect(!resolved.isEmpty)
+            }
+        }
+    }
+
+    /// AB-339: the retired `state.noSignal` / `state.standby` keys — the shipped
+    /// empty-state / bootstrap captions before the tone flip — are gone from the
+    /// Flight Deck namespace in every locale (the empty state now leads with
+    /// NOMINAL, the bootstrap reuses `pill.standby`). `LanguageManager` returns the
+    /// key itself when a string is absent, so an un-removed value would fail here.
+    @Test
+    func retiredEmptyStateKeysAreGone() {
+        let originalLanguage = UserDefaults.standard.string(forKey: "appLanguage")
+        defer {
+            if let originalLanguage {
+                UserDefaults.standard.set(originalLanguage, forKey: "appLanguage")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "appLanguage")
+            }
+        }
+
+        for language in [LanguageManager.AppLanguage.en, .zhHans, .zhHant] {
+            let manager = LanguageManager()
+            manager.language = language
+            #expect(manager.t("island.flightDeck.state.noSignal") == "island.flightDeck.state.noSignal")
+            #expect(manager.t("island.flightDeck.state.standby") == "island.flightDeck.state.standby")
+        }
+    }
+
     // MARK: - Closed-pill wing label tone (AB-338 AC #3 · SPEC §4A A2/A5)
 
     /// The wing label tone-splits the resolver's own output: a working narration

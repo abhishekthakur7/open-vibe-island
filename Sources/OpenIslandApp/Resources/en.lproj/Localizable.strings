@@ -274,8 +274,6 @@
 "island.flightDeck.footer.link" = "Link";
 "island.flightDeck.footer.noLink" = "No Link";
 "island.flightDeck.footer.sessions" = "%lld sessions";
-"island.flightDeck.state.noSignal" = "No Signal";
-"island.flightDeck.state.standby" = "Standby";
 "island.flightDeck.hint.setup" = "Setup";
 
 /* Island Panel - Flight Deck theme actionable surfaces (AB-314) */
@@ -314,6 +312,11 @@
 "island.flightDeck.done.success" = "Success";
 "island.flightDeck.done.outcome" = "Outcome";
 "island.flightDeck.done.duration" = "Duration";
+
+/* Island Panel - Flight Deck §4J empty state — ALL SYSTEMS NOMINAL (AB-339) */
+"island.flightDeck.empty.nominal" = "All Systems Nominal";
+"island.flightDeck.empty.copy" = "No active sessions. Open Island is watching the bridge — the moment an agent needs approval, asks a question, or finishes, a lamp lights here.";
+"island.flightDeck.empty.monitoring" = "Monitoring";
 
 /* Island Panel - Poured Island 2.0 usage meters (AB-331) */
 "island.poured.usage.metersTitle" = "Usage · resets shown";

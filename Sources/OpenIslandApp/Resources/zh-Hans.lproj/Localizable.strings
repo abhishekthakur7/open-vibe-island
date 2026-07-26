@@ -274,8 +274,6 @@
 "island.flightDeck.footer.link" = "已连接";
 "island.flightDeck.footer.noLink" = "未连接";
 "island.flightDeck.footer.sessions" = "%lld 个会话";
-"island.flightDeck.state.noSignal" = "无信号";
-"island.flightDeck.state.standby" = "待命";
 "island.flightDeck.hint.setup" = "配置";
 
 /* Island Panel - Flight Deck theme actionable surfaces (AB-314) */
@@ -315,6 +313,11 @@
 "island.flightDeck.done.success" = "成功";
 "island.flightDeck.done.outcome" = "结果";
 "island.flightDeck.done.duration" = "时长";
+
+/* Island Panel - Flight Deck §4J empty state — ALL SYSTEMS NOMINAL (AB-339) */
+"island.flightDeck.empty.nominal" = "系统一切正常";
+"island.flightDeck.empty.copy" = "当前没有活动会话。Open Island 正在监视桥接——当有代理需要批准、提出问题或完成任务时，这里会亮起一盏灯。";
+"island.flightDeck.empty.monitoring" = "监视中";
 
 /* Island Panel - Poured Island 2.0 usage meters (AB-331) */
 "island.poured.usage.metersTitle" = "用量 · 显示重置时间";

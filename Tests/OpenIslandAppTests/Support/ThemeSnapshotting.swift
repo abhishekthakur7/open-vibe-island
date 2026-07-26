@@ -215,11 +215,27 @@ enum ThemeSnapshotting {
                 group: prefs.sessionGroup,
                 stateIndicator: prefs.sessionStateIndicator,
                 completedStaleThreshold: prefs.completedStaleThreshold.seconds,
-                actionableSessionID: content.actionableSessionID,
+                // AB-339: the §4G engine cluster / todo live in the *non-actionable*
+                // row's expanded detail (the actionable spotlight body shows only a
+                // running preview box). So for the engine-cluster pin we render the
+                // subagents session as an ordinary expandable list row — override
+                // the scenario's actionable id to nil — and let `forceRowExpanded`
+                // open it. Every other scenario keeps its real actionable spotlight.
+                actionableSessionID: scenario == .subagents ? nil : content.actionableSessionID,
                 usageProviders: content.usageProviders,
                 // Deterministic installed-agents set so Poured's empty-state
                 // reassurance pill renders identically every run (AB-331).
                 installedAgentNames: ["Claude", "Codex", "Gemini"],
+                // AB-339: only the single-row subagents scenario is born expanded,
+                // so its §4G engine cluster / todo pin the expanded frame; every
+                // other scenario keeps its collapsed-on-appear default (the pinned
+                // multi-row `.duplicates` register must not spring open).
+                forceRowExpanded: scenario == .subagents,
+                // AB-339: a live bridge only for the empty state, whose sysline +
+                // footer are the surface under test (the confident nominal variant).
+                // Every other scenario keeps the environment default so the footers
+                // in the pins prior tickets recorded stay byte-identical.
+                bridgeIsLive: scenario == .empty,
                 lang: lang
             )
             .themedSnapshotEnvironment(theme: theme)
@@ -392,6 +408,10 @@ private struct SnapshotSessionListPanel: View {
     let actionableSessionID: String?
     let usageProviders: [UsageProviderPresentation]?
     let installedAgentNames: [String]
+    /// AB-339: born-expanded seam for the engine-cluster pin (see the env key doc).
+    var forceRowExpanded: Bool = false
+    /// AB-339: live bridge for the empty-state pin; default keeps prior goldens.
+    var bridgeIsLive: Bool = false
     let lang: LanguageManager
 
     @Environment(\.islandTheme) private var theme
@@ -465,5 +485,12 @@ private struct SnapshotSessionListPanel: View {
         }
         .frame(width: profile.width)
         .fixedSize(horizontal: false, vertical: true)
+        // A deterministic live bridge (empty-state pin only) so the Flight Deck
+        // sysline + footer pin their confident nominal variant (green lamp ·
+        // MONITORING · LINK); every other scenario keeps the environment default's
+        // honest dead-link fallback so prior goldens stay byte-identical (AB-339).
+        .environment(\.islandBridgeIsLive, bridgeIsLive)
+        // Born-expanded only where the caller asks (the engine-cluster pin).
+        .environment(\.islandRowExpandedByDefault, forceRowExpanded)
     }
 }

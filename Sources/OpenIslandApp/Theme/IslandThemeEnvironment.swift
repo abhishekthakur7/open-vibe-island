@@ -103,3 +103,25 @@ extension EnvironmentValues {
         set { self[IslandBridgeIsLiveKey.self] = newValue }
     }
 }
+
+private struct IslandRowExpandedByDefaultKey: EnvironmentKey {
+    static let defaultValue: Bool = false
+}
+
+extension EnvironmentValues {
+    /// Forces an expandable session row to render its expanded detail on first
+    /// appearance, instead of the collapsed default that only opens on a user tap
+    /// (AB-339).
+    ///
+    /// A row's expansion is interaction-driven `@State` with no external hook, so
+    /// the §4G engine cluster / todo list and the §4D metagrid — which live only
+    /// in that expanded detail — are otherwise unreachable by the deterministic
+    /// snapshot harness (a snapshot never taps). This override lets the harness pin
+    /// the expanded frame without a real gesture; it is a **preview / test seam
+    /// only**. Defaults to `false`, so production rows are unaffected and open
+    /// exactly as before — the collapsed row on launch, expanding on tap.
+    var islandRowExpandedByDefault: Bool {
+        get { self[IslandRowExpandedByDefaultKey.self] }
+        set { self[IslandRowExpandedByDefaultKey.self] = newValue }
+    }
+}

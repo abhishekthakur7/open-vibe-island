@@ -545,6 +545,11 @@ private struct FlightDeckRowContent: View {
 
     @State private var expandedOverride: Bool?
 
+    /// Harness/preview seam (AB-339): when set, an expandable row is born expanded
+    /// so a snapshot can pin the §4G engine cluster / §4D metagrid that otherwise
+    /// only open on a tap. Defaults to `false` — production rows open collapsed.
+    @Environment(\.islandRowExpandedByDefault) private var expandedByDefault
+
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     private var increasesContrast: Bool { colorSchemeContrast == .increased }
 
@@ -595,7 +600,7 @@ private struct FlightDeckRowContent: View {
         let isRunning = presence == .running
         let isIdle = presence == .inactive
         let showsSubLine = FlightDeckSessionRowFormat.showsSubLine(isRunning: isRunning, isIdle: isIdle)
-        let isExpanded = (expandedOverride ?? false) && isInteractive
+        let isExpanded = (expandedOverride ?? expandedByDefault) && isInteractive
         let priority = FlightDeckSessionRowFormat.lanePriority(
             phase: session.phase,
             presence: presence,
