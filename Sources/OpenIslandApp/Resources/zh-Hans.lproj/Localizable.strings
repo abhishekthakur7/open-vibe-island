@@ -210,6 +210,8 @@
 "theme.flightDeck.descriptor" = "航电警示灯面板。";
 "theme.annual.name" = "年刊";
 "theme.annual.descriptor" = "瑞士编辑风格的排印静谧。";
+"theme.halo.name" = "光环";
+"theme.halo.descriptor" = "纯黑虚空中流动的棱彩光边。";
 
 /* Settings - Shortcuts */
 "settings.shortcuts.global.section" = "全局快捷键";
@@ -341,6 +343,14 @@
 "island.annual.state.empty" = "暂无会话";
 "island.annual.state.loading" = "加载中";
 "island.annual.hint.setup" = "配置";
+
+/* Island Panel - Halo theme (AB-340) */
+"island.halo.empty.allQuiet" = "一切平静";
+"island.halo.empty.watching" = "当前没有活动的智能体会话。Open Island 正在监视你的终端和 IDE — 一旦有会话需要你，它会立刻亮起。";
+"island.halo.empty.monitoring" = "监视中";
+"island.halo.empty.workspaceOne" = "监视中 · %lld 个工作区";
+"island.halo.empty.workspaceOther" = "监视中 · %lld 个工作区";
+"island.halo.hint.setup" = "配置";
 
 /* Island Panel - Annual theme rows (AB-317) */
 "island.annual.row.jump" = "跳转";
