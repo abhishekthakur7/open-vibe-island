@@ -495,6 +495,33 @@ struct IslandPanelView: View {
             )
     }
 
+    /// AB-341: the theme's living perimeter edge-light for the current surface,
+    /// or an empty view when the theme traces none (every shipped theme). The
+    /// hook is composed ONLY here at the surface level and is ALWAYS handed the
+    /// single morphing `OpenedIslandSurfaceShape` (`shape`) so the ring and the
+    /// silhouette interpolate in lockstep — `V6ClosedPillShape` is never passed
+    /// (the closed pill is that same shape at `topCornerRadius: 0`). The overlay
+    /// is placed UNCLIPPED on top of the surface frame, so a theme's blooms bleed
+    /// past the silhouette (the point of the grown shadow-inset window tokens).
+    /// Non-interactive — it is pure chrome over the live surface below.
+    @ViewBuilder
+    private func surfaceEdgeOverlay(
+        shape: OpenedIslandSurfaceShape,
+        isOpened: Bool,
+        size: CGSize
+    ) -> some View {
+        let context = IslandSurfaceEdgeContext(
+            state: IslandSurfaceEdgeState.resolve(sessions: model.surfacedSessions),
+            isOpened: isOpened,
+            size: size
+        )
+        if let overlay = theme.surfaceEdgeOverlay(shape: shape, context: context) {
+            overlay
+                .frame(width: size.width, height: size.height, alignment: .top)
+                .allowsHitTesting(false)
+        }
+    }
+
     // MARK: - Opened surface
 
     /// Header + session-list content only — no background, shape, shadow, or
@@ -557,6 +584,16 @@ struct IslandPanelView: View {
                 }
         }
         .frame(width: openedWidth, height: openedHeight, alignment: .top)
+        // AB-341: the Reduce-Motion crossfade's opened surface composes the same
+        // edge hook with its static opened shape, so the ring survives RM (Part 2
+        // paints a static state-colored ring here). `nil` for every shipped theme.
+        .overlay(alignment: .top) {
+            surfaceEdgeOverlay(
+                shape: surfaceShape,
+                isOpened: true,
+                size: CGSize(width: openedWidth, height: openedHeight)
+            )
+        }
     }
 
     // MARK: - AB-243: shape-driven notch morph
@@ -655,6 +692,24 @@ struct IslandPanelView: View {
                 .modifier(OptionalShadow(token: tokens.metrics.closedSurfaceShadow))
                 .opacity(usesOpenedVisualState ? 0 : 1)
                 .allowsHitTesting(!usesOpenedVisualState)
+
+            // AB-341: the Reduce-Motion closed surface composes the SAME edge
+            // hook — but always with an `OpenedIslandSurfaceShape` at the closed
+            // radii (`topCornerRadius: 0`, `bottomCornerRadius: height/2`), never
+            // `V6ClosedPillShape`, so the closed silhouette the ring hugs matches
+            // the morph path exactly. Drawn unclipped for bloom bleed; faded out
+            // as the panel opens. `nil` for every shipped theme.
+            surfaceEdgeOverlay(
+                shape: OpenedIslandSurfaceShape(
+                    topProfile: usesNotchAwareOpenedHeader ? .notch : .topBar,
+                    topCornerRadius: 0,
+                    bottomCornerRadius: closedNotchHeight / 2,
+                    filletRadius: tokens.metrics.filletRadius
+                ),
+                isOpened: false,
+                size: CGSize(width: closedPillOuterWidth(), height: closedNotchHeight)
+            )
+            .opacity(usesOpenedVisualState ? 0 : 1)
         }
     }
 
@@ -763,6 +818,18 @@ struct IslandPanelView: View {
             }
         }
         .frame(width: surfaceWidth, height: surfaceHeight, alignment: .top)
+        // AB-341: the theme's perimeter edge-light, hugging the ONE morphing
+        // `shape` (so ring + silhouette interpolate in lockstep) and drawn
+        // unclipped so its blooms bleed. `nil` for every shipped theme, adding
+        // nothing to their render tree. Under the glyph overlay so the traveling
+        // glyph stays on top.
+        .overlay(alignment: .top) {
+            surfaceEdgeOverlay(
+                shape: shape,
+                isOpened: opened,
+                size: CGSize(width: surfaceWidth, height: surfaceHeight)
+            )
+        }
         .overlay(alignment: .topLeading) {
             islandGlyphOverlay(opened: opened, closedLeadingInset: closedLeadingInset)
         }
