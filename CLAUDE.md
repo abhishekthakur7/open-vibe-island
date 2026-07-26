@@ -48,6 +48,35 @@ For Xcode: open `Package.swift`.
 - After changes: run the matching verification (`swift build` / `swift test` / manual). If no check exists, say so in the summary and still commit.
 - Never `git reset --hard`, force-push, or overwrite user changes without explicit approval. If unexpected state appears, inspect — don't bulldoze.
 
+## Ticket execution protocol
+
+Rules for working a Linear ticket (or any batch of agent-driven changes). They exist because a
+timed 11-ticket run showed ~85% of wall clock inside agent build/test loops, not CI.
+
+- **Worktrees**: create via `zsh scripts/agent-worktree.sh <branch>` — it branches off latest
+  `origin/main` and seeds `.build` from the main checkout (APFS clone, ~instant), skipping the
+  ~5-min cold dependency build. Don't hand-roll `git worktree add` for ticket work.
+- **Warm cache upkeep**: after merging a PR, run `swift build` in the main checkout so the next
+  worktree seeds from a current cache. Building in the main worktree is fine; editing it is not.
+- **Toolchain**: always prefix `swift build` / `swift test` with
+  `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` — the CLT default lacks the SwiftUI
+  macro plugin and fails inside the NetworkImage dependency.
+- **Test scoping**: during development run `swift test --filter <touched suites>`. Run the FULL
+  suite exactly once per ticket — the last agent, before the final commit. Snapshot golden
+  record (`OPEN_ISLAND_RECORD_SNAPSHOTS=1`) + verify runs must be `--filter`ed to the snapshot
+  suite, never two full passes.
+- **Known-red tests** (pre-existing, do NOT chase; confirm the count is unchanged and move on):
+  `islandSessionSectionsGroupStaleCompletedIntoIdle`,
+  `islandSessionSectionsKeepCompletedInDoneWhenStaleThresholdIsNever`,
+  `islandSessionListCanSortByLastUpdate`, `cellStateReflectsSessionPhase`,
+  `bulkFirstObservationOrdersByHistoricalFirstSeenAt`; the two Poured session-list baseline
+  goldens drift environmentally — if they fail, verify they also fail on clean HEAD.
+- **Multi-agent tickets**: split big tickets into sequential parts sharing one worktree; each
+  part's report must end with landmarks for the next part (file:line, gotchas, leftover ACs).
+- **Merge protocol**: the GitHub CI workflow is currently disabled (PR #55) — the local full
+  suite is the merge gate. If a checks watcher exits or dies, immediately re-check
+  `gh pr checks <n>` rather than assuming it's still pending.
+
 ## Scope guardrails
 
 Current support matrix (agents / terminals / IDEs) lives in `README.md` — that's the single source of truth, keep it accurate at release time.
