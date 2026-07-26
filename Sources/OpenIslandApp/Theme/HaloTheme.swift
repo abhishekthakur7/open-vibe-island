@@ -330,6 +330,11 @@ enum HaloMotion {
     static let heroRing: TimeInterval = 2.2
     /// Running liveness-glyph wave — 1.05s.
     static let wave: TimeInterval = 1.05
+    /// The running wave glyph's per-bar stagger delays (SPEC §1c · mockup
+    /// `wave 1.05s` bars delayed **.13 / .26s**). The three bars ride the same
+    /// `wave` period, offset by these delays so the wave travels left→right.
+    /// Pinned by `HaloClosedPillTests` so the stagger can't silently drift.
+    static let waveBarDelays: [TimeInterval] = [0, 0.13, 0.26]
     /// Waiting liveness-glyph breathe — 2.4s.
     static let breathe: TimeInterval = 2.4
     /// Agents-grid waiting-dot breathe — 2s.
@@ -657,8 +662,16 @@ struct HaloTheme: IslandTheme {
 
     // MARK: Slot factories (interim — delegated to Classic until T22–T25)
 
-    // PART 2 · T23: the closed pill (wings, ambient states A1–A6, edge-light,
-    // agents-grid of bloomed circles) replaces this delegation.
+    /// The closed pill (AB-342 · T23 · SPEC §5A · mockup §A/§G′/§I′): wings via
+    /// `HStack`, the six ambient states A1–A6, liveness/dot/outcome pairings, and
+    /// the two-tone narrated label. The width math is delegated **verbatim** to
+    /// `V6ClosedPill.externalOuterWidth` / `macbookOuterWidth`, so the closed↔opened
+    /// morph frame is byte-identical to every other theme. The living edge-light /
+    /// bloom is **not** drawn here — `IslandPanelView` composes it via
+    /// `surfaceEdgeOverlay(shape:context:)` on the morphing silhouette (AB-341), so
+    /// the pill never double-renders the ring; it renders only the wing content.
+    /// (Part 1: the right-slot capsules / bloomed agents-grid still degrade to the
+    /// neutral count badge — Part 2 restyles `HaloRightSlotView`.)
     func closedPill(
         mode: UnifiedBars.Mode,
         label: String?,
@@ -669,7 +682,7 @@ struct HaloTheme: IslandTheme {
         minWidth: CGFloat,
         showsGlyph: Bool
     ) -> AnyView {
-        interim.closedPill(
+        AnyView(HaloClosedPill(
             mode: mode,
             label: label,
             rightSlot: rightSlot,
@@ -678,7 +691,7 @@ struct HaloTheme: IslandTheme {
             physicalNotchWidth: physicalNotchWidth,
             minWidth: minWidth,
             showsGlyph: showsGlyph
-        )
+        ))
     }
 
     // PART 2 · T25: the notch-split header with light-filament usage arcs +
