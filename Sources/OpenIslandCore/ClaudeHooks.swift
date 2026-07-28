@@ -639,7 +639,7 @@ public enum ClaudeHookOutputEncoder {
 
         let data: Data?
         switch response {
-        case .acknowledged:
+        case .acknowledged, .authenticated, .protocolUpgradeRequired, .denied:
             data = nil
         case .codexHookDirective:
             data = nil

@@ -117,6 +117,10 @@ public final class OpenCodePluginInstallationManager: @unchecked Sendable {
 
     @discardableResult
     public func uninstall() throws -> OpenCodePluginInstallationStatus {
+        // The plugin is the only OpenCode path to the fixed signed helper.
+        // Revoke its shared hook capability before deleting integration files.
+        try BridgeCredentialLifecycle.revokeManagedHookCredential()
+
         // Remove plugin file
         if fileManager.fileExists(atPath: pluginFileURL.path) {
             try fileManager.removeItem(at: pluginFileURL)

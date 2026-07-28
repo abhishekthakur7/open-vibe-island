@@ -1,9 +1,9 @@
 // Open Island plugin for OpenCode
 // Bridges OpenCode events to the Open Island desktop app via Unix socket.
 // Install: copy to ~/.config/opencode/plugins/open-island.js
-import { connect } from "net";
-import { appendFileSync } from "fs";
+import { appendFileSync, existsSync } from "fs";
 import { homedir } from "os";
+import { spawnSync } from "child_process";
 
 // Debug logging is OFF by default. When enabled via OPEN_ISLAND_DEBUG, it writes to the
 // user-owned app-support directory (not world-readable /tmp), because it can contain
@@ -15,27 +15,23 @@ function debugLog(msg) {
   try { appendFileSync(DEBUG_LOG, `[${new Date().toISOString()}] ${msg}\n`); } catch {}
 }
 
-const SOCKET_PATH =
-  process.env.OPEN_ISLAND_SOCKET_PATH ||
-  `${process.env.HOME || homedir()}/Library/Application Support/OpenIsland/bridge.sock`;
-
-function encodeEnvelope(command) {
-  return JSON.stringify({ type: "command", command }) + "\n";
-}
+// OpenCode never speaks the bridge protocol directly. The fixed bundled helper
+// owns the signed hook-event-submit role and the Keychain bootstrap material.
+const HOOK_HELPERS = [
+  "/Applications/Open Island.app/Contents/Helpers/OpenIslandHooks",
+  `${process.env.HOME || homedir()}/Applications/Open Island Dev.app/Contents/Helpers/OpenIslandHooks`,
+];
 
 function sendToSocket(json) {
-  return new Promise((resolve) => {
-    try {
-      const sock = connect({ path: SOCKET_PATH }, () => {
-        sock.end(encodeEnvelope(json));
-      });
-      let buf = "";
-      sock.on("data", (chunk) => { buf += chunk.toString(); });
-      sock.on("end", () => { resolve(true); });
-      sock.on("error", () => resolve(false));
-      sock.setTimeout(3000, () => { sock.destroy(); resolve(false); });
-    } catch { resolve(false); }
-  });
+  try {
+    const helper = HOOK_HELPERS.find(existsSync);
+    if (!helper) return Promise.resolve(false);
+    const result = spawnSync(helper, ["--source", "opencode"], {
+      input: JSON.stringify(json.openCodeHook), encoding: "utf8", timeout: 3000,
+      stdio: ["pipe", "ignore", "ignore"],
+    });
+    return Promise.resolve(!result.error && result.status === 0);
+  } catch { return Promise.resolve(false); }
 }
 
 // Terminal environment detection

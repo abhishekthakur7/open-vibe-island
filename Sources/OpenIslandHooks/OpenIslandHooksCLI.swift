@@ -18,12 +18,13 @@ struct OpenIslandHooksCLI {
         case cursor
         case gemini
         case kimi
+        case opencode
 
         var isClaudeFormat: Bool {
             switch self {
             case .claude, .qoder, .qwen, .factory, .droid, .codebuddy, .kimi:
                 return true
-            case .codex, .cursor, .gemini:
+            case .codex, .cursor, .gemini, .opencode:
                 return false
             }
         }
@@ -46,7 +47,10 @@ struct OpenIslandHooksCLI {
             let source = hookSource(arguments: arguments)
             let sourceString = rawSourceString(arguments: arguments)
             let decoder = JSONDecoder()
-            let client = BridgeCommandClient(socketURL: BridgeSocketLocation.currentURL())
+            // This bundled executable is the only hook transport client. Its
+            // fixed role prevents shell configuration from selecting a more
+            // privileged bridge capability or redirecting the socket path.
+            let client = BridgeCommandClient(role: .hookEventSubmit)
 
             switch source {
             case .codex:
@@ -107,6 +111,9 @@ struct OpenIslandHooksCLI {
                     .withRuntimeContext(environment: ProcessInfo.processInfo.environment)
 
                 _ = try? client.send(.processGeminiHook(payload), timeout: 45)
+            case .opencode:
+                let payload = try decoder.decode(OpenCodeHookPayload.self, from: input)
+                _ = try? client.send(.processOpenCodeHook(payload), timeout: 45)
             }
         } catch {
             // Hooks should fail open so the CLI continues working even if the bridge is unavailable.

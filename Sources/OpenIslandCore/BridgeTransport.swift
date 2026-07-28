@@ -16,25 +16,19 @@ public enum BridgeSocketLocation {
         stableDirectoryURL.appendingPathComponent("bridge.sock")
     }
 
-    /// Legacy path for backward compatibility with older hook binaries.
-    public static var legacyURL: URL {
-        URL(fileURLWithPath: "/tmp/open-island-\(getuid()).sock")
-    }
-
-    public static func currentURL(environment: [String: String] = ProcessInfo.processInfo.environment) -> URL {
-        if let path = environment["OPEN_ISLAND_SOCKET_PATH"], !path.isEmpty {
-            return URL(fileURLWithPath: path)
-        }
-
-        if let legacyPath = environment["VIBE_ISLAND_SOCKET_PATH"], !legacyPath.isEmpty {
-            return URL(fileURLWithPath: legacyPath)
-        }
-
-        return defaultURL
-    }
-
     public static func uniqueTestURL() -> URL {
-        URL(fileURLWithPath: "/tmp/open-island-test-\(UUID().uuidString).sock")
+        // Tests use the system-provided private temporary directory solely to
+        // stay under the AF_UNIX path limit; production always uses the
+        // app-owned Application Support directory above.
+        let temporaryPath = FileManager.default.temporaryDirectory.path
+        // Darwin exposes /var as a compatibility symlink to /private/var.
+        // Exercise the same no-symlink path validation as production tests.
+        let physicalTemporaryPath = temporaryPath.hasPrefix("/var/")
+            ? "/private" + temporaryPath
+            : temporaryPath
+        return URL(fileURLWithPath: physicalTemporaryPath, isDirectory: true)
+            .appendingPathComponent("oi-\(UUID().uuidString.prefix(8))", isDirectory: true)
+            .appendingPathComponent("bridge.sock")
     }
 }
 
@@ -45,6 +39,12 @@ public enum BridgeTransportError: Error, LocalizedError {
     case responseTimedOut
     case listenerFailed(String)
     case socketPathTooLong
+    case bootstrapUnavailable
+    case peerIdentityUnavailable
+    case unauthorized
+    case protocolUpgradeRequired
+    case frameTooLarge
+    case unsafeSocketPath(String)
     case systemCallFailed(String, Int32)
 
     public var errorDescription: String? {
@@ -61,6 +61,18 @@ public enum BridgeTransportError: Error, LocalizedError {
             "The local bridge listener failed: \(message)"
         case .socketPathTooLong:
             "The Unix socket path is too long for `sockaddr_un`."
+        case .bootstrapUnavailable:
+            "Local bridge bootstrap material is unavailable. Reinstall or reset the Open Island integration."
+        case .peerIdentityUnavailable:
+            "The local bridge could not verify the connecting process."
+        case .unauthorized:
+            "The local bridge denied this operation for the authenticated role."
+        case .protocolUpgradeRequired:
+            "This local bridge client is outdated. Reinstall Open Island hooks and try again."
+        case .frameTooLarge:
+            "The local bridge frame exceeds the maximum permitted size."
+        case let .unsafeSocketPath(path):
+            "The local bridge left unsafe existing socket path untouched: \(path)"
         case let .systemCallFailed(name, code):
             "\(name) failed with errno \(code)."
         }
@@ -70,15 +82,31 @@ public enum BridgeTransportError: Error, LocalizedError {
 public struct BridgeHello: Equatable, Codable, Sendable {
     public var protocolVersion: Int
     public var serverLabel: String
+    public var serverNonce: String
 
-    public init(protocolVersion: Int = 1, serverLabel: String = "local-bridge") {
+    public init(protocolVersion: Int = 2, serverLabel: String = "local-bridge", serverNonce: String = UUID().uuidString) {
         self.protocolVersion = protocolVersion
         self.serverLabel = serverLabel
+        self.serverNonce = serverNonce
     }
 }
 
-public enum BridgeClientRole: String, Codable, Sendable {
-    case observer
+public struct BridgeAuthentication: Equatable, Codable, Sendable {
+    public let protocolVersion: Int
+    public let role: BridgeClientRole
+    public let clientNonce: String
+    public let proof: Data
+    public init(protocolVersion: Int = 2, role: BridgeClientRole, clientNonce: String, proof: Data) {
+        self.protocolVersion = protocolVersion; self.role = role; self.clientNonce = clientNonce; self.proof = proof
+    }
+}
+
+public struct BridgeCapability: Equatable, Codable, Sendable {
+    public let protocolVersion: Int
+    public let token: String
+    public let role: BridgeClientRole
+    public let expiresAt: Date
+    public init(protocolVersion: Int = 2, token: String, role: BridgeClientRole, expiresAt: Date) { self.protocolVersion = protocolVersion; self.token = token; self.role = role; self.expiresAt = expiresAt }
 }
 
 public enum BridgeCommand: Equatable, Codable, Sendable {
@@ -193,6 +221,9 @@ public enum BridgeCommand: Equatable, Codable, Sendable {
 
 public enum BridgeResponse: Equatable, Codable, Sendable {
     case acknowledged
+    case authenticated(BridgeCapability)
+    case protocolUpgradeRequired
+    case denied
     case codexHookDirective(CodexHookDirective)
     case claudeHookDirective(ClaudeHookDirective)
     case openCodeHookDirective(OpenCodeHookDirective)
@@ -201,6 +232,7 @@ public enum BridgeResponse: Equatable, Codable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case type
         case directive
+        case capability
     }
 
     private enum ResponseType: String, Codable {
@@ -209,6 +241,9 @@ public enum BridgeResponse: Equatable, Codable, Sendable {
         case claudeHookDirective
         case openCodeHookDirective
         case cursorHookDirective
+        case authenticated
+        case protocolUpgradeRequired
+        case denied
     }
 
     public init(from decoder: any Decoder) throws {
@@ -218,6 +253,12 @@ public enum BridgeResponse: Equatable, Codable, Sendable {
         switch type {
         case .acknowledged:
             self = .acknowledged
+        case .authenticated:
+            self = .authenticated(try container.decode(BridgeCapability.self, forKey: .capability))
+        case .protocolUpgradeRequired:
+            self = .protocolUpgradeRequired
+        case .denied:
+            self = .denied
         case .codexHookDirective:
             self = .codexHookDirective(try container.decode(CodexHookDirective.self, forKey: .directive))
         case .claudeHookDirective:
@@ -235,6 +276,13 @@ public enum BridgeResponse: Equatable, Codable, Sendable {
         switch self {
         case .acknowledged:
             try container.encode(ResponseType.acknowledged, forKey: .type)
+        case let .authenticated(capability):
+            try container.encode(ResponseType.authenticated, forKey: .type)
+            try container.encode(capability, forKey: .capability)
+        case .protocolUpgradeRequired:
+            try container.encode(ResponseType.protocolUpgradeRequired, forKey: .type)
+        case .denied:
+            try container.encode(ResponseType.denied, forKey: .type)
         case let .codexHookDirective(directive):
             try container.encode(ResponseType.codexHookDirective, forKey: .type)
             try container.encode(directive, forKey: .directive)
@@ -253,6 +301,7 @@ public enum BridgeResponse: Equatable, Codable, Sendable {
 
 public enum BridgeEnvelope: Equatable, Codable, Sendable {
     case hello(BridgeHello)
+    case authenticate(BridgeAuthentication)
     case event(AgentEvent)
     case command(BridgeCommand)
     case response(BridgeResponse)
@@ -263,6 +312,7 @@ public enum BridgeEnvelope: Equatable, Codable, Sendable {
         case event
         case command
         case response
+        case authentication
     }
 
     private enum EnvelopeType: String, Codable {
@@ -270,6 +320,7 @@ public enum BridgeEnvelope: Equatable, Codable, Sendable {
         case event
         case command
         case response
+        case authenticate
     }
 
     public init(from decoder: any Decoder) throws {
@@ -285,6 +336,8 @@ public enum BridgeEnvelope: Equatable, Codable, Sendable {
             self = .command(try container.decode(BridgeCommand.self, forKey: .command))
         case .response:
             self = .response(try container.decode(BridgeResponse.self, forKey: .response))
+        case .authenticate:
+            self = .authenticate(try container.decode(BridgeAuthentication.self, forKey: .authentication))
         }
     }
 
@@ -295,6 +348,9 @@ public enum BridgeEnvelope: Equatable, Codable, Sendable {
         case let .hello(payload):
             try container.encode(EnvelopeType.hello, forKey: .type)
             try container.encode(payload, forKey: .hello)
+        case let .authenticate(payload):
+            try container.encode(EnvelopeType.authenticate, forKey: .type)
+            try container.encode(payload, forKey: .authentication)
         case let .event(payload):
             try container.encode(EnvelopeType.event, forKey: .type)
             try container.encode(payload, forKey: .event)
@@ -310,12 +366,15 @@ public enum BridgeEnvelope: Equatable, Codable, Sendable {
 
 public enum BridgeCodec {
     private static let newline = UInt8(ascii: "\n")
+    public static let maximumFrameBytes = 256 * 1024
+    public static let maximumJSONDepth = 64
 
     public static func encodeLine(_ envelope: BridgeEnvelope) throws -> Data {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .millisecondsSince1970
 
         var data = try encoder.encode(envelope)
+        guard data.count <= maximumFrameBytes else { throw BridgeTransportError.frameTooLarge }
         data.append(newline)
         return data
     }
@@ -330,8 +389,14 @@ public enum BridgeCodec {
             let line = buffer.prefix(upTo: newlineIndex)
             buffer.removeSubrange(...newlineIndex)
 
+            guard line.count <= maximumFrameBytes else { throw BridgeTransportError.frameTooLarge }
+
             guard !line.isEmpty else {
                 continue
+            }
+
+            guard jsonDepth(of: line) <= maximumJSONDepth else {
+                throw BridgeTransportError.malformedEnvelope
             }
 
             do {
@@ -342,7 +407,36 @@ public enum BridgeCodec {
             }
         }
 
+        guard buffer.count <= maximumFrameBytes else { throw BridgeTransportError.frameTooLarge }
+
         return messages
+    }
+
+    /// JSONDecoder has no public nesting limit.  Preflight the framed bytes so
+    /// a tiny, deeply nested document cannot consume unbounded decoder stack.
+    private static func jsonDepth(of bytes: Data) -> Int {
+        var depth = 0
+        var maximum = 0
+        var inString = false
+        var escaped = false
+        for byte in bytes {
+            if inString {
+                if escaped { escaped = false }
+                else if byte == UInt8(ascii: "\\") { escaped = true }
+                else if byte == UInt8(ascii: "\"") { inString = false }
+                continue
+            }
+            switch byte {
+            case UInt8(ascii: "\""): inString = true
+            case UInt8(ascii: "{"), UInt8(ascii: "["):
+                depth += 1; maximum = max(maximum, depth)
+            case UInt8(ascii: "}"), UInt8(ascii: "]"):
+                depth -= 1
+                if depth < 0 { return maximumJSONDepth + 1 }
+            default: break
+            }
+        }
+        return inString || depth != 0 ? maximumJSONDepth + 1 : maximum
     }
 }
 

@@ -2,12 +2,47 @@ import Dispatch
 import Darwin
 import Foundation
 
+public struct BridgeServerLimits: Sendable {
+    public var maximumConnections: Int
+    public var maximumConnectionsPerPeer: Int
+    public var maximumMalformedRequests: Int
+    public var handshakeTimeout: TimeInterval
+    public var idleTimeout: TimeInterval
+    public var requestTimeout: TimeInterval
+    public var capabilityLifetime: TimeInterval
+
+    public init(
+        maximumConnections: Int = 32,
+        maximumConnectionsPerPeer: Int = 4,
+        maximumMalformedRequests: Int = 3,
+        handshakeTimeout: TimeInterval = 5,
+        idleTimeout: TimeInterval = 60,
+        requestTimeout: TimeInterval = 45,
+        capabilityLifetime: TimeInterval = 60
+    ) {
+        self.maximumConnections = maximumConnections
+        self.maximumConnectionsPerPeer = maximumConnectionsPerPeer
+        self.maximumMalformedRequests = maximumMalformedRequests
+        self.handshakeTimeout = handshakeTimeout
+        self.idleTimeout = idleTimeout
+        self.requestTimeout = requestTimeout
+        self.capabilityLifetime = capabilityLifetime
+    }
+}
+
 public final class BridgeServer: @unchecked Sendable {
     private struct ClientConnection {
         let id: UUID
         let fileDescriptor: Int32
         let readSource: DispatchSourceRead
         var role: BridgeClientRole?
+        let peer: BridgePeerIdentity
+        let serverNonce: String
+        var capability: BridgeCapability?
+        var malformedRequestCount = 0
+        let connectedAt: Date
+        var lastActivityAt: Date
+        var requestStartedAt: Date?
         var buffer = Data()
     }
 
@@ -60,11 +95,23 @@ public final class BridgeServer: @unchecked Sendable {
     }
 
     private let socketURL: URL
+    private let bootstrapStore: any BridgeBootstrapStore
+    private let peerIdentityProvider: any BridgePeerIdentityProviding
+    private let signatureValidator: any BridgeSignatureValidating
+    private let rotateBootstrapOnStart: Bool
+    private let limits: BridgeServerLimits
+    private let now: @Sendable () -> Date
     private let queue = DispatchQueue(label: "app.openisland.bridge.server")
     private let queueKey = DispatchSpecificKey<Void>()
 
     private var listeners: [Listener] = []
+    private var maintenanceTimer: DispatchSourceTimer?
     private var clients: [UUID: ClientConnection] = [:]
+    /// A client nonce is single-use across all live handshakes.  Keeping it no
+    /// longer than the maximum authentication/capability lifetime bounds the
+    /// replay cache while preventing a captured proof from being retried on a
+    /// second connection during its useful lifetime.
+    private var usedClientNonces: [String: Date] = [:]
     private var pendingApprovals: [String: PendingApproval] = [:]
     private var pendingClaudeToolContexts: [String: PendingClaudeToolContext] = [:]
     private var pendingClaudeInteractions: [String: PendingClaudeInteraction] = [:]
@@ -80,11 +127,22 @@ public final class BridgeServer: @unchecked Sendable {
     /// state — it only contains sessions created via bridge hooks and is
     /// overwritten whenever AppModel pushes a fresh snapshot.
     private var localState = SessionState()
-
     public init(
-        socketURL: URL = BridgeSocketLocation.defaultURL
+        socketURL: URL = BridgeSocketLocation.defaultURL,
+        bootstrapStore: any BridgeBootstrapStore = KeychainBridgeBootstrapStore.shared,
+        peerIdentityProvider: any BridgePeerIdentityProviding = DarwinBridgePeerIdentityProvider(),
+        signatureValidator: any BridgeSignatureValidating = DefaultBridgeSignatureValidator(),
+        rotateBootstrapOnStart: Bool = true,
+        limits: BridgeServerLimits = .init(),
+        now: @escaping @Sendable () -> Date = { .now }
     ) {
         self.socketURL = socketURL
+        self.bootstrapStore = bootstrapStore
+        self.peerIdentityProvider = peerIdentityProvider
+        self.signatureValidator = signatureValidator
+        self.rotateBootstrapOnStart = rotateBootstrapOnStart
+        self.limits = limits
+        self.now = now
         queue.setSpecific(key: queueKey, value: ())
     }
 
@@ -97,24 +155,30 @@ public final class BridgeServer: @unchecked Sendable {
             return
         }
 
-        // Primary socket in a stable, user-owned directory.
-        let primaryListener = try bindListener(at: socketURL)
-        listeners.append(primaryListener)
-
-        // Also listen on the legacy /tmp path so that older hook binaries
-        // (from already-running Claude Code sessions) can still connect.
-        let legacyURL = BridgeSocketLocation.legacyURL
-        if legacyURL != socketURL {
-            if let legacyListener = try? bindListener(at: legacyURL) {
-                listeners.append(legacyListener)
+        // Startup is an explicit registration boundary.  Production rotates
+        // every privileged credential so a prior helper build cannot retain a
+        // usable bootstrap secret after the app is refreshed.  Deterministic
+        // transport tests inject false to avoid sharing mutable Keychain state.
+        for role in BridgeClientRole.allCases where role != .observer {
+            if rotateBootstrapOnStart {
+                try bootstrapStore.rotate(role: role)
+            } else {
+                _ = try bootstrapStore.secret(for: role)
             }
         }
+        let primaryListener = try bindListener(at: socketURL)
+        listeners.append(primaryListener)
+        let timer = DispatchSource.makeTimerSource(queue: queue)
+        timer.schedule(deadline: .now() + 1, repeating: 1)
+        timer.setEventHandler { [weak self] in self?.expireTimedOutClients() }
+        maintenanceTimer = timer
+        timer.resume()
     }
 
     private func bindListener(at url: URL) throws -> Listener {
         let parentURL = url.deletingLastPathComponent()
-        try FileManager.default.createDirectory(at: parentURL, withIntermediateDirectories: true)
-        try? FileManager.default.removeItem(at: url)
+        try preparePrivateBridgeDirectory(parentURL)
+        try removeStaleOwnedSocket(at: url)
 
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
         guard fd != -1 else {
@@ -135,6 +199,12 @@ public final class BridgeServer: @unchecked Sendable {
                     throw BridgeTransportError.systemCallFailed("bind", errno)
                 }
             }
+            // Darwin's APFS socket vnode can reject chmod after bind (EPERM)
+            // even though the containing 0700 directory remains the access
+            // control boundary. Apply 0600 where the filesystem supports it.
+            if chmod(url.path, 0o600) != 0, errno != EPERM {
+                throw BridgeTransportError.systemCallFailed("chmod", errno)
+            }
 
             guard listen(fd, 16) != -1 else {
                 throw BridgeTransportError.systemCallFailed("listen", errno)
@@ -143,7 +213,7 @@ public final class BridgeServer: @unchecked Sendable {
             try makeSocketNonBlocking(fd)
         } catch {
             close(fd)
-            try? FileManager.default.removeItem(at: url)
+            try? removeStaleOwnedSocket(at: url)
             throw error
         }
 
@@ -195,6 +265,8 @@ public final class BridgeServer: @unchecked Sendable {
             listener.acceptSource.cancel()
         }
         listeners.removeAll()
+        maintenanceTimer?.cancel()
+        maintenanceTimer = nil
 
         // Do NOT delete socket files here.  start() / bindListener() already
         // clean up stale sockets before binding.  Deleting in stop() causes
@@ -215,6 +287,7 @@ public final class BridgeServer: @unchecked Sendable {
             }
 
             do {
+                guard clients.count < limits.maximumConnections else { close(clientFileDescriptor); continue }
                 try disableSocketSigPipe(clientFileDescriptor)
                 try makeSocketNonBlocking(clientFileDescriptor)
                 configureClient(fileDescriptor: clientFileDescriptor)
@@ -225,6 +298,11 @@ public final class BridgeServer: @unchecked Sendable {
     }
 
     private func configureClient(fileDescriptor: Int32) {
+        guard let peer = try? peerIdentityProvider.identity(for: fileDescriptor), peer.uid == getuid(),
+              clients.values.filter({ $0.peer.uid == peer.uid && $0.peer.pid == peer.pid }).count < limits.maximumConnectionsPerPeer else {
+            close(fileDescriptor)
+            return
+        }
         let clientID = UUID()
         let readSource = DispatchSource.makeReadSource(fileDescriptor: fileDescriptor, queue: queue)
 
@@ -247,11 +325,17 @@ public final class BridgeServer: @unchecked Sendable {
             id: clientID,
             fileDescriptor: fileDescriptor,
             readSource: readSource,
-            role: nil
+            role: nil,
+            peer: peer,
+            serverNonce: UUID().uuidString,
+            capability: nil,
+            connectedAt: now(),
+            lastActivityAt: now(),
+            requestStartedAt: nil
         )
         readSource.resume()
 
-        send(.hello(BridgeHello()), to: clientID)
+        send(.hello(BridgeHello(serverNonce: clients[clientID]!.serverNonce)), to: clientID)
     }
 
     private func readAvailableData(from clientID: UUID) {
@@ -265,6 +349,10 @@ public final class BridgeServer: @unchecked Sendable {
             let bytesRead = read(client.fileDescriptor, &localBuffer, localBuffer.count)
 
             if bytesRead > 0 {
+                client.lastActivityAt = now()
+                if client.capability == nil, client.lastActivityAt.timeIntervalSince(client.connectedAt) > limits.handshakeTimeout {
+                    removeClient(clientID); return
+                }
                 client.buffer.append(localBuffer, count: bytesRead)
 
                 do {
@@ -272,9 +360,18 @@ public final class BridgeServer: @unchecked Sendable {
                     clients[clientID] = client
 
                     for envelope in envelopes {
-                        if case let .command(command) = envelope {
+                        switch envelope {
+                        case let .authenticate(authentication):
+                            authenticate(authentication, from: clientID)
+                        case let .command(command):
                             handle(command, from: clientID)
+                        default:
+                            recordMalformedRequest(clientID)
                         }
+                        // Authentication mutates the authoritative client
+                        // record; do not overwrite that capability with the
+                        // pre-decode local copy at the end of this read turn.
+                        if let updated = clients[clientID] { client = updated }
                     }
                 } catch {
                     removeClient(clientID)
@@ -300,12 +397,31 @@ public final class BridgeServer: @unchecked Sendable {
     }
 
     private func handle(_ command: BridgeCommand, from clientID: UUID) {
+        guard let client = clients[clientID] else { return }
+        // An old binary gets a useful response before the connection is closed.
+        if client.capability == nil {
+            send(.response(.protocolUpgradeRequired), to: clientID)
+            removeClient(clientID)
+            return
+        }
+        let role = client.capability?.role
+        let capabilityIsCurrent = client.capability.map { $0.protocolVersion == 2 && $0.expiresAt > now() } ?? false
+        guard let role, role.permits(command), capabilityIsCurrent else {
+            send(.response(.denied), to: clientID); return
+        }
+        var started = client
+        started.requestStartedAt = now()
+        clients[clientID] = started
         switch command {
         case let .registerClient(role):
             guard var client = clients[clientID] else {
                 return
             }
-
+            guard let authenticatedRole = client.capability?.role,
+                  authenticatedRole.permits(command) else {
+                send(.response(.denied), to: clientID)
+                return
+            }
             client.role = role
             clients[clientID] = client
             send(.response(.acknowledged), to: clientID)
@@ -468,6 +584,82 @@ public final class BridgeServer: @unchecked Sendable {
 
         case let .processGeminiHook(payload):
             handleGeminiHook(payload, from: clientID)
+        }
+    }
+
+    private func authenticate(_ authentication: BridgeAuthentication, from clientID: UUID) {
+        guard authentication.protocolVersion == 2,
+              authentication.role != .observer,
+              var client = clients[clientID], client.capability == nil,
+              client.peer.uid == getuid() else {
+            send(.response(.denied), to: clientID); removeClient(clientID); return
+        }
+        guard signatureValidator.validates(peer: client.peer, role: authentication.role) else {
+            // A helper whose designated requirement no longer matches is an
+            // explicit credential-lifecycle boundary (for example, after a
+            // replacement or rollback).  Its old bootstrap secret must not
+            // remain usable by a subsequently valid process.
+            try? bootstrapStore.revoke(role: authentication.role)
+            send(.response(.denied), to: clientID); removeClient(clientID); return
+        }
+        guard let secret = try? bootstrapStore.secret(for: authentication.role) else {
+            send(.response(.denied), to: clientID); removeClient(clientID); return
+        }
+        expireUsedClientNonces()
+        guard usedClientNonces[authentication.clientNonce] == nil else {
+            send(.response(.denied), to: clientID); removeClient(clientID); return
+        }
+        let expected = BridgeCrypto.proof(secret: secret, serverNonce: client.serverNonce, clientNonce: authentication.clientNonce, role: authentication.role)
+        guard BridgeCrypto.equals(expected, authentication.proof) else {
+            send(.response(.denied), to: clientID); removeClient(clientID); return
+        }
+        let acceptedAt = now()
+        usedClientNonces[authentication.clientNonce] = acceptedAt.addingTimeInterval(max(limits.handshakeTimeout, limits.capabilityLifetime))
+        let capability = BridgeCapability(protocolVersion: 2, token: UUID().uuidString, role: authentication.role, expiresAt: acceptedAt.addingTimeInterval(limits.capabilityLifetime))
+        client.role = authentication.role
+        client.capability = capability
+        clients[clientID] = client
+        send(.response(.authenticated(capability)), to: clientID)
+    }
+
+    private func recordMalformedRequest(_ clientID: UUID) {
+        guard var client = clients[clientID] else { return }
+        client.malformedRequestCount += 1
+        clients[clientID] = client
+        if client.malformedRequestCount >= limits.maximumMalformedRequests { removeClient(clientID) }
+    }
+
+    private func expireTimedOutClients() {
+        let now = now()
+        expireUsedClientNonces(at: now)
+        for client in clients.values {
+            let limit = client.capability == nil ? limits.handshakeTimeout : limits.idleTimeout
+            if now.timeIntervalSince(client.lastActivityAt) > limit ||
+                client.requestStartedAt.map({ now.timeIntervalSince($0) > limits.requestTimeout }) == true {
+                removeClient(client.id)
+            }
+        }
+    }
+
+    private func expireUsedClientNonces(at date: Date? = nil) {
+        let current = date ?? now()
+        usedClientNonces = usedClientNonces.filter { $0.value > current }
+    }
+
+    func performMaintenanceForTests() {
+        queue.sync { expireTimedOutClients() }
+    }
+
+    func activeConnectionCountForTests() -> Int { queue.sync { clients.count } }
+
+    func activeConnectionCountForTests(peer: BridgePeerIdentity) -> Int {
+        queue.sync { clients.values.filter { $0.peer.uid == peer.uid && $0.peer.pid == peer.pid }.count }
+    }
+
+    func pendingInteractionCountForTests() -> Int {
+        queue.sync {
+            pendingApprovals.count + pendingClaudeInteractions.count
+                + pendingOpenCodeInteractions.count + pendingCursorInteractions.count
         }
     }
 
@@ -2592,6 +2784,10 @@ public final class BridgeServer: @unchecked Sendable {
         do {
             let data = try BridgeCodec.encodeLine(envelope)
             try writeAll(data, to: client.fileDescriptor)
+            if var updated = clients[clientID] {
+                updated.requestStartedAt = nil
+                clients[clientID] = updated
+            }
         } catch {
             removeClient(clientID)
         }
@@ -2686,6 +2882,76 @@ public final class BridgeServer: @unchecked Sendable {
 
         client.readSource.cancel()
     }
+}
+
+struct BridgeFileMetadata: Sendable, Equatable {
+    let mode: mode_t
+    let owner: uid_t
+
+    var isDirectory: Bool { (mode & S_IFMT) == S_IFDIR }
+    var isSymlink: Bool { (mode & S_IFMT) == S_IFLNK }
+    var isSocket: Bool { (mode & S_IFMT) == S_IFSOCK }
+    var isGroupOrWorldWritable: Bool { (mode & 0o022) != 0 }
+}
+
+protocol BridgeFileMetadataProviding: Sendable {
+    /// `nil` means the path does not exist. Any other filesystem failure must
+    /// fail closed rather than being mistaken for an absent path.
+    func metadata(at url: URL) throws -> BridgeFileMetadata?
+}
+
+struct DarwinBridgeFileMetadataProvider: BridgeFileMetadataProviding {
+    func metadata(at url: URL) throws -> BridgeFileMetadata? {
+        var status = stat()
+        guard lstat(url.path, &status) == 0 else {
+            if errno == ENOENT { return nil }
+            throw BridgeTransportError.systemCallFailed("lstat", errno)
+        }
+        return BridgeFileMetadata(mode: status.st_mode, owner: status.st_uid)
+    }
+}
+
+/// Checks every existing component below the canonical filesystem root. Root
+/// owned system directories are trusted only when they are not group/world
+/// writable; application-owned components must belong to the current EUID.
+/// This is deliberately separate from creation so a symlink is never followed
+/// by `createDirectory` before it has been rejected.
+func validatePrivatePathComponents(
+    through url: URL,
+    metadataProvider: any BridgeFileMetadataProviding = DarwinBridgeFileMetadataProvider()
+) throws {
+    // Do not standardize here: Foundation rewrites /private/var to the /var
+    // compatibility symlink, which would either hide or manufacture a path
+    // component after the caller selected its concrete filesystem path.
+    let canonical = url
+    var current = URL(fileURLWithPath: "/", isDirectory: true)
+    for component in canonical.pathComponents.dropFirst() {
+        current.appendPathComponent(component, isDirectory: true)
+        guard let metadata = try metadataProvider.metadata(at: current) else { return }
+        guard !metadata.isSymlink,
+              metadata.isDirectory,
+              !metadata.isGroupOrWorldWritable,
+              metadata.owner == getuid() || metadata.owner == 0 else {
+            throw BridgeTransportError.unauthorized
+        }
+    }
+}
+
+private func preparePrivateBridgeDirectory(_ url: URL) throws {
+    let manager = FileManager.default
+    try validatePrivatePathComponents(through: url)
+    try manager.createDirectory(at: url, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+    guard chmod(url.path, 0o700) == 0 else { throw BridgeTransportError.systemCallFailed("chmod", errno) }
+    try validatePrivatePathComponents(through: url)
+}
+
+private func removeStaleOwnedSocket(at url: URL) throws {
+    guard let metadata = try DarwinBridgeFileMetadataProvider().metadata(at: url) else { return }
+    guard metadata.isSocket, metadata.owner == getuid() else {
+        // Do not touch a suspicious legacy or attacker-planted path.
+        throw BridgeTransportError.unsafeSocketPath(url.path)
+    }
+    guard unlink(url.path) == 0 else { throw BridgeTransportError.systemCallFailed("unlink", errno) }
 }
 
 private extension ClaudeHookEventName {

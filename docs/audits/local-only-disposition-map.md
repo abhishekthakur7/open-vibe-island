@@ -79,7 +79,7 @@ respective security rounds.
 
 | Surface | Current state | Disposition / owner | Migration consequence |
 | --- | --- | --- | --- |
-| Bridge | app-support socket plus legacy `/tmp` socket; `OPEN_ISLAND_SOCKET_PATH` and legacy redirect | replace, Round 6 | one private app-owned socket; old client receives upgrade error; do not unlink non-socket/non-owned paths |
+| Bridge | private app-support socket | retained and hardened, Round 6 | one private app-owned socket; legacy clients receive a protocol-upgrade response where possible and must reinstall the bundled helper |
 | cmux | application-support and `/tmp` discovery paths, `CMUX_SOCKET_PATH` | replace, Round 9 | only a validated local socket may drive fixed focus operation |
 | Persistent state | UserDefaults, three app-support registries, intent data, debug/harness artifacts, external transcripts and SQLite readers | migrate, Round 7 | data matrix, expiry, redaction and Clear History; never recreate discarded content |
 | Hook targets | Claude/Codex/Cursor/OpenCode/Gemini/Kimi and Claude-family fork files, manifests, installed binary and backups | replace, Round 8 | explicit consent; ambiguous/unmanaged targets are untouched; one 0600 verified backup |
@@ -99,7 +99,7 @@ denied after its owning round.
 
 | Class | Allowed after cleanup | Owner / evidence |
 | --- | --- | --- |
-| Local IPC roles | `hook-event-submit`, `local-status-read`, `app-internal-control`; each operation maps to exactly one role | Round 6 peer-signature, nonce, capability, timeout and bound tests |
+| Local IPC roles | `hook-event-submit`, `local-status-read`, `app-internal-control`; each concrete registration target and every operation maps to exactly one role; wire-only `observer` cannot authenticate | Round 6 peer-signature, nonce, capability, timeout and bound tests |
 | Helper | bundled `OpenIslandHooks`, embedded digest plus designated requirement, fixed `--source` enum | Round 6 helper/signature tests |
 | System executables | `/bin/ps`, `/usr/sbin/lsof`, `/usr/bin/osascript`, `/usr/bin/open`, then verified absolute terminal CLI paths | Round 9 exact executable/argument/environment tests |
 | Apple Events | named `terminal-frontmost-probe` and `terminal-focus` templates for the listed terminal bundle IDs; typed local identifiers only | Round 9 adversarial bundle/script input tests |

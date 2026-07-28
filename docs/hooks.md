@@ -1,6 +1,15 @@
 # Hook System
 
-OpenIsland receives hook events from AI agents (Codex / Claude Code / Gemini CLI) via the `OpenIslandHooks` CLI. The CLI forwards payloads to the app over a Unix socket and, when necessary, writes a directive back to stdout so the agent can act on it (e.g. block a tool call).
+OpenIsland receives hook events from AI agents (Codex / Claude Code / Gemini CLI) via the bundled `OpenIslandHooks` CLI. The helper uses only the fixed private socket at `~/Library/Application Support/OpenIsland/bridge.sock`; environment socket redirects and legacy temporary sockets are not supported. Every privileged connection must provide the kernel-reported peer PID, match the bundled helper’s designated code-signature requirement, and authenticate as `hook-event-submit` with role-specific Keychain bootstrap material. A missing PID, unavailable signature, or invalid proof is denied. The helper then forwards payloads to the app and, when necessary, writes a directive back to stdout so the agent can act on it (e.g. block a tool call).
+
+Bridge bootstrap material is Keychain-only: the bridge intentionally creates no
+bootstrap or replay-state files beside `bridge.sock`. Replay and capability
+state exist only in memory for their bounded handshake/capability lifetimes.
+Each Keychain item has an explicit macOS trusted-application ACL for the
+running Open Island app and a fixed, audited OpenIslandHooks helper candidate;
+ACL creation fails closed. `local-status-read` can register only as itself,
+while the app-control capability can register an observer stream and issue
+user-control operations. The wire-only `observer` role is never authenticated.
 
 ## Architecture
 
@@ -8,7 +17,7 @@ OpenIsland receives hook events from AI agents (Codex / Claude Code / Gemini CLI
 Agent (Codex / Claude Code / Gemini CLI)
   │  stdin: JSON payload
   ▼
-OpenIslandHooks CLI  (--source codex | --source claude | --source gemini)
+Bundled OpenIslandHooks CLI  (fixed hook-event-submit role; --source codex | --source claude | --source gemini)
   │  Unix socket
   ▼
 BridgeServer → AppModel → UI

@@ -4,6 +4,7 @@ import Foundation
 
 public final class LocalBridgeClient: @unchecked Sendable {
     private let socketURL: URL
+    private let bootstrapStore: any BridgeBootstrapStore
     private let queue = DispatchQueue(label: "app.openisland.bridge.client")
 
     private var fileDescriptor: Int32 = -1
@@ -11,8 +12,9 @@ public final class LocalBridgeClient: @unchecked Sendable {
     private var continuation: AsyncThrowingStream<AgentEvent, Error>.Continuation?
     private var buffer = Data()
 
-    public init(socketURL: URL = BridgeSocketLocation.defaultURL) {
+    public init(socketURL: URL = BridgeSocketLocation.defaultURL, bootstrapStore: any BridgeBootstrapStore = KeychainBridgeBootstrapStore.shared) {
         self.socketURL = socketURL
+        self.bootstrapStore = bootstrapStore
     }
 
     public func connect() throws -> AsyncThrowingStream<AgentEvent, Error> {
@@ -32,6 +34,13 @@ public final class LocalBridgeClient: @unchecked Sendable {
                     throw BridgeTransportError.systemCallFailed("connect", errno)
                 }
             }
+            let hello = try readHandshakeEnvelope(from: fileDescriptor)
+            guard case let .hello(serverHello) = hello, serverHello.protocolVersion == 2 else { throw BridgeTransportError.protocolUpgradeRequired }
+            let secret = try bootstrapStore.secret(for: .appInternalControl)
+            let nonce = UUID().uuidString
+            let authentication = BridgeAuthentication(role: .appInternalControl, clientNonce: nonce, proof: BridgeCrypto.proof(secret: secret, serverNonce: serverHello.serverNonce, clientNonce: nonce, role: .appInternalControl))
+            try writeAll(try BridgeCodec.encodeLine(.authenticate(authentication)), to: fileDescriptor)
+            guard case .response(.authenticated) = try readHandshakeEnvelope(from: fileDescriptor) else { throw BridgeTransportError.unauthorized }
             try makeSocketNonBlocking(fileDescriptor)
         } catch {
             close(fileDescriptor)
@@ -66,6 +75,16 @@ public final class LocalBridgeClient: @unchecked Sendable {
         readSource.resume()
 
         return stream
+    }
+
+    private func readHandshakeEnvelope(from descriptor: Int32) throws -> BridgeEnvelope {
+        var buffer = Data(); var bytes = [UInt8](repeating: 0, count: 8_192)
+        while true {
+            let count = read(descriptor, &bytes, bytes.count)
+            if count > 0 { buffer.append(bytes, count: count); if let message = try BridgeCodec.decodeLines(from: &buffer).first { return message }; continue }
+            if count == 0 { throw BridgeTransportError.protocolUpgradeRequired }
+            throw BridgeTransportError.systemCallFailed("read", errno)
+        }
     }
 
     public func send(_ command: BridgeCommand) async throws {

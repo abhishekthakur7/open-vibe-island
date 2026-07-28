@@ -27,9 +27,6 @@ DEFAULT_HOLD_TIMEOUT = 0.0
 
 
 def default_socket_path() -> str:
-    path = os.environ.get("OPEN_ISLAND_SOCKET_PATH") or os.environ.get("VIBE_ISLAND_SOCKET_PATH")
-    if path:
-        return path
     return str(Path.home() / "Library/Application Support/OpenIsland/bridge.sock")
 
 
@@ -474,7 +471,7 @@ def main() -> int:
     parser.add_argument(
         "--socket",
         default=default_socket_path(),
-        help="Bridge socket path. Defaults to OPEN_ISLAND_SOCKET_PATH or the stable OpenIsland app-support socket.",
+        help="Bridge socket path. Defaults to the private OpenIsland app-support socket.",
     )
     parser.add_argument(
         "--cwd",
