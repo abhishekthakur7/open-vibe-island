@@ -37,8 +37,8 @@ entries.
 | SwiftPM `OpenIslandCore`, `OpenIslandApp` | retain, Round 4 | offline resolve/build | no data migration |
 | SwiftPM `OpenIslandHooks` | replace, Round 6 | signed fixed-role helper tests | app and helper roll back together |
 | SwiftPM `OpenIslandSetup` and hook managers | replace, Round 8 | consent, symlink, atomic-write and recovery tests | only verified managed backup restored |
-| `ios/OpenIslandMobile.xcodeproj`, `ios/OpenIslandMobile/**`, `ios/OpenIslandWatch/**`, `ios/Shared/**` | remove, Round 2 | Xcode target list and static no-relay/Bonjour audit | existing watch preference becomes inert; no user data deletion |
-| `WatchHTTPEndpoint`, `WatchNotificationRelay`, AppModel watch callbacks/UI/default | remove, Round 2 | macOS tests plus relay/Bonjour absence | leave old default inert |
+| Removed `ios/OpenIslandMobile.xcodeproj`, `ios/OpenIslandMobile/**`, `ios/OpenIslandWatch/**`, `ios/Shared/**` | removed in Round 2 | SwiftPM macOS graph and static no-target/no-relay/Bonjour audit | existing watch preference is inert; no user data deleted |
+| Removed `WatchHTTPEndpoint`, `WatchNotificationRelay`, AppModel watch callbacks/UI/default | removed in Round 2 | macOS tests plus relay/Bonjour absence | leave old default inert |
 | `UpdateChecker`, `appcast.xml`, Sparkle | remove, Round 3 | updater/feed/bundle audit | manual local replacement only |
 | GitHub workflows, release/notary/upload/remote-setup scripts and claims | remove, Round 3 | workflow/release symbol audit | no partial release-path restoration |
 | Remote Swift packages, including resolved transitive `swift-cmark`, `NetworkImage`, `swift-syntax`, `swift-custom-dump`, and `xctest-dynamic-overlay` | remove or vendor, Round 4 | empty-cache network-disabled resolve/build/test | only reviewed path dependency may return |
@@ -96,7 +96,7 @@ Run the following before using this map as a destructive-round gate:
 ```sh
 python3 scripts/verify-local-only-audit.py
 swift package describe
-xcodebuild -list -project ios/OpenIslandMobile.xcodeproj
+swift build --product OpenIslandApp
 ```
 
 The verifier checks machine-readable completeness, all allowlist families,

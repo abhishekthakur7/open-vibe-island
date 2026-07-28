@@ -25,6 +25,22 @@ POWERFUL_PATTERN = re.compile(
     r"HookInstaller|ManagedHooksBinary"
 )
 SOURCE_SUFFIXES = {".swift", ".js", ".py"}
+ROUND_2_REMOVED_PATHS = (
+    "ios",
+    "Sources/OpenIslandCore/WatchHTTPEndpoint.swift",
+    "Sources/OpenIslandCore/WatchNotificationRelay.swift",
+    "Tests/OpenIslandCoreTests/WatchNotificationRelayTests.swift",
+    "docs/watch-notification-design.md",
+    "docs/watch-notification-impl-plan.md",
+)
+ROUND_2_FORBIDDEN_PATTERN = re.compile(
+    r"OpenIslandMobile|OpenIslandWatch|WatchHTTPEndpoint|"
+    r"WatchNotificationRelay|WatchSSEEvent|WatchSessionManager|"
+    r"watch\.notification\.enabled|Bonjour|NSBonjourServices|"
+    r"NSLocalNetworkUsageDescription|IPHONEOS_DEPLOYMENT_TARGET|"
+    r"WATCHOS_DEPLOYMENT_TARGET|iphoneos|watchos"
+)
+ROUND_2_AUDIT_SUFFIXES = {".swift", ".plist", ".pbxproj", ".xcprivacy"}
 
 
 def fail(errors: list[str], message: str) -> None:
@@ -39,6 +55,15 @@ def flattened_paths(inventory: dict[str, list[dict[str, object]]]) -> list[str]:
             if isinstance(entry_paths, list):
                 paths.extend(str(path) for path in entry_paths)
     return paths
+
+
+def inventory_ids(inventory: dict[str, list[dict[str, object]]]) -> set[str]:
+    return {
+        str(entry.get("id"))
+        for entries in inventory.values()
+        for entry in entries
+        if isinstance(entry, dict) and entry.get("id")
+    }
 
 
 def main() -> int:
@@ -82,6 +107,10 @@ def main() -> int:
             fail(errors, f"allowlists.{name} must be a non-empty list")
 
     all_paths = flattened_paths(inventory)
+    all_ids = inventory_ids(inventory)
+    for item_id in ("mobile-xcode-project", "watch-relay"):
+        if item_id not in all_ids:
+            fail(errors, f"required Round 2 removal record missing from inventory: {item_id}")
     inventory_text = "\n".join(all_paths)
     for marker in (
         "Package.swift:OpenIslandCore",
@@ -122,6 +151,29 @@ def main() -> int:
                 continue
             if POWERFUL_PATTERN.search(path.read_text(errors="ignore")) and relative not in known_paths:
                 fail(errors, f"unknown powerful source match: {relative}")
+
+    for relative in ROUND_2_REMOVED_PATHS:
+        if (ROOT / relative).exists():
+            fail(errors, f"removed Round 2 surface remains: {relative}")
+
+    round_2_audit_files = [
+        ROOT / "Package.swift",
+        ROOT / "README.md",
+        ROOT / "PRIVACY_POLICY.md",
+        ROOT / "docs/product.md",
+        ROOT / "docs/architecture.md",
+    ]
+    for directory in (ROOT / "Sources", ROOT / "Tests", ROOT / "config", ROOT / "ios"):
+        if directory.exists():
+            round_2_audit_files.extend(
+                path for path in directory.rglob("*")
+                if path.is_file() and path.suffix in ROUND_2_AUDIT_SUFFIXES
+            )
+    for path in round_2_audit_files:
+        if not path.exists():
+            continue
+        if ROUND_2_FORBIDDEN_PATTERN.search(path.read_text(errors="ignore")):
+            fail(errors, f"forbidden Round 2 mobile/Watch/relay declaration: {path.relative_to(ROOT)}")
 
     if errors:
         print("FAIL: local-only audit gate")

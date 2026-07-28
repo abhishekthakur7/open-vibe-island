@@ -10,7 +10,6 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     case display
     case sound
     case appearance
-    case watch
     case shortcuts
     case lab
     case about
@@ -24,7 +23,6 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .appearance: lang.t("settings.tab.appearance")
         case .display:    lang.t("settings.tab.display")
         case .sound:      lang.t("settings.tab.sound")
-        case .watch:      "Watch"
         case .shortcuts:  lang.t("settings.tab.shortcuts")
         case .lab:        lang.t("settings.tab.lab")
         case .about:      lang.t("settings.tab.about")
@@ -38,7 +36,6 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .appearance: "paintbrush.fill"
         case .display:    "textformat.size"
         case .sound:      "speaker.wave.2.fill"
-        case .watch:      "applewatch"
         case .shortcuts:  "keyboard.fill"
         case .lab:        "flask.fill"
         case .about:      "info.circle.fill"
@@ -52,7 +49,6 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .appearance: .purple
         case .display:    .blue
         case .sound:      .green
-        case .watch:      .cyan
         case .shortcuts:  .gray
         case .lab:        .pink
         case .about:      .blue
@@ -61,9 +57,9 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 
     var section: SettingsSection {
         switch self {
-        case .general, .setup, .display, .sound, .appearance, .watch: .system
-        case .shortcuts, .lab:                                        .advanced
-        case .about:                                                  .app
+        case .general, .setup, .display, .sound, .appearance: .system
+        case .shortcuts, .lab:                                .advanced
+        case .about:                                          .app
         }
     }
 }
@@ -146,8 +142,6 @@ struct SettingsView: View {
                 DisplaySettingsPane(model: model)
             case .sound:
                 SoundSettingsPane(model: model)
-            case .watch:
-                WatchSettingsPane(model: model)
             case .shortcuts:
                 ShortcutsSettingsPane(model: model)
             case .lab:
@@ -1090,85 +1084,6 @@ struct SetupSettingsPane: View {
         let directoryURL = standardizedURL.deletingLastPathComponent()
         if fileManager.fileExists(atPath: directoryURL.path) {
             NSWorkspace.shared.open(directoryURL)
-        }
-    }
-}
-
-// MARK: - Watch
-
-struct WatchSettingsPane: View {
-    var model: AppModel
-
-    @State private var pairingCode: String = "----"
-
-    var body: some View {
-        Form {
-            Section {
-                Toggle("Watch Notifications", isOn: Binding(
-                    get: { model.watchNotificationEnabled },
-                    set: { model.watchNotificationEnabled = $0 }
-                ))
-
-                if model.watchNotificationEnabled {
-                    Text("When enabled, the macOS app broadcasts a Bonjour service that your iPhone can discover on the same WiFi network.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            } header: {
-                Text("General")
-            }
-
-            if model.watchNotificationEnabled {
-                Section("Pairing") {
-                    HStack {
-                        Text("Pairing Code")
-                        Spacer()
-                        Text(pairingCode)
-                            .font(.system(size: 24, weight: .bold, design: .monospaced))
-                            .foregroundStyle(.blue)
-                    }
-
-                    Text("Enter this code on your iPhone app to pair. Code expires after 2 minutes.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    Button("Refresh Code") {
-                        model.watchRelay?.endpoint.regeneratePairingCode()
-                        pairingCode = model.watchPairingCode
-                    }
-                }
-
-                Section("Paired Devices") {
-                    if model.watchConnectedDevices > 0 {
-                        HStack {
-                            Label("iPhone", systemImage: "iphone")
-                            Spacer()
-                            HStack(spacing: 4) {
-                                Circle()
-                                    .fill(.green)
-                                    .frame(width: 7, height: 7)
-                                Text("Connected")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    } else {
-                        HStack {
-                            Label("No devices paired", systemImage: "iphone.slash")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    Button("Revoke All Pairings", role: .destructive) {
-                        model.watchRelay?.endpoint.revokeAllTokens()
-                    }
-                }
-            }
-        }
-        .formStyle(.grouped)
-        .navigationTitle("Watch")
-        .onAppear {
-            pairingCode = model.watchPairingCode
         }
     }
 }
