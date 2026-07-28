@@ -108,6 +108,16 @@ or opportunistic misuse within that boundary.
 
 ### Round 1: Commit The Audit-Derived Disposition Map
 
+**Round 1 audit artifacts**
+
+- [`docs/audits/local-only-disposition-map.md`](../../audits/local-only-disposition-map.md)
+- [`docs/audits/local-only-disposition-map.json`](../../audits/local-only-disposition-map.json)
+- `python3 scripts/verify-local-only-audit.py`
+
+The JSON inventory is the gate's canonical source. The verifier fails closed
+when a current powerful source match, manifest surface, dependency, entitlement,
+or required allowlist family has no recorded disposition.
+
 **Owned files**
 
 - this execution plan;
