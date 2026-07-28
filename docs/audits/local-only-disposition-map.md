@@ -15,6 +15,13 @@ next destructive round.
 The JSON inventory is canonical because it is checked by a static gate. This
 document is the review-oriented map of its decisions.
 
+## Completed cleanup rounds
+
+- Round 2 removed the mobile, Watch, and relay surfaces.
+- Round 3 removed the updater and public distribution automation. Local bundle,
+  archive, and development-signing workflows remain; dependency vendoring and
+  the broader no-network enforcement are still owned by later rounds.
+
 ## Boundary and audit rule
 
 The supported runtime after the cleanup is the macOS `OpenIslandApp` product.
@@ -39,8 +46,8 @@ entries.
 | SwiftPM `OpenIslandSetup` and hook managers | replace, Round 8 | consent, symlink, atomic-write and recovery tests | only verified managed backup restored |
 | Removed `ios/OpenIslandMobile.xcodeproj`, `ios/OpenIslandMobile/**`, `ios/OpenIslandWatch/**`, `ios/Shared/**` | removed in Round 2 | SwiftPM macOS graph and static no-target/no-relay/Bonjour audit | existing watch preference is inert; no user data deleted |
 | Removed `WatchHTTPEndpoint`, `WatchNotificationRelay`, AppModel watch callbacks/UI/default | removed in Round 2 | macOS tests plus relay/Bonjour absence | leave old default inert |
-| `UpdateChecker`, `appcast.xml`, Sparkle | remove, Round 3 | updater/feed/bundle audit | manual local replacement only |
-| GitHub workflows, release/notary/upload/remote-setup scripts and claims | remove, Round 3 | workflow/release symbol audit | no partial release-path restoration |
+| Removed `UpdateChecker`, `appcast.xml`, and Sparkle | removed in Round 3 | updater/feed/bundle audit | manual local replacement only |
+| Removed GitHub workflows, release/notary/upload scripts and claims | removed in Round 3 | workflow/release symbol audit | no partial release-path restoration |
 | Remote Swift packages, including resolved transitive `swift-cmark`, `NetworkImage`, `swift-syntax`, `swift-custom-dump`, and `xctest-dynamic-overlay` | remove or vendor, Round 4 | empty-cache network-disabled resolve/build/test | only reviewed path dependency may return |
 | macOS entitlement network client | remove, Round 5 | entitlement and prohibited-API audit | no rollback to broad network entitlement |
 

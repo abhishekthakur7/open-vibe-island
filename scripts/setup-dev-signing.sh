@@ -3,6 +3,10 @@
 # Create a local self-signed code signing identity for Open Island dev
 # builds. One-time setup; idempotent on re-run.
 #
+# Local-only contract: this script creates and trusts a login-keychain identity
+# for development signing. It does not publish, upload, notarize, generate
+# update metadata, or contact a network service.
+#
 # Why this exists
 # ---------------
 # Without a stable signing identity, `launch-dev-app.sh` ad-hoc signs

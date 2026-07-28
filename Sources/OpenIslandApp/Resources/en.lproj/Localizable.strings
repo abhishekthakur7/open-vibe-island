@@ -229,7 +229,6 @@
 
 /* Settings - About */
 "settings.about.version" = "Version %@";
-"settings.about.checkForUpdates" = "Check for Updates…";
 "settings.about.quitApp" = "Quit Open Island";
 "island.quit.confirmTitle" = "Quit Open Island?";
 "island.quit.confirmAction" = "Quit";

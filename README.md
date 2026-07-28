@@ -29,18 +29,21 @@ Run the full local check suite — lint, docs, tests, and build:
 zsh scripts/harness.sh ci
 ```
 
-## Install to /Applications
+## Build a local app bundle
 
-Package a standalone `Open Island.app` and move it into `/Applications`:
+Create a standalone bundle and ZIP archive for local use:
 
 ```bash
-zsh scripts/package-app.sh                          # builds output/package/Open Island.app
-mv "output/package/Open Island.app" /Applications/  # remove the old copy first when reinstalling
+zsh scripts/package-local-app.sh
 ```
 
-Then launch it from Spotlight or the Applications folder — or drag `output/package/Open Island.app` onto **Applications** in Finder.
+The script writes `output/local-package/Open Island.app` and
+`output/local-package/Open Island.zip`. It builds only from the current
+checkout's locally available dependencies, signs locally (or ad-hoc), and does
+not upload, notarize, publish, or check for updates.
 
-`package-app.sh` builds `OpenIslandApp`, `OpenIslandHooks`, and `OpenIslandSetup` in release mode, embeds the helper binaries in the bundle, and also writes `output/package/Open Island.zip`.
+For a refreshable development bundle at `~/Applications/Open Island Dev.app`,
+run `zsh scripts/launch-dev-app.sh`.
 
 ### "Open Island is damaged and can't be opened"
 
@@ -50,7 +53,8 @@ Gatekeeper shows this for an unsigned local build. Clear the quarantine flag (de
 xattr -dr com.apple.quarantine "/Applications/Open Island.app"
 ```
 
-Or right-click the app → **Open** → **Open** to bypass it once. For signing and notarization, see [docs/packaging.md](docs/packaging.md).
+Or right-click the app → **Open** → **Open** to bypass it once. See
+[docs/packaging.md](docs/packaging.md) for the local packaging contract.
 
 ## On first launch
 

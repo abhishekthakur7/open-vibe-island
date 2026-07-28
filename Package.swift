@@ -28,7 +28,6 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/gonzalezreal/swift-markdown-ui", from: "2.4.1"),
-        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.9.0"),
         // Test-only (AB-327): deterministic theme-conformance snapshot goldens.
         // Linked only into the OpenIslandAppTests target below, so it never
         // ships in any product binary. `Package.resolved` is gitignored repo-wide,
@@ -52,7 +51,6 @@ let package = Package(
             dependencies: [
                 "OpenIslandCore",
                 .product(name: "MarkdownUI", package: "swift-markdown-ui"),
-                .product(name: "Sparkle", package: "Sparkle"),
             ],
             resources: [
                 .process("Resources"),

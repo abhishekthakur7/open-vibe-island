@@ -245,6 +245,6 @@ else
     green "Done! Environment is clean."
     echo ""
     echo "Next steps:"
-    echo "  1. Install Open Island.dmg from the latest release"
+    echo "  1. Build a local bundle with zsh scripts/package-local-app.sh"
     echo "  2. Launch the app — you are now a fresh user"
 fi

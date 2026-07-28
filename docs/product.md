@@ -54,8 +54,7 @@ CLI coding agents are powerful, but they pull attention away from the editor and
 - **i18n** — English and Simplified Chinese
 - **Session discovery** — auto-discover from local transcripts, persist across launches
 - **Process discovery** — match active agents via `ps`/`lsof`
-- **DMG packaging** — signing, notarization, GitHub Actions release workflow
-- **Auto-update** — Sparkle-based automatic updates with appcast
+- **Local packaging** — create a locally signed app bundle and ZIP archive from the current checkout
 
 ## Success Criteria
 

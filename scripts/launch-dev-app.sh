@@ -1,17 +1,13 @@
 #!/bin/zsh
+# Refresh and launch the current checkout's local development bundle.
+#
+# This script never resolves dependencies, uploads, publishes, notarizes, or
+# contacts an update feed. It requires SwiftPM dependencies to be available
+# locally and only signs with the local development identity (or ad-hoc).
 
 set -euo pipefail
 
-
-skip_setup=false
-for arg in "$@"; do
-  case "$arg" in
-    --skip-setup) skip_setup=true ;;
-  esac
-done
-
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
-brand_script="$repo_root/scripts/generate_brand_icons.py"
 brand_icon="$repo_root/Assets/Brand/OpenIsland.icns"
 bundle_dir="$HOME/Applications/Open Island Dev.app"
 plist_path="$bundle_dir/Contents/Info.plist"
@@ -19,21 +15,21 @@ bundle_binary="$bundle_dir/Contents/MacOS/OpenIslandApp"
 
 cd "$repo_root"
 
-swift build -c debug --product OpenIslandApp
-swift build -c debug --product OpenIslandHooks
-swift build -c debug --product OpenIslandSetup
+swift build --disable-automatic-resolution -c debug --product OpenIslandApp
+swift build --disable-automatic-resolution -c debug --product OpenIslandHooks
+swift build --disable-automatic-resolution -c debug --product OpenIslandSetup
 
-build_root="$(swift build -c debug --show-bin-path)"
+build_root="$(swift build --disable-automatic-resolution -c debug --show-bin-path)"
 app_binary="$build_root/OpenIslandApp"
 hooks_binary="$build_root/OpenIslandHooks"
 setup_binary="$build_root/OpenIslandSetup"
 
-python3 "$brand_script"
-if [ "$skip_setup" = false ]; then
-  "$setup_binary" install --hooks-binary "$hooks_binary"
+if [[ ! -f "$brand_icon" ]]; then
+    echo "Missing local app icon: $brand_icon" >&2
+    exit 1
 fi
 
-mkdir -p "$bundle_dir/Contents/MacOS" "$bundle_dir/Contents/Helpers" "$bundle_dir/Contents/Resources" "$bundle_dir/Contents/Frameworks"
+mkdir -p "$bundle_dir/Contents/MacOS" "$bundle_dir/Contents/Helpers" "$bundle_dir/Contents/Resources"
 
 # Kill any running instance before copying so the binary isn't locked.
 osascript -e 'tell application "Open Island Dev" to quit' 2>/dev/null || true
@@ -46,22 +42,12 @@ command cp "$setup_binary" "$bundle_dir/Contents/Helpers/OpenIslandSetup"
 command cp "$brand_icon" "$bundle_dir/Contents/Resources/OpenIsland.icns"
 chmod +x "$bundle_binary" "$bundle_dir/Contents/Helpers/OpenIslandHooks" "$bundle_dir/Contents/Helpers/OpenIslandSetup"
 
-# Add rpath so the binary can find Sparkle.framework in Contents/Frameworks/.
-install_name_tool -add_rpath @loader_path/../Frameworks "$bundle_binary" 2>/dev/null || true
-
 # Copy SPM resource bundle to .app root — SPM's generated Bundle.module accessor
 # searches Bundle.main.bundleURL (the .app root), NOT Contents/Resources/.
 resource_bundle="$build_root/OpenIsland_OpenIslandApp.bundle"
 if [ -d "$resource_bundle" ]; then
     rm -rf "$bundle_dir/OpenIsland_OpenIslandApp.bundle"
     command cp -R "$resource_bundle" "$bundle_dir/"
-fi
-
-# Copy Sparkle.framework for auto-update support.
-sparkle_framework="$repo_root/.build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework"
-if [ -d "$sparkle_framework" ]; then
-    rm -rf "$bundle_dir/Contents/Frameworks/Sparkle.framework"
-    command cp -R "$sparkle_framework" "$bundle_dir/Contents/Frameworks/"
 fi
 
 cat > "$plist_path" <<EOF
@@ -95,10 +81,6 @@ cat > "$plist_path" <<EOF
     <true/>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
-    <key>SUFeedURL</key>
-    <string>https://raw.githubusercontent.com/Octane0411/open-vibe-island/main/appcast.xml</string>
-    <key>SUPublicEDKey</key>
-    <string>3IF8txq9RRNanzE2FNhyGRcwhslTucCcJHpTkpxcgBQ=</string>
 </dict>
 </plist>
 EOF
@@ -107,8 +89,7 @@ EOF
 # causes "unsealed contents" codesign failure. Move it into
 # Contents/Resources/ so signing succeeds. On the developer machine
 # Bundle.module falls back to the hardcoded .build/ path, so
-# localization still works. (Release builds use package-app.sh which
-# has its own resource bundle handling.)
+# localization still works.
 resource_bundle_name="OpenIsland_OpenIslandApp.bundle"
 root_bundle="$bundle_dir/$resource_bundle_name"
 resources_bundle="$bundle_dir/Contents/Resources/$resource_bundle_name"

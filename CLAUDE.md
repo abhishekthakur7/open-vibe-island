@@ -95,13 +95,6 @@ The project is past MVP and welcomes new ideas and creative directions, but the 
 - Claude-only assumptions that weaken the multi-agent model
 - Anything that breaks local-first (remote-server dependencies, cloud-only paths)
 
-## Release
-
-- Triggered by pushing a `v*` tag to `main`. CI builds, signs, notarizes, publishes the DMG. Don't create the GitHub release manually — edit the draft CI produces.
-- Before tagging: `git fetch origin main` and review every merged PR since the last tag. Don't trust memory.
-- Bilingual required (English + 简体中文). Template: `.github/RELEASE_TEMPLATE.md`. Entry format: `- **Category**: English (#PR)\n  中文 (#PR)`. External contributors get `— Thanks @user` on the English line.
-- Title: `Open Island vX.Y.Z — Short English Title`. Installation section bilingual.
-
 ## Conventions
 
 - `SessionState.apply(_:)` is the single source of truth for session mutations.

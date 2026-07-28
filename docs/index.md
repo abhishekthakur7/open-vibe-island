@@ -12,8 +12,7 @@ This index is the repository map for humans and coding agents. Read these files 
 - [docs/architecture.md](./architecture.md) for the runtime shape and transport boundaries
 - [docs/quality.md](./quality.md) for the current harness contract and verification expectations
 - [docs/worktree-workflow.md](./worktree-workflow.md) for the parallel worktree lifecycle
-- [docs/packaging.md](./packaging.md) for the current local app packaging, signing, and notarization path
-- [docs/releasing.md](./releasing.md) for the GitHub release workflow, bilingual notes template, and checklist
+- [docs/packaging.md](./packaging.md) for the current local app packaging and signing path
 
 ## Hooks
 
@@ -32,6 +31,7 @@ This index is the repository map for humans and coding agents. Read these files 
 
 - [docs/exec-plans/README.md](./exec-plans/README.md) for the active and completed execution-plan convention
 - [docs/exec-plans/active/2026-07-29-local-only-security-cleanup.md](./exec-plans/active/2026-07-29-local-only-security-cleanup.md) for the approved macOS-only, no-network security cleanup roadmap
+- [docs/audits/local-only-disposition-map.md](./audits/local-only-disposition-map.md) for the audit gate and completed cleanup-round evidence
 - [docs/references/README.md](./references/README.md) for pinned reference material and external behavior baselines
 
 ## Superpowers Plans
@@ -55,10 +55,6 @@ This index is the repository map for humans and coding agents. Read these files 
 ## Remote / SSH
 
 - [docs/ssh-setup.md](./ssh-setup.md) for connecting Open Island to Claude Code running on remote servers via SSH socket forwarding
-
-## Release
-
-- [docs/release-signing.md](./release-signing.md) for code signing and notarization details
 
 ## Investigations
 

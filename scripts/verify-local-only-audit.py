@@ -41,6 +41,26 @@ ROUND_2_FORBIDDEN_PATTERN = re.compile(
     r"WATCHOS_DEPLOYMENT_TARGET|iphoneos|watchos"
 )
 ROUND_2_AUDIT_SUFFIXES = {".swift", ".plist", ".pbxproj", ".xcprivacy"}
+ROUND_3_REMOVED_PATHS = (
+    ".github/workflows",
+    ".github/RELEASE_TEMPLATE.md",
+    "Sources/OpenIslandApp/UpdateChecker.swift",
+    "appcast.xml",
+    "scripts/package-app.sh",
+    "scripts/update-appcast.sh",
+    "docs/releasing.md",
+    "docs/release-signing.md",
+)
+ROUND_3_FORBIDDEN_PATTERN = re.compile(
+    r"Sparkle|UpdateChecker|SUFeedURL|SUPublicEDKey|appcast|notarytool|"
+    r"\bstapler\b|create-dmg|gh\s+release|Homebrew|homebrew-tap|"
+    r"OPEN_ISLAND_(?:NOTARY|EDDSA|SIGN_IDENTITY)"
+)
+ROUND_3_RETAINED_SCRIPTS = (
+    "scripts/setup-dev-signing.sh",
+    "scripts/launch-dev-app.sh",
+    "scripts/package-local-app.sh",
+)
 
 
 def fail(errors: list[str], message: str) -> None:
@@ -120,7 +140,7 @@ def main() -> int:
         "ios/OpenIslandMobile.xcodeproj",
         "config/packaging/OpenIslandApp.entitlements",
         ".github/workflows",
-        "scripts/package-app.sh",
+        "scripts/package-local-app.sh",
         "scripts/launch-dev-app.sh",
         "README.md",
         "PRIVACY_POLICY.md",
@@ -155,6 +175,42 @@ def main() -> int:
     for relative in ROUND_2_REMOVED_PATHS:
         if (ROOT / relative).exists():
             fail(errors, f"removed Round 2 surface remains: {relative}")
+
+    for relative in ROUND_3_REMOVED_PATHS:
+        if (ROOT / relative).exists():
+            fail(errors, f"removed Round 3 surface remains: {relative}")
+
+    if ".product(name: \"Sparkle\"" in package_text or "sparkle-project/Sparkle" in package_text:
+        fail(errors, "removed Round 3 Sparkle dependency remains in Package.swift")
+
+    round_3_audit_files = [
+        ROOT / "Package.swift",
+        ROOT / "README.md",
+        ROOT / "CLAUDE.md",
+        ROOT / "docs/product.md",
+        ROOT / "docs/architecture.md",
+        ROOT / "docs/index.md",
+    ]
+    round_3_audit_files.extend(
+        path for directory in (ROOT / "Sources", ROOT / "Tests", ROOT / "config")
+        if directory.exists()
+        for path in directory.rglob("*")
+        if path.is_file() and path.suffix in {".swift", ".plist", ".entitlements"}
+    )
+    for path in round_3_audit_files:
+        if ROUND_3_FORBIDDEN_PATTERN.search(path.read_text(errors="ignore")):
+            fail(errors, f"forbidden Round 3 updater/distribution surface: {path.relative_to(ROOT)}")
+
+    for relative in ROUND_3_RETAINED_SCRIPTS:
+        path = ROOT / relative
+        if not path.is_file():
+            fail(errors, f"required Round 3 local workflow is missing: {relative}")
+            continue
+        text = path.read_text(errors="ignore")
+        if "--disable-automatic-resolution" not in text and relative != "scripts/setup-dev-signing.sh":
+            fail(errors, f"local workflow does not disable automatic resolution: {relative}")
+        if ROUND_3_FORBIDDEN_PATTERN.search(text):
+            fail(errors, f"local workflow retains updater/distribution coupling: {relative}")
 
     round_2_audit_files = [
         ROOT / "Package.swift",

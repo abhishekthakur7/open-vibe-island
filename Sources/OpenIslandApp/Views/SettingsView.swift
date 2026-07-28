@@ -130,41 +130,31 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var detailView: some View {
-        ZStack(alignment: .topTrailing) {
-            switch selectedTab {
-            case .general:
-                GeneralSettingsPane(model: model)
-            case .setup:
-                SetupSettingsPane(model: model)
-            case .appearance:
-                AppearanceSettingsPane(model: model)
-            case .display:
-                DisplaySettingsPane(model: model)
-            case .sound:
-                SoundSettingsPane(model: model)
-            case .shortcuts:
-                ShortcutsSettingsPane(model: model)
-            case .lab:
-                // AB-306: the real theme picker now lives in Settings →
-                // Appearance, so the temporary theme switch that AB-299 parked
-                // here is retired. The Lab tab stays as an experimental-features
-                // placeholder for whatever lands next.
-                PlaceholderSettingsPane(
-                    model: model,
-                    titleKey: "settings.tab.lab",
-                    subtitleKey: "settings.lab.comingSoon"
-                )
-            case .about:
-                AboutSettingsPane(model: model)
-            }
-
-            if model.updateChecker.hasUpdate, let version = model.updateChecker.latestVersion {
-                UpdateBanner(version: version, lang: lang) {
-                    model.updateChecker.checkForUpdates()
-                }
-                .padding(.top, 8)
-                .padding(.trailing, 16)
-            }
+        switch selectedTab {
+        case .general:
+            GeneralSettingsPane(model: model)
+        case .setup:
+            SetupSettingsPane(model: model)
+        case .appearance:
+            AppearanceSettingsPane(model: model)
+        case .display:
+            DisplaySettingsPane(model: model)
+        case .sound:
+            SoundSettingsPane(model: model)
+        case .shortcuts:
+            ShortcutsSettingsPane(model: model)
+        case .lab:
+            // AB-306: the real theme picker now lives in Settings →
+            // Appearance, so the temporary theme switch that AB-299 parked
+            // here is retired. The Lab tab stays as an experimental-features
+            // placeholder for whatever lands next.
+            PlaceholderSettingsPane(
+                model: model,
+                titleKey: "settings.tab.lab",
+                subtitleKey: "settings.lab.comingSoon"
+            )
+        case .about:
+            AboutSettingsPane(model: model)
         }
     }
 }
@@ -444,7 +434,6 @@ struct AboutSettingsPane: View {
     var model: AppModel
 
     private var lang: LanguageManager { model.lang }
-    private let primaryInk = Color.white.opacity(0.94)
 
     var body: some View {
         VStack(spacing: 0) {
@@ -471,20 +460,6 @@ struct AboutSettingsPane: View {
             Divider()
 
             Form {
-                Section {
-                    aboutActionRow(
-                        title: lang.t("settings.about.checkForUpdates"),
-                        systemImage: "arrow.triangle.2.circlepath",
-                        tint: primaryInk,
-                        action: {
-                            model.updateChecker.checkForUpdates()
-                        }
-                    )
-                    .disabled(!model.updateChecker.canCheckForUpdates)
-                    .opacity(model.updateChecker.canCheckForUpdates ? 1 : 0.55)
-                    .accessibilityIdentifier("settings.about.checkForUpdates")
-                }
-
                 Section {
                     aboutActionRow(
                         title: lang.t("settings.about.quitApp"),
@@ -1266,35 +1241,5 @@ struct RemoteConnectionSection: View {
             }
             .padding(.vertical, multiline ? 2 : 0)
         }
-    }
-}
-
-// MARK: - Update Banner
-
-struct UpdateBanner: View {
-    let version: String
-    let lang: LanguageManager
-    var onUpdate: () -> Void
-
-    var body: some View {
-        Button(action: onUpdate) {
-            HStack(spacing: 6) {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 13, weight: .semibold))
-                Text(lang.t("settings.update.available", version))
-                    .font(.system(size: 12, weight: .medium))
-                Image(systemName: "arrow.down.to.line")
-                    .font(.system(size: 10, weight: .bold))
-            }
-            .foregroundStyle(.white)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(
-                Capsule()
-                    .fill(Color.blue)
-            )
-        }
-        .buttonStyle(.plain)
-        .shadow(color: .blue.opacity(0.3), radius: 4, y: 2)
     }
 }
