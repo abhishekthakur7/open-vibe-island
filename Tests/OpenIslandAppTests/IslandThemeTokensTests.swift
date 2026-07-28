@@ -29,7 +29,7 @@ struct IslandThemeTokensTests {
     }
 
     /// Literal pin: `surfaceText` has no legacy constant to compare against.
-    /// The MarkdownUI `completionCard` theme spelled this out as `.white` at
+    /// The prior completion-card renderer spelled this out as `.white` at
     /// every foreground and wash until AB-296 pointed it at the tokens, so
     /// this literal is now the only definition.
     @Test

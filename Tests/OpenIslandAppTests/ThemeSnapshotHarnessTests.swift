@@ -11,7 +11,7 @@ import XCTest
 /// own scenarios by calling ``ThemeSnapshotting/assertSnapshot(theme:slot:profile:named:record:file:testName:line:)``.
 ///
 /// XCTest (not swift-testing) on purpose: the fingerprint gate leans on
-/// `XCTSkip`, and `swift-snapshot-testing`'s recorder is XCTest-native — both
+/// `XCTSkip`, and the native recorder is XCTest-based — both
 /// keep the harness robust and CI-green. See the helper's doc and
 /// `docs/quality.md`.
 @MainActor

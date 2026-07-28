@@ -1041,7 +1041,7 @@ writes both buckets** — it was simply never back-ported. Out of scope, but see
 ### Snapshot harness — mechanism confirmed
 - Harness: `Tests/OpenIslandAppTests/Support/ThemeSnapshotting.swift`. Goldens:
   `Tests/OpenIslandAppTests/__Snapshots__/<TestClass>/<method>.<name>.png`. **57 project-owned
-  goldens** (the 400+ PNGs under `.build/…/swift-markdown-ui` are a vendored dependency's fixtures).
+  goldens**; `.build` is generated local build output and is never a snapshot source.
 - **`OPEN_ISLAND_RECORD_SNAPSHOTS=1` is correctly scoped** — `record:` is a **per-call default
   parameter** on `assertSnapshot`, so only tests that actually execute re-record. `--filter`ing to
   one suite genuinely leaves the others untouched. **The playbook's "never blanket re-record" rule

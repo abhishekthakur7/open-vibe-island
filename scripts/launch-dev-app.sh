@@ -2,8 +2,8 @@
 # Refresh and launch the current checkout's local development bundle.
 #
 # This script never resolves dependencies, uploads, publishes, notarizes, or
-# contacts an update feed. It requires SwiftPM dependencies to be available
-# locally and only signs with the local development identity (or ad-hoc).
+# contacts an update feed. The package has no external SwiftPM dependencies and
+# only signs with the local development identity (or ad-hoc).
 
 set -euo pipefail
 

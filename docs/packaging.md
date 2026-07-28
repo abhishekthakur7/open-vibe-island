@@ -14,7 +14,8 @@ zsh scripts/setup-dev-signing.sh
 
 The package and development-launch scripts disable automatic SwiftPM
 resolution. They never upload, publish, notarize, generate update metadata, or
-contact an update feed; dependencies must already be available locally.
+contact an update feed. The package has no external SwiftPM dependencies, so a
+fresh checkout contains the complete dependency graph.
 
 Optional local output overrides are `OPEN_ISLAND_APP_NAME`,
 `OPEN_ISLAND_BUNDLE_ID`, `OPEN_ISLAND_VERSION`, `OPEN_ISLAND_BUILD_NUMBER`,

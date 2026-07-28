@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-@preconcurrency import MarkdownUI
 import OpenIslandCore
 
 /// Annual's session row (AB-317 · annual 3/4, actionable surfaces AB-318 · annual 4/4).
@@ -1294,10 +1293,7 @@ private struct AnnualActionableRowContent: View {
                 }
 
                 AutoHeightScrollView(maxHeight: 160) {
-                    Markdown(completionMessageText)
-                        .markdownTheme(.completionCard(tokens.colors))
-                        .markdownImageProvider(.noNetwork)
-                        .markdownInlineImageProvider(.noNetwork)
+                    LocalMarkdownText(completionMessageText, colors: tokens.colors)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 9)

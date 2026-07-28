@@ -6,7 +6,7 @@
 #   slug    directory name under .claude/worktrees/ (default: branch with / -> -)
 #
 # Seeds the new worktree's .build from the main checkout via APFS clonefile
-# (copy-on-write, ~instant) so agents skip the cold dependency build. Keep the
+# (copy-on-write, ~instant) so agents skip the cold local build. Keep the
 # main checkout's cache warm by running `swift build` there after each merge —
 # building in the main worktree is fine; editing it is not.
 set -euo pipefail

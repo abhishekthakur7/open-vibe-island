@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-@preconcurrency import MarkdownUI
 import OpenIslandCore
 
 /// Halo's session row — the collapsed **void row** (AB-344 · T25 · SPEC §5C/§5D ·
@@ -1118,10 +1117,7 @@ private struct HaloRowContent: View {
                 .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
 
             AutoHeightScrollView(maxHeight: 150) {
-                Markdown(message)
-                    .markdownTheme(.completionCard(tokens.colors))
-                    .markdownImageProvider(.noNetwork)
-                    .markdownInlineImageProvider(.noNetwork)
+                LocalMarkdownText(message, colors: tokens.colors)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         }

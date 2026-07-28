@@ -61,6 +61,10 @@ ROUND_3_RETAINED_SCRIPTS = (
     "scripts/launch-dev-app.sh",
     "scripts/package-local-app.sh",
 )
+REMOTE_SWIFTPM_REFERENCE = re.compile(r"\.package\s*\(\s*url\s*:")
+REMOTE_XCODE_PACKAGE_REFERENCE = re.compile(
+    r"XCRemoteSwiftPackageReference|repositoryURL\s*=|XCRemoteSwiftPackageProductDependency"
+)
 
 
 def fail(errors: list[str], message: str) -> None:
@@ -149,9 +153,21 @@ def main() -> int:
             fail(errors, f"required audited surface missing from inventory: {marker}")
 
     package_text = (ROOT / "Package.swift").read_text()
-    for dependency in re.findall(r'\.package\(url:\s*"([^"]+)"', package_text):
-        if dependency not in inventory_text:
-            fail(errors, f"remote package has no disposition: {dependency}")
+    manifest_paths = [
+        path for path in ROOT.rglob("Package.swift")
+        if ".build" not in path.parts and ".git" not in path.parts
+    ]
+    for path in manifest_paths:
+        if REMOTE_SWIFTPM_REFERENCE.search(path.read_text(errors="ignore")):
+            fail(errors, f"remote SwiftPM package reference is forbidden: {path.relative_to(ROOT)}")
+    for path in ROOT.rglob("project.pbxproj"):
+        if ".build" in path.parts or ".git" in path.parts:
+            continue
+        if REMOTE_XCODE_PACKAGE_REFERENCE.search(path.read_text(errors="ignore")):
+            fail(errors, f"remote Xcode package reference is forbidden: {path.relative_to(ROOT)}")
+    provenance_path = ROOT / "docs/audits/dependency-provenance.md"
+    if not provenance_path.is_file() or "zero third-party SwiftPM dependencies" not in provenance_path.read_text(errors="ignore"):
+        fail(errors, "Round 4 dependency provenance must record the zero-vendor state")
     entitlements = (ROOT / "config/packaging/OpenIslandApp.entitlements").read_text()
     for entitlement in re.findall(r"<key>([^<]+)</key>", entitlements):
         if entitlement not in inventory_text:

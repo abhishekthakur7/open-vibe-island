@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-@preconcurrency import MarkdownUI
 import OpenIslandCore
 
 /// Instrument's session row (AB-309 · AB-310).
@@ -1046,10 +1045,7 @@ private struct InstrumentActionableRowContent: View {
                 }
 
                 AutoHeightScrollView(maxHeight: 160) {
-                    Markdown(completionMessageText)
-                        .markdownTheme(.completionCard(tokens.colors))
-                        .markdownImageProvider(.noNetwork)
-                        .markdownInlineImageProvider(.noNetwork)
+                    LocalMarkdownText(completionMessageText, colors: tokens.colors)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 9)

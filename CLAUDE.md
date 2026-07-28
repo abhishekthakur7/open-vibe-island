@@ -55,12 +55,12 @@ timed 11-ticket run showed ~85% of wall clock inside agent build/test loops, not
 
 - **Worktrees**: create via `zsh scripts/agent-worktree.sh <branch>` — it branches off latest
   `origin/main` and seeds `.build` from the main checkout (APFS clone, ~instant), skipping the
-  ~5-min cold dependency build. Don't hand-roll `git worktree add` for ticket work.
+  ~5-min cold local build. Don't hand-roll `git worktree add` for ticket work.
 - **Warm cache upkeep**: after merging a ticket, run `swift build` in the main checkout so the
   next worktree seeds from a current cache. Building in the main worktree is fine; editing it is not.
 - **Toolchain**: always prefix `swift build` / `swift test` with
   `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` — the CLT default lacks the SwiftUI
-  macro plugin and fails inside the NetworkImage dependency.
+  macro plugin and fails without the full Xcode toolchain.
 - **Test scoping**: during development run `swift test --filter <touched suites>`. Run the FULL
   suite exactly once per ticket — the last agent, before the final commit. Snapshot golden
   record (`OPEN_ISLAND_RECORD_SNAPSHOTS=1`) + verify runs must be `--filter`ed to the snapshot

@@ -19,8 +19,10 @@ document is the review-oriented map of its decisions.
 
 - Round 2 removed the mobile, Watch, and relay surfaces.
 - Round 3 removed the updater and public distribution automation. Local bundle,
-  archive, and development-signing workflows remain; dependency vendoring and
-  the broader no-network enforcement are still owned by later rounds.
+  archive, and development-signing workflows remain.
+- Round 4 removed all remote SwiftPM dependencies. Native Markdown rendering
+  and golden assertions retain the app and test behavior; no vendored package
+  is required. See [`dependency-provenance.md`](dependency-provenance.md).
 
 ## Boundary and audit rule
 
@@ -48,7 +50,7 @@ entries.
 | Removed `WatchHTTPEndpoint`, `WatchNotificationRelay`, AppModel watch callbacks/UI/default | removed in Round 2 | macOS tests plus relay/Bonjour absence | leave old default inert |
 | Removed `UpdateChecker`, `appcast.xml`, and Sparkle | removed in Round 3 | updater/feed/bundle audit | manual local replacement only |
 | Removed GitHub workflows, release/notary/upload scripts and claims | removed in Round 3 | workflow/release symbol audit | no partial release-path restoration |
-| Remote Swift packages, including resolved transitive `swift-cmark`, `NetworkImage`, `swift-syntax`, `swift-custom-dump`, and `xctest-dynamic-overlay` | remove or vendor, Round 4 | empty-cache network-disabled resolve/build/test | only reviewed path dependency may return |
+| Removed remote Swift packages, including transitive `swift-cmark`, `NetworkImage`, `swift-syntax`, `swift-custom-dump`, and `xctest-dynamic-overlay` | removed in Round 4 | empty-cache offline resolve/build/test plus static manifest/Xcode audit | future dependency requires reviewed repository-local source; currently zero vendored dependencies |
 | macOS entitlement network client | remove, Round 5 | entitlement and prohibited-API audit | no rollback to broad network entitlement |
 
 All macOS source, resource, test, fixture, documentation, and design paths are

@@ -1,6 +1,5 @@
 import AppKit
 import OpenIslandCore
-import SnapshotTesting
 import SwiftUI
 import XCTest
 
@@ -11,9 +10,9 @@ import XCTest
 /// The three redesign specs all call for per-scenario golden pins so a theme
 /// slice can prove it renders the shared fixtures the way the mockups say it
 /// should. This helper turns a `(theme, slot, profile, scenario)` tuple into a
-/// pixel image and pins it against a committed golden, using
-/// `pointfreeco/swift-snapshot-testing` for the golden store / diff / record
-/// machinery (test-target-only dependency).
+/// pixel image and pins it against a committed PNG golden. The small comparison
+/// and recording path below is deliberately native AppKit/XCTest so tests do
+/// not resolve a third-party package.
 ///
 /// ## Determinism contract
 ///
@@ -98,9 +97,9 @@ enum ThemeSnapshotting {
     /// Renders `slot` through `theme` at `profile` and pins the pixels against a
     /// committed golden named `name`.
     ///
-    /// The golden lives under `<testFile>/__Snapshots__/<TestFile>/` per
-    /// swift-snapshot-testing convention (pass `file` / `testName` from the call
-    /// site so the path lands next to the test). The comparison is gated on the
+    /// The golden lives under `<testFile>/__Snapshots__/<TestFile>/` per the
+    /// existing project convention (pass `file` / `testName` from the call site
+    /// so the path lands next to the test). The comparison is gated on the
     /// environment fingerprint: on a non-matching macOS build it is skipped, not
     /// failed. Set `record` (or `OPEN_ISLAND_RECORD_SNAPSHOTS=1`) to (re)record.
     ///
@@ -161,12 +160,11 @@ enum ThemeSnapshotting {
             )
         }
 
-        // 3. Delegate the diff / record / attachment machinery to the library.
-        SnapshotTesting.assertSnapshot(
-            of: image,
-            as: .image(precision: 1, perceptualPrecision: 1),
+        // 3. Compare or explicitly record the project-owned PNG golden.
+        try assertPNGGolden(
+            image,
             named: name,
-            record: record ? .all : .never,
+            record: record,
             file: file,
             testName: testName,
             line: line
@@ -176,6 +174,111 @@ enum ThemeSnapshotting {
     /// Whether recording is on for this run (`OPEN_ISLAND_RECORD_SNAPSHOTS=1`).
     static var isRecording: Bool {
         ProcessInfo.processInfo.environment["OPEN_ISLAND_RECORD_SNAPSHOTS"] == "1"
+    }
+
+    // MARK: - Native golden comparison
+
+    private static func assertPNGGolden(
+        _ image: NSImage,
+        named name: String,
+        record: Bool,
+        file: StaticString,
+        testName: String,
+        line: UInt
+    ) throws {
+        let goldenURL = goldenURL(file: file, testName: testName, name: name)
+        let actualPNG = try pngData(for: image)
+
+        if record {
+            try FileManager.default.createDirectory(
+                at: goldenURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try actualPNG.write(to: goldenURL, options: .atomic)
+            return
+        }
+
+        guard FileManager.default.fileExists(atPath: goldenURL.path) else {
+            XCTFail(
+                "Missing snapshot golden: \(goldenURL.path). Set OPEN_ISLAND_RECORD_SNAPSHOTS=1 to record it intentionally.",
+                file: file,
+                line: line
+            )
+            return
+        }
+
+        let expectedPNG = try Data(contentsOf: goldenURL)
+        let actual = try normalizedPixels(from: actualPNG)
+        let expected = try normalizedPixels(from: expectedPNG)
+
+        guard actual.width == expected.width, actual.height == expected.height else {
+            XCTFail(
+                "Snapshot dimensions changed for \(name): expected \(expected.width)x\(expected.height), got \(actual.width)x\(actual.height).",
+                file: file,
+                line: line
+            )
+            return
+        }
+
+        XCTAssertEqual(actual.bytes, expected.bytes, "Snapshot pixels changed for \(name).", file: file, line: line)
+    }
+
+    private static func goldenURL(file: StaticString, testName: String, name: String) -> URL {
+        let fileURL = URL(fileURLWithPath: "\(file)", isDirectory: false)
+        let testFile = fileURL.deletingPathExtension().lastPathComponent
+        let method = testName.split(separator: "(", maxSplits: 1).first.map(String.init) ?? testName
+        return fileURL
+            .deletingLastPathComponent()
+            .appendingPathComponent("__Snapshots__", isDirectory: true)
+            .appendingPathComponent(testFile, isDirectory: true)
+            .appendingPathComponent("\(method).\(name).png", isDirectory: false)
+    }
+
+    private static func pngData(for image: NSImage) throws -> Data {
+        guard let tiff = image.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiff),
+              let png = bitmap.representation(using: .png, properties: [:])
+        else {
+            throw SnapshotError.cannotEncodePNG
+        }
+        return png
+    }
+
+    private static func normalizedPixels(from png: Data) throws -> (width: Int, height: Int, bytes: Data) {
+        guard let bitmap = NSBitmapImageRep(data: png),
+              let cgImage = bitmap.cgImage
+        else {
+            throw SnapshotError.cannotDecodePNG
+        }
+
+        let width = cgImage.width
+        let height = cgImage.height
+        let bytesPerRow = width * 4
+        var pixels = Data(count: bytesPerRow * height)
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let didDraw = pixels.withUnsafeMutableBytes { rawBuffer -> Bool in
+            guard let context = CGContext(
+                data: rawBuffer.baseAddress,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: bytesPerRow,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ) else {
+                return false
+            }
+            context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        guard didDraw else { throw SnapshotError.cannotNormalizePNG }
+        return (width, height, pixels)
+    }
+
+    private enum SnapshotError: Error {
+        case cannotEncodePNG
+        case cannotDecodePNG
+        case cannotNormalizePNG
     }
 
     // MARK: - Rendering

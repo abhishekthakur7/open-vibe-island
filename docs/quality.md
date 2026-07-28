@@ -62,11 +62,10 @@ Deterministic per-scenario golden pins for the themed overlay live in
 (`Tests/OpenIslandAppTests/Support/ThemeSnapshotting.swift`) renders any
 `IslandTheme` slot — the closed pill or the opened session list — to a
 fixed-size dark bitmap and pins it against a committed golden under
-`__Snapshots__/`, using the test-target-only
-`pointfreeco/swift-snapshot-testing` dependency (AB-327). Later theme tickets
-add scenarios by calling
+`__Snapshots__/`, using a small native AppKit/XCTest PNG comparator (AB-327).
+Later theme tickets add scenarios by calling
 `ThemeSnapshotting.assertSnapshot(theme:slot:profile:named:record:…)`; the
-`__Snapshots__` layout follows swift-snapshot-testing convention
+`__Snapshots__` layout follows the existing project convention
 (`__Snapshots__/<TestFile>/<testMethod>.<name>.png`).
 
 ### What each golden pins

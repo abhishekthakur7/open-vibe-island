@@ -3,7 +3,8 @@
 #
 # This script never resolves dependencies, contacts a notary service, uploads,
 # publishes, creates a feed, or mutates a remote service. It requires the
-# checkout's SwiftPM dependencies to be available locally.
+# checkout to contain all of its own source; it has no external SwiftPM
+# dependencies to resolve.
 
 set -euo pipefail
 

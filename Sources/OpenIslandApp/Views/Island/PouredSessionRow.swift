@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-@preconcurrency import MarkdownUI
 import OpenIslandCore
 
 /// Poured Island's session row (AB-302 · AB-303).
@@ -774,10 +773,7 @@ private struct PouredRowContent: View {
                 .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
 
             AutoHeightScrollView(maxHeight: 150) {
-                Markdown(message)
-                    .markdownTheme(.completionCard(tokens.colors))
-                    .markdownImageProvider(.noNetwork)
-                    .markdownInlineImageProvider(.noNetwork)
+                LocalMarkdownText(message, colors: tokens.colors)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         }
@@ -977,10 +973,7 @@ private struct PouredRowContent: View {
 
             if !completionMessageText.trimmedForRow.isEmpty {
                 AutoHeightScrollView(maxHeight: 160) {
-                    Markdown(completionMessageText)
-                        .markdownTheme(.completionCard(tokens.colors))
-                        .markdownImageProvider(.noNetwork)
-                        .markdownInlineImageProvider(.noNetwork)
+                    LocalMarkdownText(completionMessageText, colors: tokens.colors)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                         .padding(.horizontal, 14)
                         .padding(.top, 2)

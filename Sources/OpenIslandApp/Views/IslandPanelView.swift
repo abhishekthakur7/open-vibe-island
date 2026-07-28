@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-@preconcurrency import MarkdownUI
 import OpenIslandCore
 
 /// Measures the full (non-notification) opened surface — header, session
@@ -1984,10 +1983,7 @@ struct IslandSessionRow: View {
                 }
 
                 AutoHeightScrollView(maxHeight: 160) {
-                    Markdown(completionMessageText)
-                        .markdownTheme(.completionCard(tokens.colors))
-                        .markdownImageProvider(.noNetwork)
-                        .markdownInlineImageProvider(.noNetwork)
+                    LocalMarkdownText(completionMessageText, colors: tokens.colors)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 9)
@@ -3611,160 +3607,6 @@ struct IslandActionButtonStyle: ButtonStyle {
 }
 
 // MARK: - Menu bar content (unchanged)
-
-// MARK: - MarkdownUI Theme
-
-extension MarkdownUI.Theme {
-    /// AB-296: a `Theme` is a value, not a `View`, so it can't read the
-    /// environment itself — the colour tokens are handed in by the one call
-    /// site (`IslandSessionRow.completionActionBody`) that renders a
-    /// completion message. Every foreground and wash below was a hardcoded
-    /// `.white`; they now resolve from `surfaceText`.
-    @MainActor static func completionCard(_ colors: IslandColorTokens) -> Theme {
-        Theme()
-        .text {
-            ForegroundColor(colors.surfaceText.opacity(0.88))
-            FontSize(13.5)
-            FontWeight(.medium)
-        }
-        .link {
-            ForegroundColor(.blue)
-        }
-        .strong {
-            FontWeight(.bold)
-        }
-        .code {
-            FontFamilyVariant(.monospaced)
-            FontSize(12.5)
-            ForegroundColor(colors.surfaceText.opacity(0.88))
-            BackgroundColor(colors.surfaceText.opacity(0.08))
-        }
-        .codeBlock { configuration in
-            configuration.label
-                .markdownTextStyle {
-                    FontFamilyVariant(.monospaced)
-                    FontSize(12.5)
-                    ForegroundColor(colors.surfaceText.opacity(0.88))
-                }
-                .padding(10)
-                .background(colors.surfaceText.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-        }
-        .heading1 { configuration in
-            configuration.label
-                .markdownTextStyle {
-                    FontSize(16)
-                    FontWeight(.bold)
-                    ForegroundColor(colors.surfaceText.opacity(0.88))
-                }
-                .markdownMargin(top: 8, bottom: 4)
-        }
-        .heading2 { configuration in
-            configuration.label
-                .markdownTextStyle {
-                    FontSize(15)
-                    FontWeight(.bold)
-                    ForegroundColor(colors.surfaceText.opacity(0.88))
-                }
-                .markdownMargin(top: 8, bottom: 4)
-        }
-        .heading3 { configuration in
-            configuration.label
-                .markdownTextStyle {
-                    FontSize(14)
-                    FontWeight(.semibold)
-                    ForegroundColor(colors.surfaceText.opacity(0.88))
-                }
-                .markdownMargin(top: 6, bottom: 2)
-        }
-        .blockquote { configuration in
-            configuration.label
-                .markdownTextStyle {
-                    ForegroundColor(colors.surfaceText.opacity(0.6))
-                    FontSize(13.5)
-                }
-                .padding(.leading, 12)
-                .overlay(alignment: .leading) {
-                    Rectangle()
-                        .fill(colors.surfaceText.opacity(0.2))
-                        .frame(width: 3)
-                }
-        }
-        .listItem { configuration in
-            configuration.label
-                .markdownMargin(top: 2, bottom: 2)
-        }
-        .table { configuration in
-            configuration.label
-                .fixedSize(horizontal: false, vertical: true)
-                .markdownTableBorderStyle(.init(.allBorders, color: colors.surfaceText.opacity(0.15), strokeStyle: .init(lineWidth: 1)))
-                .markdownTableBackgroundStyle(
-                    .alternatingRows(colors.surfaceText.opacity(0.04), colors.surfaceText.opacity(0.08))
-                )
-                .markdownMargin(top: 4, bottom: 8)
-        }
-        .tableCell { configuration in
-            configuration.label
-                .markdownTextStyle {
-                    if configuration.row == 0 {
-                        FontWeight(.semibold)
-                    }
-                }
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.vertical, 6)
-                .padding(.horizontal, 12)
-                .relativeLineSpacing(.em(0.25))
-        }
-    }
-
-    /// AB-337 · SPEC §4D / §2: the Flight Deck §4D "Last message" rich-text theme.
-    /// Body prose renders on the sans `assistant` role (13pt / 1.55 line height);
-    /// inline `code` is tinted nominal green (`#4AC99E` = `statusRunning`) over a
-    /// recessed well wash (mockup `.assistant code`), so a code span reads as a lit
-    /// value the way every FD value does.
-    @MainActor static func flightDeckAssistant(_ colors: IslandColorTokens) -> Theme {
-        Theme()
-        .text {
-            ForegroundColor(colors.surfaceText.opacity(0.9))
-            FontFamilyVariant(.normal)
-            FontSize(FlightDeckTypography.assistantSize)
-            FontWeight(.regular)
-        }
-        .link {
-            ForegroundColor(colors.statusRunning)
-        }
-        .strong {
-            FontWeight(.semibold)
-        }
-        .code {
-            FontFamilyVariant(.monospaced)
-            FontSize(FlightDeckTypography.assistantSize - 1)
-            ForegroundColor(colors.statusRunning)
-            BackgroundColor(colors.surfaceText.opacity(0.08))
-        }
-        .codeBlock { configuration in
-            configuration.label
-                .markdownTextStyle {
-                    FontFamilyVariant(.monospaced)
-                    FontSize(FlightDeckTypography.assistantSize - 1)
-                    ForegroundColor(colors.surfaceText.opacity(0.88))
-                }
-                .padding(10)
-                .background(colors.surfaceText.opacity(0.06))
-        }
-        .paragraph { configuration in
-            configuration.label
-                // SPEC §2: assistant body is 13pt / 1.55 line height → 0.55em of
-                // relative line spacing over the role's own size.
-                .relativeLineSpacing(.em(FlightDeckTypography.assistantLineHeightMultiple - 1))
-                .markdownMargin(top: 0, bottom: 6)
-        }
-        .listItem { configuration in
-            configuration.label
-                .markdownMargin(top: 2, bottom: 2)
-        }
-    }
-}
 
 /// AB-302: internal (not `private`) so the extracted `PouredSessionRow` slot
 /// component can reuse the same trailing-rail dismiss glyph as Classic's row.
