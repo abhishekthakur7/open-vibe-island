@@ -51,6 +51,10 @@ struct BridgeSecurityTests {
 
         try BridgeCredentialLifecycle.revokeManagedHookCredential(store: store)
         #expect(try store.secret(for: .hookEventSubmit) != replacement)
+
+        let beforeReset = try store.secret(for: .localStatusRead)
+        try BridgeCredentialLifecycle.revokeAllIntegrationCredentials(store: store)
+        #expect(try store.secret(for: .localStatusRead) != beforeReset)
     }
 
     @Test

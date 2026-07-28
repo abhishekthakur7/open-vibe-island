@@ -247,6 +247,22 @@ struct GeneralSettingsPane: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section("Privacy") {
+                Button("Clear History", role: .destructive) {
+                    model.clearHistory()
+                }
+                Text("Deletes Open Island session metadata and eligible local logs. It preserves preferences, hook backups, source transcripts, and enabled integration credentials.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Button("Reset Integrations", role: .destructive) {
+                    model.resetIntegrations()
+                }
+                Text("Removes managed hooks and plugins, clears their setup state, and revokes the local bridge credential. It does not delete history or hook backups.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
         }
         .formStyle(.grouped)
         .navigationTitle(lang.t("settings.tab.general"))

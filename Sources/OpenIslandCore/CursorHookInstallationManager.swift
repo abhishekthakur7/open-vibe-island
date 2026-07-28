@@ -42,6 +42,7 @@ public final class CursorHookInstallationManager: @unchecked Sendable {
 
     public func status(hooksBinaryURL: URL? = nil) throws -> CursorHookInstallationStatus {
         let hooksURL = cursorDirectory.appendingPathComponent("hooks.json")
+        try ManagedHookBackupLifecycle.pruneExpiredBackups(for: hooksURL, fileManager: fileManager)
         let manifestURL = cursorDirectory.appendingPathComponent(CursorHookInstallerManifest.fileName)
         let resolvedBinaryURL = resolvedHooksBinaryURL(explicitURL: hooksBinaryURL)
 
@@ -123,7 +124,9 @@ public final class CursorHookInstallationManager: @unchecked Sendable {
             try fileManager.removeItem(at: manifestURL)
         }
 
-        return try status()
+        let result = try status()
+        try ManagedHookBackupLifecycle.removeBackup(for: hooksURL, fileManager: fileManager)
+        return result
     }
 
     private func loadManifest(at url: URL) throws -> CursorHookInstallerManifest? {
@@ -148,15 +151,6 @@ public final class CursorHookInstallationManager: @unchecked Sendable {
     }
 
     private func backupFile(at url: URL) throws {
-        guard fileManager.fileExists(atPath: url.path) else { return }
-
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        let timestamp = formatter.string(from: .now).replacingOccurrences(of: ":", with: "-")
-        let backupURL = url.appendingPathExtension("backup.\(timestamp)")
-        if fileManager.fileExists(atPath: backupURL.path) {
-            try fileManager.removeItem(at: backupURL)
-        }
-        try fileManager.copyItem(at: url, to: backupURL)
+        try ManagedHookBackupLifecycle.createBackup(of: url, fileManager: fileManager)
     }
 }

@@ -262,6 +262,35 @@ struct ClaudeHooksTests {
     }
 
     @Test
+    func claudeHookManagerRetainsOnePrivateBackupUntilSuccessfulUninstall() throws {
+        let rootURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("open-island-claude-backup-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: rootURL) }
+        let claudeDirectory = rootURL.appendingPathComponent(".claude", isDirectory: true)
+        let managedHooksBinaryURL = rootURL.appendingPathComponent("managed/OpenIslandHooks")
+        let hooksBinaryURL = rootURL.appendingPathComponent("build/OpenIslandHooks")
+        try FileManager.default.createDirectory(at: claudeDirectory, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: hooksBinaryURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("hook".utf8).write(to: hooksBinaryURL)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: hooksBinaryURL.path)
+        let settingsURL = claudeDirectory.appendingPathComponent("settings.json")
+        try Data("{}".utf8).write(to: settingsURL)
+        let manager = ClaudeHookInstallationManager(
+            claudeDirectory: claudeDirectory,
+            managedHooksBinaryURL: managedHooksBinaryURL
+        )
+
+        _ = try manager.install(hooksBinaryURL: hooksBinaryURL)
+        let backupURL = ManagedHookBackupLifecycle.backupURL(for: settingsURL)
+        #expect(FileManager.default.fileExists(atPath: backupURL.path))
+        let attributes = try FileManager.default.attributesOfItem(atPath: backupURL.path)
+        #expect((attributes[.posixPermissions] as? NSNumber)?.intValue == 0o600)
+
+        _ = try manager.uninstall()
+        #expect(!FileManager.default.fileExists(atPath: backupURL.path))
+    }
+
+    @Test
     func claudeTranscriptDiscoveryRecoversRecentSessions() throws {
         let rootURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("open-island-claude-discovery-\(UUID().uuidString)", isDirectory: true)

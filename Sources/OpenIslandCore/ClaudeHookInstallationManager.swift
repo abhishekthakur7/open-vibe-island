@@ -49,6 +49,7 @@ public final class ClaudeHookInstallationManager: @unchecked Sendable {
 
     public func status(hooksBinaryURL: URL? = nil) throws -> ClaudeHookInstallationStatus {
         let settingsURL = claudeDirectory.appendingPathComponent("settings.json")
+        try ManagedHookBackupLifecycle.pruneExpiredBackups(for: settingsURL, fileManager: fileManager)
         let manifestURL = resolvedManifestURL()
         let resolvedHooksBinaryURL = resolvedHooksBinaryURL(explicitURL: hooksBinaryURL)
 
@@ -137,7 +138,9 @@ public final class ClaudeHookInstallationManager: @unchecked Sendable {
             try fileManager.removeItem(at: candidate)
         }
 
-        return try status()
+        let result = try status()
+        try ManagedHookBackupLifecycle.removeBackup(for: settingsURL, fileManager: fileManager)
+        return result
     }
 
     private func loadManifest(at url: URL) throws -> ClaudeHookInstallerManifest? {
@@ -174,17 +177,6 @@ public final class ClaudeHookInstallationManager: @unchecked Sendable {
     }
 
     private func backupFile(at url: URL) throws {
-        guard fileManager.fileExists(atPath: url.path) else {
-            return
-        }
-
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        let timestamp = formatter.string(from: .now).replacingOccurrences(of: ":", with: "-")
-        let backupURL = url.appendingPathExtension("backup.\(timestamp)")
-        if fileManager.fileExists(atPath: backupURL.path) {
-            try fileManager.removeItem(at: backupURL)
-        }
-        try fileManager.copyItem(at: url, to: backupURL)
+        try ManagedHookBackupLifecycle.createBackup(of: url, fileManager: fileManager)
     }
 }

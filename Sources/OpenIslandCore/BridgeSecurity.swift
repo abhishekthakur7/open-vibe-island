@@ -218,6 +218,16 @@ public enum BridgeCredentialLifecycle {
     ) throws {
         try store.revoke(role: .hookEventSubmit)
     }
+
+    /// Reset Integrations revokes every credential that can authorize a bridge
+    /// role. The next enabled integration receives newly generated material.
+    public static func revokeAllIntegrationCredentials(
+        store: any BridgeBootstrapStore = KeychainBridgeBootstrapStore.shared
+    ) throws {
+        for role in BridgeClientRole.allCases where role != .observer {
+            try store.revoke(role: role)
+        }
+    }
 }
 
 public struct BridgePeerIdentity: Equatable, Sendable {

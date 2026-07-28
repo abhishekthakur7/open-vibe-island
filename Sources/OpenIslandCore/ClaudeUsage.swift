@@ -35,6 +35,7 @@ public struct ClaudeUsageSnapshot: Equatable, Codable, Sendable {
 }
 
 public enum ClaudeUsageLoader {
+    public static let cacheRetention: TimeInterval = LocalDataLifecycle.contentRetention
     /// Cache lives under the user-owned OpenIsland app-support directory (same base as the
     /// bridge socket), NOT world-writable /tmp. This prevents a co-resident local user from
     /// pre-planting a symlink at a predictable /tmp path and having the status-line script
@@ -50,8 +51,8 @@ public enum ClaudeUsageLoader {
         URL(fileURLWithPath: "/tmp/vibe-island-rl.json"),
     ]
 
-    public static func load() throws -> ClaudeUsageSnapshot? {
-        try load(from: [defaultCacheURL] + legacyCacheURLs)
+    public static func load(referenceDate: Date = .now) throws -> ClaudeUsageSnapshot? {
+        try load(from: [defaultCacheURL] + legacyCacheURLs, referenceDate: referenceDate)
     }
 
     public static func load(from url: URL) throws -> ClaudeUsageSnapshot? {
@@ -76,13 +77,26 @@ public enum ClaudeUsageLoader {
         return snapshot.isEmpty ? nil : snapshot
     }
 
-    public static func load(from urls: [URL]) throws -> ClaudeUsageSnapshot? {
+    public static func load(from urls: [URL], referenceDate: Date = .now) throws -> ClaudeUsageSnapshot? {
         let candidates = urls
             .filter { FileManager.default.fileExists(atPath: $0.path) }
             .map { url in
                 let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
                 let modificationDate = attributes?[.modificationDate] as? Date ?? .distantPast
                 return (url, modificationDate)
+            }
+            .filter { candidate in
+                let (url, modificationDate) = candidate
+                // Exact-boundary caches remain valid; only older data expires.
+                guard modificationDate >= referenceDate.addingTimeInterval(-cacheRetention) else {
+                    // We delete only the app-owned cache. Legacy files belong
+                    // to an older integration and are merely ignored.
+                    if url.standardizedFileURL == defaultCacheURL.standardizedFileURL {
+                        try? FileManager.default.removeItem(at: url)
+                    }
+                    return false
+                }
+                return true
             }
             .sorted { lhs, rhs in
                 lhs.1 > rhs.1

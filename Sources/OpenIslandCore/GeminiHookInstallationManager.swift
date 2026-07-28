@@ -42,6 +42,7 @@ public final class GeminiHookInstallationManager: @unchecked Sendable {
 
     public func status(hooksBinaryURL: URL? = nil) throws -> GeminiHookInstallationStatus {
         let settingsURL = geminiDirectory.appendingPathComponent("settings.json")
+        try ManagedHookBackupLifecycle.pruneExpiredBackups(for: settingsURL, fileManager: fileManager)
         let manifestURL = geminiDirectory.appendingPathComponent(GeminiHookInstallerManifest.fileName)
         let resolvedBinaryURL = resolvedHooksBinaryURL(explicitURL: hooksBinaryURL)
         let settingsData = try? Data(contentsOf: settingsURL)
@@ -122,7 +123,9 @@ public final class GeminiHookInstallationManager: @unchecked Sendable {
             try fileManager.removeItem(at: manifestURL)
         }
 
-        return try status()
+        let result = try status()
+        try ManagedHookBackupLifecycle.removeBackup(for: settingsURL, fileManager: fileManager)
+        return result
     }
 
     private func loadManifest(at url: URL) throws -> GeminiHookInstallerManifest? {
@@ -147,15 +150,6 @@ public final class GeminiHookInstallationManager: @unchecked Sendable {
     }
 
     private func backupFile(at url: URL) throws {
-        guard fileManager.fileExists(atPath: url.path) else { return }
-
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        let timestamp = formatter.string(from: .now).replacingOccurrences(of: ":", with: "-")
-        let backupURL = url.appendingPathExtension("backup.\(timestamp)")
-        if fileManager.fileExists(atPath: backupURL.path) {
-            try fileManager.removeItem(at: backupURL)
-        }
-        try fileManager.copyItem(at: url, to: backupURL)
+        try ManagedHookBackupLifecycle.createBackup(of: url, fileManager: fileManager)
     }
 }

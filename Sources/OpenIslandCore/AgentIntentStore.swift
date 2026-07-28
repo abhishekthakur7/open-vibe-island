@@ -89,6 +89,16 @@ public final class AgentIntentStore: @unchecked Sendable {
         defaults.integer(forKey: Self.migrationVersionKey)
     }
 
+    /// Clears only managed-integration intent.  General app preferences and
+    /// local history intentionally remain outside this reset boundary.
+    public func resetManagedIntegrationState() {
+        for agent in AgentIdentifier.allCases {
+            defaults.removeObject(forKey: Self.intentKey(for: agent))
+        }
+        defaults.removeObject(forKey: Self.firstLaunchCompletedKey)
+        defaults.removeObject(forKey: Self.migrationVersionKey)
+    }
+
     // MARK: - Keys
 
     private static func intentKey(for agent: AgentIdentifier) -> String {

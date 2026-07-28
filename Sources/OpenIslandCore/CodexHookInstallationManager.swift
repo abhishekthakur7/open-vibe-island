@@ -52,6 +52,8 @@ public final class CodexHookInstallationManager: @unchecked Sendable {
     public func status(hooksBinaryURL: URL? = nil) throws -> CodexHookInstallationStatus {
         let configURL = codexDirectory.appendingPathComponent("config.toml")
         let hooksURL = codexDirectory.appendingPathComponent("hooks.json")
+        try ManagedHookBackupLifecycle.pruneExpiredBackups(for: configURL, fileManager: fileManager)
+        try ManagedHookBackupLifecycle.pruneExpiredBackups(for: hooksURL, fileManager: fileManager)
         let manifestURL = resolvedManifestURL()
         let resolvedHooksBinaryURL = resolvedHooksBinaryURL(explicitURL: hooksBinaryURL)
 
@@ -168,7 +170,10 @@ public final class CodexHookInstallationManager: @unchecked Sendable {
             try fileManager.removeItem(at: candidate)
         }
 
-        return try status()
+        let result = try status()
+        try ManagedHookBackupLifecycle.removeBackup(for: hooksURL, fileManager: fileManager)
+        try ManagedHookBackupLifecycle.removeBackup(for: configURL, fileManager: fileManager)
+        return result
     }
 
     private func loadManifest(at url: URL) throws -> CodexHookInstallerManifest? {
@@ -205,17 +210,6 @@ public final class CodexHookInstallationManager: @unchecked Sendable {
     }
 
     private func backupFile(at url: URL) throws {
-        guard fileManager.fileExists(atPath: url.path) else {
-            return
-        }
-
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        let timestamp = formatter.string(from: .now).replacingOccurrences(of: ":", with: "-")
-        let backupURL = url.appendingPathExtension("backup.\(timestamp)")
-        if fileManager.fileExists(atPath: backupURL.path) {
-            try fileManager.removeItem(at: backupURL)
-        }
-        try fileManager.copyItem(at: url, to: backupURL)
+        try ManagedHookBackupLifecycle.createBackup(of: url, fileManager: fileManager)
     }
 }

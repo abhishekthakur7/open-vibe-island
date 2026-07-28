@@ -243,6 +243,17 @@ final class AppModel {
             await hooks.repairHooksIfNeeded()
         }
     }
+    func clearHistory() {
+        do {
+            try discovery.clearLocalHistory()
+            lastActionMessage = "Cleared Open Island local session history."
+        } catch {
+            lastActionMessage = "Could not clear local history: \(error.localizedDescription)"
+        }
+    }
+    func resetIntegrations() {
+        hooks.resetManagedIntegrations()
+    }
     var isBridgeReady = false
     var lastActionMessage = "Waiting for agent hook events..." {
         didSet {
@@ -1440,6 +1451,7 @@ final class AppModel {
             hooks.refreshOpenCodePluginStatus()
             hooks.refreshCursorHookStatus()
             hooks.refreshClaudeUsageState()
+            discovery.startDataLifecycleMaintenance()
             hooks.startClaudeUsageMonitoringIfNeeded()
             if showCodexUsage {
                 hooks.refreshCodexUsageState()

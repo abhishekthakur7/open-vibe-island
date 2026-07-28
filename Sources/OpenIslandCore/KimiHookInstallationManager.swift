@@ -42,6 +42,7 @@ public final class KimiHookInstallationManager: @unchecked Sendable {
 
     public func status(hooksBinaryURL: URL? = nil) throws -> KimiHookInstallationStatus {
         let configURL = kimiDirectory.appendingPathComponent("config.toml")
+        try ManagedHookBackupLifecycle.pruneExpiredBackups(for: configURL, fileManager: fileManager)
         let manifestURL = kimiDirectory.appendingPathComponent(KimiHookInstallerManifest.fileName)
         let resolvedBinaryURL = resolvedHooksBinaryURL(explicitURL: hooksBinaryURL)
         let configContents = (try? String(contentsOf: configURL, encoding: .utf8))
@@ -127,7 +128,9 @@ public final class KimiHookInstallationManager: @unchecked Sendable {
             try fileManager.removeItem(at: manifestURL)
         }
 
-        return try status()
+        let result = try status()
+        try ManagedHookBackupLifecycle.removeBackup(for: configURL, fileManager: fileManager)
+        return result
     }
 
     private func loadManifest(at url: URL) throws -> KimiHookInstallerManifest? {
@@ -151,15 +154,6 @@ public final class KimiHookInstallationManager: @unchecked Sendable {
     }
 
     private func backupFile(at url: URL) throws {
-        guard fileManager.fileExists(atPath: url.path) else { return }
-
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        let timestamp = formatter.string(from: .now).replacingOccurrences(of: ":", with: "-")
-        let backupURL = url.appendingPathExtension("backup.\(timestamp)")
-        if fileManager.fileExists(atPath: backupURL.path) {
-            try fileManager.removeItem(at: backupURL)
-        }
-        try fileManager.copyItem(at: url, to: backupURL)
+        try ManagedHookBackupLifecycle.createBackup(of: url, fileManager: fileManager)
     }
 }

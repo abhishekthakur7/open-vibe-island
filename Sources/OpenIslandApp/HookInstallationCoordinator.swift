@@ -919,7 +919,7 @@ final class HookInstallationCoordinator {
         statusSetter: @MainActor @escaping (ClaudeHookInstallationStatus) -> Void,
         install: Bool
     ) {
-        guard let hooksBinaryURL else {
+        guard !install || hooksBinaryURL != nil else {
             onStatusMessage?("Could not find a local OpenIslandHooks binary. Build the package first.")
             return
         }
@@ -934,7 +934,7 @@ final class HookInstallationCoordinator {
 
             do {
                 let status = install
-                    ? try manager.install(hooksBinaryURL: hooksBinaryURL)
+                    ? try manager.install(hooksBinaryURL: hooksBinaryURL!)
                     : try manager.uninstall()
                 statusSetter(status)
                 self.intentStore.setIntent(install ? .installed : .uninstalled, for: agent)
@@ -1064,6 +1064,30 @@ final class HookInstallationCoordinator {
     func uninstallClaudeUsageBridge() {
         updateClaudeUsageBridge(userMessage: "Removing Claude usage bridge.", intent: .uninstalled) { manager in
             try manager.uninstall()
+        }
+    }
+
+    /// Explicitly removes managed integration state and its IPC credential.
+    /// This is intentionally separate from Clear History, which preserves
+    /// enabled integrations and their Keychain bootstrap material.
+    func resetManagedIntegrations() {
+        uninstallCodexHooks()
+        uninstallClaudeHooks()
+        uninstallQoderHooks()
+        uninstallQwenCodeHooks()
+        uninstallFactoryHooks()
+        uninstallCodebuddyHooks()
+        uninstallOpenCodePlugin()
+        uninstallCursorHooks()
+        uninstallGeminiHooks()
+        uninstallKimiHooks()
+        uninstallClaudeUsageBridge()
+        intentStore.resetManagedIntegrationState()
+        do {
+            try BridgeCredentialLifecycle.revokeAllIntegrationCredentials()
+            onStatusMessage?("Managed integrations and their bridge credential were reset.")
+        } catch {
+            onStatusMessage?("Managed integrations were reset, but bridge credential revocation failed: \(error.localizedDescription)")
         }
     }
 

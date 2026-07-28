@@ -22,7 +22,7 @@ struct CodexSessionTrackingTests {
                 attachmentState: .attached,
                 summary: "Inspecting rollout watcher.",
                 phase: .running,
-                updatedAt: Date(timeIntervalSince1970: 1_000),
+                updatedAt: .now,
                 jumpTarget: JumpTarget(
                     terminalApp: "Ghostty",
                     workspaceName: "open-island",
@@ -46,11 +46,11 @@ struct CodexSessionTrackingTests {
         try store.save(records)
         let reloaded = try store.load()
 
-        #expect(reloaded == records)
-        #expect(reloaded.first?.session.codexMetadata?.transcriptPath == "/tmp/rollout.jsonl")
-        #expect(reloaded.first?.session.codexMetadata?.initialUserPrompt == "Start by checking the rollout watcher.")
-        #expect(reloaded.first?.session.codexMetadata?.lastUserPrompt == "Check the rollout watcher state.")
-        #expect(reloaded.first?.session.codexMetadata?.model == "gpt-5-codex")
+        #expect(reloaded.count == records.count)
+        #expect(reloaded.first?.sessionID == records.first?.sessionID)
+        #expect(reloaded.first?.codexMetadata == nil)
+        #expect(reloaded.first?.jumpTarget == nil)
+        #expect(reloaded.first?.session.codexMetadata == nil)
         #expect(reloaded.first?.session.origin == .live)
         #expect(reloaded.first?.session.attachmentState == .attached)
     }
@@ -126,6 +126,7 @@ struct CodexSessionTrackingTests {
         }
 
         try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
+        let updatedAt = ISO8601DateFormatter().string(from: .now)
         let legacyJSON = """
         [
           {
@@ -139,7 +140,7 @@ struct CodexSessionTrackingTests {
             "sessionID" : "codex-session-legacy",
             "summary" : "Inspecting rollout watcher.",
             "title" : "Codex · open-island",
-            "updatedAt" : "1970-01-01T00:16:40Z"
+            "updatedAt" : "\(updatedAt)"
           }
         ]
         """
@@ -170,6 +171,7 @@ struct CodexSessionTrackingTests {
         }
 
         try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
+        let updatedAt = ISO8601DateFormatter().string(from: .now)
         let legacyJSON = """
         [
           {
@@ -183,7 +185,7 @@ struct CodexSessionTrackingTests {
             "sessionID" : "codex-session-legacy-model",
             "summary" : "Inspecting rollout watcher.",
             "title" : "Codex · open-island",
-            "updatedAt" : "1970-01-01T00:16:40Z"
+            "updatedAt" : "\(updatedAt)"
           }
         ]
         """
@@ -192,8 +194,7 @@ struct CodexSessionTrackingTests {
         let records = try store.load()
 
         #expect(records.count == 1)
-        #expect(records.first?.session.codexMetadata?.model == nil)
-        #expect(records.first?.session.codexMetadata?.currentTool == "exec_command")
+        #expect(records.first?.session.codexMetadata == nil)
     }
 
     /// F20: an all-nil `CodexSessionMetadata` is still `isEmpty`, but one

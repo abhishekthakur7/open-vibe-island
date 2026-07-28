@@ -151,26 +151,34 @@ public final class ClaudeSessionRegistry: @unchecked Sendable {
         self.fileManager = fileManager
     }
 
-    public func load() throws -> [ClaudeTrackedSessionRecord] {
+    public func load(referenceDate: Date = .now) throws -> [ClaudeTrackedSessionRecord] {
         guard fileManager.fileExists(atPath: fileURL.path) else {
             return []
         }
-
-        let data = try Data(contentsOf: fileURL)
+        if let metadata = try LocalDataLifecycle.readMetadata(from: fileURL, fileManager: fileManager, referenceDate: referenceDate) {
+            let active = metadata.filter { !$0.isExpired(referenceDate: referenceDate) }
+            if active.count != metadata.count {
+                try LocalDataLifecycle.writeMetadata(active, to: fileURL, fileManager: fileManager, referenceDate: referenceDate)
+            }
+            return active.map(Self.record(from:))
+        }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        return try decoder.decode([ClaudeTrackedSessionRecord].self, from: data)
+        let legacy = try decoder.decode([ClaudeTrackedSessionRecord].self, from: Data(contentsOf: fileURL))
+        let metadata = legacy.map(Self.metadata(from:)).filter { !$0.isExpired(referenceDate: referenceDate) }
+        try LocalDataLifecycle.writeMetadata(metadata, to: fileURL, fileManager: fileManager, referenceDate: referenceDate)
+        return metadata.map(Self.record(from:))
     }
 
-    public func save(_ records: [ClaudeTrackedSessionRecord]) throws {
-        let directoryURL = fileURL.deletingLastPathComponent()
-        try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+    public func save(_ records: [ClaudeTrackedSessionRecord], referenceDate: Date = .now) throws {
+        try LocalDataLifecycle.writeMetadata(records.map(Self.metadata(from:)), to: fileURL, fileManager: fileManager, referenceDate: referenceDate)
+    }
 
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+    private static func metadata(from record: ClaudeTrackedSessionRecord) -> PersistedSessionMetadata {
+        PersistedSessionMetadata(sessionID: record.sessionID, origin: record.origin, attachmentState: record.attachmentState, phase: record.phase, outcome: record.outcome, updatedAt: record.updatedAt, firstSeenAt: record.firstSeenAt)
+    }
 
-        let data = try encoder.encode(records)
-        try data.write(to: fileURL, options: .atomic)
+    private static func record(from metadata: PersistedSessionMetadata) -> ClaudeTrackedSessionRecord {
+        ClaudeTrackedSessionRecord(sessionID: metadata.sessionID, title: "Recent Claude session", origin: metadata.origin, attachmentState: metadata.attachmentState, summary: "", phase: metadata.phase, outcome: metadata.outcome, updatedAt: metadata.updatedAt, firstSeenAt: metadata.firstSeenAt)
     }
 }

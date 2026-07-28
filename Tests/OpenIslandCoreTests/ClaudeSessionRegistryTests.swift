@@ -22,7 +22,7 @@ struct ClaudeSessionRegistryTests {
                 attachmentState: .attached,
                 summary: "Working on the registry.",
                 phase: .running,
-                updatedAt: Date(timeIntervalSince1970: 1_000),
+                updatedAt: .now,
                 jumpTarget: JumpTarget(
                     terminalApp: "Ghostty",
                     workspaceName: "open-island",
@@ -46,9 +46,10 @@ struct ClaudeSessionRegistryTests {
         try registry.save(records)
         let reloaded = try registry.load()
 
-        #expect(reloaded == records)
-        #expect(reloaded.first?.session.claudeMetadata?.transcriptPath == "/tmp/claude.jsonl")
-        #expect(reloaded.first?.session.jumpTarget?.terminalTTY == "/dev/ttys002")
+        #expect(reloaded.count == records.count)
+        #expect(reloaded.first?.sessionID == "claude-session-1")
+        #expect(reloaded.first?.session.claudeMetadata == nil)
+        #expect(reloaded.first?.session.jumpTarget == nil)
     }
 
     @Test

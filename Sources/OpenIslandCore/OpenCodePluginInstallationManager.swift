@@ -79,6 +79,7 @@ public final class OpenCodePluginInstallationManager: @unchecked Sendable {
     }
 
     public func status() throws -> OpenCodePluginInstallationStatus {
+        try ManagedHookBackupLifecycle.pruneExpiredBackups(for: configURL, fileManager: fileManager)
         let pluginPresent = fileManager.fileExists(atPath: pluginFileURL.path)
         let registered = isPluginRegistered()
         let manifest = try loadManifest()
@@ -134,7 +135,9 @@ public final class OpenCodePluginInstallationManager: @unchecked Sendable {
             try fileManager.removeItem(at: manifestURL)
         }
 
-        return try status()
+        let result = try status()
+        try ManagedHookBackupLifecycle.removeBackup(for: configURL, fileManager: fileManager)
+        return result
     }
 
     // MARK: - Config.json manipulation
@@ -230,17 +233,6 @@ public final class OpenCodePluginInstallationManager: @unchecked Sendable {
     }
 
     private func backupFile(at url: URL) throws {
-        guard fileManager.fileExists(atPath: url.path) else {
-            return
-        }
-
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        let timestamp = formatter.string(from: .now).replacingOccurrences(of: ":", with: "-")
-        let backupURL = url.appendingPathExtension("backup.\(timestamp)")
-        if fileManager.fileExists(atPath: backupURL.path) {
-            try fileManager.removeItem(at: backupURL)
-        }
-        try fileManager.copyItem(at: url, to: backupURL)
+        try ManagedHookBackupLifecycle.createBackup(of: url, fileManager: fileManager)
     }
 }

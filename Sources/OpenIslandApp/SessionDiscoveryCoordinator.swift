@@ -72,12 +72,47 @@ final class SessionDiscoveryCoordinator {
     @ObservationIgnored
     private var cursorSessionPersistenceTask: Task<Void, Never>?
 
+    @ObservationIgnored
+    private var dataLifecycleMaintenanceTask: Task<Void, Never>?
+
     private var state: SessionState {
         get { stateAccessor?() ?? SessionState() }
         set {
             stateUpdater?(newValue)
             onStateChanged?()
         }
+    }
+
+    /// Deletes only Open Island's persisted local history.  Source transcripts,
+    /// hook backups, preferences, and bridge Keychain credentials are outside
+    /// Clear History's scope.
+    func clearLocalHistory() throws {
+        codexSessionPersistenceTask?.cancel()
+        claudeSessionPersistenceTask?.cancel()
+        openCodeSessionPersistenceTask?.cancel()
+        cursorSessionPersistenceTask?.cancel()
+        try LocalHistoryStore.clear()
+        state = SessionState()
+    }
+
+    /// Loads each app-owned store on launch and every six hours so expiration
+    /// also runs during otherwise idle app sessions.
+    func startDataLifecycleMaintenance() {
+        guard dataLifecycleMaintenanceTask == nil else { return }
+        dataLifecycleMaintenanceTask = Task { [weak self] in
+            while !Task.isCancelled {
+                await self?.pruneExpiredLocalData()
+                try? await Task.sleep(for: .seconds(21_600))
+            }
+        }
+    }
+
+    private func pruneExpiredLocalData() {
+        _ = try? codexSessionStore.load()
+        _ = try? claudeSessionRegistry.load()
+        _ = try? openCodeSessionRegistry.load()
+        _ = try? cursorSessionRegistry.load()
+        _ = try? ClaudeUsageLoader.load()
     }
 
     // MARK: - Startup discovery

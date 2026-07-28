@@ -96,6 +96,7 @@ public final class ClaudeStatusLineInstallationManager: @unchecked Sendable {
 
     public func status() throws -> ClaudeStatusLineInstallationStatus {
         let settingsURL = claudeDirectory.appendingPathComponent("settings.json")
+        try ManagedHookBackupLifecycle.pruneExpiredBackups(for: settingsURL, fileManager: fileManager)
         let scriptURL = scriptDirectoryURL.appendingPathComponent(Self.managedScriptName)
         let legacyScriptURL = legacyScriptDirectoryURL.appendingPathComponent(Self.legacyManagedScriptName)
 
@@ -244,7 +245,9 @@ public final class ClaudeStatusLineInstallationManager: @unchecked Sendable {
             try fileManager.removeItem(at: legacyScriptURL)
         }
 
-        return try status()
+        let result = try status()
+        try ManagedHookBackupLifecycle.removeBackup(for: settingsURL, fileManager: fileManager)
+        return result
     }
 
     private func loadSettings(at url: URL) throws -> [String: Any] {
@@ -273,18 +276,7 @@ public final class ClaudeStatusLineInstallationManager: @unchecked Sendable {
     }
 
     private func backupFile(at url: URL) throws {
-        guard fileManager.fileExists(atPath: url.path) else {
-            return
-        }
-
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        let timestamp = formatter.string(from: .now).replacingOccurrences(of: ":", with: "-")
-        let backupURL = url.appendingPathExtension("backup.\(timestamp)")
-        if fileManager.fileExists(atPath: backupURL.path) {
-            try fileManager.removeItem(at: backupURL)
-        }
-        try fileManager.copyItem(at: url, to: backupURL)
+        try ManagedHookBackupLifecycle.createBackup(of: url, fileManager: fileManager)
     }
 
     /// The wrapper script executed as Claude Code's `statusLine.command` in wrap mode.
@@ -301,7 +293,7 @@ public final class ClaudeStatusLineInstallationManager: @unchecked Sendable {
         # Keep the rate_limits cache line intact — it feeds the notch usage panel.
         input=$(cat)
         _rl=$(printf '%s' "$input" | jq -c '.rate_limits // empty' 2>/dev/null)
-        [ -n "$_rl" ] && { mkdir -p "$(dirname "\#(cacheURL.path)")"; printf '%s\n' "$_rl" > "\#(cacheURL.path)"; }
+        [ -n "$_rl" ] && { umask 077; mkdir -p "$(dirname "\#(cacheURL.path)")"; chmod 700 "$(dirname "\#(cacheURL.path)")"; printf '%s\n' "$_rl" > "\#(cacheURL.path)"; chmod 600 "\#(cacheURL.path)"; }
         printf '%s' "$input" | "\#(delegateScriptURL.path)"
         """#
     }
@@ -328,7 +320,7 @@ public final class ClaudeStatusLineInstallationManager: @unchecked Sendable {
         # Notch panel. Removing it will degrade the usage display.
         input=$(cat)
         _rl=$(echo "$input" | jq -c '.rate_limits // empty' 2>/dev/null)
-        [ -n "$_rl" ] && { mkdir -p "$(dirname "\#(cacheURL.path)")"; printf '%s\n' "$_rl" > "\#(cacheURL.path)"; }
+        [ -n "$_rl" ] && { umask 077; mkdir -p "$(dirname "\#(cacheURL.path)")"; chmod 700 "$(dirname "\#(cacheURL.path)")"; printf '%s\n' "$_rl" > "\#(cacheURL.path)"; chmod 600 "\#(cacheURL.path)"; }
         echo "$input" | jq -r '"[\(.model.display_name // "Claude")] \(.context_window.used_percentage // 0)% context"' 2>/dev/null
         """#
     }

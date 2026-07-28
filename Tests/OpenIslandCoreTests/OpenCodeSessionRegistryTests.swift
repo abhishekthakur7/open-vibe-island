@@ -6,13 +6,13 @@ final class OpenCodeSessionRegistryTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        tempFileURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-            .appendingPathExtension("json")
+        let directoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("open-island-opencode-registry-\(UUID().uuidString)", isDirectory: true)
+        tempFileURL = directoryURL.appendingPathComponent("registry.json")
     }
 
     override func tearDown() {
-        try? FileManager.default.removeItem(at: tempFileURL)
+        try? FileManager.default.removeItem(at: tempFileURL.deletingLastPathComponent())
         super.tearDown()
     }
 
@@ -39,7 +39,7 @@ final class OpenCodeSessionRegistryTests: XCTestCase {
 
         XCTAssertEqual(loaded.count, 1)
         XCTAssertEqual(loaded[0].sessionID, "opencode-1")
-        XCTAssertEqual(loaded[0].openCodeMetadata?.initialUserPrompt, "Hello")
+        XCTAssertNil(loaded[0].openCodeMetadata)
     }
 
     func testLoadEmpty() throws {

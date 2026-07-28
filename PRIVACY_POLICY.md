@@ -19,7 +19,14 @@ The App does **not** collect, store, or transmit any personal data to external s
 
 ### Local Storage
 
-The App stores minimal preferences (for example, notification settings) in local UserDefaults. This data is never transmitted externally.
+The App stores feature preferences in local UserDefaults and minimal local
+session metadata for up to 30 days. Session metadata is protected in an
+app-owned directory and excludes transcript text, prompts, command bodies,
+terminal paths, and credentials. Clear History deletes that metadata and
+eligible local caches; it does not delete source-agent transcripts, preferences,
+hook backups, or enabled integration credentials. Reset Integrations removes
+managed integrations and revokes their local bridge credential. The full field,
+retention, and deletion matrix is in [docs/data-lifecycle.md](docs/data-lifecycle.md).
 
 ### Contact
 
@@ -45,7 +52,11 @@ Open Island（"本应用"）是一款 AI 编程助手的配套应用。我们致
 
 ### 本地存储
 
-本应用在本地 UserDefaults 中存储少量偏好设置（如通知设置）。这些数据不会被传输到外部。
+本应用在本地 UserDefaults 中存储功能偏好设置，并最多保存 30 天的最小化会话元数据。
+会话元数据保存在应用专用目录中，不包含对话文本、提示词、命令内容、终端路径或凭据。
+“清除历史记录”会删除这些元数据和符合条件的本地缓存，但不会删除源代理转录、偏好、hook
+备份或已启用集成的凭据。“重置集成”会移除受管理的集成并撤销本地 bridge 凭据。完整的字段、
+保留和删除矩阵见 [docs/data-lifecycle.md](docs/data-lifecycle.md)。
 
 ### 联系方式
 

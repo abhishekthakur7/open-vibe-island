@@ -98,6 +98,20 @@ struct AgentIntentStoreTests {
         #expect(reopened.firstLaunchCompleted == true)
     }
 
+    @Test
+    func resetManagedIntegrationStateDoesNotRequireHistoryDeletion() {
+        let (store, defaults) = makeStore()
+        store.setIntent(.installed, for: .codex)
+        store.firstLaunchCompleted = true
+        store.migrateFromLegacyStateIfNeeded { _ in false }
+
+        store.resetManagedIntegrationState()
+
+        #expect(store.intent(for: .codex) == .untouched)
+        #expect(store.firstLaunchCompleted == false)
+        #expect(defaults.object(forKey: "agentIntentMigrationVersion") == nil)
+    }
+
     // MARK: - Helpers
 
     /// Creates a store backed by an ephemeral UserDefaults suite so each test

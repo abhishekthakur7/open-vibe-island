@@ -218,27 +218,39 @@ public final class CodexSessionStore: @unchecked Sendable {
         self.fileManager = fileManager
     }
 
-    public func load() throws -> [CodexTrackedSessionRecord] {
+    public func load(referenceDate: Date = .now) throws -> [CodexTrackedSessionRecord] {
         guard fileManager.fileExists(atPath: fileURL.path) else {
             return []
         }
+        if let metadata = try LocalDataLifecycle.readMetadata(from: fileURL, fileManager: fileManager, referenceDate: referenceDate) {
+            let active = metadata.filter { !$0.isExpired(referenceDate: referenceDate) }
+            if active.count != metadata.count {
+                try LocalDataLifecycle.writeMetadata(active, to: fileURL, fileManager: fileManager, referenceDate: referenceDate)
+            }
+            return active.map(Self.record(from:))
+        }
 
-        let data = try Data(contentsOf: fileURL)
+        // Legacy files can contain transcript-derived content.  Read only the
+        // fields needed for local session recovery, immediately rewrite the
+        // file with the minimized schema, and never reconstruct the content.
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        return try decoder.decode([CodexTrackedSessionRecord].self, from: data)
+        let legacy = try decoder.decode([CodexTrackedSessionRecord].self, from: Data(contentsOf: fileURL))
+        let metadata = legacy.map(Self.metadata(from:)).filter { !$0.isExpired(referenceDate: referenceDate) }
+        try LocalDataLifecycle.writeMetadata(metadata, to: fileURL, fileManager: fileManager, referenceDate: referenceDate)
+        return metadata.map(Self.record(from:))
     }
 
-    public func save(_ records: [CodexTrackedSessionRecord]) throws {
-        let directoryURL = fileURL.deletingLastPathComponent()
-        try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+    public func save(_ records: [CodexTrackedSessionRecord], referenceDate: Date = .now) throws {
+        try LocalDataLifecycle.writeMetadata(records.map(Self.metadata(from:)), to: fileURL, fileManager: fileManager, referenceDate: referenceDate)
+    }
 
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+    private static func metadata(from record: CodexTrackedSessionRecord) -> PersistedSessionMetadata {
+        PersistedSessionMetadata(sessionID: record.sessionID, origin: record.origin, attachmentState: record.attachmentState, phase: record.phase, outcome: record.outcome, updatedAt: record.updatedAt)
+    }
 
-        let data = try encoder.encode(records)
-        try data.write(to: fileURL, options: .atomic)
+    private static func record(from metadata: PersistedSessionMetadata) -> CodexTrackedSessionRecord {
+        CodexTrackedSessionRecord(sessionID: metadata.sessionID, title: "Recent Codex session", origin: metadata.origin, attachmentState: metadata.attachmentState, summary: "", phase: metadata.phase, outcome: metadata.outcome, updatedAt: metadata.updatedAt)
     }
 }
 

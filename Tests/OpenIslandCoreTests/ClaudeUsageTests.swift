@@ -37,6 +37,29 @@ struct ClaudeUsageTests {
     }
 
     @Test
+    func claudeUsageCacheRetentionUsesInjectedReferenceDateAndStrictBoundary() throws {
+        let rootURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("open-island-claude-usage-boundary-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: rootURL) }
+        try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
+        let cacheURL = rootURL.appendingPathComponent("rate-limits.json")
+        try "{ \"five_hour\": { \"used_percentage\": 42 } }".write(to: cacheURL, atomically: true, encoding: .utf8)
+        let referenceDate = Date(timeIntervalSince1970: 1_800_000_000)
+
+        try FileManager.default.setAttributes(
+            [.modificationDate: referenceDate.addingTimeInterval(-ClaudeUsageLoader.cacheRetention)],
+            ofItemAtPath: cacheURL.path
+        )
+        #expect(try ClaudeUsageLoader.load(from: [cacheURL], referenceDate: referenceDate)?.fiveHour?.roundedUsedPercentage == 42)
+
+        try FileManager.default.setAttributes(
+            [.modificationDate: referenceDate.addingTimeInterval(-ClaudeUsageLoader.cacheRetention - 1)],
+            ofItemAtPath: cacheURL.path
+        )
+        #expect(try ClaudeUsageLoader.load(from: [cacheURL], referenceDate: referenceDate) == nil)
+    }
+
+    @Test
     func claudeUsageLoaderParsesUtilizationPayloadWithISO8601ResetDates() throws {
         let rootURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("open-island-claude-usage-iso-\(UUID().uuidString)", isDirectory: true)
@@ -108,7 +131,10 @@ struct ClaudeUsageTests {
             ofItemAtPath: currentCacheURL.path
         )
 
-        let snapshot = try ClaudeUsageLoader.load(from: [legacyCacheURL, currentCacheURL])
+        let snapshot = try ClaudeUsageLoader.load(
+            from: [legacyCacheURL, currentCacheURL],
+            referenceDate: Date(timeIntervalSince1970: 1_760_000_200)
+        )
 
         #expect(snapshot?.fiveHour?.roundedUsedPercentage == 77)
     }
