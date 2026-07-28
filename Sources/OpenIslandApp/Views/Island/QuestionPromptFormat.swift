@@ -84,22 +84,54 @@ enum QuestionPromptFormat {
     /// beyond the ninth are mouse-only, so the hint never advertises them.
     static let maxKeyboardDigit = 9
 
+    /// Whether a page's option digits are numbered as one contiguous run
+    /// starting at 1 — the gate `IslandPanelView.keyboardHintCaption` checks
+    /// before calling `keyboardHint` below (overlay remediation Phase 2C).
+    ///
+    /// `true` when the theme has opted into D1 pagination at all (`pageSize
+    /// != nil`): Poured/Halo's one-question pages and Flight Deck's
+    /// all-questions page (`IslandTheme.questionPageSize`'s doc) both number
+    /// contiguously, because `IslandPanelView.currentPageDigitBases` computes
+    /// a running digit offset whenever pagination is engaged, regardless of
+    /// how many questions land on the page (F1a). Also `true`, trivially,
+    /// when the page holds exactly one question even without pagination —
+    /// there is nothing for its digits to restart against.
+    ///
+    /// `false` only for Classic/Annual/Instrument's unpaginated (`pageSize ==
+    /// nil`) *multi*-question prompts, where `currentPageDigitBases` returns
+    /// every zero and each question's options restart at 1 — a "1–N" hint
+    /// there would describe a range that doesn't exist.
+    ///
+    /// Takes the two already-resolved values (`theme.questionPageSize`,
+    /// `currentPage.count`) rather than the theme/view themselves, so it
+    /// stays a plain pure function like the rest of this file.
+    static func pageDigitsAreContiguous(pageSize: Int?, pageQuestionCount: Int) -> Bool {
+        pageSize != nil || pageQuestionCount == 1
+    }
+
     /// The keyboard-hint caption, e.g. `1–3 select · Enter submits · Esc closes`.
     ///
-    /// Rendered only for *single*-question prompts — those are the only prompts
-    /// whose digits/Enter are registered with `OverlayUICoordinator`; a
-    /// multi-question prompt is mouse-driven and returns `nil` (no caption).
+    /// `optionCount` is the number of options numbered on the *current page*
+    /// as one contiguous digit run starting at 1 (see `pageDigitsAreContiguous`
+    /// above) — one question's options on a one-question page (Poured, Halo),
+    /// or every stacked question's options summed on a page that holds them
+    /// all with a running digit offset (Flight Deck: 3 + 4 = 7 for the
+    /// conformance fixture). This function only formats N contiguous options;
+    /// it neither knows nor needs to know how many *questions* contributed to
+    /// that count — callers are expected to have already checked
+    /// `pageDigitsAreContiguous` (and that a keyboard coordinator is even
+    /// registered) before calling it. `IslandPanelView.keyboardHintCaption`
+    /// is the one caller.
     ///
-    /// The digit range's upper bound is the option count, capped at
+    /// The digit range's upper bound is `optionCount`, capped at
     /// `maxKeyboardDigit` (only 1…9 are keyboard-selectable). A single option
-    /// renders just `1` rather than a range; a question with no options returns
-    /// `nil` (there is nothing to number).
+    /// renders just `1` rather than a range; zero options returns `nil`
+    /// (there is nothing to number).
     static func keyboardHint(
         optionCount: Int,
-        questionCount: Int,
         lang: LanguageManager = .shared
     ) -> String? {
-        guard questionCount == 1, optionCount > 0 else {
+        guard optionCount > 0 else {
             return nil
         }
 

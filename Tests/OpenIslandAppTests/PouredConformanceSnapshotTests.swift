@@ -26,6 +26,7 @@ final class PouredConformanceSnapshotTests: XCTestCase {
     private func assertBothProfiles(
         _ scenario: AppearancePreviewScenario,
         named name: String,
+        preselectsQuestionSelection: Bool = false,
         file: StaticString = #filePath,
         testName: String = #function,
         line: UInt = #line
@@ -37,6 +38,7 @@ final class PouredConformanceSnapshotTests: XCTestCase {
                 slot: .sessionList(scenario: scenario),
                 profile: profile,
                 named: "\(name)-\(suffix)",
+                preselectsQuestionSelection: preselectsQuestionSelection,
                 file: file,
                 testName: testName,
                 line: line
@@ -68,6 +70,26 @@ final class PouredConformanceSnapshotTests: XCTestCase {
     /// F — the question hero: gold `.q-hero` wash, header chip, selection ring.
     func testQuestionHero() throws {
         try assertBothProfiles(.questionMulti, named: "poured-F-question")
+    }
+
+    /// F, Submit enabled (overlay remediation Phase 2B · F1 Task 2): the same
+    /// question hero with `\.islandQuestionPromptPreselectsFirstOption`
+    /// injected, so page 1's question starts pre-selected and `canSubmit` is
+    /// `true` at capture time — the only way to photograph the *enabled*
+    /// amber-gradient Submit pill (`PouredApprovalButtonLabel`'s Submit
+    /// fill), since a real question card always starts from an empty
+    /// selection. D1 pagination means this also exercises the non-final-page
+    /// "Submit & next" label (`nonFinalPageLabel`) rather than the
+    /// final-page "Submit" `testQuestionHero` above pins. A new scenario,
+    /// not a redefinition — `testQuestionHero` keeps the *disabled* Submit's
+    /// own regression coverage (mirrors Phase 1's `subagentsExpanded`
+    /// alongside `subagentsCard`): both states matter.
+    func testQuestionHeroSubmitEnabled() throws {
+        try assertBothProfiles(
+            .questionMulti,
+            named: "poured-F-question-submit-enabled",
+            preselectsQuestionSelection: true
+        )
     }
 
     /// H — the completion body: Success badge + tabular duration + rich prose +

@@ -63,6 +63,23 @@ final class ThemeSnapshotHarnessTests: XCTestCase {
         )
     }
 
+    /// Flight Deck · permission command · the same **MASTER WARNING** annunciator
+    /// at the narrower top-bar profile (520pt / 504pt after insets). Overlay
+    /// remediation Phase 4 coverage-closure: F2.3 (placard 10.5→12pt / `.heavy`
+    /// / tracking 1.44 / new `.lineLimit(1)` + `.fixedSize`) only had a notch
+    /// golden — this is a layout-pressure transfer (the placard now refuses to
+    /// shrink while the kicker's `minimumScaleFactor` dropped 0.85→0.6), so the
+    /// narrower profile is the one that could actually expose truncation or a
+    /// collision with the `HELD` readout in the trailing slot.
+    func testFlightDeckPermissionMasterWarningTopBar() throws {
+        try ThemeSnapshotting.assertSnapshot(
+            theme: FlightDeckTheme(),
+            slot: .sessionList(scenario: .permissionCommand),
+            profile: .topBar,
+            named: "flightdeck-permission-master-warning-topbar"
+        )
+    }
+
     /// Flight Deck · multi-question · the amber **MASTER CAUTION** annunciator
     /// (placard + `QUESTION` kicker + steady amber beacon) wrapping the shared
     /// `StructuredQuestionPromptView` interior. English only.
@@ -72,6 +89,45 @@ final class ThemeSnapshotHarnessTests: XCTestCase {
             slot: .sessionList(scenario: .questionMulti),
             profile: .notch,
             named: "flightdeck-question-master-caution-notch"
+        )
+    }
+
+    /// Flight Deck · multi-question · the same **MASTER CAUTION** annunciator at
+    /// the narrower top-bar profile (520pt). Same F2.3 coverage-closure rationale
+    /// as the permission top-bar golden above — "QUESTION" is the other kicker
+    /// string the layout-pressure transfer could truncate or shrink.
+    func testFlightDeckQuestionMasterCautionTopBar() throws {
+        try ThemeSnapshotting.assertSnapshot(
+            theme: FlightDeckTheme(),
+            slot: .sessionList(scenario: .questionMulti),
+            profile: .topBar,
+            named: "flightdeck-question-master-caution-topbar"
+        )
+    }
+
+    /// Flight Deck · multi-question · Submit enabled (overlay remediation
+    /// Phase 2B · F1 Task 2): the same MASTER CAUTION card with
+    /// `\.islandQuestionPromptPreselectsFirstOption` injected, so every
+    /// question's first option starts pre-selected and `canSubmit` is `true`
+    /// at capture time — the only way to photograph the *enabled*
+    /// `FlightDeckApprovalButton` `.tinted` chip (the translucent amber
+    /// chamfered chip 2A2 built), since a real question card always starts
+    /// from an empty selection. Flight Deck's page holds every question
+    /// (`questionPageSize == Int.max`), so this stays on its one and only
+    /// page and the label reads the same final-page "Submit" as the disabled
+    /// golden above — pagination doesn't relabel this theme's button, only
+    /// its keyboard model (continuous 1-7). Notch only, matching the
+    /// disabled golden above (no FD topbar question golden exists). A new
+    /// scenario, not a redefinition — `testFlightDeckQuestionMasterCautionNotch`
+    /// keeps the *disabled* Submit's own regression coverage (mirrors Phase
+    /// 1's `subagentsExpanded` alongside `subagentsCard`): both states matter.
+    func testFlightDeckQuestionMasterCautionSubmitEnabledNotch() throws {
+        try ThemeSnapshotting.assertSnapshot(
+            theme: FlightDeckTheme(),
+            slot: .sessionList(scenario: .questionMulti),
+            profile: .notch,
+            named: "flightdeck-question-master-caution-submit-enabled-notch",
+            preselectsQuestionSelection: true
         )
     }
 

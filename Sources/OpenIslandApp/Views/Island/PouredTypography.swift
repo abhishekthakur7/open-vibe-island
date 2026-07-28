@@ -106,7 +106,6 @@ enum PouredType {
         case activityVerb            // .act .live — the live verb span
         case branchDisambiguator     // .disamb — duplicate-workspace branch (mono)
         case metaChip                // .chip — meta chip label
-        case monoChip                // .chip.mono — command-shaped chip (mono)
         case age                     // .age  — right-aligned age (tabular)
         case sectionHeader           // .grp  — grouped section header
         case listOverviewTitle       // list overview / summary title
@@ -126,6 +125,7 @@ enum PouredType {
 
         // Permission / question hero
         case keycap                  // .kc kbd — keycap hint
+        case heroButtonLabel         // hero-frame approval / submit CTA label
         case heroTitle               // .ht   — permission hero title
         case heroSubtitle            // .hs   — permission hero subtitle
         case questionText            // .q-text — the question prompt
@@ -180,7 +180,6 @@ enum PouredType {
         .activityVerb:          Spec(size: 12.5, weight: 550, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
         .branchDisambiguator:   Spec(size: 11,   weight: 400, trackingEm: 0,     isMono: true,  isTabular: false, isUppercase: false),
         .metaChip:              Spec(size: 10.5, weight: 500, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
-        .monoChip:              Spec(size: 10,   weight: 500, trackingEm: 0,     isMono: true,  isTabular: false, isUppercase: false),
         .age:                   Spec(size: 11,   weight: 500, trackingEm: 0,     isMono: false, isTabular: true,  isUppercase: false),
         .sectionHeader:         Spec(size: 10.5, weight: 650, trackingEm: 0.09,  isMono: false, isTabular: false, isUppercase: true),
         .listOverviewTitle:     Spec(size: 10.5, weight: 650, trackingEm: 0.16,  isMono: false, isTabular: false, isUppercase: true),
@@ -198,6 +197,7 @@ enum PouredType {
         .diff:                  Spec(size: 11.5, weight: 400, trackingEm: 0,     isMono: true,  isTabular: false, isUppercase: false),
 
         .keycap:                Spec(size: 10,   weight: 600, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
+        .heroButtonLabel:       Spec(size: 13,   weight: 600, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
         .heroTitle:             Spec(size: 14,   weight: 640, trackingEm: -0.01, isMono: false, isTabular: false, isUppercase: false),
         .heroSubtitle:          Spec(size: 11,   weight: 400, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
         .questionText:          Spec(size: 14.5, weight: 560, trackingEm: -0.01, isMono: false, isTabular: false, isUppercase: false),

@@ -20,6 +20,7 @@ import OpenIslandCore
 struct AnnualUsageSummary: View {
     let providers: [UsageProviderPresentation]
     let lang: LanguageManager
+    var now: Date = .now
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
@@ -34,7 +35,8 @@ struct AnnualUsageSummary: View {
                 AnnualUsageProviderGroup(
                     provider: provider,
                     usesShortTitle: usesShortTitles,
-                    lang: lang
+                    lang: lang,
+                    now: now
                 )
             }
         }
@@ -50,6 +52,7 @@ struct AnnualUsageProviderGroup: View {
     let provider: UsageProviderPresentation
     let usesShortTitle: Bool
     let lang: LanguageManager
+    let now: Date
 
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     private var increasesContrast: Bool { colorSchemeContrast == .increased }
@@ -57,6 +60,13 @@ struct AnnualUsageProviderGroup: View {
     @Environment(\.islandTokens) private var tokens
 
     var body: some View {
+        let summaryText = UsageSummaryAccessibilityFormatter.summary(
+            for: provider,
+            usesShortTitle: usesShortTitle,
+            asOf: now,
+            lang: lang
+        )
+
         HStack(alignment: .center, spacing: 10) {
             Text(AnnualText.lower(usesShortTitle ? provider.shortTitle : provider.title, lang: lang))
                 .font(AnnualTypography.smallCaps)
@@ -67,22 +77,11 @@ struct AnnualUsageProviderGroup: View {
                 AnnualUsageWindowReadout(window: window, lang: lang)
             }
         }
-        .help(helpText)
+        .help(summaryText)
         // One VoiceOver stop per provider — the same per-window summary the app
         // surfaces through `.help()`, matching the other themes (AB-244).
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(usesShortTitle ? provider.shortTitle : provider.title) \(helpText)")
-    }
-
-    private var helpText: String {
-        provider.windows.map { window in
-            var parts = ["\(window.label) \(window.roundedUsedPercentage)%"]
-            if let remaining = window.remainingLabel(asOf: Date()) {
-                parts.append(remaining)
-            }
-            return parts.joined(separator: " ")
-        }
-        .joined(separator: " · ")
+        .accessibilityLabel(summaryText)
     }
 }
 

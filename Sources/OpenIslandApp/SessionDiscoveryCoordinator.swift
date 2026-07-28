@@ -325,7 +325,23 @@ final class SessionDiscoveryCoordinator {
             lastUserPrompt: discovered.lastUserPrompt ?? existing.lastUserPrompt,
             lastAssistantMessage: discovered.lastAssistantMessage ?? existing.lastAssistantMessage,
             currentTool: discovered.currentTool ?? existing.currentTool,
-            currentCommandPreview: discovered.currentCommandPreview ?? existing.currentCommandPreview
+            currentCommandPreview: discovered.currentCommandPreview ?? existing.currentCommandPreview,
+            // F20 clobber fix (overlay remediation Phase 3C): this merge
+            // previously omitted `model` entirely, which — because the
+            // memberwise initializer defaults an omitted `model:` to nil —
+            // silently dropped it on every discovery/rediscovery merge
+            // (`applyStartupDiscoveryPayload`, `applyCodexAppRediscovery`,
+            // both `mergeDiscoveredSessions` callers), independent of the
+            // rollout-watcher clobber fixed alongside this. `discovered`
+            // here always has `model == nil` today — neither
+            // `CodexRolloutDiscovery.discoverRecord` nor
+            // `CodexAppServerCoordinator.emitSessionStarted` populate it —
+            // so this is equivalent to always preserving `existing.model`
+            // right now, and remains the correct policy (mirroring
+            // `BridgeServer.mergedCodexMetadata`'s `update.model ??
+            // existing?.model`) if a `discovered` source ever starts
+            // reporting one.
+            model: discovered.model ?? existing.model
         )
         return merged.isEmpty ? nil : merged
     }
@@ -378,20 +394,37 @@ final class SessionDiscoveryCoordinator {
     func refreshCodexRolloutTracking() {
         reconcileStalledCodexAppSessionsIfNeeded()
 
-        let targets = state.sessions.compactMap { session -> CodexRolloutWatchTarget? in
+        var targets: [CodexRolloutWatchTarget] = []
+        var knownMetadataBySessionID: [String: CodexSessionMetadata] = [:]
+
+        for session in state.sessions {
             guard session.tool == .codex,
                   !session.isSessionEnded,
                   let transcriptPath = session.codexMetadata?.transcriptPath,
                   !transcriptPath.isEmpty else {
-                return nil
+                continue
             }
 
-            return CodexRolloutWatchTarget(
-                sessionID: session.id,
-                transcriptPath: transcriptPath
+            targets.append(
+                CodexRolloutWatchTarget(
+                    sessionID: session.id,
+                    transcriptPath: transcriptPath
+                )
             )
+            // F20 clobber fix (overlay remediation Phase 3C): hand the
+            // watcher each tracked session's latest known metadata,
+            // refreshed on the same cadence as `targets` (every applied
+            // event), so its ~3s rollout-parsed emissions can merge
+            // against fields the rollout structurally can't observe — e.g.
+            // `model` — instead of blindly overwriting them back to nil.
+            // See `CodexRolloutReducer.mergedRolloutMetadata`'s doc
+            // comment for the field-by-field reasoning.
+            if let metadata = session.codexMetadata {
+                knownMetadataBySessionID[session.id] = metadata
+            }
         }
 
+        codexRolloutWatcher.updateKnownMetadata(knownMetadataBySessionID)
         codexRolloutWatcher.sync(targets: targets)
     }
 

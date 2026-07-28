@@ -69,8 +69,14 @@ timed 11-ticket run showed ~85% of wall clock inside agent build/test loops, not
   `islandSessionSectionsGroupStaleCompletedIntoIdle`,
   `islandSessionSectionsKeepCompletedInDoneWhenStaleThresholdIsNever`,
   `islandSessionListCanSortByLastUpdate`, `cellStateReflectsSessionPhase`,
-  `bulkFirstObservationOrdersByHistoricalFirstSeenAt`; the two Poured session-list baseline
-  goldens drift environmentally — if they fail, verify they also fail on clean HEAD.
+  `bulkFirstObservationOrdersByHistoricalFirstSeenAt`. The first three are an
+  `activeAppearanceProfile` bucket race (the getter falls back to the other profile's default when a
+  placement arrives mid-test); `AgentsGridRightSlotTests.swift:184-193` already documents and fixes
+  the same race via a both-buckets pin (AB-322) — never back-ported here. The last two are
+  genuinely intermittent and often pass.
+  The two Poured session-list baseline goldens were **not** drifting environmentally, despite what
+  this file previously claimed — their references predated the Poured 2.0 redesign (no `</>` icon,
+  Deny-left button order, a nested command block). Re-recorded to current truth and **now passing**.
 - **Multi-agent tickets**: split big tickets into sequential parts sharing one worktree; each
   part's report must end with landmarks for the next part (file:line, gotchas, leftover ACs).
 - **Merge protocol**: the local full suite (plus `swift build`) is the merge gate — the GitHub

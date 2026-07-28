@@ -201,6 +201,19 @@ enum HaloTypography {
     static var monoRoleNames: Set<String> {
         Set(roleFamilies.filter { $0.family == .mono }.map(\.name))
     }
+
+    // MARK: Baked font constants (overlay remediation F19)
+
+    /// The nest-header caption's font (`.nest-h` — SPEC-halo.md:264: 10 / sans /
+    /// **700** / 0.09em UPPER), mirroring `FlightDeckTypography.count`: a single
+    /// built constant both call sites (`HaloSessionRow.swift:622,1102`) construct
+    /// from, instead of each hand-reconstructing `weight:` + `.tracking(...)` —
+    /// the raw-size-only shape that let the two sites drift apart (`:1102`
+    /// shipped `.semibold` against `:622`'s correct `.bold`).
+    static let nestHeader = Font.system(size: nestHeaderSize, weight: .bold)
+    /// The nest-header caption's letterspacing, baked alongside `nestHeader` for
+    /// the same reason.
+    static let nestHeaderTracking: CGFloat = nestHeaderSize * 0.09
 }
 
 /// Halo's edge-light accent palette + wash table (SPEC-halo §1a · AB-340).
@@ -950,6 +963,58 @@ struct HaloTheme: IslandTheme {
         AnyView(HaloEdgeLight(shape: shape, context: context))
     }
 
+    // MARK: Closed-pill ambient seams (AB-330 · overlay remediation F3)
+
+    /// Tints the closed pill's traveling glyph by ambient state (AB-330 stage 2 ·
+    /// overlay remediation F3 — mirrors `PouredIslandTheme.closedGlyphTint`).
+    /// Shares the exact liveness/outcome colour tables `HaloClosedPill`'s own
+    /// (Reduce Motion) indicator uses — `HaloSessionRowFormat.livenessTint(_:tokens:)`
+    /// / `outcomeTint(_:tokens:)` in `HaloClosedPill.swift` — so this and the
+    /// pill's own indicator can never disagree on a state's colour. Not on the
+    /// hot path once `closedTravelingGlyph` below is also overridden (Halo's
+    /// traveling glyph draws its own shape, with its own embedded tint, and
+    /// never falls through to the default `UnifiedBars`-based extension that
+    /// would call this) — kept anyway as a complete, independently correct and
+    /// independently testable protocol conformance (`HaloClosedPillTests`),
+    /// rather than left `nil` for a seam that plainly has a real answer.
+    func closedGlyphTint(
+        mode: UnifiedBars.Mode,
+        rightSlot: IslandRightSlotContent?,
+        activity: IslandClosedPillActivity?
+    ) -> Color? {
+        let ambient = PouredPillAmbientState.resolve(activity: activity, mode: mode, rightSlot: rightSlot)
+        let state = HaloSessionRowFormat.edgeState(for: ambient)
+        switch HaloSessionRowFormat.pillIndicator(for: state) {
+        case .liveness(let barsMode):
+            return HaloSessionRowFormat.livenessTint(HaloLivenessGlyph.Kind(mode: barsMode), tokens: tokens)
+        case .permissionDot:
+            return tokens.colors.statusWaitingForApproval
+        case .outcome:
+            return HaloSessionRowFormat.outcomeTint(state, tokens: tokens)
+        }
+    }
+
+    /// Halo's traveling closed-pill glyph (overlay remediation F3 · Decision D3):
+    /// returns the SAME liveness-glyph / ringed-permission-dot / outcome-mark
+    /// indicator `HaloClosedPill`'s own (non-traveling) indicator already draws
+    /// correctly under Reduce Motion (`showsGlyph: true`) — `HaloPillIndicatorGlyph`
+    /// (`HaloClosedPill.swift`) is the shared view both call, so the default
+    /// animated path and the Reduce Motion path can never again draw a different
+    /// shape for the same ambient state. Before this seam, `islandGlyphOverlay`
+    /// hardcoded the theme-agnostic `UnifiedBars` 3-bar glyph for every theme,
+    /// which structurally cannot draw a dot — the A3 permission ring rendered
+    /// correctly nowhere except the Reduce Motion crossfade.
+    func closedTravelingGlyph(
+        mode: UnifiedBars.Mode,
+        rightSlot: IslandRightSlotContent?,
+        activity: IslandClosedPillActivity?,
+        size: CGFloat
+    ) -> AnyView {
+        let ambient = PouredPillAmbientState.resolve(activity: activity, mode: mode, rightSlot: rightSlot)
+        let indicator = HaloSessionRowFormat.pillIndicator(for: HaloSessionRowFormat.edgeState(for: ambient))
+        return AnyView(HaloPillIndicatorGlyph(indicator: indicator, tokens: tokens, box: size))
+    }
+
     // MARK: Slot factories (interim — delegated to Classic until T22–T25)
 
     /// The closed pill (AB-342 · T23 · SPEC §5A · mockup §A/§G′/§I′): wings via
@@ -1021,6 +1086,50 @@ struct HaloTheme: IslandTheme {
         guard !providers.isEmpty else { return nil }
         return AnyView(HaloUsageMeterCard(providers: providers, lang: lang))
     }
+
+    // MARK: Question-prompt seams (overlay remediation Phase 2A-follow-up · F1)
+
+    /// The §F question card's Submit CTA. Reuses `HaloHeroButton`'s `.primary`
+    /// kind verbatim — its `#FFCE8A→#FFAB54` 135° gradient is already an exact
+    /// match to the board (`06-halo.html:371-372`), so this seam only had to
+    /// widen the button's visibility (`private` → `internal`) and thread
+    /// `isEnabled` through for the disabled state this card newly makes
+    /// reachable (`canSubmit` toggles false→true; Allow-once/Deny/Jump-to-Codex
+    /// are always actionable and never disabled). No `.frame(maxWidth:)` here —
+    /// `HaloHeroButton` has always been intrinsic-width, matching the board's
+    /// `display:inline-flex`.
+    func questionSubmitButton(
+        title: String,
+        isEnabled: Bool,
+        action: @escaping () -> Void
+    ) -> AnyView? {
+        AnyView(
+            HaloHeroButton(
+                title: title,
+                keycaps: nil,
+                kind: .primary,
+                isEnabled: isEnabled,
+                accessibilityLabel: title,
+                action: action
+            )
+        )
+    }
+
+    /// The §F question card's own container: **no chrome at all**. Halo's
+    /// identity is a pure-black void whose only chrome is the 1.5pt edge-light
+    /// (remediation plan DO-NOT-FIX table); `HaloQuestionHero` already wraps
+    /// this content in `HaloHeroShell`'s own black-fill/ring/glow hero card
+    /// (`HaloSessionRow.swift`), so the shared view's literal translucent box
+    /// would draw a second, unwanted nested card. Returning `content` untouched
+    /// removes that chrome entirely rather than reshaping it.
+    func questionCardContainer(content: AnyView) -> AnyView? {
+        content
+    }
+
+    /// D1 pagination: one question per page (`06-halo.html:1067-1156` — two
+    /// separate frames, "1 of 2" / "Next" then "2 of 2" / "Submit"). See
+    /// `IslandTheme.questionPageSize`'s doc for the shared mechanism.
+    var questionPageSize: Int? { 1 }
 
     /// The collapsed void row (AB-344 · T25 · SPEC §5C/§5D · mockup §C/§D):
     /// `HaloSessionRow` — the `lead` (bloomed status dot + achromatic monogram),

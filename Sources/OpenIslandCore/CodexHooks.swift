@@ -404,7 +404,12 @@ public extension CodexHookPayload {
             lastUserPrompt: prompt ?? promptPreview,
             lastAssistantMessage: lastAssistantMessage,
             currentTool: toolName,
-            currentCommandPreview: commandPreview
+            currentCommandPreview: commandPreview,
+            // F20 (overlay remediation Phase 3): `model` is required on the
+            // wire (`CodingKeys.model`, decoded non-optionally above), so
+            // every real hook event carries one — it was simply never copied
+            // into `CodexSessionMetadata` before.
+            model: model
         )
     }
 

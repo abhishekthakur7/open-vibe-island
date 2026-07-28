@@ -15,6 +15,15 @@ struct IslandDebugSnapshot {
     /// scenario. `nil` (the default) leaves the real usage path untouched, so
     /// every pre-existing scenario renders exactly as before.
     var usageProviders: [UsageProviderPresentation]? = nil
+    /// Overlay remediation Phase 1 item 1.7 (P1.a): forces the lead row's
+    /// expanded detail open via `\.islandRowExpandedByDefault`, so the
+    /// `subagentsExpanded` scenario can capture Flight Deck's/Halo's §D/§G
+    /// expanded body without a real tap gesture (Poured's expansion is
+    /// presence-derived and already reachable — see F6). `false` (the
+    /// default) leaves every pre-existing scenario — including
+    /// `subagentsCard`, which deliberately keeps documenting the collapsed
+    /// row — rendering exactly as before.
+    var forcesRowExpansion: Bool = false
 }
 
 enum IslandDebugScenario: String, CaseIterable, Identifiable {
@@ -30,6 +39,11 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
     case codexApprovalCard
     case multiQuestionCard
     case subagentsCard
+    // Overlay remediation Phase 1 item 1.7 (P1.a): same fixture and surface
+    // config as `subagentsCard`, with `forcesRowExpansion` set — keeps
+    // `subagentsCard` itself documenting the collapsed row (its own
+    // worthwhile regression target) instead of redefining it in place.
+    case subagentsExpanded
     case completedInterrupted
     case completedFailed
     case usageMeters
@@ -61,6 +75,8 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
             "Multi-Question Card"
         case .subagentsCard:
             "Subagents & Tasks"
+        case .subagentsExpanded:
+            "Subagents & Tasks — Expanded"
         case .completedInterrupted:
             "Completed — Interrupted"
         case .completedFailed:
@@ -96,6 +112,8 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
             "Two-question prompt: single-select with descriptions, then multi-select with a freeform option."
         case .subagentsCard:
             "Running session fanned out across three subagents with a five-item task list."
+        case .subagentsExpanded:
+            "Same subagents/tasks fixture, row pinned open via the harness expansion seam — makes the §D/§G expanded body capturable for Flight Deck and Halo."
         case .completedInterrupted:
             "Finished-task reminder for a turn that was interrupted mid-run."
         case .completedFailed:
@@ -258,6 +276,23 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
                 islandSurface: .sessionList(),
                 sessions: DebugSessionFactory.notificationSessions(lead: session, now: now),
                 selectedSessionID: session.id
+            )
+
+        case .subagentsExpanded:
+            // Same fixture and surface config as `subagentsCard` — only
+            // `forcesRowExpansion` differs, so the two scenarios are directly
+            // comparable (collapsed vs. expanded) for the same underlying row.
+            let session = AppearancePreviewFixtures.subagentsAndTasks(now: now)
+            return IslandDebugSnapshot(
+                title: title,
+                summary: summary,
+                previewHeight: 460,
+                notchStatus: .opened,
+                notchOpenReason: .click,
+                islandSurface: .sessionList(),
+                sessions: DebugSessionFactory.notificationSessions(lead: session, now: now),
+                selectedSessionID: session.id,
+                forcesRowExpansion: true
             )
 
         case .completedInterrupted:
@@ -483,8 +518,8 @@ private enum DebugSessionFactory {
     static func approvalSession(now: Date) -> AgentSession {
         AgentSession(
             id: "session-approval",
-            title: "Codex · open-island",
-            tool: .codex,
+            title: "Claude Code · open-island",
+            tool: .claudeCode,
             origin: .demo,
             attachmentState: .attached,
             phase: .waitingForApproval,
@@ -500,16 +535,18 @@ private enum DebugSessionFactory {
             jumpTarget: JumpTarget(
                 terminalApp: "Ghostty",
                 workspaceName: "open-island",
-                paneTitle: "codex ~/Personal/open-island",
+                paneTitle: "claude ~/Personal/open-island",
                 workingDirectory: "/Users/wangruobing/Personal/open-island",
                 terminalSessionID: "ghostty-approval"
             ),
-            codexMetadata: CodexSessionMetadata(
+            claudeMetadata: ClaudeSessionMetadata(
                 initialUserPrompt: "接下来我打算继续补齐一些能力。",
                 lastUserPrompt: "askUserquestion 和权限审批，我想把他们也做到我们的 island 里。",
                 lastAssistantMessage: "已经准备好重写 DEV 页面，需要批准文件改动。",
                 currentTool: "exec_command",
-                currentCommandPreview: "head -5000 /Users/wangruobing/Personal/claude-research/extracts/claude-bun-2.1.81-v3/islands/000_cli.js.txt"
+                currentToolInputPreview: "head -5000 /Users/wangruobing/Personal/claude-research/extracts/claude-bun-2.1.81-v3/islands/000_cli.js.txt",
+                model: "claude-opus-4-8-20260101",
+                worktreeBranch: "feat/approval-flow"
             )
         )
     }
@@ -517,8 +554,8 @@ private enum DebugSessionFactory {
     static func questionSession(now: Date) -> AgentSession {
         AgentSession(
             id: "session-question",
-            title: "Codex · open-island",
-            tool: .codex,
+            title: "Claude Code · open-island",
+            tool: .claudeCode,
             origin: .demo,
             attachmentState: .attached,
             phase: .waitingForAnswer,
@@ -542,14 +579,17 @@ private enum DebugSessionFactory {
             jumpTarget: JumpTarget(
                 terminalApp: "Ghostty",
                 workspaceName: "open-island",
-                paneTitle: "codex ~/Personal/open-island",
+                paneTitle: "claude ~/Personal/open-island",
                 workingDirectory: "/Users/wangruobing/Personal/open-island",
                 terminalSessionID: "ghostty-question"
             ),
-            codexMetadata: CodexSessionMetadata(
+            claudeMetadata: ClaudeSessionMetadata(
                 initialUserPrompt: "原产品看起来像是单 notch surface + 多 content surface。",
                 lastUserPrompt: "我们应该怎么做？",
-                lastAssistantMessage: "建议先把 approvalCard、questionCard、completionCard 拆成独立 surface。"
+                lastAssistantMessage: "建议先把 approvalCard、questionCard、completionCard 拆成独立 surface。",
+                currentTool: "AskUserQuestion",
+                model: "claude-sonnet-5-20260101",
+                worktreeBranch: "feat/question-flow"
             )
         )
     }
@@ -572,6 +612,7 @@ private enum DebugSessionFactory {
                 terminalSessionID: "ghostty-completion"
             ),
             codexMetadata: CodexSessionMetadata(
+                transcriptPath: "/tmp/open-island-debug-completion.jsonl",
                 initialUserPrompt: "这次我可能确实需要一些 mock 手段，让我能验收这些 Card 的 UI。",
                 lastUserPrompt: "可以把 DEV 完全重构成一个 debug 页面。",
                 lastAssistantMessage: "Plan 文件已写好。你的 hooks 触发情况如何？"
@@ -597,6 +638,7 @@ private enum DebugSessionFactory {
                 terminalSessionID: "ghostty-completion-long"
             ),
             codexMetadata: CodexSessionMetadata(
+                transcriptPath: "/tmp/open-island-debug-completion-long.jsonl",
                 initialUserPrompt: "帮我把这个 README 也提交了，然后把结果贴给我。",
                 lastUserPrompt: "顺便确认一下当前工作树和验证情况。",
                 lastAssistantMessage: """
@@ -607,7 +649,15 @@ private enum DebugSessionFactory {
 如果你要我继续做下一轮，我建议把工作切到独立 worktree 里，这样不会和共享 `main` 上的并行改动互相打架。
 
 下一步我会先检查当前仓库状态，然后从 `origin/main` 新建一个 worktree 和分支，在新工作区里继续处理这个样式问题并做完验证。
-"""
+""",
+                // F20 (overlay remediation Phase 3): this is the completion
+                // fixture that exercises the completion grid's Model cell
+                // (mockup §H) for a Codex session — `"gpt-5-codex"` also
+                // exercises `shortModelDisplayName`'s GPT-family path
+                // (→ "GPT-5"), the same worked example its doc comment cites.
+                // Before F20 this cell structurally could never draw for any
+                // codex-tool session, this fixture included.
+                model: "gpt-5-codex"
             )
         )
     }

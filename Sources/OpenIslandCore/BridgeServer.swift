@@ -2042,7 +2042,12 @@ public final class BridgeServer: @unchecked Sendable {
                 existing: existing?.currentCommandPreview,
                 update: update.currentCommandPreview,
                 hookEventName: hookEventName
-            )
+            ),
+            // F20 (overlay remediation Phase 3): `update.model` comes from a
+            // required wire field, so it's virtually always present — the
+            // `existing` fallback only matters for the rare case a caller
+            // hand-builds an `update` without one (e.g. a test).
+            model: update.model ?? existing?.model
         )
     }
 

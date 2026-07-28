@@ -23,6 +23,14 @@ final class OpenIslandAppDelegate: NSObject, NSApplicationDelegate {
 
             model.ignoresPointerExitDuringHarness = harnessLaunchConfiguration.scenario != nil
             model.disablesOverlayEventMonitoringDuringHarness = harnessLaunchConfiguration.scenario != nil
+            // Overlay remediation Phase 3, Task 1: harness-only, opt-in via env
+            // var — see `AppModel.enablesOverlayKeyMonitorDuringHarness` for why
+            // this exists and why it can't reach a real user.
+            model.enablesOverlayKeyMonitorDuringHarness = harnessLaunchConfiguration.enableKeyMonitor
+            // Overlay remediation Phase 1 item 1.1: harness-only, opt-in via env
+            // var — see `AppModel.debugSuppressesInstallHint` for why this can't
+            // reach a real user.
+            model.debugSuppressesInstallHint = harnessLaunchConfiguration.suppressInstallHint
             model.startIfNeeded(
                 startBridge: harnessLaunchConfiguration.shouldStartBridge,
                 shouldPerformBootAnimation: harnessLaunchConfiguration.shouldPerformBootAnimation,

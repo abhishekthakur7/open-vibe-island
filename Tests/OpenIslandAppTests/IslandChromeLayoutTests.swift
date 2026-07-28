@@ -139,6 +139,51 @@ struct IslandChromeLayoutTests {
         ))
     }
 
+    // MARK: - 1b. Opened-header band height override (overlay remediation Phase 5 · F8)
+
+    /// `OverlayPanelController.panelSize` budgets `model?.islandTheme
+    /// .openedHeaderHeight ?? screen.notchSize.height` for the header band —
+    /// mirrored here (via the same `IslandChromeLayout.windowSize` the real
+    /// method calls) since `panelSize` itself is private and has no seam to
+    /// call directly. Flight Deck's 96pt override must grow the *window* by
+    /// exactly its own delta over the shared notch height (so the taller
+    /// header never squeezes the measured body content below it); a theme
+    /// that doesn't override `openedHeaderHeight` (every theme but Flight
+    /// Deck) must see zero change between the pre-seam and post-seam formula.
+    @MainActor
+    @Test
+    func openedHeaderHeightOverrideGrowsOnlyFlightDecksWindow() {
+        let bodyContentHeight: CGFloat = 200
+        let notchHeight: CGFloat = 36 // representative real-hardware safeAreaInsets.top
+
+        func windowHeight(headerBand: CGFloat, metrics: IslandMetricsTokens) -> CGFloat {
+            IslandChromeLayout.windowSize(
+                preferredContentWidth: 480,
+                contentHeight: headerBand + bodyContentHeight,
+                metrics: metrics,
+                availableWidth: Self.roomyWidth
+            ).height
+        }
+
+        // Every non-Flight-Deck theme: the header band is `notchHeight`
+        // whether or not `openedHeaderHeight` is consulted — zero delta.
+        for theme in ThemeRegistry.all where theme.id != "flightDeck" {
+            let metrics = theme.tokens.metrics
+            let preSeam = windowHeight(headerBand: notchHeight, metrics: metrics)
+            let postSeam = windowHeight(headerBand: theme.openedHeaderHeight ?? notchHeight, metrics: metrics)
+            #expect(preSeam == postSeam, "\(theme.id) window height moved without overriding openedHeaderHeight")
+        }
+
+        // Flight Deck: the window must grow by exactly (96 - notchHeight)pt —
+        // the same delta `IslandPanelView`'s header `.frame(height:)` grows by.
+        let flightDeckMetrics = FlightDeckTheme().tokens.metrics
+        let flightDeckHeaderHeight = FlightDeckTheme().openedHeaderHeight ?? notchHeight
+        let preSeam = windowHeight(headerBand: notchHeight, metrics: flightDeckMetrics)
+        let postSeam = windowHeight(headerBand: flightDeckHeaderHeight, metrics: flightDeckMetrics)
+        #expect(postSeam - preSeam == flightDeckHeaderHeight - notchHeight)
+        #expect(postSeam > preSeam)
+    }
+
     // MARK: - 2. Window vs surface, every registered theme
 
     /// The generalization of the above across the whole registry: whatever a

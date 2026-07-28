@@ -61,6 +61,40 @@ struct PouredSessionRow: View {
     }
 }
 
+/// Pure expansion-state resolver shared by the Poured row's summary and detail
+/// branches. Production rows begin collapsed, the harness may force a row open,
+/// and actionable approval/question/completion rows auto-expand. Once the user
+/// toggles the chevron, that explicit choice wins until interactivity resets it.
+enum PouredRowExpansion {
+    static func resolved(
+        isInteractive: Bool,
+        expandedByDefault: Bool,
+        isActionable: Bool,
+        detailOverride: Bool?
+    ) -> Bool {
+        guard isInteractive else { return false }
+        return detailOverride ?? (expandedByDefault || isActionable)
+    }
+
+    /// Human fallback for an expanded inactive/aged row after the normal
+    /// time-filtered spotlight activity has disappeared. The same resolved
+    /// expansion state controls this fallback, so harness-forced and manually
+    /// expanded rows behave identically while an explicit collapse stays quiet.
+    static func fallbackActivityLine(
+        isExpanded: Bool,
+        lastAssistantMessage: String?,
+        hasJumpTarget: Bool
+    ) -> String? {
+        guard isExpanded else { return nil }
+        let trimmed = lastAssistantMessage?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if let trimmed, !trimmed.isEmpty {
+            return trimmed
+        }
+        return hasJumpTarget ? "Ready" : "Completed"
+    }
+}
+
 /// The glass body for every Poured row. Renders the shared summary / auxiliary
 /// chrome (verbatim from Classic so the two rows stay interchangeable inside one
 /// list) plus, for actionable rows, the Poured approval / question / completion
@@ -97,6 +131,11 @@ private struct PouredRowContent: View {
     /// title line renders the workspace name alone.
     @Environment(\.islandSessionDisambiguators) private var sessionDisambiguators
 
+    /// Harness/debug seam shared with Flight Deck and Halo. Production leaves
+    /// this `false`; `subagentsExpanded` sets it so the same ordinary running row
+    /// can deliberately render its §4D/§4G detail.
+    @Environment(\.islandRowExpandedByDefault) private var expandedByDefault
+
     /// Each row owns its own age refresh (AB-228) so a tick invalidates only
     /// this row, not its siblings or the list header.
     private static let ageRefreshInterval: TimeInterval = 30
@@ -113,8 +152,12 @@ private struct PouredRowContent: View {
             at: referenceDate,
             threshold: completedStaleThreshold
         )
-        let defaultShowsDetail = !isStaleCompleted && (rawPresence != .inactive || isActionable)
-        let showsDetail = detailOverride ?? defaultShowsDetail
+        let showsDetail = PouredRowExpansion.resolved(
+            isInteractive: isInteractive,
+            expandedByDefault: expandedByDefault,
+            isActionable: isActionable,
+            detailOverride: detailOverride
+        )
         let presence: IslandSessionPresence = isStaleCompleted
             ? .inactive
             : ((showsDetail && rawPresence == .inactive) ? .active : rawPresence)
@@ -143,9 +186,11 @@ private struct PouredRowContent: View {
                         transcriptFootnote
                     }
                 } else {
-                    // §4D: the quiet session-detail — metadata grid, last
-                    // assistant message as rich prose, jump-primary + transcript
-                    // + attachment chip.
+                    // §4D's metadata grid + assistant prose + action rail use
+                    // the same resolved expansion state as the summary rollups
+                    // and §4G nests. That state may come from a user toggle or
+                    // the harness seam; ordinary production rows remain
+                    // collapsed, while actionable heroes take the branch above.
                     sessionDetailBody(presence: presence, referenceDate: referenceDate)
                 }
             }
@@ -198,7 +243,7 @@ private struct PouredRowContent: View {
                 titleLine(presence: presence)
 
                 if showsDetail {
-                    activityLine(presence: presence)
+                    activityLine(isExpanded: showsDetail)
                 }
             }
 
@@ -266,6 +311,9 @@ private struct PouredRowContent: View {
         // actions so both stay reachable without splitting the row.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityRowSummaryText(referenceDate: referenceDate))
+        .modifier(NestedWorkAccessibilityValue(
+            value: nestedWorkAccessibilityValue(isExpanded: showsDetail)
+        ))
         .accessibilityAddTraits(isInteractive ? .isButton : [])
         .accessibilityAction {
             guard isInteractive else { return }
@@ -330,8 +378,8 @@ private struct PouredRowContent: View {
     /// (permission/question text, last message, outcome) wholly at secondary —
     /// never a raw tool id or a `$ …` command echo.
     @ViewBuilder
-    private func activityLine(presence: IslandSessionPresence) -> some View {
-        let segments = activitySegments
+    private func activityLine(isExpanded: Bool) -> some View {
+        let segments = activitySegments(isExpanded: isExpanded)
         if !segments.isEmpty {
             composedActivityText(segments)
                 .font(PouredType.Role.activityLine.font)
@@ -343,7 +391,7 @@ private struct PouredRowContent: View {
     /// Tone-split runs for the `.act` line. Running rows narrate verb+object;
     /// the rest fall back to the human activity summary (never the `$` echo,
     /// which lived only in the retired running command block).
-    private var activitySegments: [PouredRowActivityTone.Segment] {
+    private func activitySegments(isExpanded: Bool) -> [PouredRowActivityTone.Segment] {
         if let narrated = session.narratedActivity {
             return PouredRowActivityTone.segments(
                 verb: narrated.localizedVerb(lang),
@@ -354,7 +402,11 @@ private struct PouredRowContent: View {
         return PouredRowActivityTone.segments(
             verb: nil,
             object: nil,
-            fallback: session.spotlightActivityLineText ?? expandedActivityLineText
+            fallback: session.spotlightActivityLineText ?? PouredRowExpansion.fallbackActivityLine(
+                isExpanded: isExpanded,
+                lastAssistantMessage: session.lastAssistantMessageText,
+                hasJumpTarget: session.jumpTarget != nil
+            )
         )
     }
 
@@ -553,6 +605,16 @@ private struct PouredRowContent: View {
         return PouredTaskRollup(statuses: tasks.map(\.status))
     }
 
+    private func nestedWorkAccessibilityValue(isExpanded: Bool) -> String? {
+        NestedWorkAccessibility.value(
+            activeSubagentCount: collapsedSubagentCount ?? 0,
+            completedTaskCount: collapsedTaskRollup?.done ?? 0,
+            totalTaskCount: collapsedTaskRollup?.total ?? 0,
+            isExpanded: isExpanded,
+            lang: lang
+        )
+    }
+
     // MARK: - Session detail body (§4D · mockup §D)
 
     /// The quiet expanded detail for a non-actionable row: the metadata cell
@@ -749,14 +811,12 @@ private struct PouredRowContent: View {
             Button(action: handlePrimaryTap) {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.up.forward")
-                        .font(.system(size: 11.5, weight: .bold))
                         .accessibilityHidden(true)
                     Text(lang.t("poured.detail.jump"))
-                        .font(PouredType.Role.jumpChip.font)
                         .lineLimit(1)
                 }
             }
-            .buttonStyle(PouredJumpButtonStyle())
+            .buttonStyle(PouredFullSizeButtonStyle(kind: .wayfinding))
             .accessibilityLabel(lang.t("poured.detail.jump"))
 
             if let transcriptPath = trimmedTranscriptPath {
@@ -1018,14 +1078,12 @@ private struct PouredRowContent: View {
             Button(action: handlePrimaryTap) {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.up.forward")
-                        .font(.system(size: 11.5, weight: .bold))
                         .accessibilityHidden(true)
                     Text(lang.t("poured.detail.jump"))
-                        .font(PouredType.Role.jumpChip.font)
                         .lineLimit(1)
                 }
             }
-            .buttonStyle(PouredJumpButtonStyle())
+            .buttonStyle(PouredFullSizeButtonStyle(kind: .wayfinding))
             .accessibilityLabel(lang.t("poured.detail.jump"))
 
             if let transcriptPath = trimmedTranscriptPath {
@@ -1041,10 +1099,9 @@ private struct PouredRowContent: View {
             if let dismiss = actions.dismiss {
                 Button(action: dismiss) {
                     Text(lang.t("poured.completion.dismiss"))
-                        .font(.system(size: 12, weight: .medium))
                         .lineLimit(1)
                 }
-                .buttonStyle(PouredGhostButtonStyle(role: .quiet))
+                .buttonStyle(PouredFullSizeButtonStyle(kind: .ghost))
                 .accessibilityLabel(lang.t("a11y.session.dismiss"))
             }
         }
@@ -1180,7 +1237,7 @@ private struct PouredRowContent: View {
 
     private func sideBadge(_ title: String) -> some View {
         Text(title)
-            .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+            .font(PouredType.font(for: .metaChip))
             .foregroundStyle(tokens.colors.paper.opacity(presentation == .notification ? 0.52 : 0.72))
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
@@ -1210,7 +1267,7 @@ private struct PouredRowContent: View {
             sideBadge(lang.t("badge.planMode"))
         case .bypass:
             Text(lang.t("badge.bypassPermissions"))
-                .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+                .font(PouredType.font(for: .metaChip))
                 .foregroundStyle(tokens.colors.statusWarning.opacity(0.94))
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
@@ -1307,20 +1364,6 @@ private struct PouredRowContent: View {
     }
 
     // MARK: - Text / tint helpers
-
-    /// Activity line for a manually expanded inactive row (bypasses the
-    /// time-based filter) — the row's last assistant message, or a terse
-    /// "Ready"/"Completed" fallback. The T03 `.act` line uses this when
-    /// `spotlightActivityLineText` has aged out but the row is force-expanded.
-    private var expandedActivityLineText: String? {
-        guard detailOverride == true else { return nil }
-        let trimmed = session.lastAssistantMessageText?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        if let assistantMessage = trimmed, !assistantMessage.isEmpty {
-            return assistantMessage
-        }
-        return session.jumpTarget != nil ? "Ready" : "Completed"
-    }
 
     private var showsLeadingStatusIndicator: Bool {
         presentation == .list && stateIndicator != .tint && stateIndicator != .bar
@@ -1458,7 +1501,7 @@ private struct PouredRowContent: View {
 /// The permission request rendered as Poured Island's hero: an amber-glow card
 /// that radiates a pulsing warm glow above everything else on the glass (static
 /// under Reduce Motion), a command preview in a mono block, an affected-path
-/// line, an optional `PermissionDiffPreview`, and a prominent filled Allow next
+/// line, an optional `IslandDiffRenderer`, and a prominent filled Allow next
 /// to a quiet Deny — or the always-allow options / Codex terminal CTA.
 ///
 /// Isolated in its own `View` so the amber glow's 15fps pulse (read off the
@@ -1510,12 +1553,14 @@ private struct PouredApprovalCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            // AB-235 / E2: Edit/Write requests carry captured old/new text; the
-            // Poured-side wrapper renders that diff with gutter line numbers and
-            // Poured's del/add tints. The diff *engine* (`PermissionDiff`) is
-            // reused verbatim — only the presentation is Poured-local.
+            // AB-235 / E2: the shared renderer owns the gutter and structural
+            // marker column; Poured supplies its exact rounded-card palette.
             if let diffResult = permissionDiffResult {
-                PouredPermissionDiff(result: diffResult, lang: lang)
+                IslandDiffRenderer(
+                    result: diffResult,
+                    lang: lang,
+                    style: .poured(tokens: tokens, reduceTransparency: reduceTransparency)
+                )
             }
 
             if requiresTerminalApproval {
@@ -1616,10 +1661,11 @@ private struct PouredApprovalCard: View {
                 PouredApprovalButtonLabel(
                     title: session.permissionRequest?.primaryActionTitle ?? lang.t("approval.allowOnce"),
                     shortcut: .allowOnce,
-                    kind: .allow
+                    kind: .allow,
+                    usesStandaloneChrome: false
                 )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PouredFullSizeButtonStyle(kind: .event))
             .accessibilityLabel(session.permissionRequest?.primaryActionTitle ?? lang.t("a11y.approval.allowOnce"))
 
             Button {
@@ -1628,10 +1674,11 @@ private struct PouredApprovalCard: View {
                 PouredApprovalButtonLabel(
                     title: session.permissionRequest?.secondaryActionTitle ?? lang.t("approval.deny"),
                     shortcut: .deny,
-                    kind: .deny
+                    kind: .deny,
+                    usesStandaloneChrome: false
                 )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PouredFullSizeButtonStyle(kind: .deny))
             .accessibilityLabel(session.permissionRequest?.secondaryActionTitle ?? lang.t("a11y.approval.deny"))
         }
     }
@@ -1715,27 +1762,11 @@ private struct PouredApprovalCard: View {
         } label: {
             HStack(spacing: 7) {
                 Image(systemName: "arrow.up.forward")
-                    .font(.system(size: 12, weight: .bold))
                     .accessibilityHidden(true)
                 Text(terminalApprovalCTATitle)
-                    .font(.system(size: 13, weight: .semibold))
             }
-            .foregroundStyle(PouredApprovalColors.codexButtonInk)
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 9)
-            .background(
-                RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [PouredApprovalColors.codexButtonTop, PouredApprovalColors.codexBlue],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-            )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PouredFullSizeButtonStyle(kind: .wayfinding))
     }
 
     private var terminalApprovalCTATitle: String {
@@ -1811,7 +1842,11 @@ private struct PouredApprovalCard: View {
 /// **real** registered `OverlayPanelController` shortcut it fires. The glyph
 /// strings printed on the keycaps must stay in lock-step with that handler
 /// (`⌘Y` / `⌘⇧Y` / `⌘N`), never the mockup's ⏎/⎋.
-private enum PouredApprovalShortcut {
+///
+/// Not `private` (overlay remediation Phase 2A-follow-up · F1): the now
+/// module-internal `PouredApprovalButtonLabel.shortcut: PouredApprovalShortcut?`
+/// property can't be more visible than its own type.
+enum PouredApprovalShortcut {
     case allowOnce
     case alwaysAllow
     case deny
@@ -1859,41 +1894,96 @@ private struct PouredKeycapRow: View {
 /// The Allow / Deny button label: title + keycap, filled per its kind. Amber
 /// gradient for `.allow` (`#ffce8a→#ffb14d`, ink `#3a2405`), red-wash for
 /// `.deny` (`rgba(219,82,82,.14)`, text `#f0a8a8`) — `SPEC` §4E.
-private struct PouredApprovalButtonLabel: View {
+///
+/// Not `private` (overlay remediation Phase 2A-follow-up · F1):
+/// `PouredIslandTheme.questionSubmitButton` constructs this directly from
+/// `PouredIslandTheme.swift` for the shared question card's Submit CTA, via
+/// three additive parameters instead of a fork: `shortcut` is now optional
+/// (Submit has no registered digit shortcut of its own), `expands: false` keeps
+/// shared `.btn` sizing intrinsic (`display:inline-flex`,
+/// `01-poured-island.html:1192`) while the reusable label style owns its chrome,
+/// and `fillOverride` supplies the board's own, slightly lighter Submit stops
+/// (`#ffe0a8→#ffd58a`, ink `#2a2205`) — distinct from `.allow`'s
+/// `#ffce8a→#ffb14d`, so this is not just Allow's literal gradient reused.
+/// `kind: .allow` is passed for Submit by convention (closest existing
+/// semantic — an affirmative default action); it only resolves the keycap's
+/// `onAmber` tint and the `fillOverride == nil` fallback, neither of which
+/// Submit exercises. `isEnabled` dims + desaturates the resolved fill in place
+/// (`IslandQuestionSubmitDisabledStyle`) — Allow/Deny never pass `false` (both
+/// are only ever shown while actionable), so this path is new and, in
+/// practice, Submit-only.
+struct PouredApprovalButtonLabel: View {
     enum Kind { case allow, deny }
 
     let title: String
-    let shortcut: PouredApprovalShortcut
+    var shortcut: PouredApprovalShortcut?
     let kind: Kind
+    var expands: Bool = true
+    var fillOverride: (top: Color, bottom: Color, ink: Color)?
+    var isEnabled: Bool = true
+    /// The question-submit seam owns its special fill override; the six row
+    /// CTAs delegate their chrome to `PouredFullSizeButtonStyle` instead.
+    var usesStandaloneChrome: Bool = true
 
     var body: some View {
+        if usesStandaloneChrome {
+            standaloneLabel
+        } else {
+            labelContent
+        }
+    }
+
+    private var labelContent: some View {
         HStack(spacing: 8) {
             Text(title)
-                .font(.system(size: 13, weight: .semibold))
                 .lineLimit(1)
-            PouredKeycapRow(shortcut: shortcut, onAmber: kind == .allow)
+            if let shortcut {
+                PouredKeycapRow(shortcut: shortcut, onAmber: kind == .allow)
+            }
         }
-        .foregroundStyle(kind == .allow ? PouredApprovalColors.allowInk : PouredApprovalColors.denyInk)
-        .frame(maxWidth: .infinity)
+    }
+
+    private var standaloneLabel: some View {
+        labelContent
+        .font(PouredType.Role.heroButtonLabel.font)
+        .foregroundStyle(ink)
+        .frame(maxWidth: expands ? .infinity : nil)
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
         .background(buttonBackground)
+        .saturation(isEnabled ? 1 : IslandQuestionSubmitDisabledStyle.saturation)
+        .opacity(isEnabled ? 1 : IslandQuestionSubmitDisabledStyle.opacity)
+    }
+
+    private var ink: Color {
+        if let fillOverride { return fillOverride.ink }
+        return kind == .allow ? PouredApprovalColors.allowInk : PouredApprovalColors.denyInk
     }
 
     @ViewBuilder
     private var buttonBackground: some View {
         let shape = RoundedRectangle(cornerRadius: 11, style: .continuous)
-        switch kind {
-        case .allow:
+        if let fillOverride {
             shape.fill(
                 LinearGradient(
-                    colors: [PouredApprovalColors.allowTop, PouredApprovalColors.allowBottom],
+                    colors: [fillOverride.top, fillOverride.bottom],
                     startPoint: .top,
                     endPoint: .bottom
                 )
             )
-        case .deny:
-            shape.fill(PouredApprovalColors.denyFill)
+        } else {
+            switch kind {
+            case .allow:
+                shape.fill(
+                    LinearGradient(
+                        colors: [PouredApprovalColors.allowTop, PouredApprovalColors.allowBottom],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+            case .deny:
+                shape.fill(PouredApprovalColors.denyFill)
+            }
         }
     }
 }
@@ -1933,157 +2023,6 @@ private struct PouredScopeRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-    }
-}
-
-/// E2 (Poured-side): the captured Edit/Write diff rendered with gutter line
-/// numbers and Poured's del/add tints. Consumes `PermissionDiffResult` straight
-/// off the shared `PermissionDiff` engine — it does not fork the engine, and it
-/// leaves the shared `PermissionDiffPreview` untouched (`SPEC` §4E E2).
-private struct PouredPermissionDiff: View {
-    let result: PermissionDiffResult
-    let lang: LanguageManager
-
-    @Environment(\.islandTokens) private var tokens
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-
-    private static let maxRenderedLines = 500
-    private static let maxHeight: CGFloat = 180
-
-    private var renderedLines: [PermissionDiffLine] {
-        Array(result.lines.prefix(Self.maxRenderedLines))
-    }
-
-    private var hiddenLineCount: Int {
-        result.lines.count - renderedLines.count
-    }
-
-    /// The rendered lines paired with a running gutter number. Removed lines
-    /// number against the old file, added/unchanged against the new — the
-    /// familiar unified-diff gutter (`SPEC` §4E E2 "gutter line numbers").
-    private var numberedLines: [(index: Int, line: PermissionDiffLine, gutter: Int)] {
-        var out: [(index: Int, line: PermissionDiffLine, gutter: Int)] = []
-        var oldNo = 1
-        var newNo = 1
-        for (index, line) in renderedLines.enumerated() {
-            let gutter: Int
-            switch line.kind {
-            case .removed:
-                gutter = oldNo
-                oldNo += 1
-            case .added:
-                gutter = newNo
-                newNo += 1
-            case .unchanged:
-                gutter = newNo
-                oldNo += 1
-                newNo += 1
-            }
-            out.append((index, line, gutter))
-        }
-        return out
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            header
-
-            AutoHeightScrollView(maxHeight: Self.maxHeight) {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(numberedLines, id: \.index) { entry in
-                        row(entry.line, gutter: entry.gutter)
-                    }
-
-                    if hiddenLineCount > 0 {
-                        Text(lang.t("approval.diffMoreLines", hiddenLineCount))
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundStyle(PouredApprovalColors.diffContextInk)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 3)
-                    }
-                }
-                .padding(.vertical, 3)
-            }
-        }
-        .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(reduceTransparency ? tokens.colors.surfaceInk : PouredApprovalColors.codeSurface)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(.white.opacity(0.06), lineWidth: 1)
-                )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-    }
-
-    private var header: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "doc.text")
-                .font(.system(size: 10, weight: .semibold))
-                .accessibilityHidden(true)
-            Text(lang.t("approval.diffUpdated"))
-            Text("+\(result.addedCount)")
-                .foregroundStyle(PouredApprovalColors.diffAddInk)
-            Text("\u{2212}\(result.removedCount)")
-                .foregroundStyle(PouredApprovalColors.diffDelInk)
-        }
-        .font(.system(size: 10.5, weight: .semibold))
-        .foregroundStyle(tokens.colors.paper.opacity(0.6))
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.03))
-    }
-
-    private func row(_ line: PermissionDiffLine, gutter: Int) -> some View {
-        HStack(alignment: .top, spacing: 0) {
-            Text("\(gutter)")
-                .frame(width: 26, alignment: .trailing)
-                .padding(.trailing, 10)
-                .foregroundStyle(gutterColor(line.kind))
-            Text(markerPrefix(line.kind) + (line.text.isEmpty ? " " : line.text))
-                .foregroundStyle(textColor(line.kind))
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .font(PouredType.Role.diff.font)
-        .padding(.leading, 8)
-        .padding(.trailing, 10)
-        .padding(.vertical, 1)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(rowBackground(line.kind))
-    }
-
-    private func markerPrefix(_ kind: PermissionDiffLine.Kind) -> String {
-        switch kind {
-        case .added: "+ "
-        case .removed: "\u{2212} "
-        case .unchanged: "  "
-        }
-    }
-
-    private func gutterColor(_ kind: PermissionDiffLine.Kind) -> Color {
-        switch kind {
-        case .added: PouredApprovalColors.diffAddGutter
-        case .removed: PouredApprovalColors.diffDelGutter
-        case .unchanged: PouredApprovalColors.diffContextGutter
-        }
-    }
-
-    private func textColor(_ kind: PermissionDiffLine.Kind) -> Color {
-        switch kind {
-        case .added: PouredApprovalColors.diffAddInk
-        case .removed: PouredApprovalColors.diffDelInk
-        case .unchanged: PouredApprovalColors.diffContextInk
-        }
-    }
-
-    private func rowBackground(_ kind: PermissionDiffLine.Kind) -> Color {
-        switch kind {
-        case .added: PouredApprovalColors.diffAddFill
-        case .removed: PouredApprovalColors.diffDelFill
-        case .unchanged: .clear
-        }
     }
 }
 
@@ -2140,17 +2079,71 @@ private enum PouredApprovalColors {
     static let diffContextGutter = Color(red: 0xF2/255, green: 0xF5/255, blue: 0xFB/255).opacity(0.3)
 }
 
+extension IslandDiffStyle {
+    /// E2's original Poured treatment, factored into the shared renderer's
+    /// style input. The component keeps the gutter and marker structural while
+    /// this factory retains the Poured card's exact palette and transparency
+    /// fallback.
+    static func poured(tokens: IslandThemeTokens, reduceTransparency: Bool) -> Self {
+        Self(
+            gutterWidth: 26,
+            markerWidth: 10,
+            horizontalPadding: 8,
+            font: PouredType.Role.diff.font,
+            typography: Typography(size: 11.5, weight: .regular, design: .monospaced),
+            added: LineColors(
+                gutter: PouredApprovalColors.diffAddGutter,
+                marker: PouredApprovalColors.diffAddInk,
+                content: PouredApprovalColors.diffAddInk,
+                background: PouredApprovalColors.diffAddFill
+            ),
+            removed: LineColors(
+                gutter: PouredApprovalColors.diffDelGutter,
+                marker: PouredApprovalColors.diffDelInk,
+                content: PouredApprovalColors.diffDelInk,
+                background: PouredApprovalColors.diffDelFill
+            ),
+            context: LineColors(
+                gutter: PouredApprovalColors.diffContextGutter,
+                marker: PouredApprovalColors.diffContextInk,
+                content: PouredApprovalColors.diffContextInk,
+                background: .clear
+            ),
+            headerColor: tokens.colors.paper.opacity(0.6),
+            headerBackground: Color.white.opacity(0.03),
+            containerBackground: reduceTransparency ? tokens.colors.surfaceInk : PouredApprovalColors.codeSurface,
+            containerBorder: Border(color: .white.opacity(0.06), width: 1),
+            containerShape: .rounded(cornerRadius: 10)
+        )
+    }
+}
+
 /// The question hero (`.q-hero`) gold chrome (`SPEC` §4F · mockup `.q-hero`).
 /// The header chip fill and selection ring live inside the shared
 /// `StructuredQuestionPromptView` (token-driven, `statusWaitingForAnswer`), so
 /// this table only carries the outer wash + ring the Poured wrapper adds.
-private enum PouredQuestionColors {
+///
+/// Not `private` (overlay remediation Phase 2A-follow-up · F1):
+/// `PouredIslandTheme.questionSubmitButton` reads `submitTop`/`submitBottom`
+/// /`submitInk` from `PouredIslandTheme.swift`.
+enum PouredQuestionColors {
     /// `.q-hero` gradient top — `rgba(52,44,22,.4)`.
     static let washTop = Color(red: 0x34/255, green: 0x2C/255, blue: 0x16/255).opacity(0.4)
     /// `.q-hero` gradient bottom — `rgba(26,22,12,.5)`.
     static let washBottom = Color(red: 0x1A/255, green: 0x16/255, blue: 0x0C/255).opacity(0.5)
     /// `.q-hero` inset ring — `rgba(255,213,138,.24)` (the `#ffd58a` gold at .24).
     static let ring = Color(red: 0xFF/255, green: 0xD5/255, blue: 0x8A/255).opacity(0.24)
+
+    /// The Submit button's own stops (overlay remediation Phase 2A-follow-up ·
+    /// F1, Decision 1): `01-poured-island.html:1192` inline-overrides
+    /// `.btn.primary`'s default Allow gradient (`#ffce8a→#ffb14d`) with a
+    /// lighter `linear-gradient(180deg,#ffe0a8,#ffd58a)` and ink `#2a2205` for
+    /// the question card's Submit specifically — the board specifies the two
+    /// CTAs separately, so this is not `PouredApprovalButtonLabel.allow`'s
+    /// literal gradient reused.
+    static let submitTop = Color(red: 0xFF/255, green: 0xE0/255, blue: 0xA8/255)    // #ffe0a8
+    static let submitBottom = Color(red: 0xFF/255, green: 0xD5/255, blue: 0x8A/255) // #ffd58a
+    static let submitInk = Color(red: 0x2A/255, green: 0x22/255, blue: 0x05/255)    // #2a2205
 }
 
 /// The completion outcome badge (`.outcome`) fills (`SPEC` §4H · mockup
@@ -2318,88 +2311,126 @@ private struct MetadataCellChrome: ViewModifier {
     }
 }
 
-// MARK: - Jump primary CTA (mockup §D `.btn.primary`)
+// MARK: - Full-size button contract (mockup `.btn`)
 
-/// The blue-gradient primary button the §4D detail leads with. Poured-local so
-/// the shared `IslandActionButtonStyle` (paper-filled) is left untouched; the
-/// gradient + glow are lifted straight from the mockup's inline style.
-private struct PouredJumpButtonStyle: ButtonStyle {
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+/// The four semantic treatments of Poured's one full-size `.btn` primitive.
+/// The compact inline `.jump` chip remains a separate 11.5pt / r8 affordance;
+/// only full-size Jump-to-terminal CTAs use this contract.
+enum PouredFullSizeButtonKind: CaseIterable, Equatable {
+    case event
+    case wayfinding
+    case ghost
+    case deny
 
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundStyle(Color(red: 0.04, green: 0.10, blue: 0.21))
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.56, green: 0.74, blue: 1.0),
-                                Color(red: 0.43, green: 0.65, blue: 1.0),
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .strokeBorder(.white.opacity(0.4), lineWidth: 1)
-                            .blendMode(.overlay)
-                    )
-            )
-            .shadow(
-                color: reduceTransparency ? .clear : Color(red: 0.43, green: 0.65, blue: 1.0).opacity(0.5),
-                radius: 10,
-                y: 4
-            )
-            .opacity(configuration.isPressed ? 0.82 : 1)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+    static let cornerRadius: CGFloat = 11
+    static let horizontalPadding: CGFloat = 14
+    static let verticalPadding: CGFloat = 8
+
+    var usesGradient: Bool {
+        self == .event || self == .wayfinding
+    }
+
+    var showsButtonGlow: Bool {
+        self == .event || self == .wayfinding
     }
 }
 
-// MARK: - Ghost secondary button (mockup §H `.btn.ghost`)
-
-/// A calm ghost secondary (`SPEC` §4H · mockup `.btn.ghost`): a low-contrast
-/// `rgba(242,245,251,.08)` fill that lifts to `.14` on hover, text at `t1`
-/// (`.standard`) or `t3` (`.quiet`, e.g. Dismiss). Deliberately quiet so it never
-/// competes with the amber/blue primaries.
-private struct PouredGhostButtonStyle: ButtonStyle {
-    enum Role { case standard, quiet }
-    var role: Role = .standard
+/// The single full-size Poured button treatment. Every kind shares the `.btn`
+/// base (r11, 14/8 padding, `heroButtonLabel` 13/600 sans, no border); kind
+/// only changes semantic fill, ink and whether the primary glow is present.
+private struct PouredFullSizeButtonStyle: ButtonStyle {
+    let kind: PouredFullSizeButtonKind
 
     func makeBody(configuration: Configuration) -> some View {
-        // `@State` (hover) + `@Environment` (tokens / contrast) can only be read
-        // from a real `View`, not the `ButtonStyle` struct — so the label is a
-        // nested view.
-        PouredGhostButtonLabel(role: role, configuration: configuration)
+        PouredFullSizeButtonChrome(kind: kind, configuration: configuration)
     }
 
-    private struct PouredGhostButtonLabel: View {
-        let role: Role
+    private struct PouredFullSizeButtonChrome: View {
+        let kind: PouredFullSizeButtonKind
         let configuration: Configuration
 
+        @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
         @Environment(\.islandTokens) private var tokens
         @Environment(\.colorSchemeContrast) private var colorSchemeContrast
         @State private var isHovering = false
 
         var body: some View {
-            let increaseContrast = colorSchemeContrast == .increased
-            let inkOpacity = role == .quiet
-                ? tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increaseContrast)
-                : tokens.colors.text(0.96, increaseContrast: increaseContrast)
-            configuration.label
-                .foregroundStyle(tokens.colors.paper.opacity(inkOpacity))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 11, style: .continuous)
-                        .fill(Color(red: 0xF2/255, green: 0xF5/255, blue: 0xFB/255)
-                            .opacity(isHovering ? 0.14 : 0.08))
-                )
+            let base = configuration.label
+                .font(PouredType.Role.heroButtonLabel.font)
+                .foregroundStyle(ink)
+                .padding(.horizontal, PouredFullSizeButtonKind.horizontalPadding)
+                .padding(.vertical, PouredFullSizeButtonKind.verticalPadding)
+                .background(background)
                 .opacity(configuration.isPressed ? 0.82 : 1)
+                .scaleEffect(configuration.isPressed ? 0.98 : 1)
                 .onHover { isHovering = $0 }
+
+            if kind.showsButtonGlow {
+                base.shadow(color: reduceTransparency ? .clear : glowColor, radius: 10, y: 4)
+            } else {
+                base
+            }
+        }
+
+        private var ink: Color {
+            switch kind {
+            case .event:
+                return PouredApprovalColors.allowInk
+            case .wayfinding:
+                return PouredApprovalColors.codexButtonInk
+            case .ghost:
+                let increased = colorSchemeContrast == .increased
+                return tokens.colors.paper.opacity(
+                    tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increased)
+                )
+            case .deny:
+                return PouredApprovalColors.denyInk
+            }
+        }
+
+        private var glowColor: Color {
+            switch kind {
+            case .event:
+                return PouredApprovalColors.allowBottom.opacity(0.5)
+            case .wayfinding:
+                return PouredApprovalColors.codexBlue.opacity(0.5)
+            case .ghost, .deny:
+                return .clear
+            }
+        }
+
+        @ViewBuilder
+        private var background: some View {
+            let shape = RoundedRectangle(
+                cornerRadius: PouredFullSizeButtonKind.cornerRadius,
+                style: .continuous
+            )
+
+            switch kind {
+            case .event:
+                shape.fill(
+                    LinearGradient(
+                        colors: [PouredApprovalColors.allowTop, PouredApprovalColors.allowBottom],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+            case .wayfinding:
+                shape.fill(
+                    LinearGradient(
+                        colors: [PouredApprovalColors.codexButtonTop, PouredApprovalColors.codexBlue],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+            case .ghost:
+                shape.fill(
+                    Color(red: 0xF2/255, green: 0xF5/255, blue: 0xFB/255)
+                        .opacity(isHovering ? 0.14 : 0.08)
+                )
+            case .deny:
+                shape.fill(PouredApprovalColors.denyFill)
+            }
         }
     }
 }

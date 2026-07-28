@@ -51,7 +51,7 @@ struct FlightDeckSessionListScaffold: View {
     var body: some View {
         VStack(spacing: 0) {
             TimelineView(.periodic(from: .now, by: 30)) { context in
-                sessionPanelHeader(referenceDate: context.date)
+                annunciatorStrip(referenceDate: context.date)
             }
 
             columnCaptionStrip
@@ -120,25 +120,28 @@ struct FlightDeckSessionListScaffold: View {
 
     // MARK: - Annunciator summary tiles
 
-    private func sessionPanelHeader(referenceDate: Date) -> some View {
+    /// The summary strip — the mockup's `.summary` (`02-flight-deck.html:321-326,
+    /// 913-919`): its **own full-width band**, entirely separate from the
+    /// brand/usage `.phead` header above it. There is no mockup equivalent of a
+    /// "SESSION LIST" title sharing this row — the shipped `Text(...title)`
+    /// fused into one `HStack` alongside the tiles is dropped (overlay
+    /// remediation F9); the column-caption strip immediately below already
+    /// labels the list ("Session" et al.), so the redundant title cost fidelity
+    /// without adding information. Tiles are `flex:1` and always fill the
+    /// available width edge-to-edge, so unlike the retired fixed-intrinsic
+    /// `annunciatorRow` this never needs a `ViewThatFits` compact fallback.
+    private func annunciatorStrip(referenceDate: Date) -> some View {
         let tiles = annunciatorTiles(referenceDate: referenceDate)
 
-        return HStack(spacing: 10) {
-            Text(FlightDeckText.caps(lang.t("island.sessionList.title"), lang: lang))
-                .font(FlightDeckTypography.microLabel)
-                .tracking(FlightDeckText.tracking(1.6, lang: lang))
-                .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(0.62, increaseContrast: increasesContrast)))
-
-            ViewThatFits(in: .horizontal) {
-                annunciatorRow(tiles, compact: false)
-                annunciatorRow(tiles, compact: true)
+        return HStack(spacing: 1) {
+            ForEach(tiles) { tile in
+                FlightDeckAnnunciatorTileView(tile: tile, lang: lang)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-
-            Spacer(minLength: 0)
         }
-        .padding(.leading, sideInset)
-        .padding(.trailing, sideInset)
-        .frame(height: 40)
+        // The 1pt inter-tile gaps show this hairline through, matching the
+        // mockup's `.summary{gap:1px;background:var(--hair)}` container.
+        .background(tokens.colors.paper.opacity(tokens.colors.hairline(increaseContrast: increasesContrast)))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(annunciatorAccessibilityLabel(tiles))
         .overlay(alignment: .bottom) {
@@ -146,15 +149,6 @@ struct FlightDeckSessionListScaffold: View {
                 .fill(tokens.colors.paper.opacity(tokens.colors.hairline(increaseContrast: increasesContrast)))
                 .frame(height: 1)
         }
-    }
-
-    private func annunciatorRow(_ tiles: [FlightDeckAnnunciatorTile], compact: Bool) -> some View {
-        HStack(spacing: compact ? 5 : 7) {
-            ForEach(tiles) { tile in
-                FlightDeckAnnunciatorTileView(tile: tile, compact: compact, lang: lang)
-            }
-        }
-        .fixedSize(horizontal: true, vertical: false)
     }
 
     /// The four fixed annunciator tiles. Unlike the shared / Instrument summary,
@@ -314,6 +308,23 @@ struct FlightDeckSessionListScaffold: View {
     }
 }
 
+// MARK: - Annunciator tile geometry
+
+/// One annunciator tile's geometry (`02-flight-deck.html:322-326`): the
+/// `9px 12px` padding, the `gap:3px` between the stacked count and caption,
+/// and the lit marker's `2px`-wide full-height accent bar. Named constants —
+/// rather than literals inline in `FlightDeckAnnunciatorTileView.body` — so
+/// `FlightDeckThemeTests` can pin the geometry the plan's acceptance criteria
+/// (tile height 49–55pt @1x, a ≥2pt accent mark) actually depend on, the same
+/// pattern `FlightDeckSessionRowGrid` / `FlightDeckTapeGauge` already follow
+/// for their own pinned geometry (overlay remediation F9).
+enum FlightDeckAnnunciatorGeometry {
+    static let verticalPadding: CGFloat = 9
+    static let horizontalPadding: CGFloat = 12
+    static let stackSpacing: CGFloat = 3
+    static let accentBarWidth: CGFloat = 2
+}
+
 // MARK: - Annunciator tile
 
 private struct FlightDeckAnnunciatorTile: Identifiable {
@@ -324,27 +335,28 @@ private struct FlightDeckAnnunciatorTile: Identifiable {
     var isLit: Bool { count > 0 }
 }
 
-/// One annunciator tile: a square status lamp, the count, and an uppercase
-/// caption, boxed in a hairline housing. Lit tiles light their lamp and raise
-/// their text; dark tiles seat a dim lamp and drop their text into the ground —
-/// an unlit annunciator is still a readout. A lit lamp is now self-lit phosphor
-/// (AB-336): it bleeds a static halo outside its square via the shared
-/// `phosphorGlow` primitive so the summary strip reads as a bank of self-lit
-/// annunciators. The glow is static (a count readout, not a live lamp), so
-/// there is nothing to animate and Reduce Motion is a no-op here.
+/// One annunciator tile: a large count stacked **above** an uppercase caption
+/// (mockup `.sumtile{flex-direction:column}`, `02-flight-deck.html:322-334`),
+/// marked lit by a leading **full-height 2pt accent bar** — not a small square
+/// lamp — when its count is non-zero; dark tiles carry no accent mark at all.
+/// An unlit annunciator is still a readout: its count and caption drop to
+/// dimmer text rather than disappearing. A lit accent bar is self-lit
+/// phosphor (AB-336, generalized by overlay remediation F9 from the retired
+/// square lamp): it bleeds a static halo outside its own silhouette via the
+/// shared `phosphorGlow` primitive. The glow is static (a count readout, not
+/// a live lamp), so there is nothing to animate and Reduce Motion is a no-op
+/// here. Tiles carry no per-tile radius or border — separation comes from the
+/// 1pt hairline gaps the parent `annunciatorStrip` draws between them
+/// (mockup `.summary{gap:1px}`), and each tile fills with the `--surface`
+/// panel tone (`FlightDeckSurfaces.panel`), not the `--surface-2` tile tone.
 private struct FlightDeckAnnunciatorTileView: View {
     let tile: FlightDeckAnnunciatorTile
-    let compact: Bool
     let lang: LanguageManager
 
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     private var increasesContrast: Bool { colorSchemeContrast == .increased }
 
     @Environment(\.islandTokens) private var tokens
-
-    private var lampColor: Color {
-        tile.isLit ? tile.tint : tokens.colors.statusIdle.opacity(0.5)
-    }
 
     private var countColor: Color {
         tile.isLit
@@ -362,46 +374,38 @@ private struct FlightDeckAnnunciatorTileView: View {
     }
 
     var body: some View {
-        HStack(spacing: 5) {
-            Rectangle()
-                .fill(lampColor)
-                .frame(width: 6, height: 6)
-                // A lit annunciator bleeds a phosphor halo outside its square; a
-                // dark one casts nothing (intensity 0).
-                .phosphorGlow(
-                    shape: Rectangle(),
-                    tint: tile.tint,
-                    radius: FlightDeckMotion.Breathe.glowRadiusMin,
-                    intensity: tile.isLit ? 0.55 : 0
-                )
-                .accessibilityHidden(true)
-
+        VStack(alignment: .leading, spacing: FlightDeckAnnunciatorGeometry.stackSpacing) {
             Text("\(tile.count)")
-                .font(.system(size: FlightDeckTypography.countSize, weight: .bold, design: .monospaced))
+                .font(FlightDeckTypography.annunciatorCount)
                 .foregroundStyle(countColor)
+                .lineLimit(1)
 
             Text(FlightDeckText.caps(tile.label, lang: lang))
                 .font(FlightDeckTypography.microLabel)
                 .tracking(FlightDeckText.tracking(0.8, lang: lang))
                 .foregroundStyle(labelColor)
+                .lineLimit(1)
         }
-        .padding(.horizontal, compact ? 5 : 7)
-        .padding(.vertical, 4)
-        // AB-335: annunciator tiles seat on the FD `tile` sub-panel tone
-        // (#101519), one step above the panel body, framed by a tier-2 bezel
-        // that brightens under Increase Contrast. Lit vs dark is carried by the
-        // lamp and text, not a wash of the fill.
-        .background(
-            RoundedRectangle(cornerRadius: 3, style: .continuous)
-                .fill(FlightDeckSurfaces.tile)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 3, style: .continuous)
-                        .strokeBorder(
-                            FlightDeckSurfaces.hairline(tier: 2, increaseContrast: increasesContrast),
-                            lineWidth: 1
-                        )
-                )
-        )
+        .padding(.vertical, FlightDeckAnnunciatorGeometry.verticalPadding)
+        .padding(.horizontal, FlightDeckAnnunciatorGeometry.horizontalPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(FlightDeckSurfaces.panel)
+        .overlay(alignment: .leading) {
+            if tile.isLit {
+                Rectangle()
+                    .fill(tile.tint)
+                    .frame(width: FlightDeckAnnunciatorGeometry.accentBarWidth)
+                    // The lit marker bleeds a phosphor halo outside its own
+                    // silhouette, the same primitive every other lit lamp uses.
+                    .phosphorGlow(
+                        shape: Rectangle(),
+                        tint: tile.tint,
+                        radius: FlightDeckMotion.Breathe.glowRadiusMin,
+                        intensity: 0.55
+                    )
+                    .accessibilityHidden(true)
+            }
+        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(tile.count) \(tile.label)")
     }

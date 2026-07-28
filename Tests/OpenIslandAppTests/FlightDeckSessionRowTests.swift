@@ -352,6 +352,57 @@ struct FlightDeckSessionRowTests {
         #expect(FlightDeckApprovalFormat.donestatDurationLabel(seconds: -1) == "0m 00s")
     }
 
+    // MARK: - Completion action rail
+
+    @Test
+    func completionActionsAlwaysLeadWithJumpWithoutATranscript() {
+        #expect(
+            FlightDeckApprovalFormat.completionActions(transcriptPath: nil)
+                == [.jump]
+        )
+        #expect(
+            FlightDeckApprovalFormat.completionActions(transcriptPath: " \n ")
+                == [.jump]
+        )
+    }
+
+    @Test
+    func completionActionsPlaceTranscriptAfterJumpWhenAvailable() {
+        #expect(
+            FlightDeckApprovalFormat.completionActions(
+                transcriptPath: "  ~/.claude/session.jsonl\n"
+            ) == [
+                .jump,
+                .transcript(path: "~/.claude/session.jsonl"),
+            ]
+        )
+    }
+
+    @Test
+    func completionJumpUsesTheExistingLocalizedCopyAndExplicitAccessibilityLabel() throws {
+        #expect(FlightDeckApprovalFormat.completionJumpLabelKey == "island.flightDeck.row.jump")
+
+        let source = try String(
+            contentsOf: repositoryRoot()
+                .appendingPathComponent("Sources/OpenIslandApp/Views/Island/FlightDeckSessionRow.swift"),
+            encoding: .utf8
+        )
+        let start = try #require(source.range(of: "private var completionJumpButton: some View"))
+        let end = try #require(
+            source.range(
+                of: "/// The §4H `SUCCESS` badge",
+                range: start.upperBound..<source.endIndex
+            )
+        )
+        let buttonSource = String(source[start.lowerBound..<end.lowerBound])
+
+        #expect(buttonSource.contains("handlePrimaryTap()"))
+        #expect(buttonSource.contains("FlightDeckApprovalFormat.completionJumpLabelKey"))
+        #expect(buttonSource.contains("FlightDeckTypography.microLabel"))
+        #expect(buttonSource.contains("FlightDeckTypography.completionJumpLabel"))
+        #expect(buttonSource.contains(".accessibilityLabel(completionJumpLabel)"))
+    }
+
     // MARK: - MASTER CAUTION approval surfaces (AB-314)
 
     /// AC #1 / #2: the ALLOW / always-allow / DENY switches must print the
@@ -370,6 +421,41 @@ struct FlightDeckSessionRowTests {
         }
         let hints = FlightDeckApprovalFormat.Shortcut.allCases.map(\.glyphString)
         #expect(Set(hints).count == hints.count)
+    }
+
+    private func repositoryRoot() -> URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+    }
+
+    /// F5 (overlay remediation Phase 3): the primary decision row renders
+    /// Allow before Deny, left to right — matching Poured
+    /// (`PouredSessionRow.swift:1613-1636`), Halo (`HaloSessionRow.swift
+    /// :1867-1880`), and Flight Deck's own board (`02-flight-deck.html
+    /// :1113-1115`). The shipped view had Deny leading, reversed against all
+    /// three references — a mouse/trackpad muscle-memory risk, not a
+    /// keyboard one: ⌘Y/⌘N stayed correctly bound to their own actions
+    /// throughout, since `OverlayPanelController`'s keydown handler is
+    /// global and independent of visual layout.
+    ///
+    /// Compares via `glyphString` rather than `Shortcut` equality so this
+    /// doesn't need to add `Equatable` to `Shortcut` just for a test — ⌘Y and
+    /// ⌘N each identify exactly one shortcut, per
+    /// `approvalKeyHintGlyphsMatchTheRegisteredShortcuts` above. Before this
+    /// test, no order-pinning test existed for any theme — a pixel-diff
+    /// golden was the only gate. Poured (`PouredApprovalShortcut`) and Halo
+    /// (`HaloSessionRowFormat`) don't expose an equivalent order fact yet;
+    /// adding one there and a sibling test of this same shape is the
+    /// natural next step once those row files are back in scope.
+    @Test
+    func primaryDecisionRowRendersAllowBeforeDeny() {
+        let order = FlightDeckApprovalFormat.primaryDecisionOrder
+        #expect(order.map(\.glyphString) == ["⌘Y", "⌘N"])
+        // Exactly the two primary switches — `.alwaysAllow` belongs to the
+        // stacked row below, not this one.
+        #expect(order.count == 2)
     }
 
     /// AC #4: a non-success completion never shares the success row's quiet

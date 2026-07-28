@@ -527,6 +527,9 @@
 "question.hint.keyboard.single" = "1 選擇 · Enter 提交 · Esc 關閉";
 "question.hint.keyboard.range" = "1–%lld 選擇 · Enter 提交 · Esc 關閉";
 "question.submit.multiSelect" = "提交 — 已選 %lld 項";
+/* D1 pagination — per-page non-final advance label (overlay remediation Phase 2C) */
+"question.submitAndNext" = "提交並下一題";
+"question.next" = "下一題";
 
 /* Island Panel - Completion */
 "completion.done" = "完成";
@@ -552,6 +555,12 @@
 "a11y.session.collapseDetail" = "收起工作階段詳情";
 "a11y.session.dismiss" = "關閉此工作階段";
 "a11y.session.summary" = "%@，%@，%@，%@";
+"a11y.usage.resetsIn" = "%@ 後重置";
+"a11y.nestedWork.subagents.one" = "%lld 個子代理";
+"a11y.nestedWork.subagents.other" = "%lld 個子代理";
+"a11y.nestedWork.tasks.one" = "%2$lld 個任務中已完成 %1$lld 個";
+"a11y.nestedWork.tasks.other" = "%2$lld 個任務中已完成 %1$lld 個";
+"a11y.nestedWork.combined" = "%@，%@";
 "a11y.transcript" = "工作階段記錄，%@";
 "a11y.phase.running" = "執行中";
 "a11y.phase.waitingForApproval" = "等待授權";

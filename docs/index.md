@@ -26,6 +26,7 @@ This index is the repository map for humans and coding agents. Read these files 
 - [docs/design/overlay-redesign/SPEC-poured-island.md](./design/overlay-redesign/SPEC-poured-island.md) for the Poured Island 2.0 conformance spec
 - [docs/design/overlay-redesign/SPEC-flight-deck.md](./design/overlay-redesign/SPEC-flight-deck.md) for the Flight Deck 2.0 conformance spec
 - [docs/design/overlay-redesign/SPEC-halo.md](./design/overlay-redesign/SPEC-halo.md) for the Halo greenfield build spec
+- [docs/design/overlay-redesign/REMEDIATION-PLAN.md](./design/overlay-redesign/REMEDIATION-PLAN.md) for the completed overlay visual-fidelity remediation plan and its evidence record
 
 ## Harness And Planning
 

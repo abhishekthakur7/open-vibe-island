@@ -181,6 +181,17 @@ struct HaloThemeTests {
         #expect(HaloTheme().rowIsDrawingGroupSafe == false)
     }
 
+    // MARK: - Question-prompt pagination (overlay remediation Phase 2B · F1a/D1)
+
+    /// Halo's board (`06-halo.html:1067-1156`) shows one question per page — two
+    /// separate frames, "1 of 2" / "Next" then "2 of 2" / "Submit" — pinned here
+    /// at the type level, alongside the visual proof in
+    /// `HaloConformanceSnapshotTests.testQuestionHero` / `testQuestionHeroSubmitEnabled`.
+    @Test
+    func questionPageSizeIsOnePerPage() {
+        #expect(HaloTheme().questionPageSize == 1)
+    }
+
     // MARK: - Halo-local edge accents + washes
 
     @Test
@@ -248,6 +259,18 @@ struct HaloThemeTests {
         #expect(HaloTypography.monogramSize == 10)      // .mono-tag 9.5 → 10
     }
 
+    /// F19: both nest-header captions build from one named 10pt bold-sans role
+    /// and its shared 0.09em tracking value. `Font` itself is opaque, so the
+    /// family and size contracts remain pinned through `roleFamilies`; the
+    /// declaration of `nestHeader` is the single source for its bold weight.
+    @Test
+    func nestHeaderCaptionRolePinsSansSizeAndTracking() {
+        #expect(HaloTypography.nestHeaderSize == 10)
+        #expect(HaloTypography.family(of: "nestHeader") == .sans)
+        #expect(abs(HaloTypography.nestHeaderTracking - 0.9) < 0.000_001)
+        #expect(HaloTypography.nestHeaderTracking == HaloTypography.nestHeaderSize * 0.09)
+    }
+
     // MARK: - Mono/sans split (mono limited to the five code roles)
 
     /// Halo is a sans face; mono (`.system(design: .monospaced)`) is reserved for
@@ -270,6 +293,7 @@ struct HaloThemeTests {
         #expect(HaloTypography.family(of: "activity") == .sans)
         #expect(HaloTypography.family(of: "questionText") == .sans)
         #expect(HaloTypography.family(of: "assistant") == .sans)
+        #expect(HaloTypography.family(of: "monogram") == .sans)
         // Tabular counters stay on the sans face (mono is not the whole face).
         #expect(HaloTypography.family(of: "optionNumber") == .sans)
         #expect(HaloTypography.family(of: "age") == .sans)
@@ -447,6 +471,27 @@ struct HaloThemeTests {
         #expect(F.subagentElapsedLabel(seconds: -5) == "0m 00s")
     }
 
+    /// The expanded subagent stop is a combined VoiceOver node. Its status is
+    /// deliberately labelled on the dot child (as in Poured), rather than on the
+    /// parent: a parent label replaces the combined type, task, and elapsed text.
+    /// This source-level regression covers the SwiftUI declaration; native AX
+    /// hierarchy capture remains a manual/harness concern.
+    @Test
+    func expandedSubagentAccessibilityCombinesStatusTypeTaskAndElapsed() throws {
+        let row = try haloSessionRowSource()
+        let start = try #require(row.range(of: "private func subagentRow("))
+        let end = try #require(row.range(of: "private func subagentTypeText", range: start.upperBound..<row.endIndex))
+        let subagentRow = String(row[start.lowerBound..<end.lowerBound])
+
+        #expect(subagentRow.contains(".accessibilityElement(children: .combine)"))
+        #expect(subagentRow.contains(".accessibilityLabel(lang.t(isRunning ? \"a11y.subagent.running\" : \"subagents.completed\"))"))
+        #expect(subagentRow.contains("Text(subagentTypeText(sub))"))
+        #expect(subagentRow.contains("Text(task)"))
+        #expect(subagentRow.contains("subagentElapsed(sub, isRunning: isRunning)"))
+        #expect(!subagentRow.contains(".accessibilityHidden(true)"))
+        #expect(subagentRow.components(separatedBy: ".accessibilityLabel(").count - 1 == 1)
+    }
+
     /// AC (§5H): the completion Duration reads `14m 08s` (the mockup example,
     /// 848s) as a mono tabular span, rolls into an hours field for a multi-hour run
     /// (`1h 05m 30s`) so it never reads a misleading `65m 30s`, and clamps a
@@ -486,6 +531,15 @@ struct HaloThemeTests {
         let rollup = PouredTaskRollup(statuses: [.completed, .completed, .inProgress, .pending, .pending])
         #expect(rollup.done == 2)
         #expect(rollup.total == 5)
+    }
+
+    private func haloSessionRowSource() throws -> String {
+        let testsDirectory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        let repository = testsDirectory
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = repository.appendingPathComponent("Sources/OpenIslandApp/Views/Island/HaloSessionRow.swift")
+        return try String(contentsOf: sourceURL, encoding: .utf8)
     }
 
     // MARK: - Identity strings localize (AC: name/descriptor per language ≠ key)

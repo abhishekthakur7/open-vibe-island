@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 import Testing
 @testable import OpenIslandApp
@@ -259,6 +260,19 @@ struct PouredThemeTests {
         #expect(theme.rowIsDrawingGroupSafe == false)
     }
 
+    // MARK: - Question-prompt pagination (overlay remediation Phase 2B · F1a/D1)
+
+    /// Poured's board (`01-poured-island.html:1154-1205`) shows one question per
+    /// page ("Question 1 of 2" / "Submit & next", then "…2 of 2" / "Submit") —
+    /// pinned here at the type level, alongside the visual proof in
+    /// `PouredConformanceSnapshotTests.testQuestionHero` /
+    /// `testQuestionHeroSubmitEnabled`.
+    @MainActor
+    @Test
+    func questionPageSizeIsOnePerPage() {
+        #expect(PouredIslandTheme().questionPageSize == 1)
+    }
+
     // MARK: - Agents-grid geometry (SPEC §5.2)
 
     /// Poured's closed grid does not deviate from Classic's, so its geometry
@@ -325,6 +339,7 @@ struct PouredThemeTests {
             (.summaryNumber, 12, 700, false, true),
             (.commandBlock, 12, 600, true, false),
             (.diff, 11.5, 400, true, false),
+            (.heroButtonLabel, 13, 600, false, false),
             (.heroTitle, 14, 640, false, false),
             (.metadataKey, 10, 600, false, false),
         ]
@@ -352,7 +367,7 @@ struct PouredThemeTests {
     }
 
     /// Mono is reserved for code-shaped text only — command / diff / branch /
-    /// mono-chip / inline `code` / mono metadata value. The roles the shipped
+    /// inline `code` / mono metadata value. The roles the shipped
     /// theme drew in mono (section header, summary strip, agent chip, age) are
     /// now proportional SF Pro — Poured 2.0's largest visual change.
     @Test
@@ -360,7 +375,6 @@ struct PouredThemeTests {
         let monoRoles = Set(PouredType.Role.allCases.filter { $0.spec.isMono })
         #expect(monoRoles == Set<PouredType.Role>([
             .branchDisambiguator,
-            .monoChip,
             .commandBlock,
             .diff,
             .assistantInlineCode,
@@ -398,8 +412,108 @@ struct PouredThemeTests {
         #expect(PouredType.Role.metaChip.spec.fontWeight == .medium)         // 500
         #expect(PouredType.Role.activityLine.spec.fontWeight == .medium)     // 550
         #expect(PouredType.Role.workspaceTitle.spec.fontWeight == .semibold) // 600
+        #expect(PouredType.Role.heroButtonLabel.spec.fontWeight == .semibold) // 600
         #expect(PouredType.Role.sectionHeader.spec.fontWeight == .semibold)  // 650
         #expect(PouredType.Role.summaryNumber.spec.fontWeight == .bold)      // 700
+    }
+
+    // MARK: - Full-size button contract (F16)
+
+    /// Poured's full-size controls share one `.btn` base. Event and wayfinding
+    /// remain luminous primaries; a ghost or deny is deliberately flat so a
+    /// decision never masquerades as navigation or attention.
+    @Test
+    func fullSizeButtonKindsPinTheSharedBaseAndSemanticModifiers() {
+        #expect(PouredFullSizeButtonKind.allCases == [.event, .wayfinding, .ghost, .deny])
+        #expect(PouredFullSizeButtonKind.cornerRadius == 11)
+        #expect(PouredFullSizeButtonKind.horizontalPadding == 14)
+        #expect(PouredFullSizeButtonKind.verticalPadding == 8)
+
+        #expect(PouredType.Role.heroButtonLabel.spec == .init(
+            size: 13,
+            weight: 600,
+            trackingEm: 0,
+            isMono: false,
+            isTabular: false,
+            isUppercase: false
+        ))
+
+        #expect(PouredFullSizeButtonKind.event.usesGradient)
+        #expect(PouredFullSizeButtonKind.event.showsButtonGlow)
+        #expect(PouredFullSizeButtonKind.wayfinding.usesGradient)
+        #expect(PouredFullSizeButtonKind.wayfinding.showsButtonGlow)
+        #expect(!PouredFullSizeButtonKind.ghost.usesGradient)
+        #expect(!PouredFullSizeButtonKind.ghost.showsButtonGlow)
+        #expect(!PouredFullSizeButtonKind.deny.usesGradient)
+        #expect(!PouredFullSizeButtonKind.deny.showsButtonGlow)
+    }
+
+    /// The F16 migration is intentionally source-level: the six independent
+    /// full-size CTA labels span four row regions and must not quietly grow a
+    /// fifth local style or a full-width label override. The compact inline
+    /// `jumpChip` is out of scope.
+    @Test
+    func allSixFullSizeButtonCallSitesUseTheSharedStyleWithoutRawLabelFontsOrWidthOverrides() throws {
+        let source = try pouredSessionRowSource()
+
+        #expect(source.components(separatedBy: ".buttonStyle(PouredFullSizeButtonStyle(kind: .wayfinding))").count - 1 == 3)
+        #expect(source.components(separatedBy: ".buttonStyle(PouredFullSizeButtonStyle(kind: .event))").count - 1 == 1)
+        #expect(source.components(separatedBy: ".buttonStyle(PouredFullSizeButtonStyle(kind: .ghost))").count - 1 == 1)
+        #expect(source.components(separatedBy: ".buttonStyle(PouredFullSizeButtonStyle(kind: .deny))").count - 1 == 1)
+        #expect(!source.contains("PouredJumpButtonStyle"))
+        #expect(!source.contains("PouredGhostButtonStyle"))
+
+        let style = try #require(source.slice(from: "private struct PouredFullSizeButtonStyle", to: "// MARK: - Outcome badge"))
+        #expect(style.contains(".font(PouredType.Role.heroButtonLabel.font)"))
+        #expect(!style.contains("strokeBorder"))
+
+        for region in [
+            source.slice(from: "private var detailActionRail", to: "private var attachmentChip"),
+            source.slice(from: "private var completionActionRail", to: "private var completionOutcomeGlyphName"),
+            source.slice(from: "private var terminalApprovalCTA", to: "private var terminalApprovalCTATitle"),
+            source.slice(from: "private var actionButtons", to: "// MARK: Scoped always-allow rows"),
+        ] {
+            let region = try #require(region)
+            #expect(!region.contains(".font(.system(size: 13"))
+            #expect(!region.contains(".font(.system(size: 12"))
+            #expect(!region.contains("PouredType.Role.jumpChip.font"))
+            #expect(!region.contains(".frame(maxWidth: .infinity)"))
+        }
+    }
+
+    @Test
+    func approvalLabelLeavesNonstandaloneTypeAndInkToTheSharedButtonStyle() throws {
+        let source = try pouredSessionRowSource()
+        let label = try #require(source.slice(
+            from: "struct PouredApprovalButtonLabel: View",
+            to: "/// One scoped always-allow row"
+        ))
+        let nonstandalone = try #require(label.slice(
+            from: "} else {",
+            to: "    }\n\n    private var labelContent"
+        ))
+        let standalone = try #require(label.slice(
+            from: "private var standaloneLabel",
+            to: "    private var ink"
+        ))
+        let style = try #require(source.slice(from: "private struct PouredFullSizeButtonStyle", to: "// MARK: - Outcome badge"))
+
+        #expect(nonstandalone.contains("labelContent"))
+        #expect(!nonstandalone.contains(".font("))
+        #expect(!nonstandalone.contains(".foregroundStyle("))
+        #expect(standalone.contains(".font(PouredType.Role.heroButtonLabel.font)"))
+        #expect(standalone.contains(".foregroundStyle(ink)"))
+        #expect(style.contains(".font(PouredType.Role.heroButtonLabel.font)"))
+        #expect(style.contains(".foregroundStyle(ink)"))
+    }
+
+    private func pouredSessionRowSource() throws -> String {
+        let testsDirectory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        let repository = testsDirectory
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = repository.appendingPathComponent("Sources/OpenIslandApp/Views/Island/PouredSessionRow.swift")
+        return try String(contentsOf: sourceURL, encoding: .utf8)
     }
 
     // MARK: - Usage threshold rule (SPEC §3.2 · §4I · AB-331)
@@ -594,5 +708,15 @@ struct PouredThemeTests {
         #expect(PouredIslandTheme().usageMeterCard(providers: providers, lang: lang) != nil)
         #expect(PouredIslandTheme().usageMeterCard(providers: [], lang: lang) == nil)
         #expect(ClassicTheme().usageMeterCard(providers: providers, lang: lang) == nil)
+    }
+}
+
+private extension String {
+    func slice(from start: String, to end: String) -> String? {
+        guard let startRange = range(of: start),
+              let endRange = range(of: end, range: startRange.upperBound..<endIndex) else {
+            return nil
+        }
+        return String(self[startRange.lowerBound..<endRange.lowerBound])
     }
 }

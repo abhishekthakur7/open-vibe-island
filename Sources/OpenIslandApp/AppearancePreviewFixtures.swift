@@ -21,15 +21,36 @@ import OpenIslandCore
 enum AppearancePreviewFixtures {
     // MARK: - Deterministic identity
 
-    /// A reproducible `UUID` seeded from a string. The first 16 UTF-8 bytes of
-    /// the seed (zero-padded) become the UUID bytes, so the same seed always
-    /// yields the same id — which is what lets whole `AgentSession`s (with their
-    /// nested `PermissionRequest` / `QuestionPrompt` UUIDs) compare equal across
-    /// two fixture builds.
+    /// A reproducible `UUID` seeded from a string. Two independent 64-bit
+    /// FNV-1a passes over the seed's full UTF-8 byte sequence produce the
+    /// id's two 8-byte halves, so the same seed always yields the same id —
+    /// which is what lets whole `AgentSession`s (with their nested
+    /// `PermissionRequest` / `QuestionPrompt` UUIDs) compare equal across two
+    /// fixture builds.
+    ///
+    /// Phase 1 remediation item 1.4: the previous implementation copied only
+    /// the seed's first 16 UTF-8 bytes verbatim into the UUID — no hashing,
+    /// no mixing — so any two seeds sharing a 16-character prefix collided
+    /// outright. `conformanceQuestions()` below seeds three Auth options as
+    /// `"conformance-auth-oauth"` / `"-apikey"` / `"-mtls"` and four Scope
+    /// options as `"conformance-scope-…"`; every seed in each group shared
+    /// its group's 16-character prefix, so every option in both groups
+    /// rendered as option[0]. Hashing the *whole* seed instead of truncating
+    /// it fixes this (verified collision-free for every seed in this file).
+    /// Not a cryptographic hash: `CryptoKit` has no existing import anywhere
+    /// in this target and isn't worth adding for a preview/test fixture with
+    /// no security requirement — determinism plus a reasonable spread across
+    /// a handful of short, distinct fixture strings is the only real
+    /// contract `stableID` has to keep.
     static func stableID(_ seed: String) -> UUID {
+        let seedBytes = Array(seed.utf8)
+        let high = fnv1a64(seedBytes, offsetBasis: 0xcbf2_9ce4_8422_2325) // FNV-1a 64-bit offset basis
+        let low = fnv1a64(seedBytes, offsetBasis: 0x9e37_79b9_7f4a_7c15) // distinct basis (64-bit golden ratio)
+
         var bytes = [UInt8](repeating: 0, count: 16)
-        for (index, byte) in seed.utf8.enumerated() where index < 16 {
-            bytes[index] = byte
+        for shift in 0..<8 {
+            bytes[shift] = UInt8((high >> (8 * (7 - shift))) & 0xff)
+            bytes[8 + shift] = UInt8((low >> (8 * (7 - shift))) & 0xff)
         }
         return UUID(uuid: (
             bytes[0], bytes[1], bytes[2], bytes[3],
@@ -37,6 +58,20 @@ enum AppearancePreviewFixtures {
             bytes[8], bytes[9], bytes[10], bytes[11],
             bytes[12], bytes[13], bytes[14], bytes[15]
         ))
+    }
+
+    /// One 64-bit FNV-1a pass (http://www.isthe.com/chongo/tech/comp/fnv/)
+    /// over `bytes`, seeded with a caller-chosen offset basis so two passes
+    /// over the same input with different bases produce independent-looking
+    /// 64-bit halves for ``stableID(_:)``.
+    private static func fnv1a64(_ bytes: [UInt8], offsetBasis: UInt64) -> UInt64 {
+        let prime: UInt64 = 0x0000_0100_0000_01b3
+        var hash = offsetBasis
+        for byte in bytes {
+            hash ^= UInt64(byte)
+            hash = hash &* prime
+        }
+        return hash
     }
 
     // MARK: - Baseline session set (AB-305)
@@ -50,6 +85,20 @@ enum AppearancePreviewFixtures {
     /// AB-326: the running row now carries `cursorMetadata` so the narration
     /// layer (AB-321) resolves it to "Editing AppModel.swift", and the approval /
     /// question payloads carry stable ids so the whole set is deterministic.
+    ///
+    /// **60s age-badge margin (Phase 1 remediation item 1.6).**
+    /// `spotlightAgeBadge` reads a *fresh* `Date()` at render time, not this
+    /// function's `now` (`Tests/OpenIslandAppTests/Support/ThemeSnapshotting.swift:25-32`
+    /// documents that the harness cannot inject that clock), so any latency
+    /// between building this fixture and the snapshot being rasterized adds
+    /// straight onto every offset below. Each of the four attention-order
+    /// rows' offsets is pinned to the middle of its intended minute bucket —
+    /// ≥25s clear of the next 60s rollover in both directions — so ordinary
+    /// render latency can't flip `"<1m"`/`"1m"`/`"2m"` to the next bucket's
+    /// text, per the harness's own rule that a fixture must never sit within
+    /// ~30s of a 60s boundary (`ThemeSnapshotHarnessTests.swift:87-88`). A
+    /// pre-fix `preview-done` offset of `-45` (only 15s of margin) is what
+    /// made `testPouredSessionListBaselineNotch`/`TopBar` consistently red.
     static func sessions(now: Date, lang: LanguageManager) -> [AgentSession] {
         // Attention order first (needs-approval, needs-answer, running, done,
         // idle) — `IslandSessionSectioning` leaves `.attention` untouched, so
@@ -63,7 +112,7 @@ enum AppearancePreviewFixtures {
                 attachmentState: .attached,
                 phase: .waitingForApproval,
                 summary: lang.t("settings.appearance.preview.approveShellCommand"),
-                updatedAt: now.addingTimeInterval(-90),
+                updatedAt: now.addingTimeInterval(-90), // mid "1m" bucket, 30s clear of the 60s/120s rollovers
                 permissionRequest: PermissionRequest(
                     id: stableID("preview-approval-permission"),
                     title: lang.t("approval.toolPermissionRequested"),
@@ -87,7 +136,7 @@ enum AppearancePreviewFixtures {
                 attachmentState: .attached,
                 phase: .waitingForAnswer,
                 summary: lang.t("settings.appearance.preview.waitingForAnswer"),
-                updatedAt: now.addingTimeInterval(-150),
+                updatedAt: now.addingTimeInterval(-150), // mid "2m" bucket, 30s clear of the 120s/180s rollovers
                 questionPrompt: QuestionPrompt(
                     id: stableID("preview-answer-prompt"),
                     title: lang.t("settings.appearance.preview.waitingForAnswer"),
@@ -117,7 +166,7 @@ enum AppearancePreviewFixtures {
                 attachmentState: .attached,
                 phase: .running,
                 summary: lang.t("settings.appearance.preview.editingSessionListPreview"),
-                updatedAt: now.addingTimeInterval(-30),
+                updatedAt: now.addingTimeInterval(-30), // mid "<1m" bucket, 30s clear of the 0s/60s rollovers
                 jumpTarget: JumpTarget(
                     terminalApp: "Cursor",
                     workspaceName: "website",
@@ -139,7 +188,10 @@ enum AppearancePreviewFixtures {
                 attachmentState: .attached,
                 phase: .completed,
                 summary: lang.t("settings.appearance.preview.replyAvailable"),
-                updatedAt: now.addingTimeInterval(-45),
+                // mid "<1m" bucket, ≥25s clear both ways. Was -45 (only 15s of
+                // margin to the 60s rollover) — the boundary flip that made
+                // testPouredSessionListBaselineNotch/TopBar consistently red.
+                updatedAt: now.addingTimeInterval(-32),
                 jumpTarget: JumpTarget(
                     terminalApp: "WezTerm",
                     workspaceName: "docs",
@@ -195,6 +247,11 @@ enum AppearancePreviewFixtures {
                 terminalSessionID: "fixture-completed-interrupted"
             ),
             claudeMetadata: ClaudeSessionMetadata(
+                // Phase 1 remediation item 1.5: without a transcriptPath the
+                // Transcript affordance's gate (`AgentSession.trackingTranscriptPath`,
+                // a pure non-empty-string check — no FileManager/on-disk
+                // requirement) never opens, so no fixture exercised it.
+                transcriptPath: "~/.claude/projects/niche-radar/fixture-completed-interrupted.jsonl",
                 initialUserPrompt: "Extract the ranking heuristics into their own module.",
                 lastUserPrompt: "^C",
                 lastAssistantMessage: "Interrupted while moving the scorer — no files were left half-written."
@@ -203,7 +260,13 @@ enum AppearancePreviewFixtures {
     }
 
     /// Codex turn that ended in failure — `outcome: .failed`. Workspace
-    /// `open-vibe-island`, finished 9m ago.
+    /// `open-vibe-island`, finished 3m30s ago — inside the 5-minute
+    /// `staleCompletedDisplayThreshold` (`AgentSession+Presentation.swift:20`)
+    /// so `isStaleCompletedForIsland` stays false and the row renders through
+    /// the failed-outcome template instead of falling back to idle. Phase 1
+    /// remediation item 1.3: a prior `-9 * 60` offset exceeded that
+    /// threshold, so every theme forced `presence = .inactive` and the
+    /// failed-outcome template never rendered.
     static func completedFailed(now: Date) -> AgentSession {
         AgentSession(
             id: "fixture-completed-failed",
@@ -214,7 +277,10 @@ enum AppearancePreviewFixtures {
             phase: .completed,
             outcome: .failed,
             summary: "Build failed: 2 errors in BridgeServer.swift.",
-            updatedAt: now.addingTimeInterval(-9 * 60),
+            // 210s (3m30s): under the 300s stale-completed threshold, off a
+            // 60s age-badge boundary (see `sessions(now:lang:)` above), and
+            // distinct from `completedInterrupted`'s -4*60 (-240s).
+            updatedAt: now.addingTimeInterval(-3 * 60 - 30),
             jumpTarget: JumpTarget(
                 terminalApp: "Ghostty",
                 workspaceName: "open-vibe-island",
@@ -260,6 +326,10 @@ enum AppearancePreviewFixtures {
                 terminalSessionID: "fixture-completed-success"
             ),
             claudeMetadata: ClaudeSessionMetadata(
+                // Phase 1 remediation item 1.5: also needed here (not just on
+                // completedInterrupted) so F13's Flight Deck completion-card
+                // Transcript branch has a fixture that actually exercises it.
+                transcriptPath: "~/.claude/projects/the-automator/fixture-completed-success.jsonl",
                 initialUserPrompt: "Document the bridge-auth flow in AGENTS.md and CLAUDE.md.",
                 lastUserPrompt: "Document the bridge-auth flow in AGENTS.md and CLAUDE.md.",
                 lastAssistantMessage: """
@@ -420,7 +490,16 @@ enum AppearancePreviewFixtures {
             claudeMetadata: ClaudeSessionMetadata(
                 lastUserPrompt: "Build the hooks binary in release mode.",
                 currentTool: "Bash",
-                currentToolInputPreview: "swift build -c release --product OpenIslandHooks"
+                currentToolInputPreview: "swift build -c release --product OpenIslandHooks",
+                // Overlay remediation Phase 4 (F2.4 coverage): mirrors the mockup's
+                // measured "claude · Opus 4.8 · feat/auth-bridge" run
+                // (`shots/mockup/flightDeck-E1.png`) — the exact fixture this
+                // mockup depicts. Before this, no `.waitingForApproval` fixture set
+                // `model`/`worktreeBranch`, so `FlightDeckAnnunciatorHeader`'s
+                // compact context run (and Halo's who-line, which reads the same
+                // `displayModelName`) never rendered anywhere.
+                model: "claude-opus-4-8-20260101",
+                worktreeBranch: "feat/auth-bridge"
             )
         )
     }
@@ -430,21 +509,29 @@ enum AppearancePreviewFixtures {
     /// Claude asking to edit `AGENTS.md`, carrying a `fileDiffSource` whose
     /// old/new text differ on several lines so `PermissionDiff.compute` yields a
     /// real (>3-line) inline diff in the approval hero.
+    ///
+    /// Phase 1 remediation item 1.2: written as prose, not a bulleted list —
+    /// every line here is prose precisely so none starts with `"-"`/`"+"`.
+    /// A leading dash in the *content* made the rendered diff marker's F4/F12
+    /// acceptance criteria unfalsifiable: a marker glyph would appear to be
+    /// present whether or not the UI actually renders a dedicated marker
+    /// column, because the text itself already started with `-`. See
+    /// `docs/design/overlay-redesign/REMEDIATION-PLAN.md` §3a.
     static func permissionDiff(now: Date) -> AgentSession {
         let oldText = """
         ## Verification
 
-        - Run swift build after each change.
-        - Summarize what changed.
-        - Commit on the feature branch.
+        After making changes, run swift build and confirm it succeeds before moving on.
+        Summarize what changed once the round is done.
+        Commit the round on the feature branch before stopping.
         """
         let newText = """
         ## Verification
 
-        - Run swift build and swift test after each change.
-        - Capture a harness smoke run for any UI-affecting change.
-        - Summarize what changed, calling out verification gaps.
-        - Commit on the feature branch.
+        After making changes, run swift build and swift test and confirm both succeed before moving on.
+        Capture a harness smoke run whenever the change affects rendered UI.
+        Summarize what changed once the round is done, calling out any verification gaps.
+        Commit the round on the feature branch before stopping.
         """
 
         return AgentSession(
@@ -481,7 +568,13 @@ enum AppearancePreviewFixtures {
             ),
             claudeMetadata: ClaudeSessionMetadata(
                 lastUserPrompt: "Tighten the verification section of AGENTS.md.",
-                currentTool: "Edit"
+                currentTool: "Edit",
+                // Overlay remediation Phase 4 (F2.4 coverage): mirrors the mockup's
+                // measured "claude · Opus 4.8 · main" run for this exact edit
+                // (`shots/mockup/flightDeck-E2.png`) — see `permissionCommand`'s
+                // comment above for why this was previously unset everywhere.
+                model: "claude-opus-4-8-20260101",
+                worktreeBranch: "main"
             )
         )
     }
@@ -598,7 +691,15 @@ enum AppearancePreviewFixtures {
             ),
             claudeMetadata: ClaudeSessionMetadata(
                 lastUserPrompt: "Design the local bridge transport.",
-                currentTool: "AskUserQuestion"
+                currentTool: "AskUserQuestion",
+                // Overlay remediation Phase 4 (F2.4 coverage): model style matches
+                // the question-hero mockup (`shots/mockup/flightDeck-F1.png`, "claude
+                // · Sonnet 5 · …"); branch reuses the bridge-auth theme the
+                // duplicate-workspace trio already carries (`feat/bridge-auth`,
+                // `AppearancePreviewFixtures.duplicateWorkspaceTrio`) — same feature,
+                // consistent with this question being about the same bridge design.
+                model: "claude-sonnet-5-20260101",
+                worktreeBranch: "feat/bridge-auth"
             )
         )
     }

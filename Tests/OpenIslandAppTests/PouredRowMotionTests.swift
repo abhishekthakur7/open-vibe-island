@@ -8,6 +8,104 @@ import OpenIslandCore
 /// state (`SPEC-poured-island` §3.3 / §4C · mockup §C) fails the build.
 struct PouredRowMotionTests {
 
+    // MARK: - Expansion-state source of truth
+
+    @Test
+    func ordinaryRunningNonActionableRowStartsCollapsed() {
+        #expect(!PouredRowExpansion.resolved(
+            isInteractive: true,
+            expandedByDefault: false,
+            isActionable: false,
+            detailOverride: nil
+        ))
+    }
+
+    @Test
+    func harnessDefaultAndActionableStateEachExpandTheRow() {
+        #expect(PouredRowExpansion.resolved(
+            isInteractive: true,
+            expandedByDefault: true,
+            isActionable: false,
+            detailOverride: nil
+        ))
+        #expect(PouredRowExpansion.resolved(
+            isInteractive: true,
+            expandedByDefault: false,
+            isActionable: true,
+            detailOverride: nil
+        ))
+    }
+
+    @Test
+    func manualOverrideWinsInBothDirections() {
+        #expect(PouredRowExpansion.resolved(
+            isInteractive: true,
+            expandedByDefault: false,
+            isActionable: false,
+            detailOverride: true
+        ))
+        #expect(!PouredRowExpansion.resolved(
+            isInteractive: true,
+            expandedByDefault: true,
+            isActionable: true,
+            detailOverride: false
+        ))
+    }
+
+    @Test
+    func nonInteractiveRowStaysCollapsedAndDebugScenariosResolveDifferently() {
+        #expect(!PouredRowExpansion.resolved(
+            isInteractive: false,
+            expandedByDefault: true,
+            isActionable: true,
+            detailOverride: true
+        ))
+
+        let collapsed = IslandDebugScenario.subagentsCard.snapshot()
+        let expanded = IslandDebugScenario.subagentsExpanded.snapshot()
+        #expect(!PouredRowExpansion.resolved(
+            isInteractive: true,
+            expandedByDefault: collapsed.forcesRowExpansion,
+            isActionable: false,
+            detailOverride: nil
+        ))
+        #expect(PouredRowExpansion.resolved(
+            isInteractive: true,
+            expandedByDefault: expanded.forcesRowExpansion,
+            isActionable: false,
+            detailOverride: nil
+        ))
+        #expect(collapsed.selectedSessionID == expanded.selectedSessionID)
+    }
+
+    @Test
+    func forcedInactiveRowShowsAgedFallbackWhileExplicitCollapseSuppressesIt() {
+        let forcedExpanded = PouredRowExpansion.resolved(
+            isInteractive: true,
+            expandedByDefault: true,
+            isActionable: false,
+            detailOverride: nil
+        )
+        #expect(PouredRowExpansion.fallbackActivityLine(
+            isExpanded: forcedExpanded,
+            lastAssistantMessage: "  Finished the inactive session summary.  ",
+            hasJumpTarget: true
+        ) == "Finished the inactive session summary.")
+
+        let explicitlyCollapsed = PouredRowExpansion.resolved(
+            isInteractive: true,
+            expandedByDefault: true,
+            isActionable: false,
+            detailOverride: false
+        )
+        #expect(!explicitlyCollapsed)
+        #expect(PouredRowExpansion.fallbackActivityLine(
+            isExpanded: explicitlyCollapsed,
+            lastAssistantMessage: "Finished the inactive session summary.",
+            hasJumpTarget: true
+        ) == nil)
+    }
+
     // MARK: - Entrance constants (mockup `rowin`)
 
     @Test

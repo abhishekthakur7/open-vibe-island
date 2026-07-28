@@ -656,6 +656,42 @@ final class AppModel {
     var ignoresPointerExitDuringHarness = false
     var disablesOverlayEventMonitoringDuringHarness = false
 
+    /// Overlay remediation Phase 3, Task 1: narrow opt-in that lets
+    /// `OverlayPanelController.startEventMonitoring()` install
+    /// `keyCommandMonitor` even while `disablesOverlayEventMonitoringDuringHarness`
+    /// is `true`. That flag's blanket early return (`OverlayPanelController
+    /// .swift`) was correct for the *mouse* monitors — an automated capture
+    /// run shouldn't have the host's real cursor driving hover/dismiss — but
+    /// it also silently skipped the keyboard monitor, so the harness could
+    /// never verify ⌘Y/⌘N or digit-select handling for any theme (Phase 2
+    /// verification found this by source read: pressing `1`/Enter in a
+    /// harness-launched panel did nothing). Only this one monitor is gated
+    /// by this flag; mouse monitoring stays governed solely by
+    /// `disablesOverlayEventMonitoringDuringHarness`, unchanged.
+    ///
+    /// Defaults to `false`, so an unset env var leaves every existing
+    /// capture run byte-for-byte unaffected; its only writer is
+    /// `OpenIslandAppDelegate.applicationDidFinishLaunching` mirroring
+    /// `HarnessLaunchConfiguration.enableKeyMonitor`
+    /// (`OPEN_ISLAND_HARNESS_ENABLE_KEY_MONITOR`) — no real user sets it.
+    var enablesOverlayKeyMonitorDuringHarness = false
+
+    /// Overlay remediation Phase 1 item 1.1 (P1.f): harness-only override for
+    /// the "No agent hooks installed" banner (`theme.installHint`, gated at
+    /// `IslandPanelView.swift:867`). The bundled harness binary's real
+    /// hooks-installed probe (`hasAnyInstalledAgent`, declared above) has no
+    /// genuine hook state to read in that environment and always reads
+    /// `false`, so the banner always renders — clipping short panels
+    /// (`emptyState`, `completedFailed`, ...).
+    ///
+    /// **Provably unreachable from the shipping app**: defaults to `false`,
+    /// and its only writer is `OpenIslandAppDelegate
+    /// .applicationDidFinishLaunching` mirroring the harness-only env var
+    /// `OPEN_ISLAND_HARNESS_SUPPRESS_INSTALL_HINT` (`HarnessLaunchConfiguration
+    /// .suppressInstallHint`) — no real user sets it. `hasAnyInstalledAgent`
+    /// itself, the real probe, is untouched.
+    var debugSuppressesInstallHint = false
+
     @ObservationIgnored
     private var bridgeTask: Task<Void, Never>?
 
@@ -1294,6 +1330,18 @@ final class AppModel {
         return providers
     }
 
+    /// Overlay remediation Phase 1 item 1.7 (P1.a): forces every expandable
+    /// session row to render its expanded detail on first appearance, for the
+    /// `subagentsExpanded` debug scenario. Populated from `IslandDebugSnapshot
+    /// .forcesRowExpansion` by `loadDebugSnapshot` below, and read by
+    /// `IslandPanelView.body`, which injects it into
+    /// `\.islandRowExpandedByDefault` (`IslandThemeEnvironment.swift:107-127`)
+    /// — the existing preview/test seam built for AB-339's snapshot goldens,
+    /// never previously wired to `IslandDebugScenario`. `false` on every other
+    /// path (every other scenario, and the shipping app), so production rows
+    /// are unaffected.
+    var debugForcesRowExpansion = false
+
     private func stampAgentsGridObservationTickets(for sessions: [AgentSession]) {
         let newcomers = sessions.filter { _agentsGridObservedSequence[$0.id] == nil }
         guard !newcomers.isEmpty else { return }
@@ -1624,6 +1672,7 @@ final class AppModel {
         state = SessionState(sessions: snapshot.sessions)
         selectedSessionID = snapshot.selectedSessionID ?? snapshot.sessions.first?.id
         debugUsageProvidersOverride = snapshot.usageProviders
+        debugForcesRowExpansion = snapshot.forcesRowExpansion
         lastActionMessage = "Loaded debug scenario: \(snapshot.title)."
         harnessRuntimeMonitor?.recordMilestone("scenarioLoaded", message: snapshot.title)
 

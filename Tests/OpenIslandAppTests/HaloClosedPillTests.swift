@@ -215,6 +215,46 @@ struct HaloClosedPillTests {
         #expect(HaloRightSlotForm.task(completed: 2, total: 5, subagents: 0) == .fraction(completed: 2, total: 5))
         #expect(HaloRightSlotForm.task(completed: 0, total: 0, subagents: 0) == .fraction(completed: 0, total: 0))
     }
+
+    // MARK: - Traveling-glyph tint (overlay remediation F3)
+
+    /// `HaloTheme.closedGlyphTint` resolves through the exact same ambient →
+    /// edge-state → indicator pipeline as the pill's own left-wing indicator
+    /// (`pillIndicatorPairsEveryStateWithANonColorShape` above), landing on the
+    /// shared colour table in `HaloSessionRowFormat.livenessTint`/`outcomeTint`
+    /// plus the permission dot's `statusWaitingForApproval` — pinned directly so
+    /// "nil tint / paper-toned bars for every state" (the achromatic-glyph
+    /// regression this remediation fixes) cannot silently return.
+    @Test
+    func closedGlyphTintMatchesTheSharedStateColourTable() {
+        let theme = HaloTheme()
+        let tokens = theme.tokens
+
+        #expect(
+            theme.closedGlyphTint(mode: .idle, rightSlot: nil, activity: nil)
+                == tokens.colors.paper.opacity(tokens.colors.tertiaryTextOpacity)
+        )
+        #expect(theme.closedGlyphTint(mode: .running, rightSlot: nil, activity: nil) == tokens.colors.statusRunning)
+        #expect(
+            theme.closedGlyphTint(mode: .waiting, rightSlot: nil, activity: nil)
+                == tokens.colors.statusWaitingForAnswer
+        )
+
+        // A3 permission — the state this remediation fixes: the traveling
+        // glyph must land on the same amber as the pill's own ringed dot, not
+        // fall through the `.waiting` bars branch above.
+        let permission = IslandClosedPillActivity(phase: .waitingForApproval, outcome: .success, isOutcomeFresh: false)
+        #expect(
+            theme.closedGlyphTint(mode: .waiting, rightSlot: nil, activity: permission)
+                == tokens.colors.statusWaitingForApproval
+        )
+
+        let freshSuccess = IslandClosedPillActivity(phase: .completed, outcome: .success, isOutcomeFresh: true)
+        #expect(theme.closedGlyphTint(mode: .idle, rightSlot: nil, activity: freshSuccess) == tokens.colors.statusCompleted)
+
+        let freshFailure = IslandClosedPillActivity(phase: .completed, outcome: .failed, isOutcomeFresh: true)
+        #expect(theme.closedGlyphTint(mode: .idle, rightSlot: nil, activity: freshFailure) == tokens.colors.statusFailed)
+    }
 }
 
 // MARK: - Closed-pill width regression (the AB-338 / T12 contract)

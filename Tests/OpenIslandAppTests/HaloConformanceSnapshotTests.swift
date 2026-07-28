@@ -40,6 +40,7 @@ final class HaloConformanceSnapshotTests: XCTestCase {
     private func assertBothProfiles(
         _ scenario: AppearancePreviewScenario,
         named name: String,
+        preselectsQuestionSelection: Bool = false,
         file: StaticString = #filePath,
         testName: String = #function,
         line: UInt = #line
@@ -51,6 +52,7 @@ final class HaloConformanceSnapshotTests: XCTestCase {
                 slot: .sessionList(scenario: scenario),
                 profile: profile,
                 named: "\(name)-\(suffix)",
+                preselectsQuestionSelection: preselectsQuestionSelection,
                 file: file,
                 testName: testName,
                 line: line
@@ -88,8 +90,36 @@ final class HaloConformanceSnapshotTests: XCTestCase {
 
     /// F1/F2 — the question hero: qgold ring shell, `.q-tag` chip, the shared T07
     /// interior (ring+tick single-select, square multi-select, freeform last, digit hints).
+    ///
+    /// D1 pagination (overlay remediation Phase 2B): now renders page 1 of 2
+    /// (one question) rather than both `conformanceQuestions()` stacked, so
+    /// this is also the golden that proves F1 Task 3's crop fixed itself —
+    /// the card's amber ring and Submit button used to run past the capture
+    /// canvas with both questions mounted (`git log`/phase report has the
+    /// before/after); a shorter page fits with room to spare, and no change
+    /// to `ThemeSnapshotting`'s rendering/measurement was needed (verified,
+    /// not assumed — see the phase report's Acceptance criteria table).
     func testQuestionHero() throws {
         try assertBothProfiles(.questionMulti, named: "halo-F-question")
+    }
+
+    /// F, Submit enabled (overlay remediation Phase 2B · F1 Task 2): the same
+    /// question hero with `\.islandQuestionPromptPreselectsFirstOption`
+    /// injected, so page 1's question starts pre-selected and `canSubmit` is
+    /// `true` at capture time — the only way to photograph the *enabled*
+    /// `HaloHeroButton` gradient Submit, since a real question card always
+    /// starts from an empty selection. D1 pagination means this also
+    /// exercises the non-final-page "Next" label (`nonFinalPageLabel`)
+    /// rather than the final-page "Submit" `testQuestionHero` above pins. A
+    /// new scenario, not a redefinition — `testQuestionHero` keeps the
+    /// *disabled* Submit's own regression coverage (mirrors Phase 1's
+    /// `subagentsExpanded` alongside `subagentsCard`): both states matter.
+    func testQuestionHeroSubmitEnabled() throws {
+        try assertBothProfiles(
+            .questionMulti,
+            named: "halo-F-question-submit-enabled",
+            preselectsQuestionSelection: true
+        )
     }
 
     /// H — the completion body: outcome badge + tabular duration + rich prose + follow-up rail.

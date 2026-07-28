@@ -164,6 +164,25 @@ private struct HaloRowContent: View {
             .padding(.horizontal, sideInset)
             .padding(.top, 12)
             .padding(.bottom, isExpanded ? 6 : 12)
+            // Keep the summary as one VoiceOver button while leaving the expanded
+            // detail below outside this ignored-children group.
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilityRowSummaryText(referenceDate: referenceDate))
+            .modifier(NestedWorkAccessibilityValue(
+                value: nestedWorkAccessibilityValue(isExpanded: isExpanded)
+            ))
+            .accessibilityAddTraits(isInteractive ? .isButton : [])
+            .accessibilityAction {
+                guard isInteractive else { return }
+                actions.jump()
+            }
+            .accessibilityAction(named: Text(lang.t(isExpanded ? "a11y.session.collapseDetail" : "a11y.session.expandDetail"))) {
+                toggleDetail(currentlyOpen: isExpanded)
+            }
+            .modifier(HaloOptionalNamedAccessibilityAction(
+                name: actions.dismiss != nil ? lang.t("a11y.session.dismiss") : nil,
+                action: { actions.dismiss?() }
+            ))
 
             // The Part-2 expanded slot (§5D/§5G/§5H): the metadata grid, the
             // subagent / todo nests, the rich last-message / result, and the
@@ -199,24 +218,6 @@ private struct HaloRowContent: View {
         .onChange(of: isInteractive) { _, interactive in
             if !interactive { detailOverride = nil }
         }
-        // One grouped VoiceOver summary — identical wording to every theme so rows
-        // read the same however they're skinned. The expand/collapse toggle and the
-        // dismiss stay reachable as named rotor actions even though their glyphs are
-        // only hover- / chevron-revealed.
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityRowSummaryText(referenceDate: referenceDate))
-        .accessibilityAddTraits(isInteractive ? .isButton : [])
-        .accessibilityAction {
-            guard isInteractive else { return }
-            actions.jump()
-        }
-        .accessibilityAction(named: Text(lang.t(isExpanded ? "a11y.session.collapseDetail" : "a11y.session.expandDetail"))) {
-            toggleDetail(currentlyOpen: isExpanded)
-        }
-        .modifier(HaloOptionalNamedAccessibilityAction(
-            name: actions.dismiss != nil ? lang.t("a11y.session.dismiss") : nil,
-            action: { actions.dismiss?() }
-        ))
     }
 
     // MARK: - Expansion
@@ -584,6 +585,17 @@ private struct HaloRowContent: View {
         return tasks
     }
 
+    private func nestedWorkAccessibilityValue(isExpanded: Bool) -> String? {
+        let taskRollup = activeTasks.map { PouredTaskRollup(statuses: $0.map(\.status)) }
+        return NestedWorkAccessibility.value(
+            activeSubagentCount: activeSubagents?.count ?? 0,
+            completedTaskCount: taskRollup?.done ?? 0,
+            totalTaskCount: taskRollup?.total ?? 0,
+            isExpanded: isExpanded,
+            lang: lang
+        )
+    }
+
     // MARK: Subagents & todo nest (§5G · mockup §G `.nest`)
 
     /// The single nest slab (mockup `.nest`): a faint-hairline inset card grouping
@@ -619,8 +631,8 @@ private struct HaloRowContent: View {
                 .font(.system(size: 11, weight: .regular))
                 .accessibilityHidden(true)
             Text(lang.t("island.halo.subagents.header").uppercased())
-                .font(.system(size: HaloTypography.nestHeaderSize, weight: .bold))
-                .tracking(HaloTypography.nestHeaderSize * 0.09)
+                .font(HaloTypography.nestHeader)
+                .tracking(HaloTypography.nestHeaderTracking)
             Text(lang.t("island.halo.subagents.active", subagents.count))
                 .font(.system(size: HaloTypography.nestHeaderSize, weight: .semibold).monospacedDigit())
             Spacer(minLength: 0)
@@ -648,7 +660,10 @@ private struct HaloRowContent: View {
                 .frame(width: 6, height: 6)
                 .shadow(color: tint.opacity(0.5), radius: 3)
                 .padding(.top, 3)
-                .accessibilityHidden(true)
+                // Keep status as a child of the combined row, matching Poured:
+                // an explicit parent label would replace the type, task, and
+                // elapsed-time children in the resulting VoiceOver label.
+                .accessibilityLabel(lang.t(isRunning ? "a11y.subagent.running" : "subagents.completed"))
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(subagentTypeText(sub))
@@ -672,7 +687,6 @@ private struct HaloRowContent: View {
         .padding(.horizontal, 11)
         .padding(.vertical, 6)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(lang.t(isRunning ? "a11y.subagent.running" : "subagents.completed"))
     }
 
     private func subagentTypeText(_ sub: ClaudeSubagentInfo) -> String {
@@ -1099,8 +1113,8 @@ private struct HaloRowContent: View {
     private func assistantCard(label: String, message: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label.uppercased())
-                .font(.system(size: HaloTypography.nestHeaderSize, weight: .semibold))
-                .tracking(HaloTypography.nestHeaderSize * 0.09)
+                .font(HaloTypography.nestHeader)
+                .tracking(HaloTypography.nestHeaderTracking)
                 .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
 
             AutoHeightScrollView(maxHeight: 150) {
@@ -1357,7 +1371,7 @@ private struct HaloStatusDot: View {
 }
 
 /// The achromatic agent monogram (mockup `.mono-tag`): a 16pt rounded chip carrying
-/// the agent's identity initial in mono at t2, on a whisper-faint white@.07 fill.
+/// the agent's identity initial in sans at t2, on a whisper-faint white@.07 fill.
 /// Identity is a grey whisper — **never** brand-colored (brief §7).
 private struct HaloAgentMonogram: View {
     let text: String
@@ -1366,7 +1380,7 @@ private struct HaloAgentMonogram: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: HaloTypography.monogramSize, weight: .bold, design: .monospaced))
+            .font(.system(size: HaloTypography.monogramSize, weight: .bold, design: .default))
             .tracking(HaloTypography.monogramSize * -0.02)
             .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
             .frame(width: 16, height: 16)
@@ -1824,7 +1838,15 @@ private struct HaloPermissionHero: View {
         ) {
             VStack(alignment: .leading, spacing: 0) {
                 if let diffResult {
-                    HaloHeroDiff(result: diffResult, affectedPath: request?.affectedPath, lang: lang, tokens: tokens, increasesContrast: increasesContrast)
+                    IslandDiffRenderer(
+                        result: diffResult,
+                        lang: lang,
+                        style: .halo(
+                            tokens: tokens,
+                            increasesContrast: increasesContrast,
+                            affectedPath: request?.affectedPath
+                        )
+                    )
                 } else {
                     HaloHeroCommand(session: session, tokens: tokens)
                 }
@@ -2086,146 +2108,60 @@ private struct HaloHeroCommand: View {
     }
 }
 
-/// The inline diff (mockup `.diff`): the shared `PermissionDiffResult` model
-/// rendered in the Halo idiom — a filename header, then gutter-numbered lines
-/// tinted per kind (del `rgba(224,89,108,.11)` text `#f2b0ba`, add
-/// `rgba(95,227,154,.11)` text `#a7ecc6`, context white@.5), capped + scrolled by
-/// `AutoHeightScrollView` so a long diff never runs the card off the panel. Reuses
-/// the diff *computation* (`PermissionDiff`), themed to the void here rather than
-/// the shared `PermissionDiffPreview` (which carries no gutter).
-private struct HaloHeroDiff: View {
-    let result: PermissionDiffResult
-    let affectedPath: String?
-    let lang: LanguageManager
-    let tokens: IslandThemeTokens
-    let increasesContrast: Bool
-
-    private static let maxRenderedLines = 500
-    private static let maxHeight: CGFloat = 180
-
-    private static let delText = Color(red: 0xF2 / 255.0, green: 0xB0 / 255.0, blue: 0xBA / 255.0)
-    private static let addText = Color(red: 0xA7 / 255.0, green: 0xEC / 255.0, blue: 0xC6 / 255.0)
-    private static let del = Color(red: 224 / 255.0, green: 89 / 255.0, blue: 108 / 255.0)
-    private static let add = Color(red: 95 / 255.0, green: 227 / 255.0, blue: 154 / 255.0)
-
-    /// A rendered diff line with its gutter number (new-side line numbering: a
-    /// running counter that advances on every non-removed line). Sequential from 1
-    /// — the honest position within the shown diff, since the model carries no
-    /// original hunk offsets.
-    private struct GutterLine: Identifiable {
-        let id: Int
-        let line: PermissionDiffLine
-        let gutter: Int
-    }
-
-    private var gutterLines: [GutterLine] {
-        var counter = 1
-        var out: [GutterLine] = []
-        for (index, line) in result.lines.prefix(Self.maxRenderedLines).enumerated() {
-            out.append(GutterLine(id: index, line: line, gutter: counter))
-            if line.kind != .removed { counter += 1 }
-        }
-        return out
-    }
-
-    private var hiddenLineCount: Int {
-        result.lines.count - min(result.lines.count, Self.maxRenderedLines)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            header
-            AutoHeightScrollView(maxHeight: Self.maxHeight) {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(gutterLines) { row in
-                        diffRow(row)
-                    }
-                    if hiddenLineCount > 0 {
-                        Text(lang.t("approval.diffMoreLines", hiddenLineCount))
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundStyle(tokens.colors.paper.opacity(0.42))
-                            .padding(.horizontal, 11)
-                            .padding(.vertical, 2)
-                    }
-                }
-                .padding(.vertical, 2)
-            }
-        }
-        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(HaloEdge.lift))
-        .overlay(
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .strokeBorder(HaloEdge.hair2, lineWidth: 1)
+extension IslandDiffStyle {
+    /// Halo's E2 rounded diff treatment. The shared renderer owns the cap,
+    /// gutter, and F4 structural marker while this style preserves Halo's
+    /// filename header, void lift, hairline, and exact line palette.
+    static func halo(
+        tokens: IslandThemeTokens,
+        increasesContrast: Bool,
+        affectedPath: String?
+    ) -> Self {
+        let removed = Color(red: 224 / 255.0, green: 89 / 255.0, blue: 108 / 255.0)
+        let added = Color(red: 95 / 255.0, green: 227 / 255.0, blue: 154 / 255.0)
+        return Self(
+            gutterWidth: 22,
+            markerWidth: 10,
+            horizontalPadding: 8,
+            font: .system(size: HaloTypography.diffSize, weight: .regular, design: .monospaced),
+            typography: Typography(size: HaloTypography.diffSize, weight: .regular, design: .monospaced),
+            added: LineColors(
+                gutter: added.opacity(0.7),
+                marker: added.opacity(0.7),
+                content: Color(red: 0xA7 / 255.0, green: 0xEC / 255.0, blue: 0xC6 / 255.0),
+                background: added.opacity(0.11)
+            ),
+            removed: LineColors(
+                gutter: removed.opacity(0.6),
+                marker: removed.opacity(0.6),
+                content: Color(red: 0xF2 / 255.0, green: 0xB0 / 255.0, blue: 0xBA / 255.0),
+                background: removed.opacity(0.11)
+            ),
+            context: LineColors(
+                gutter: tokens.colors.paper.opacity(tokens.colors.tertiaryTextOpacity),
+                marker: tokens.colors.paper.opacity(tokens.colors.tertiaryTextOpacity),
+                content: Color.white.opacity(0.5),
+                background: .clear
+            ),
+            headerColor: tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)),
+            headerBackground: .clear,
+            containerBackground: HaloEdge.lift,
+            containerBorder: Border(color: HaloEdge.hair2, width: 1),
+            containerShape: .rounded(cornerRadius: 9),
+            rowTrailingPadding: 11,
+            scrollVerticalPadding: 2,
+            header: HeaderStyle(
+                title: .haloFile(affectedPath: affectedPath),
+                font: .system(size: 10.5, weight: .regular),
+                iconFont: .system(size: 10.5, weight: .regular),
+                iconOpacity: 0.7,
+                color: tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)),
+                background: .clear,
+                horizontalPadding: 11,
+                verticalPadding: 6,
+                bottomBorder: Border(color: Color.white.opacity(0.08), width: 1)
+            )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-    }
-
-    private var header: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "doc.text")
-                .font(.system(size: 10.5, weight: .regular))
-                .opacity(0.7)
-                .accessibilityHidden(true)
-            Text(lang.t("island.halo.approval.diffFile", fileName, result.addedCount + result.removedCount))
-                .font(.system(size: 10.5, weight: .regular))
-                .lineLimit(1)
-                .truncationMode(.middle)
-        }
-        .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
-        .padding(.horizontal, 11)
-        .padding(.vertical, 6)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(Color.white.opacity(0.08)).frame(height: 1)
-        }
-    }
-
-    private func diffRow(_ row: GutterLine) -> some View {
-        HStack(alignment: .top, spacing: 0) {
-            Text("\(row.gutter)")
-                .foregroundStyle(gutterColor(row.line.kind))
-                .frame(width: 22, alignment: .trailing)
-                .padding(.trailing, 10)
-            Text(row.line.text.isEmpty ? " " : row.line.text)
-                .foregroundStyle(textColor(row.line.kind))
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .font(.system(size: HaloTypography.diffSize, weight: .regular, design: .monospaced))
-        .padding(.leading, 8)
-        .padding(.trailing, 11)
-        .padding(.vertical, 1)
-        .background(rowBackground(row.line.kind))
-    }
-
-    private func gutterColor(_ kind: PermissionDiffLine.Kind) -> Color {
-        switch kind {
-        case .removed: return Self.del.opacity(0.6)
-        case .added: return Self.add.opacity(0.7)
-        case .unchanged: return tokens.colors.paper.opacity(tokens.colors.tertiaryTextOpacity)
-        }
-    }
-
-    private func textColor(_ kind: PermissionDiffLine.Kind) -> Color {
-        switch kind {
-        case .removed: return Self.delText
-        case .added: return Self.addText
-        case .unchanged: return Color.white.opacity(0.5)
-        }
-    }
-
-    private func rowBackground(_ kind: PermissionDiffLine.Kind) -> Color {
-        switch kind {
-        case .removed: return Self.del.opacity(0.11)
-        case .added: return Self.add.opacity(0.11)
-        case .unchanged: return .clear
-        }
-    }
-
-    private var fileName: String {
-        guard let path = affectedPath?.trimmingCharacters(in: .whitespacesAndNewlines), !path.isEmpty else {
-            return lang.t("island.halo.approval.diffFileFallback")
-        }
-        return (path as NSString).lastPathComponent
     }
 }
 
@@ -2268,12 +2204,25 @@ private struct HaloKeycap: View {
 /// the translucent-red `deny`, or the cool-blue Codex gradient (`Jump to Codex`).
 /// Each carries a trailing keycap chip printing the **real** registered shortcut —
 /// or none, for the Codex jump (no ⌘J handler).
-private struct HaloHeroButton: View {
+///
+/// Not `private` (overlay remediation Phase 2A-follow-up · F1): `HaloTheme
+/// .questionSubmitButton` constructs this directly from `HaloTheme.swift`, so
+/// it reuses the exact `.primary` gradient (`#FFCE8A→#FFAB54` at 135° —
+/// `06-halo.html:371-372`, an exact match to the board) instead of the shared
+/// question card rebuilding its own CTA chrome.
+struct HaloHeroButton: View {
     enum Kind { case primary, deny, codex }
 
     let title: String
     let keycaps: [String]?
     let kind: Kind
+    /// Overlay remediation Phase 2A-follow-up (F1): Allow-once / Deny / Jump-to
+    /// -Codex are only ever mounted while actionable, so they never pass this —
+    /// the Submit CTA is the first caller that can go `false` (`canSubmit`
+    /// toggles). Dims + desaturates the button's own gradient in place
+    /// (`IslandQuestionSubmitDisabledStyle`) rather than swapping to a foreign
+    /// grey, so a disabled Submit still reads as Halo's amber chrome.
+    var isEnabled: Bool = true
     let accessibilityLabel: String
     let action: () -> Void
 
@@ -2292,11 +2241,14 @@ private struct HaloHeroButton: View {
             .padding(.horizontal, 13)
             .padding(.vertical, 8)
             .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(background))
-            .brightness(isHovered && kind != .deny ? 0.05 : 0)
+            .brightness(isHovered && isEnabled && kind != .deny ? 0.05 : 0)
+            .saturation(isEnabled ? 1 : IslandQuestionSubmitDisabledStyle.saturation)
+            .opacity(isEnabled ? 1 : IslandQuestionSubmitDisabledStyle.opacity)
             .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
+        .disabled(!isEnabled)
         .accessibilityLabel(accessibilityLabel)
     }
 

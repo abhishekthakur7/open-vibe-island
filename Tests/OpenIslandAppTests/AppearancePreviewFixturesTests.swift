@@ -79,7 +79,10 @@ struct AppearancePreviewFixturesTests {
         #expect(failed.outcome == .failed)
         #expect(failed.tool == .codex)
         #expect(failed.jumpTarget?.workspaceName == "open-vibe-island")
-        #expect(failed.updatedAt == Self.now.addingTimeInterval(-9 * 60))
+        // Phase 1 remediation item 1.3: -3*60-30 (210s), under the 5-minute
+        // stale-completed threshold so the failed-outcome template renders —
+        // a prior -9*60 exceeded it and forced the idle template instead.
+        #expect(failed.updatedAt == Self.now.addingTimeInterval(-3 * 60 - 30))
     }
 
     // MARK: - Duplicate-workspace trio
@@ -138,6 +141,11 @@ struct AppearancePreviewFixturesTests {
         #expect(!result.isEmpty)
         // ≥3 changed lines: additions + removals combined.
         #expect(result.addedCount + result.removedCount >= 3)
+        // F12's marker-column assertion needs source text that cannot itself
+        // visually impersonate a `+` or `−` marker.
+        #expect(result.lines.contains { line in
+            !line.text.hasPrefix("+") && !line.text.hasPrefix("-")
+        })
     }
 
     // MARK: - Permission: terminal-only
@@ -171,6 +179,20 @@ struct AppearancePreviewFixturesTests {
         #expect(scope.multiSelect == true)
         #expect(scope.options.count == 4)
         #expect(scope.options.filter(\.allowsFreeform).map(\.label) == ["Other"])
+    }
+
+    @Test
+    func conformanceQuestionOptionsHaveDistinctIDs() {
+        // Phase 1 remediation item 1.4: `stableID` used to truncate every seed
+        // to its first 16 UTF-8 bytes with no hashing, so every
+        // "conformance-auth-…" seed (and every "conformance-scope-…" seed)
+        // collided on that shared 16-character prefix — every option in both
+        // groups rendered as option[0]. `options.count` alone (asserted
+        // above) can't catch this, since a list of duplicate ids still has
+        // the right *length*; this pins distinctness directly.
+        let questions = AppearancePreviewFixtures.conformanceQuestions()
+        #expect(Set(questions[0].options.map(\.id)).count == 3)
+        #expect(Set(questions[1].options.map(\.id)).count == 4)
     }
 
     // MARK: - Subagents + tasks

@@ -4,24 +4,24 @@ import OpenIslandCore
 
 /// Flight Deck's opened-panel header (AB-312).
 ///
-/// The layout — the notch-split lanes on notched displays, the single flush-left
-/// lane on the top-bar / external profile, and the metrics that measure the
-/// physical notch out of the way — is shared verbatim with `IslandHeaderControls`
-/// (and mirrors `InstrumentHeaderControls`) so the header keeps its exact
-/// geometry across themes. Only the two rendered regions change for the avionics
-/// idiom: the usage chips become 12-tick segmented gauges with numeric readouts
-/// and CRIT / CAUT / NOM placards (`FlightDeckUsageSummary`), and the mute /
-/// settings / quit buttons become flat squared *panel switches* with hover states
-/// (`FlightDeckHeaderButton`) — their behaviors are unchanged, still emitted
-/// through the same closures.
+/// The single flush-left lane on the top-bar / external profile, and the
+/// underlying `IslandHeaderLaneLayout.metrics`/`laneGroups` machinery, are
+/// shared with `IslandHeaderControls` (and mirror `InstrumentHeaderControls`).
+/// The **notch-split lane geometry is no longer byte-identical** to the other
+/// five themes as of overlay remediation Phase 5: FD's board
+/// (`02-flight-deck.html:282`) stacks the right lane's control row above its
+/// gauge rather than beside it (`ControlsLaneArrangement.columnStacked`), and
+/// FD alone claims a taller opened-header band (`IslandTheme
+/// .openedHeaderHeight`, 96pt) than the closed pill's own height. The
+/// rendered idiom differs too: the usage chips become tape gauges with
+/// numeric readouts and CRIT / CAUT / NOM placards (`FlightDeckUsageSummary`),
+/// and the mute / settings / quit buttons become flat squared *panel
+/// switches* with hover states (`FlightDeckHeaderButton`) — their behaviors
+/// are unchanged, still emitted through the same closures.
 struct FlightDeckHeaderControls: View {
     static let headerControlButtonSize: CGFloat = 22
     static let headerControlSpacing: CGFloat = 8
-    private static let headerHorizontalPadding: CGFloat = 18
     private static let headerTopPadding: CGFloat = 2
-    private static let notchHeaderHorizontalPadding: CGFloat = 46
-    private static let notchLaneSafetyInset: CGFloat = 12
-    private static let minimumRightUsageLaneWidth: CGFloat = 58
 
     let providers: [UsageProviderPresentation]
     let usesNotchAwareLayout: Bool
@@ -39,28 +39,81 @@ struct FlightDeckHeaderControls: View {
     }
 
     private var openedHeaderHorizontalPadding: CGFloat {
-        usesNotchAwareLayout ? Self.notchHeaderHorizontalPadding : Self.headerHorizontalPadding
+        IslandHeaderLaneLayout.horizontalPadding(usesNotchAwareLayout: usesNotchAwareLayout)
+    }
+
+    /// Overlay remediation Phase 5, Defect 1: how many flattened windows a
+    /// lane of `laneWidth` can actually render — FD's own per-item
+    /// **measurement** (the compact gauge tier, since capacity feeds
+    /// `laneGroups` *before* `ViewThatFits` picks a tier, and the compact
+    /// tier is the more permissive one to plan against) minus its chip's own
+    /// fixed chrome, passed to the shared, theme-agnostic
+    /// `IslandHeaderLaneLayout.capacity`.
+    private func laneCapacity(for laneWidth: CGFloat) -> Int {
+        IslandHeaderLaneLayout.capacity(
+            laneWidth: reducedLaneWidth(for: laneWidth),
+            itemWidth: FlightDeckUsageWindowGauge.compactGaugeWidth,
+            itemSpacing: FlightDeckUsageProviderChip.interGaugeSpacing
+        )
+    }
+
+    /// `laneWidth` minus the chip's own fixed horizontal chrome
+    /// (`FlightDeckUsageProviderChip.horizontalPadding`, both sides) — the
+    /// width actually available to gauges/badge inside the chip. Shared by
+    /// `laneCapacity(for:)` and the overflow-badge fit check so the two can't
+    /// drift onto different reduced widths for the same lane.
+    private func reducedLaneWidth(for laneWidth: CGFloat) -> CGFloat {
+        max(0, laneWidth - FlightDeckUsageProviderChip.horizontalPadding * 2)
     }
 
     var body: some View {
         if usesNotchAwareLayout {
             GeometryReader { geometry in
-                let providerGroups = splitUsageProviders(providers)
-                let metrics = openedHeaderMetrics(for: geometry.size.width)
+                // Overlay remediation Phase 5 ("opened-header band growth"
+                // correction): `.columnStacked` mirrors FD's own board
+                // (`02-flight-deck.html:282`, `.phead .lane{flex-direction:
+                // column}`), which stacks the button row above the gauge
+                // rather than beside it — see the right-lane `VStack` below.
+                // This was previously left at the `.rowPacked` default
+                // because the fixed opened-header band (~34-38pt on real
+                // notch hardware) couldn't fit a stacked 22pt button row +
+                // spacing above FD's own gauge chip without reintroducing
+                // F8's vertical overflow. `IslandTheme.openedHeaderHeight`
+                // (`IslandTheme.swift`) resolves that budget — Flight Deck
+                // now claims a 96pt band independently of the closed pill's
+                // height — so `.columnStacked` is safe to wire in here.
+                let metrics = IslandHeaderLaneLayout.metrics(
+                    totalWidth: geometry.size.width,
+                    usesNotchAwareLayout: usesNotchAwareLayout,
+                    targetScreen: targetScreen,
+                    openedHeaderButtonsWidth: openedHeaderButtonsWidth,
+                    headerControlSpacing: Self.headerControlSpacing,
+                    controlsLaneArrangement: .columnStacked
+                )
+                let leftCapacity = laneCapacity(for: metrics.leftUsageWidth)
+                let rightCapacity = laneCapacity(for: metrics.rightUsageWidth)
+                let providerGroups = IslandHeaderLaneLayout.laneGroups(
+                    for: providers,
+                    hasRightLane: metrics.rightUsageWidth > 0,
+                    leftCapacity: leftCapacity,
+                    rightCapacity: rightCapacity
+                )
 
                 HStack(spacing: 0) {
-                    usageLaneView(providerGroups.left, alignment: .leading)
+                    usageLaneView(providerGroups.left, alignment: .leading, capacity: leftCapacity, laneWidth: metrics.leftUsageWidth)
                         .frame(width: metrics.leftUsageWidth, alignment: .leading)
 
                     Color.clear
                         .frame(width: metrics.centerGapWidth)
 
-                    HStack(spacing: Self.headerControlSpacing) {
-                        if metrics.rightUsageWidth > 0, !providerGroups.right.isEmpty {
-                            usageLaneView(providerGroups.right, alignment: .trailing)
-                                .frame(width: metrics.rightUsageWidth, alignment: .trailing)
-                        }
+                    // Column-stacked (mockup `.phead .lane.r`): the button
+                    // row sits above the gauge, not beside it — the two never
+                    // share the lane's width, only its full-width budget.
+                    VStack(alignment: .trailing, spacing: Self.headerControlSpacing) {
                         openedHeaderButtons
+                        if metrics.rightUsageWidth > 0, !providerGroups.right.isEmpty {
+                            usageLaneView(providerGroups.right, alignment: .trailing, capacity: rightCapacity, laneWidth: metrics.rightUsageWidth)
+                        }
                     }
                     .frame(width: metrics.rightLaneWidth, alignment: .trailing)
                 }
@@ -117,98 +170,57 @@ struct FlightDeckHeaderControls: View {
         }
     }
 
-    private func splitUsageProviders(
-        _ providers: [UsageProviderPresentation]
-    ) -> (left: [UsageProviderPresentation], right: [UsageProviderPresentation]) {
-        switch providers.count {
-        case 0:
-            return ([], [])
-        case 1:
-            return ([providers[0]], [])
-        case 2:
-            return ([providers[0]], [providers[1]])
-        default:
-            let splitIndex = Int(ceil(Double(providers.count) / 2.0))
-            return (
-                Array(providers.prefix(splitIndex)),
-                Array(providers.dropFirst(splitIndex))
-            )
-        }
-    }
-
     @ViewBuilder
     private func usageLaneView(
         _ providers: [UsageProviderPresentation],
-        alignment: Alignment
+        alignment: Alignment,
+        capacity: Int,
+        laneWidth: CGFloat
     ) -> some View {
         if providers.isEmpty {
             Color.clear
                 .frame(maxWidth: .infinity)
         } else {
-            FlightDeckUsageSummary(providers: providers, lang: lang)
-                .frame(maxWidth: .infinity, alignment: alignment)
-        }
-    }
-
-    private func openedHeaderMetrics(for totalWidth: CGFloat) -> FlightDeckOpenedHeaderMetrics {
-        let horizontalPadding = openedHeaderHorizontalPadding
-        let contentWidth = max(0, totalWidth - (horizontalPadding * 2))
-        guard usesNotchAwareLayout,
-              let screen = targetScreen else {
-            let rightLaneWidth = min(contentWidth, openedHeaderButtonsWidth + (contentWidth / 2))
-            let leftUsageWidth = max(0, contentWidth - rightLaneWidth)
-            return FlightDeckOpenedHeaderMetrics(
-                leftUsageWidth: leftUsageWidth,
-                centerGapWidth: 0,
-                rightUsageWidth: max(0, rightLaneWidth - openedHeaderButtonsWidth - Self.headerControlSpacing),
-                rightLaneWidth: rightLaneWidth
+            // Phase 5, Defect 1: one bezeled box per lane, not one per
+            // flattened window — see `FlightDeckUsageSummary
+            // .groupsAllProvidersIntoOneChip`. `capacity` is the same
+            // measurement `laneGroups` used to split `providers` between
+            // lanes above — passed straight through so the chip can render
+            // an explicit "+N" affordance instead of overflowing when
+            // `laneGroups`'s balanced-split fallback still hands this lane
+            // more windows than `capacity` (the residual: 3 windows, 2 lanes,
+            // 1 real gauge of capacity each — see `FlightDeckUsageProviderChip
+            // .maxVisibleWindows`).
+            //
+            // `providers` here is already flattened to one window each
+            // (`IslandHeaderLaneLayout.laneGroups`'s output), so its count
+            // *is* the assigned window count — no re-flattening needed.
+            let visibleCount = IslandHeaderLaneLayout.visibleItemCount(
+                assignedCount: providers.count,
+                capacity: capacity
             )
+            // "No zero gauges" correction (Phase 5, adversarial review round
+            // 3): the badge only draws when it fits *alongside*
+            // `visibleCount` full gauges — never by displacing one of them.
+            // See `IslandHeaderLaneLayout.overflowBadgeFits`'s doc comment.
+            let allowsOverflowBadge = IslandHeaderLaneLayout.overflowBadgeFits(
+                laneWidth: reducedLaneWidth(for: laneWidth),
+                itemWidth: FlightDeckUsageWindowGauge.compactGaugeWidth,
+                itemSpacing: FlightDeckUsageProviderChip.interGaugeSpacing,
+                badgeWidth: FlightDeckUsageProviderChip.overflowBadgeWidth,
+                visibleCount: visibleCount
+            )
+            FlightDeckUsageSummary(
+                providers: providers,
+                lang: lang,
+                groupsAllProvidersIntoOneChip: true,
+                maxVisibleWindows: capacity,
+                allowsOverflowBadge: allowsOverflowBadge
+            )
+            .frame(maxWidth: .infinity, alignment: alignment)
         }
-
-        let panelMinX = screen.frame.midX - (totalWidth / 2)
-        let panelMaxX = panelMinX + totalWidth
-        let contentMinX = panelMinX + horizontalPadding
-        let contentMaxX = panelMaxX - horizontalPadding
-
-        let fallbackNotchHalfWidth = screen.notchSize.width / 2
-        let notchLeftEdge = screen.frame.midX - fallbackNotchHalfWidth
-        let notchRightEdge = screen.frame.midX + fallbackNotchHalfWidth
-        let leftVisibleMaxX = screen.auxiliaryTopLeftArea?.maxX ?? notchLeftEdge
-        let rightVisibleMinX = screen.auxiliaryTopRightArea?.minX ?? notchRightEdge
-
-        let rawLeftWidth = max(0, min(contentMaxX, leftVisibleMaxX) - contentMinX)
-        let rawRightWidth = max(0, contentMaxX - max(contentMinX, rightVisibleMinX))
-
-        let leftUsageWidth = max(0, rawLeftWidth - Self.notchLaneSafetyInset)
-        let rightAvailableWidth = max(0, rawRightWidth - Self.notchLaneSafetyInset)
-        let proposedRightUsageWidth = max(
-            0,
-            rightAvailableWidth - openedHeaderButtonsWidth - Self.headerControlSpacing
-        )
-        let rightUsageWidth = proposedRightUsageWidth >= Self.minimumRightUsageLaneWidth
-            ? proposedRightUsageWidth
-            : 0
-        let rightLaneWidth = min(
-            contentWidth,
-            openedHeaderButtonsWidth
-                + (rightUsageWidth > 0 ? Self.headerControlSpacing + rightUsageWidth : 0)
-        )
-        let centerGapWidth = max(0, contentWidth - leftUsageWidth - rightLaneWidth)
-
-        return FlightDeckOpenedHeaderMetrics(
-            leftUsageWidth: leftUsageWidth,
-            centerGapWidth: centerGapWidth,
-            rightUsageWidth: rightUsageWidth,
-            rightLaneWidth: rightLaneWidth
-        )
     }
-}
 
-private struct FlightDeckOpenedHeaderMetrics {
-    let leftUsageWidth: CGFloat
-    let centerGapWidth: CGFloat
-    let rightUsageWidth: CGFloat
-    let rightLaneWidth: CGFloat
 }
 
 // MARK: - Flight Deck header button (panel switch)

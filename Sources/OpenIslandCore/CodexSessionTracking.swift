@@ -8,6 +8,16 @@ public struct CodexSessionMetadata: Equatable, Codable, Sendable {
     public var lastAssistantMessage: String?
     public var currentTool: String?
     public var currentCommandPreview: String?
+    /// F20 (overlay remediation Phase 3): the model Codex reported for this
+    /// session, e.g. `"gpt-5-codex"` — plumbed from `CodexHookPayload.model`
+    /// (a required field on every real hook event) via `defaultCodexMetadata`
+    /// / `mergedCodexMetadata`, and unioned into `AgentSession
+    /// .displayModelName` alongside claude/openCode/cursor. Optional (rather
+    /// than matching the payload's non-optional `model: String`) because
+    /// synthesized `Decodable` needs every stored property to tolerate
+    /// legacy persisted JSON recorded before this field existed — no custom
+    /// `CodingKeys` here, so `decodeIfPresent` handles that automatically.
+    public var model: String?
 
     public init(
         transcriptPath: String? = nil,
@@ -15,7 +25,8 @@ public struct CodexSessionMetadata: Equatable, Codable, Sendable {
         lastUserPrompt: String? = nil,
         lastAssistantMessage: String? = nil,
         currentTool: String? = nil,
-        currentCommandPreview: String? = nil
+        currentCommandPreview: String? = nil,
+        model: String? = nil
     ) {
         self.transcriptPath = transcriptPath
         self.initialUserPrompt = initialUserPrompt
@@ -23,6 +34,7 @@ public struct CodexSessionMetadata: Equatable, Codable, Sendable {
         self.lastAssistantMessage = lastAssistantMessage
         self.currentTool = currentTool
         self.currentCommandPreview = currentCommandPreview
+        self.model = model
     }
 
     public var isEmpty: Bool {
@@ -32,6 +44,7 @@ public struct CodexSessionMetadata: Equatable, Codable, Sendable {
             && lastAssistantMessage == nil
             && currentTool == nil
             && currentCommandPreview == nil
+            && model == nil
     }
 }
 
@@ -655,27 +668,41 @@ public enum CodexRolloutReducer {
         from oldSnapshot: CodexRolloutSnapshot?,
         to newSnapshot: CodexRolloutSnapshot,
         sessionID: String,
-        transcriptPath: String
+        transcriptPath: String,
+        // F20 clobber fix (overlay remediation Phase 3C): the session's last
+        // known full metadata (hook-sourced fields included), supplied by
+        // `CodexRolloutWatcher` so this emission can merge instead of
+        // blindly overwriting — see `mergedRolloutMetadata` below. Defaults
+        // to `nil` so every pre-existing caller (this file's own bootstrap
+        // helpers, tests) keeps constructing metadata purely from the
+        // snapshot, unchanged.
+        existingMetadata: CodexSessionMetadata? = nil
     ) -> [AgentEvent] {
         var events: [AgentEvent] = []
         let timestamp = newSnapshot.updatedAt ?? .now
         let oldMetadata = oldSnapshot.map {
-            CodexSessionMetadata(
-                transcriptPath: transcriptPath,
-                initialUserPrompt: $0.initialUserPrompt,
-                lastUserPrompt: $0.lastUserPrompt,
-                lastAssistantMessage: $0.lastAssistantMessage,
-                currentTool: $0.currentTool,
-                currentCommandPreview: $0.currentCommandPreview
+            mergedRolloutMetadata(
+                rollout: CodexSessionMetadata(
+                    transcriptPath: transcriptPath,
+                    initialUserPrompt: $0.initialUserPrompt,
+                    lastUserPrompt: $0.lastUserPrompt,
+                    lastAssistantMessage: $0.lastAssistantMessage,
+                    currentTool: $0.currentTool,
+                    currentCommandPreview: $0.currentCommandPreview
+                ),
+                existing: existingMetadata
             )
         }
-        let newMetadata = CodexSessionMetadata(
-            transcriptPath: transcriptPath,
-            initialUserPrompt: newSnapshot.initialUserPrompt,
-            lastUserPrompt: newSnapshot.lastUserPrompt,
-            lastAssistantMessage: newSnapshot.lastAssistantMessage,
-            currentTool: newSnapshot.currentTool,
-            currentCommandPreview: newSnapshot.currentCommandPreview
+        let newMetadata = mergedRolloutMetadata(
+            rollout: CodexSessionMetadata(
+                transcriptPath: transcriptPath,
+                initialUserPrompt: newSnapshot.initialUserPrompt,
+                lastUserPrompt: newSnapshot.lastUserPrompt,
+                lastAssistantMessage: newSnapshot.lastAssistantMessage,
+                currentTool: newSnapshot.currentTool,
+                currentCommandPreview: newSnapshot.currentCommandPreview
+            ),
+            existing: existingMetadata
         )
 
         if oldMetadata != newMetadata {
@@ -723,6 +750,69 @@ public enum CodexRolloutReducer {
         }
 
         return events
+    }
+
+    /// F20 clobber fix (overlay remediation Phase 3C): merges a
+    /// rollout-derived `CodexSessionMetadata` (built purely from parsing
+    /// this session's JSONL — see `CodexRolloutSnapshot`) against the
+    /// session's last known full metadata, so `events(...)` can emit a
+    /// merged update instead of a blind one. This exists because
+    /// `SessionState`'s `.sessionMetadataUpdated` case *replaces*
+    /// `codexMetadata` wholesale rather than merging field-by-field
+    /// (unlike the hook path's `BridgeServer.mergedCodexMetadata`) — so
+    /// whatever this function fails to preserve is permanently gone the
+    /// instant this emission is applied, until the next poll (~3s later)
+    /// gets a chance to observe it again, if it ever can.
+    ///
+    /// Not a blanket "prefer existing" — that would reintroduce a
+    /// different bug in the opposite direction. Each field's policy
+    /// follows from whether `CodexRolloutSnapshot` can represent it at
+    /// all, and if so, whether the reducer ever legitimately clears it:
+    ///
+    /// - `model`: `CodexRolloutSnapshot` has **no field for this**. Real
+    ///   rollout JSONL does carry a model (in `turn_context.payload.model`,
+    ///   confirmed against live `~/.codex/sessions` rollout files), but
+    ///   today's reducer has no case for the `turn_context` record type —
+    ///   `apply(line:to:)` only handles `event_msg` / `response_item`. So
+    ///   `rollout.model` is not "observed as absent" here, it is
+    ///   *structurally unobservable*: nil on every poll, forever, for the
+    ///   life of the process. Falling back to `existing` is always correct.
+    /// - `currentTool` / `currentCommandPreview`: the opposite case. The
+    ///   reducer explicitly clears both to nil on real transitions
+    ///   (`task_complete`, `turn_aborted`, a fresh prompt, entering an
+    ///   approval/question wait, a rate-limit hit — see the `apply*`
+    ///   helpers below). nil here is current, genuine signal, not
+    ///   "unknown" — falling back to `existing` would freeze a stale
+    ///   "running <tool>" readout forever after Codex actually stops.
+    ///   These pass through the fresh rollout value unconditionally, same
+    ///   as before this fix.
+    /// - `transcriptPath` / `initialUserPrompt` / `lastUserPrompt` /
+    ///   `lastAssistantMessage`: the reducer never explicitly clears these
+    ///   once set (`applyUserMessage`'s `?? message`, `applyAssistantMessage`
+    ///   always assigning a non-nil message, `transcriptPath` sourced from
+    ///   the always-present watch target) — within one observation they
+    ///   are monotonic/sticky. A nil here means "this poll's parse hasn't
+    ///   reached the relevant line yet" (a freshly-synced watch target, a
+    ///   truncated file, or a session that genuinely has no prompt yet),
+    ///   not "Codex told us this is empty" — `CodexRolloutSnapshot` has no
+    ///   way to distinguish those two cases (both collapse to Swift `nil`),
+    ///   so falling back to `existing` is the safer reading. This also
+    ///   matches the `update ?? existing` convention
+    ///   `BridgeServer.mergedCodexMetadata` already uses for the same
+    ///   fields on the hook path.
+    private static func mergedRolloutMetadata(
+        rollout: CodexSessionMetadata,
+        existing: CodexSessionMetadata?
+    ) -> CodexSessionMetadata {
+        CodexSessionMetadata(
+            transcriptPath: rollout.transcriptPath ?? existing?.transcriptPath,
+            initialUserPrompt: rollout.initialUserPrompt ?? existing?.initialUserPrompt,
+            lastUserPrompt: rollout.lastUserPrompt ?? existing?.lastUserPrompt,
+            lastAssistantMessage: rollout.lastAssistantMessage ?? existing?.lastAssistantMessage,
+            currentTool: rollout.currentTool,
+            currentCommandPreview: rollout.currentCommandPreview,
+            model: existing?.model
+        )
     }
 
     private static func applyEventMessage(
@@ -1427,6 +1517,25 @@ public final class CodexRolloutWatcher: @unchecked Sendable {
     private var timer: DispatchSourceTimer?
     private var observations: [String: Observation] = [:]
 
+    /// F20 clobber fix (overlay remediation Phase 3C): each watched
+    /// session's last known full `CodexSessionMetadata` (hook-sourced
+    /// fields included), keyed by session ID. Refreshed by the owner
+    /// (`SessionDiscoveryCoordinator`) via `updateKnownMetadata(_:)` on the
+    /// same cadence it calls `sync(targets:)` — every applied event.
+    /// Read inside `refresh(observation:)`, always on `queue`, so no
+    /// separate locking is needed beyond what already serializes
+    /// `observations`.
+    ///
+    /// Exists because `CodexRolloutSnapshot` — built purely by parsing the
+    /// rollout JSONL this watcher tails — has no representation for fields
+    /// the reducer's `apply(line:to:)` doesn't handle (`model` is the
+    /// current example; see `CodexRolloutReducer.mergedRolloutMetadata`'s
+    /// doc comment). Without this cache, every `.sessionMetadataUpdated`
+    /// this watcher emits would silently reset those fields to nil on each
+    /// poll, clobbering whatever the hook path had set — `SessionState`
+    /// applies this case as a blind overwrite, not a merge.
+    private var knownMetadataBySessionID: [String: CodexSessionMetadata] = [:]
+
     public init(
         pollInterval: TimeInterval = 3.0,
         initialReadLimit: UInt64 = 128 * 1_024,
@@ -1444,6 +1553,18 @@ public final class CodexRolloutWatcher: @unchecked Sendable {
     public func sync(targets: [CodexRolloutWatchTarget]) {
         queue.sync {
             syncLocked(targets: targets)
+        }
+    }
+
+    /// F20 clobber fix (overlay remediation Phase 3C): see the doc comment
+    /// on `knownMetadataBySessionID`. The caller (`SessionDiscoveryCoordinator
+    /// .refreshCodexRolloutTracking`) calls this immediately before `sync
+    /// (targets:)` on every applied event, so a session's first poll after
+    /// becoming a watch target already has its hook-known metadata to
+    /// merge against — not just the second poll onward.
+    public func updateKnownMetadata(_ metadataBySessionID: [String: CodexSessionMetadata]) {
+        queue.sync {
+            knownMetadataBySessionID = metadataBySessionID
         }
     }
 
@@ -1552,7 +1673,12 @@ public final class CodexRolloutWatcher: @unchecked Sendable {
                 from: oldSnapshot,
                 to: observation.snapshot,
                 sessionID: observation.target.sessionID,
-                transcriptPath: observation.target.transcriptPath
+                transcriptPath: observation.target.transcriptPath,
+                // F20 clobber fix (overlay remediation Phase 3C): merge
+                // against the session's last known metadata rather than
+                // emitting one built purely from this snapshot — see
+                // `knownMetadataBySessionID`'s doc comment.
+                existingMetadata: knownMetadataBySessionID[observation.target.sessionID]
             )
         } catch {
             return []

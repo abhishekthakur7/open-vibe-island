@@ -8,10 +8,14 @@ import OpenIslandCore
 /// the avionics-console idiom. AB-338 replaced the shipped 12-tick segmented lane
 /// with this tape geometry and surfaced `resetsAt` inline (it was `.help()`-only).
 ///
-/// The colour thresholds are the exact `usageColor` cut-offs the rest of the app
-/// ships (`IslandUsageSummary`: `>= 90` red, `70..<90` orange, else green); the
-/// placard maps onto the same bands (CRIT / CAUT / NOM) so a red gauge always
-/// carries the CRIT semantics and the theme can't drift from the shared meaning.
+/// The colour bands are the exact cut-offs the rest of the app ships
+/// (`IslandUsageSummary`: `>= 90` / `70..<90` / else), but the colours
+/// themselves are FD's own status tokens (overlay remediation F15 —
+/// `statusWaitingForApproval` / `statusWaitingForAnswer` / `statusRunning`,
+/// `SPEC-flight-deck.md:56-58`), not the retired raw SwiftUI
+/// `.red`/`.orange`/`.green`. The placard maps onto the same bands
+/// (CRIT / CAUT / NOM) so a red gauge always carries the CRIT semantics and
+/// the theme can't drift from the shared meaning.
 /// The fill sweeps up on appear and the CRIT band's fill blinks at the 1.2s
 /// caution cadence (`FlightDeckMotion.Attention.cautionPeriod`); both are gated
 /// off under Reduce Motion, where the gauge paints its final fill statically.
@@ -21,6 +25,54 @@ import OpenIslandCore
 struct FlightDeckUsageSummary: View {
     let providers: [UsageProviderPresentation]
     let lang: LanguageManager
+    var now: Date = .now
+
+    /// `true` for the notch-lane call site (overlay remediation Phase 5,
+    /// Defect 1): every window assigned to this lane renders inside **one**
+    /// bezeled box, mirroring the mockup's one `.lane` == one visual unit
+    /// (`02-flight-deck.html:281-284`, which has no per-provider box at all —
+    /// only the lane's own padding). Before this, `laneGroups`'s per-window
+    /// `flatten` meant a lane holding 2 windows rendered as **two** separately
+    /// boxed chips (2×168pt + 12pt gap = 348pt) — *wider* than the single
+    /// 2-window chip (327pt) F8 set out to fix. `false` (default) keeps the
+    /// legacy one-chip-per-provider row for the non-notch/top-bar header,
+    /// where there's no lane to do that visual separation and "Claude" /
+    /// "Codex" still read as distinct instrument groups.
+    var groupsAllProvidersIntoOneChip: Bool = false
+
+    /// The residual overflow fix (overlay remediation Phase 5, column-stack
+    /// correction): the max number of flattened windows this lane's chip may
+    /// render as full gauges before it must fall back to a compact "+N"
+    /// affordance for the rest. Only meaningful when
+    /// `groupsAllProvidersIntoOneChip` is `true` — the notch-lane call site
+    /// passes the same per-item **measurement**
+    /// (`FlightDeckHeaderControls.laneCapacity(for:)`) that already bounds
+    /// `laneGroups`'s split, so a lane can never be handed more windows than
+    /// it was capacity-planned for without this chip catching it. Defaults to
+    /// `.max` (no truncation) for the top-bar / legacy call site, which has
+    /// no lane-width ceiling to protect.
+    var maxVisibleWindows: Int = .max
+
+    /// Whether the *inline* overflow "+N" badge may draw when this lane's
+    /// windows exceed `maxVisibleWindows` (Phase 5, "no zero gauges"
+    /// correction). The notch-lane call site
+    /// (`FlightDeckHeaderControls.usageLaneView`) computes this from real
+    /// lane-width geometry (`IslandHeaderLaneLayout.overflowBadgeFits`) —
+    /// `min(assignedCount, capacity)` gauges always render regardless of this
+    /// flag; it only ever *adds* the inline badge alongside them, never
+    /// displaces a gauge to make room. Defaults to `true` for the top-bar /
+    /// legacy call site, which passes `maxVisibleWindows: .max` and therefore
+    /// never has overflow to badge in the first place.
+    ///
+    /// Overlay remediation E3: `false` no longer means "draw nothing." A lane
+    /// can have real overflow (`overflowCount > 0`) with no room left for the
+    /// inline badge's 37pt footprint — FD's real notch-hardware capacity (one
+    /// gauge per lane, the canonical 3-window fixture) leaves only ~4-5pt of
+    /// genuine slack. `FlightDeckUsageProviderChip.OverflowAffordance` falls
+    /// back to a corner-hanging indicator in exactly that case, since an
+    /// `.overlay` costs the lane no width at all — the one thing the inline
+    /// badge could never do.
+    var allowsOverflowBadge: Bool = true
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
@@ -29,41 +81,180 @@ struct FlightDeckUsageSummary: View {
         }
     }
 
+    @ViewBuilder
     private func summaryRow(usesShortTitles: Bool) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            ForEach(providers) { provider in
-                FlightDeckUsageProviderChip(
-                    provider: provider,
-                    usesShortTitle: usesShortTitles,
-                    lang: lang
-                )
+        let gaugeWidth = usesShortTitles
+            ? FlightDeckUsageWindowGauge.compactGaugeWidth
+            : FlightDeckUsageWindowGauge.gaugeWidth
+
+        if groupsAllProvidersIntoOneChip {
+            FlightDeckUsageProviderChip(
+                providers: providers,
+                usesShortTitle: usesShortTitles,
+                lang: lang,
+                gaugeWidth: gaugeWidth,
+                maxVisibleWindows: maxVisibleWindows,
+                allowsOverflowBadge: allowsOverflowBadge,
+                now: now
+            )
+            .fixedSize(horizontal: true, vertical: false)
+        } else {
+            HStack(alignment: .top, spacing: 12) {
+                ForEach(providers) { provider in
+                    FlightDeckUsageProviderChip(
+                        providers: [provider],
+                        usesShortTitle: usesShortTitles,
+                        lang: lang,
+                        gaugeWidth: gaugeWidth,
+                        now: now
+                    )
+                }
             }
+            .fixedSize(horizontal: true, vertical: false)
         }
-        .fixedSize(horizontal: true, vertical: false)
     }
 }
 
-/// One provider's flat avionics chip: a stacked column of tape gauges — one per
-/// rate-limit window — boxed by a single hairline bezel rule. Each gauge folds
-/// the provider title into its legend (`Claude · 5H`) per the mockup, so the
-/// chip no longer carries a separate title line.
+/// A flat avionics chip: a row of tape gauges — one per rate-limit window,
+/// laid out side by side (overlay remediation F8; each mockup `.gauge` box is
+/// one window, `02-flight-deck.html:888-909`) — boxed by a single hairline
+/// bezel rule. Each gauge folds its provider's title into its legend
+/// (`Claude · 5H`) per the mockup, so the chip itself carries no separate
+/// title line.
+///
+/// Takes `providers` **plural** (Phase 5, Defect 1): the top-bar / legacy
+/// call site passes a single-element array per provider (one box each, same
+/// as before F8); the notch-lane call site
+/// (`FlightDeckUsageSummary.groupsAllProvidersIntoOneChip`) passes every
+/// window already assigned to that lane — possibly from more than one source
+/// provider — so they share **one** box instead of one box per flattened
+/// array element.
 struct FlightDeckUsageProviderChip: View {
-    let provider: UsageProviderPresentation
+    /// The chip's own fixed chrome — shared with `FlightDeckHeaderControls`'s
+    /// capacity computation (Defect 1) so the two can't drift apart.
+    static let horizontalPadding: CGFloat = 9
+    static let interGaugeSpacing: CGFloat = 9
+    /// The overflow "+N" affordance's own approximate footprint (padding +
+    /// two mono digits) — a principled estimate, not a measured render, same
+    /// spirit as `FlightDeckUsageWindowGauge.compactGaugeWidth`. Deliberately
+    /// much narrower than `compactGaugeWidth` (96pt): that gap is what
+    /// `IslandHeaderLaneLayout.overflowBadgeFits` checks against the lane's
+    /// own leftover width — the badge only ever draws *alongside* the full
+    /// set of visible gauges, in whatever sliver of width `capacity`'s floor
+    /// division didn't use, never by displacing one of them.
+    static let overflowBadgeWidth: CGFloat = 28
+
+    let providers: [UsageProviderPresentation]
     let usesShortTitle: Bool
     let lang: LanguageManager
+    /// The per-gauge drawing width — defaults to the full
+    /// `FlightDeckUsageWindowGauge.gaugeWidth`; the notch-lane call site
+    /// passes the compact tier when `usesShortTitle` is true, so the
+    /// `ViewThatFits` fallback is a real narrower render (Defect 1: the
+    /// previous `usesShortTitle` only shortened legend text drawn in the same
+    /// fixed 150pt frame — "provably cosmetic-only").
+    var gaugeWidth: CGFloat = FlightDeckUsageWindowGauge.gaugeWidth
+
+    /// See `FlightDeckUsageSummary.maxVisibleWindows`. Defaults to `.max` —
+    /// no truncation — for the top-bar / legacy call site.
+    var maxVisibleWindows: Int = .max
+
+    /// See `FlightDeckUsageSummary.allowsOverflowBadge`. Defaults to `true`.
+    var allowsOverflowBadge: Bool = true
+    var now: Date = .now
 
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     private var increasesContrast: Bool { colorSchemeContrast == .increased }
 
     @Environment(\.islandTokens) private var tokens
 
+    private var windowEntries: [(provider: UsageProviderPresentation, window: UsageWindowPresentation)] {
+        providers.flatMap { provider in provider.windows.map { (provider, $0) } }
+    }
+
+    /// The windows this chip actually draws as full gauges —
+    /// `windowEntries` truncated to
+    /// `IslandHeaderLaneLayout.visibleItemCount(assignedCount:capacity:)`,
+    /// which is `min(windowEntries.count, maxVisibleWindows)` (Phase 5, "no
+    /// zero gauges" correction) — **never fewer than every window this chip
+    /// can actually fit**, unlike the retired reserved-slot behaviour that
+    /// always sacrificed one gauge's slot for the overflow badge whenever
+    /// there was any overflow at all, even at `maxVisibleWindows == 1` (where
+    /// that left zero real gauges on screen).
+    private var visibleWindowEntries: [(provider: UsageProviderPresentation, window: UsageWindowPresentation)] {
+        let visibleCount = IslandHeaderLaneLayout.visibleItemCount(
+            assignedCount: windowEntries.count,
+            capacity: maxVisibleWindows
+        )
+        return Array(windowEntries.prefix(visibleCount))
+    }
+
+    /// How many windows aren't drawn as a full gauge. `0` means no
+    /// truncation happened. Whether the "+N" badge actually renders for a
+    /// non-zero count is `allowsOverflowBadge` — the caller's own width-fit
+    /// decision (`IslandHeaderLaneLayout.overflowBadgeFits`), since adding
+    /// the badge *in addition to* a full `maxVisibleWindows` set of gauges
+    /// could overflow the lane (there is still no `.clipped()` in this
+    /// chain) unless the caller already proved there's leftover room for it.
+    private var overflowCount: Int {
+        windowEntries.count - visibleWindowEntries.count
+    }
+
+    /// Which overflow affordance (if any) this chip must render for
+    /// `overflowCount` hidden windows.
+    ///
+    /// Overlay remediation E3, confirmed in live pixel captures: the
+    /// canonical 3-window fixture (Claude 5h 34%, Claude 7d 78%, Codex 7d
+    /// 92%) rendered exactly 2 gauges at real notch-hardware geometry — the
+    /// Claude 7d window was silently dropped with **no badge, no ellipsis, no
+    /// dimmed placeholder, nothing**. Root cause: `allowsOverflowBadge`
+    /// (`IslandHeaderLaneLayout.overflowBadgeFits`) correctly refused to draw
+    /// the inline "+N" badge — it needs 37pt (9pt spacing + 28pt badge) and a
+    /// capacity-planned lane only ever has ~4-5pt of genuine slack left over
+    /// — but declining the badge left the hidden window with no visual trace
+    /// at all. `.corner` is the fix: exactly one case applies whenever
+    /// `overflowCount > 0`, so "some window is hidden" and "some affordance
+    /// renders" can never come apart again.
+    enum OverflowAffordance: Equatable {
+        /// No windows are hidden — nothing to signal.
+        case none
+        /// The lane had room for the inline "+N" badge alongside the visible
+        /// gauge(s) (`allowsOverflowBadge == true`).
+        case inline(count: Int)
+        /// The lane did *not* have room for the inline badge. Renders as a
+        /// corner-hanging indicator instead — an `.overlay`, not an `HStack`
+        /// child, so it costs the lane no width and is always available
+        /// regardless of how tight the fit is.
+        case corner(count: Int)
+
+        static func decide(overflowCount: Int, allowsOverflowBadge: Bool) -> OverflowAffordance {
+            guard overflowCount > 0 else { return .none }
+            return allowsOverflowBadge ? .inline(count: overflowCount) : .corner(count: overflowCount)
+        }
+    }
+
+    private var overflowAffordance: OverflowAffordance {
+        OverflowAffordance.decide(overflowCount: overflowCount, allowsOverflowBadge: allowsOverflowBadge)
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            ForEach(provider.windows) { window in
-                FlightDeckUsageWindowGauge(label: legend(for: window), window: window)
+        // F8: was `VStack(alignment: .leading, spacing: 9)` — height-unconstrained,
+        // so a 2-window chip (~75-83pt) overflowed the fixed, non-clipping
+        // `closedNotchHeight` header band and bled into the control-button row
+        // (`IslandPanelView.openedSurfaceContent`). Both sibling themes already
+        // lay windows out horizontally (`HaloUsageProviderGroup`,
+        // `PouredUsageProviderGroup`); FD's chip was the only VStack of the
+        // three. Growth now moves from height to width — bounded by F7's
+        // capacity-aware lane split plus the compact gauge tier above.
+        HStack(alignment: .top, spacing: Self.interGaugeSpacing) {
+            ForEach(visibleWindowEntries, id: \.window.id) { entry in
+                FlightDeckUsageWindowGauge(label: legend(for: entry), window: entry.window, width: gaugeWidth)
+            }
+            if case .inline(let count) = overflowAffordance {
+                overflowBadge(count: count)
             }
         }
-        .padding(.horizontal, 9)
+        .padding(.horizontal, Self.horizontalPadding)
         .padding(.vertical, 7)
         .background(
             RoundedRectangle(cornerRadius: 3, style: .continuous)
@@ -76,31 +267,112 @@ struct FlightDeckUsageProviderChip: View {
                         )
                 )
         )
-        .help(helpText)
-        // One VoiceOver stop per provider — the same per-window summary the app
+        // E3 fix: the corner indicator draws as an `.overlay`, which never
+        // participates in the `HStack`'s width math above — it straddles the
+        // bezel's own top edge, centered horizontally over the head row's
+        // `Spacer` (the one place already guaranteed empty of legend/value
+        // text), so it never competes for lane width and never covers either
+        // gauge's legend or numeric readout.
+        .overlay(alignment: .top) {
+            if case .corner(let count) = overflowAffordance {
+                hiddenWindowIndicator(count: count)
+                    .offset(y: -7)
+            }
+        }
+        .help(summaryText)
+        // One VoiceOver stop per chip — the same per-window summary the app
         // surfaces through `.help()`, matching Classic / Poured / Instrument
         // (AB-244).
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(usesShortTitle ? provider.shortTitle : provider.title) \(helpText)")
+        .accessibilityLabel(summaryText)
     }
 
-    /// The gauge legend — the provider title (full or short) joined to the
-    /// window's window-label, uppercased Latin per the EICAS placard idiom
-    /// (`Claude · 5H`). The title itself is left in its native casing.
-    private func legend(for window: UsageWindowPresentation) -> String {
-        let title = usesShortTitle ? provider.shortTitle : provider.title
-        return "\(title) · \(window.label.uppercased())"
+    /// The reserved-slot "+N" affordance for windows this chip's lane doesn't
+    /// have room to draw as full gauges (the F7/F8 residual: FD's real
+    /// capacity is ~1 gauge per lane, and the canonical 3-window fixture
+    /// needs 2 in one of them). Deliberately terse mono — matching the
+    /// EICAS-placard idiom of `FlightDeckUsagePlacard` — and narrower than a
+    /// single gauge slot, which is what keeps `visibleWindowEntries`'s
+    /// reserved-slot arithmetic sound. Hidden from accessibility: the
+    /// count is redundant with the chip-level `.help()`/`accessibilityLabel`,
+    /// which already names every window (visible or not) via the unfiltered
+    /// `windowEntries` — never `visibleWindowEntries` — so no window's data
+    /// is actually lost, only its dedicated on-screen gauge.
+    ///
+    /// Only rendered when `OverflowAffordance` resolves to `.inline` — i.e.
+    /// `allowsOverflowBadge` already proved this exact text fits alongside
+    /// the visible gauge(s) without exceeding the lane. See
+    /// `hiddenWindowIndicator(count:)` for the fallback when it doesn't.
+    private func overflowBadge(count: Int) -> some View {
+        Text("+\(count)")
+            .font(FlightDeckTypography.microLabel)
+            .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(0.66, increaseContrast: increasesContrast)))
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, 5)
+            .frame(minWidth: Self.overflowBadgeWidth, minHeight: 18, maxHeight: 18)
+            .background(
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .strokeBorder(
+                        tokens.colors.paper.opacity(tokens.colors.hairline(increaseContrast: increasesContrast)),
+                        lineWidth: 1
+                    )
+            )
+            .accessibilityHidden(true)
     }
 
-    private var helpText: String {
-        provider.windows.map { window in
-            var parts = ["\(window.label) \(window.roundedUsedPercentage)%"]
-            if let remaining = window.remainingLabel(asOf: Date()) {
-                parts.append(remaining)
-            }
-            return parts.joined(separator: " ")
-        }
-        .joined(separator: " · ")
+    /// The E3 fix: `overflowBadge(count:)`'s corner-hanging counterpart, drawn
+    /// for exactly the case that function's caller (`allowsOverflowBadge ==
+    /// false`) ruled out — a lane too narrow to spare the inline badge's 37pt.
+    /// Costs zero lane width (an `.overlay`, not an `HStack` child), so it's
+    /// always available regardless of how tight the fit is — the previous
+    /// code path's only option at that point was to draw nothing at all.
+    /// Same bordered mono-digit language as `overflowBadge(count:)` (no new
+    /// colour, no gradient — Flight Deck's flat/opaque body is correct by
+    /// design), just smaller, since it only ever needs to survive alongside a
+    /// single visible gauge's own chrome. Hidden from accessibility for the
+    /// same reason as `overflowBadge(count:)`: the chip-level `.help()` /
+    /// `accessibilityLabel` already names every window via the unfiltered
+    /// `windowEntries`.
+    private func hiddenWindowIndicator(count: Int) -> some View {
+        Text("+\(count)")
+            .font(FlightDeckTypography.microLabel)
+            .foregroundStyle(tokens.colors.paper)
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, 4)
+            .frame(minWidth: 18, minHeight: 14, maxHeight: 14)
+            .background(
+                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    .fill(tokens.colors.paper.opacity(increasesContrast ? 0.32 : 0.22))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 3, style: .continuous)
+                            .strokeBorder(
+                                tokens.colors.paper.opacity(
+                                    min(1, tokens.colors.hairline(increaseContrast: increasesContrast) + 0.3)
+                                ),
+                                lineWidth: 1
+                            )
+                    )
+            )
+            .accessibilityHidden(true)
+    }
+
+    /// The gauge legend — the owning provider's title (full or short) joined
+    /// to the window's window-label, uppercased Latin per the EICAS placard
+    /// idiom (`Claude · 5H`). The title itself is left in its native casing.
+    private func legend(for entry: (provider: UsageProviderPresentation, window: UsageWindowPresentation)) -> String {
+        let title = usesShortTitle ? entry.provider.shortTitle : entry.provider.title
+        return "\(title) · \(entry.window.label.uppercased())"
+    }
+
+    private var summaryText: String {
+        UsageSummaryAccessibilityFormatter.summary(
+            for: providers,
+            usesShortTitles: usesShortTitle,
+            asOf: now,
+            lang: lang
+        )
     }
 }
 
@@ -115,18 +387,35 @@ struct FlightDeckUsageWindowGauge: View {
     let label: String
     let window: UsageWindowPresentation
 
-    /// The gauge's fixed drawing width, so the summary keeps an intrinsic size
-    /// under `fixedSize(horizontal:)` (a bare `GeometryReader` would collapse to
-    /// zero). Wide enough for the longest legend + value on the head row and a
-    /// `RESET 4D 06H` foot row.
+    /// The gauge's drawing width, so the summary keeps an intrinsic size under
+    /// `fixedSize(horizontal:)` (a bare `GeometryReader` would collapse to
+    /// zero). Defaults to `gaugeWidth`; the enclosing chip passes
+    /// `compactGaugeWidth` for the `ViewThatFits` short-title fallback
+    /// (Phase 5, Defect 1).
+    var width: CGFloat = Self.gaugeWidth
+
+    /// The full-size drawing width — wide enough for the longest legend +
+    /// value on the head row and a `RESET 4D 06H` foot row.
     static let gaugeWidth: CGFloat = 150
+
+    /// The compact tier (Phase 5, Defect 1): a real second width the
+    /// `ViewThatFits` short-title fallback renders at, not merely a shorter
+    /// legend string drawn in the same 150pt frame (the previous
+    /// `usesShortTitle` was "provably cosmetic-only" — it changed no widths).
+    /// Sized for the shortest legend ("Cl · 5H" / "Cx · 7D",
+    /// `FlightDeckTypography.gaugeLabelSize` 10pt semibold sans) plus a
+    /// 3-digit value (`countSize` 11pt bold mono) with headroom for the
+    /// `Spacer(minLength: 4)` between them — a principled estimate, not a
+    /// measured render (this ticket derives numbers, it doesn't capture the
+    /// app); visual confirmation belongs to a later capture-owning pass.
+    static let compactGaugeWidth: CGFloat = 96
 
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     private var increasesContrast: Bool { colorSchemeContrast == .increased }
 
     @Environment(\.islandTokens) private var tokens
 
-    private var color: Color { Self.usageColor(for: window.usedPercentage) }
+    private var color: Color { Self.usageColor(for: window.usedPercentage, tokens: tokens.colors) }
     private var placard: FlightDeckUsagePlacard { Self.placard(for: window.usedPercentage) }
     private var isCritical: Bool { window.usedPercentage >= 90 }
 
@@ -142,7 +431,7 @@ struct FlightDeckUsageWindowGauge: View {
                 resetRow(resets)
             }
         }
-        .frame(width: Self.gaugeWidth, alignment: .leading)
+        .frame(width: width, alignment: .leading)
     }
 
     private var headRow: some View {
@@ -156,9 +445,13 @@ struct FlightDeckUsageWindowGauge: View {
 
             HStack(alignment: .firstTextBaseline, spacing: 1) {
                 Text("\(window.roundedUsedPercentage)")
-                    .font(.system(size: FlightDeckTypography.countSize, weight: .bold, design: .monospaced))
+                    .font(FlightDeckTypography.gaugeValue)
                 Text("%")
-                    .font(.system(size: FlightDeckTypography.countSize - 2, weight: .semibold, design: .monospaced))
+                    // F18: was `countSize - 2` (9pt, below the theme's own
+                    // 10pt floor and invisible to the floor test — it wasn't a
+                    // named role). Now the dedicated `gaugeUnit` role, ≥10pt
+                    // and pinned by `everyReadableTypographyRoleHoldsTheTenPointFloor`.
+                    .font(FlightDeckTypography.gaugeUnit)
                     .baselineOffset(0)
             }
             .foregroundStyle(color)
@@ -178,7 +471,7 @@ struct FlightDeckUsageWindowGauge: View {
                 .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(0.5, increaseContrast: increasesContrast)))
             Spacer(minLength: 4)
             Text(countdown.uppercased())
-                .font(.system(size: 9.5, weight: .medium, design: .monospaced))
+                .font(FlightDeckTypography.resetCountdown)
                 .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(0.58, increaseContrast: increasesContrast)))
         }
         .lineLimit(1)
@@ -188,16 +481,24 @@ struct FlightDeckUsageWindowGauge: View {
         .accessibilityHidden(true)
     }
 
-    /// The exact `usageColor` cut-offs the app ships (`IslandUsageSummary`):
-    /// `>= 90` red, `70..<90` orange, else green — the theme must not drift.
-    static func usageColor(for percentage: Double) -> Color {
+    /// The exact cut-offs the app ships (`IslandUsageSummary`): `>= 90` /
+    /// `70..<90` / else — the theme must not drift. Overlay remediation F15:
+    /// resolves onto FD's own status tokens (`SPEC-flight-deck.md:56-58`) —
+    /// `statusWaitingForApproval` (#E04A42) / `statusWaitingForAnswer`
+    /// (#E6AA42) / `statusRunning` (#4AC99E) — mirroring
+    /// `PouredUsageThreshold.color(_:)`. Replaces the retired raw
+    /// `.red`/`.orange`/`.green` (sampled caution fill was #E39244 vs the FD
+    /// token #E6AA42, ΔG = -24). Both call sites (this gauge's head-row value
+    /// and `FlightDeckUsageMiniTape.tint` on the closed pill) thread the
+    /// already-present `@Environment(\.islandTokens)`.
+    static func usageColor(for percentage: Double, tokens: IslandColorTokens) -> Color {
         switch percentage {
         case 90...:
-            .red.opacity(0.95)
+            tokens.statusWaitingForApproval
         case 70..<90:
-            .orange.opacity(0.95)
+            tokens.statusWaitingForAnswer
         default:
-            .green.opacity(0.95)
+            tokens.statusRunning
         }
     }
 

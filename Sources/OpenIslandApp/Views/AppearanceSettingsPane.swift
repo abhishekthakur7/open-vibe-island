@@ -549,7 +549,7 @@ struct AppearanceSettingsPane: View {
     private func usageDisplayIcon(_ option: IslandUsageDisplay) -> some View {
         switch option {
         case .compact:
-            IslandUsageSummary(providers: Self.previewUsageProviders)
+            IslandUsageSummary(providers: Self.previewUsageProviders, lang: lang)
                 .frame(maxWidth: 104)
         case .hidden:
             Text("—")

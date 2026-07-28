@@ -103,38 +103,14 @@ struct HaloClosedPill: View {
         }
     }
 
+    /// Delegates to the shared `HaloPillIndicatorGlyph` (overlay remediation F3)
+    /// so this and `HaloTheme.closedTravelingGlyph`'s traveling-glyph override
+    /// can never again draw a different shape for the same ambient state — the
+    /// bug the traveling path shipped with (it bypassed this entirely in favour
+    /// of the theme-agnostic `UnifiedBars`, which cannot draw the A3 dot at all).
     @ViewBuilder
     private var indicatorContent: some View {
-        switch indicator {
-        case .liveness(let mode):
-            let kind = HaloLivenessGlyph.Kind(mode: mode)
-            HaloLivenessGlyph(kind: kind, tint: livenessTint(kind), box: Self.glyphSize)
-        case .permissionDot:
-            HaloPillRingedDot(
-                fill: tokens.colors.statusWaitingForApproval,
-                ring: tokens.colors.statusWaitingForApproval.opacity(0.28)
-            )
-        case .outcome(let state):
-            HaloPillOutcomeMark(state: state)
-                .foregroundStyle(outcomeTint(state))
-        }
-    }
-
-    private func livenessTint(_ kind: HaloLivenessGlyph.Kind) -> Color {
-        switch kind {
-        case .idle:    return tokens.colors.paper.opacity(tokens.colors.tertiaryTextOpacity)
-        case .running: return tokens.colors.statusRunning
-        case .waiting: return tokens.colors.statusWaitingForAnswer
-        }
-    }
-
-    private func outcomeTint(_ state: HaloSessionRowFormat.EdgeState) -> Color {
-        switch state {
-        case .success:     return tokens.colors.statusCompleted
-        case .interrupted: return tokens.colors.statusWarning
-        case .failed:      return tokens.colors.statusFailed
-        default:           return tokens.colors.paper
-        }
+        HaloPillIndicatorGlyph(indicator: indicator, tokens: tokens, box: Self.glyphSize)
     }
 
     // MARK: Label
@@ -321,6 +297,61 @@ extension HaloSessionRowFormat {
             case .interrupted: return .interrupted
             case .failed:      return .failed
             }
+        }
+    }
+
+    /// The liveness glyph's tint per kind (overlay remediation F3) — shared by
+    /// `HaloPillIndicatorGlyph` (which both `HaloClosedPill`'s own indicator and
+    /// `HaloTheme.closedGlyphTint`/`closedTravelingGlyph` render through), so the
+    /// achromatic-glyph bug — the traveling path stuck on the theme-agnostic
+    /// paper tone — can't return by the two colour tables silently drifting
+    /// apart. Was `HaloClosedPill.livenessTint` before extraction; same three
+    /// cases, same values, still a single call site.
+    static func livenessTint(_ kind: HaloLivenessGlyph.Kind, tokens: IslandThemeTokens) -> Color {
+        switch kind {
+        case .idle:    return tokens.colors.paper.opacity(tokens.colors.tertiaryTextOpacity)
+        case .running: return tokens.colors.statusRunning
+        case .waiting: return tokens.colors.statusWaitingForAnswer
+        }
+    }
+
+    /// The outcome mark's tint per completion state — shared the same way. Was
+    /// `HaloClosedPill.outcomeTint` before extraction.
+    static func outcomeTint(_ state: EdgeState, tokens: IslandThemeTokens) -> Color {
+        switch state {
+        case .success:     return tokens.colors.statusCompleted
+        case .interrupted: return tokens.colors.statusWarning
+        case .failed:      return tokens.colors.statusFailed
+        default:           return tokens.colors.paper
+        }
+    }
+}
+
+/// The left-wing indicator's actual rendering for a resolved `PillIndicator` —
+/// shared by `HaloClosedPill`'s own (non-traveling) indicator and
+/// `HaloTheme.closedTravelingGlyph` (overlay remediation F3 · Decision D3), so
+/// the default animated path and the Reduce Motion path can never again draw a
+/// different shape for the same ambient state. Before this seam, the traveling
+/// path bypassed this entirely and drew the theme-agnostic `UnifiedBars` 3-bar
+/// glyph instead, which structurally cannot express the A3 ringed permission dot.
+struct HaloPillIndicatorGlyph: View {
+    let indicator: HaloSessionRowFormat.PillIndicator
+    let tokens: IslandThemeTokens
+    let box: CGFloat
+
+    var body: some View {
+        switch indicator {
+        case .liveness(let mode):
+            let kind = HaloLivenessGlyph.Kind(mode: mode)
+            HaloLivenessGlyph(kind: kind, tint: HaloSessionRowFormat.livenessTint(kind, tokens: tokens), box: box)
+        case .permissionDot:
+            HaloPillRingedDot(
+                fill: tokens.colors.statusWaitingForApproval,
+                ring: tokens.colors.statusWaitingForApproval.opacity(0.28)
+            )
+        case .outcome(let state):
+            HaloPillOutcomeMark(state: state)
+                .foregroundStyle(HaloSessionRowFormat.outcomeTint(state, tokens: tokens))
         }
     }
 }

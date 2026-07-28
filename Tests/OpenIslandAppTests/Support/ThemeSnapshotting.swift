@@ -109,12 +109,19 @@ enum ThemeSnapshotting {
     ///   - slot: which slot + scenario to draw (see ``Slot``).
     ///   - profile: panel geometry — `.notch` (540pt) or `.topBar` (520pt).
     ///   - name: golden identifier, stable across runs.
+    ///   - preselectsQuestionSelection: overlay remediation Phase 2B (F1 Task
+    ///     2) — injects `\.islandQuestionPromptPreselectsFirstOption`, seeding
+    ///     every rendered question's first option so `canSubmit` is `true` at
+    ///     capture time. `false` (default) keeps every existing call site's
+    ///     golden showing the *disabled* Submit, unchanged — this is a
+    ///     preview-only seam (Phase 2A), inert unless a caller opts in.
     ///   - record: force re-record. Defaults to the `OPEN_ISLAND_RECORD_SNAPSHOTS` env flag.
     static func assertSnapshot(
         theme: any IslandTheme,
         slot: Slot,
         profile: Profile,
         named name: String,
+        preselectsQuestionSelection: Bool = false,
         record: Bool = ThemeSnapshotting.isRecording,
         file: StaticString = #filePath,
         testName: String = #function,
@@ -123,7 +130,12 @@ enum ThemeSnapshotting {
         // 1. Always render — this exercises the slot's view code on every runner,
         //    so a crash or build regression fails loudly even where the pixel
         //    comparison would be skipped.
-        let image = renderImage(theme: theme, slot: slot, profile: profile)
+        let image = renderImage(
+            theme: theme,
+            slot: slot,
+            profile: profile,
+            preselectsQuestionSelection: preselectsQuestionSelection
+        )
         XCTAssertGreaterThan(
             image.size.width, 0,
             "Rendered a zero-width image for \(name)",
@@ -169,12 +181,19 @@ enum ThemeSnapshotting {
     // MARK: - Rendering
 
     /// Deterministically rasterizes a slot to a 2× dark-appearance `NSImage`.
-    /// Exposed (not just used by ``assertSnapshot(theme:slot:profile:named:record:file:testName:line:)``)
+    /// Exposed (not just used by ``assertSnapshot(theme:slot:profile:named:preselectsQuestionSelection:record:file:testName:line:)``)
     /// so later tickets can pull the raw image for a bespoke assertion.
+    ///
+    /// `preselectsQuestionSelection` (overlay remediation Phase 2B, F1 Task 2)
+    /// only affects `.sessionList` — `.closedPill` never mounts
+    /// `StructuredQuestionPromptView`, so the flag is silently unused there,
+    /// the same shape as `SnapshotSessionListPanel`'s own `bridgeIsLive` /
+    /// `forceRowExpanded` seams.
     static func renderImage(
         theme: any IslandTheme,
         slot: Slot,
-        profile: Profile
+        profile: Profile,
+        preselectsQuestionSelection: Bool = false
     ) -> NSImage {
         // Wall-clock `now`: keeps the fixtures' relative-age strings inside their
         // stable buckets (see the type doc). Everything downstream of this is a
@@ -239,6 +258,11 @@ enum ThemeSnapshotting {
                 lang: lang
             )
             .themedSnapshotEnvironment(theme: theme)
+            // overlay remediation Phase 2B (F1 Task 2): `false` by default, so
+            // this is a no-op for every pre-existing golden — only a caller
+            // that opts in sees the seam's pre-populated selections and, in
+            // turn, the *enabled* Submit CTA.
+            .environment(\.islandQuestionPromptPreselectsFirstOption, preselectsQuestionSelection)
 
             return rasterize(panel, width: profile.width)
         }

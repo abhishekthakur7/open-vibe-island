@@ -329,4 +329,48 @@ struct PouredIslandTheme: IslandTheme {
         guard !providers.isEmpty else { return nil }
         return AnyView(PouredUsageMeterCard(providers: providers, lang: lang))
     }
+
+    // MARK: Question-prompt submit CTA seam (overlay remediation Phase 2A-follow-up · F1)
+
+    /// The §F question card's Submit CTA. Reuses `PouredApprovalButtonLabel` —
+    /// the same amber-pill chrome Allow-once wears — parameterised (not
+    /// forked) per the plan's Decision 1: the board's own, slightly lighter
+    /// Submit stops (`PouredQuestionColors.submitTop/submitBottom/submitInk`,
+    /// distinct from `.allow`'s literal gradient), `expands: false` keeps the
+    /// shared `.btn` sizing intrinsic (`display:inline-flex`) while the reusable
+    /// label style owns the standalone chrome, and no keycap (the shared prompt
+    /// registers no digit shortcut for "submit" itself).
+    /// `questionCardContainer` is intentionally **not** overridden here —
+    /// Poured's layered glass already reads correctly with the shared view's
+    /// literal translucent card nested inside `questionActionBody`'s gold wash
+    /// (remediation plan DO-NOT-FIX table).
+    func questionSubmitButton(
+        title: String,
+        isEnabled: Bool,
+        action: @escaping () -> Void
+    ) -> AnyView? {
+        AnyView(
+            Button(action: action) {
+                PouredApprovalButtonLabel(
+                    title: title,
+                    kind: .allow,
+                    expands: false,
+                    fillOverride: (
+                        top: PouredQuestionColors.submitTop,
+                        bottom: PouredQuestionColors.submitBottom,
+                        ink: PouredQuestionColors.submitInk
+                    ),
+                    isEnabled: isEnabled
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(!isEnabled)
+            .accessibilityLabel(title)
+        )
+    }
+
+    /// D1 pagination: one question per page (`01-poured-island.html:1154-1205`
+    /// — "Question 1 of 2" / "Submit & next", then "…2 of 2" / "Submit"). See
+    /// `IslandTheme.questionPageSize`'s doc for the shared mechanism.
+    var questionPageSize: Int? { 1 }
 }

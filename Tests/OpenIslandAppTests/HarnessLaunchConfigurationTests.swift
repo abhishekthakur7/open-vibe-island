@@ -9,6 +9,8 @@ struct HarnessLaunchConfigurationTests {
 
         #expect(configuration.scenario == nil)
         #expect(!configuration.presentOverlay)
+        #expect(!configuration.suppressInstallHint)
+        #expect(!configuration.enableKeyMonitor)
         #expect(configuration.shouldStartBridge)
         #expect(configuration.shouldPerformBootAnimation)
         #expect(configuration.captureDelay == nil)
@@ -22,6 +24,8 @@ struct HarnessLaunchConfigurationTests {
             environment: [
                 "OPEN_ISLAND_HARNESS_SCENARIO": "approvalcard",
                 "OPEN_ISLAND_HARNESS_PRESENT_OVERLAY": "true",
+                "OPEN_ISLAND_HARNESS_SUPPRESS_INSTALL_HINT": "1",
+                "OPEN_ISLAND_HARNESS_ENABLE_KEY_MONITOR": "1",
                 "OPEN_ISLAND_HARNESS_START_BRIDGE": "no",
                 "OPEN_ISLAND_HARNESS_BOOT_ANIMATION": "off",
                 "OPEN_ISLAND_HARNESS_CAPTURE_DELAY_SECONDS": "1.5",
@@ -32,6 +36,8 @@ struct HarnessLaunchConfigurationTests {
 
         #expect(configuration.scenario == .approvalCard)
         #expect(configuration.presentOverlay)
+        #expect(configuration.suppressInstallHint)
+        #expect(configuration.enableKeyMonitor)
         #expect(!configuration.shouldStartBridge)
         #expect(!configuration.shouldPerformBootAnimation)
         #expect(configuration.captureDelay == 1.5)
@@ -45,6 +51,7 @@ struct HarnessLaunchConfigurationTests {
             environment: [
                 "OPEN_ISLAND_HARNESS_SCENARIO": "missing",
                 "OPEN_ISLAND_HARNESS_PRESENT_OVERLAY": "unexpected",
+                "OPEN_ISLAND_HARNESS_ENABLE_KEY_MONITOR": "unexpected",
                 "OPEN_ISLAND_HARNESS_CAPTURE_DELAY_SECONDS": "0",
                 "OPEN_ISLAND_HARNESS_AUTO_EXIT_SECONDS": "-1",
                 "OPEN_ISLAND_HARNESS_ARTIFACT_DIR": "   ",
@@ -53,6 +60,7 @@ struct HarnessLaunchConfigurationTests {
 
         #expect(configuration.scenario == nil)
         #expect(!configuration.presentOverlay)
+        #expect(!configuration.enableKeyMonitor)
         #expect(configuration.captureDelay == nil)
         #expect(configuration.autoExitAfter == nil)
         #expect(configuration.artifactDirectoryURL == nil)

@@ -533,7 +533,7 @@ private struct FlightDeckAttentionSegment: View {
     var body: some View {
         HStack(spacing: 3) {
             Text(spec.glyph)
-                .font(.system(size: FlightDeckTypography.countSize, weight: .bold))
+                .font(FlightDeckTypography.countGlyph)
             Text(FlightDeckText.caps(lang.t(spec.placardKey), lang: lang))
                 .font(.system(size: FlightDeckTypography.microLabelSize, weight: .bold, design: .monospaced))
                 .tracking(FlightDeckText.tracking(0.8, lang: lang))
@@ -580,7 +580,7 @@ private struct FlightDeckUsageMiniTape: View {
 
     @Environment(\.islandTokens) private var tokens
 
-    private var tint: Color { FlightDeckUsageWindowGauge.usageColor(for: Double(percent)) }
+    private var tint: Color { FlightDeckUsageWindowGauge.usageColor(for: Double(percent), tokens: tokens.colors) }
 
     var body: some View {
         HStack(spacing: 4) {
@@ -598,7 +598,7 @@ private struct FlightDeckUsageMiniTape: View {
             .frame(width: 16)
 
             Text("\(percent)%")
-                .font(.system(size: FlightDeckTypography.countSize, weight: .bold, design: .monospaced))
+                .font(FlightDeckTypography.count)
                 .foregroundStyle(tint)
         }
         .lineLimit(1)
@@ -630,12 +630,12 @@ private struct FlightDeckTaskCounterChip: View {
             // "3 subagents" — the verb-tinted nominal-green count phrase (reuses
             // the shared `%lld subagents` string, localized ×3).
             Text(lang.t("poured.subagents.count", subagents))
-                .font(.system(size: FlightDeckTypography.countSize, weight: .medium, design: .default))
+                .font(FlightDeckTypography.countLabel)
                 .foregroundStyle(tokens.colors.statusRunning)
 
             if total > 0 {
                 Text("· \(completed)/\(total)")
-                    .font(.system(size: FlightDeckTypography.countSize, weight: .semibold, design: .monospaced).monospacedDigit())
+                    .font(FlightDeckTypography.count)
                     .foregroundStyle(tokens.colors.paper.opacity(0.7))
             }
         }

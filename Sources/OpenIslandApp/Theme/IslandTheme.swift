@@ -236,6 +236,36 @@ protocol IslandTheme: Sendable {
         activity: IslandClosedPillActivity?
     ) -> Color?
 
+    /// The theme's **traveling** closed-pill glyph itself — not just its tint.
+    /// `islandGlyphOverlay` mounts this once and continuously so it can slide
+    /// from the closed pill into the opened header instead of fading in place
+    /// (AB-243). `closedGlyphTint` above only covers themes whose correct
+    /// indicator *is* the theme-agnostic `UnifiedBars` bars; a theme whose
+    /// correct shape is something else (Halo's ringed A3 permission dot / A5-A6
+    /// outcome marks) has nothing to tint — it needs to vend the whole view.
+    ///
+    /// Returns the theme-agnostic `UnifiedBars` bar glyph, tinted by
+    /// `closedGlyphTint` — the default every theme but Halo takes, exactly
+    /// reproducing what `islandGlyphOverlay` built inline before this seam
+    /// existed, so the traveling glyph stays byte-identical for every other
+    /// theme. **Declared here (not only in the extension)** for the same
+    /// dynamic-dispatch reason as `closedGlyphTint`/`closedSurfaceGlow`: a call
+    /// through `any IslandTheme` must dispatch to the conformer's override, not
+    /// statically bind to the extension's default.
+    ///
+    /// (Overlay remediation Phase 3B · F3 / Decision D3: additive and isolated,
+    /// rather than adding a permission case to `UnifiedBars.Mode` itself —
+    /// `Mode` is not `CaseIterable` but is switched over exhaustively with no
+    /// `default:` at 7 call sites, so a new case is a compile error at all
+    /// seven, three of which would need genuinely new `CAShapeLayer` geometry
+    /// in the shared animation engine, for a Halo-only need.)
+    func closedTravelingGlyph(
+        mode: UnifiedBars.Mode,
+        rightSlot: IslandRightSlotContent?,
+        activity: IslandClosedPillActivity?,
+        size: CGFloat
+    ) -> AnyView
+
     // MARK: Surface edge-light seam (AB-341)
 
     /// A living chrome overlay a theme traces around the **morphing surface
@@ -264,6 +294,162 @@ protocol IslandTheme: Sendable {
         shape: OpenedIslandSurfaceShape,
         context: IslandSurfaceEdgeContext
     ) -> AnyView?
+
+    // MARK: - Question-prompt submit CTA seam (overlay remediation Phase 2A · F1)
+
+    /// A theme-supplied primary CTA for the shared `StructuredQuestionPromptView`
+    /// Submit button (`IslandPanelView.swift`), used verbatim by all six themes'
+    /// `questionActionBody`.
+    ///
+    /// `IslandActionButtonStyle` — the button style every theme falls back to —
+    /// fills with a flat `Color` and can't express a gradient, is always
+    /// `RoundedRectangle`, and always spans the card's full width. None of the
+    /// three redesigned boards want that: Poured/Halo want an intrinsic-width
+    /// amber-gradient pill, Flight Deck wants a translucent chamfered outline
+    /// chip. Each theme already owns the right chrome for this (Poured's
+    /// `PouredJumpButtonStyle`/`PouredApprovalButtonLabel`, Flight Deck's
+    /// `FlightDeckApprovalButton`, Halo's `HaloHeroButton`) — this seam is where
+    /// a conformer exposes it, rather than the shared view rebuilding it.
+    ///
+    /// Returns `nil` — the default every theme takes today — so the card falls
+    /// back to `IslandActionButtonStyle`, exactly the rendering every theme
+    /// ships now. **Declared here (not only in the extension)** for the same
+    /// dynamic-dispatch reason as `closedGlyphTint`/`closedSurfaceGlow`: a call
+    /// through `any IslandTheme` must dispatch to the conformer's override, not
+    /// statically bind to the extension's default.
+    ///
+    /// `title` is the fully-resolved button label (submit / send reply / running
+    /// multi-select count — `StructuredQuestionPromptView.submitButtonTitle`);
+    /// `isEnabled` mirrors `canSubmit` so a conformer can render its own
+    /// dimmed/disabled treatment (none of the three source components had one,
+    /// since none were previously used behind a togglable `.disabled()`); the
+    /// conformer is responsible for invoking `action` on tap and should ignore
+    /// taps while `isEnabled` is `false`.
+    func questionSubmitButton(
+        title: String,
+        isEnabled: Bool,
+        action: @escaping () -> Void
+    ) -> AnyView?
+
+    // MARK: - Question-prompt card container seam (overlay remediation Phase 2A-follow-up · F1)
+
+    /// A theme-supplied container for the shared `StructuredQuestionPromptView`'s
+    /// content (`IslandPanelView.swift`). The view always drew its own literal
+    /// `RoundedRectangle(cornerRadius: 10).fill(.white.opacity(0.03))` card with a
+    /// matching hairline `strokeBorder` — correct for Poured's layered-glass
+    /// identity, but wrong for two themes (remediation plan §2 F1 DO-NOT-FIX
+    /// table): Halo is a pure-black void whose only chrome is the 1.5pt
+    /// edge-light, so a nested translucent box reads as a second, unwanted card
+    /// layered inside `HaloHeroShell`'s own black-fill/ring/glow hero; Flight Deck
+    /// is opaque hardware with chamfer geometry, so a rounded translucent panel is
+    /// foreign to it — every other FD actionable-body card (`completionBody`,
+    /// `runningPreviewBox`) already seats on an opaque chamfered tile instead.
+    ///
+    /// `content` arrives pre-built — the shared view's own padding/frame already
+    /// applied — so a conformer only supplies the fill/border/clip-shape around
+    /// it, exactly mirroring `questionSubmitButton`'s seam shape.
+    ///
+    /// Returns `nil` — the default every theme takes today — so the card falls
+    /// back to the literal translucent rounded panel every theme has always
+    /// drawn. **Declared here (not only in the extension)** for the same
+    /// dynamic-dispatch reason as `questionSubmitButton` / `closedGlyphTint` /
+    /// `closedSurfaceGlow`: a call through `any IslandTheme` must dispatch to the
+    /// conformer's override, not statically bind to the extension's default.
+    func questionCardContainer(content: AnyView) -> AnyView?
+
+    // MARK: - Question-prompt pagination seam (overlay remediation Phase 2B · F1a/D1)
+
+    /// The number of `structuredQuestions` `StructuredQuestionPromptView` renders
+    /// together on one page.
+    ///
+    /// `nil` — the default every theme took before this ticket — means "no
+    /// pagination": every question renders in one unbounded stack, exactly the
+    /// literal behaviour every theme has always shipped, and the keyboard
+    /// 1-9/Enter wiring stays disabled whenever there is more than one question
+    /// (`StructuredQuestionPromptView.registerKeyboardHandlersIfNeeded`'s pre-D1
+    /// guard). Classic/Annual/Instrument take this default and are therefore
+    /// byte-identical.
+    ///
+    /// A concrete value opts a theme into the D1 pagination mechanism — **one**
+    /// mechanism, not two parallel code paths, because the three approved boards
+    /// (REMEDIATION-PLAN.md §5 D1) only disagree on *how big* a page is, never
+    /// on the underlying machinery:
+    /// - `1` (Poured `01-poured-island.html:1154-1205`, Halo
+    ///   `06-halo.html:1067-1156`): one question per page — "Question 1 of 2" /
+    ///   "1 of 2" with a "Submit & next" / "Next" advance button, then "…2 of
+    ///   2" with "Submit". Digits are unambiguous on a one-question page, so
+    ///   both themes *gain* keyboard selection they don't have today.
+    /// - A size at or past the question count — Flight Deck uses `Int.max`
+    ///   (`02-flight-deck.html:1194-1265`) — collapses every question onto one
+    ///   page, visually identical to the `nil` default's "show everything". But
+    ///   unlike `nil` it is a *distinct*, theme-opted-in configuration: the
+    ///   keyboard stays active, with digits running **continuously** across the
+    ///   stacked questions (1-3 then 4-7, never restarting at 1), matching
+    ///   Flight Deck's MASTER-CAUTION "show every active caution at once"
+    ///   identity.
+    ///
+    /// The keyboard model is never special-cased per theme — it falls out of
+    /// whichever questions land on the *current* page (`StructuredQuestionPromptView
+    /// .currentPageFlatOptions`); a one-question page and an every-question page
+    /// both feed the same flattening, they just start from a different `currentPage`.
+    ///
+    /// A plain `Int?` (not a dedicated enum) to match this file's established
+    /// "narrow optional protocol member" shape (`closedGlyphTint`,
+    /// `questionSubmitButton`) rather than introduce a new type for two concrete
+    /// values. **Declared here (not only in the extension)** for the same
+    /// dynamic-dispatch reason as `questionSubmitButton` / `closedGlyphTint`: a
+    /// call through `any IslandTheme` must dispatch to the conformer's override,
+    /// not statically bind to the extension's default.
+    var questionPageSize: Int? { get }
+
+    // MARK: - Opened-header band height (overlay remediation Phase 5 · F8)
+
+    /// The opened panel's header-band height — what `IslandPanelView` gives
+    /// `openedHeaderContent` (`.frame(height:)`) and what
+    /// `OverlayPanelController.panelSize` budgets into the window's total
+    /// content height alongside the measured body.
+    ///
+    /// `nil` — the default every theme but Flight Deck takes — means "use the
+    /// closed pill's own height" (`closedNotchHeight` /
+    /// `NSScreen.islandClosedHeight`), exactly the fixed, shared band every
+    /// theme has always rendered into. Classic/Annual/Instrument/Poured/Halo
+    /// take this default and are therefore byte-identical.
+    ///
+    /// Flight Deck overrides it: its avionics gauge chip (with a reset-time
+    /// readout, the production-normal case) runs to ≈57pt tall, and once its
+    /// controls stack *above* the gauge in the notch lane
+    /// (`ControlsLaneArrangement.columnStacked`, `IslandUsageSummary.swift`)
+    /// the band must clear controls (22pt) + spacing (8pt) + the chip (57pt)
+    /// + the header's own top padding (2pt) — the closed pill's ~24-38pt band
+    /// (`F8`, overlay remediation) overflows this by 2-3×. Growing this
+    /// per-theme value, rather than `closedNotchHeight` itself, keeps the
+    /// **closed pill** — shared geometry every theme's morph animates from —
+    /// completely unaffected.
+    ///
+    /// **Declared here (not only in the extension)** for the same
+    /// dynamic-dispatch reason as `questionPageSize` / `closedGlyphTint`: a
+    /// call through `any IslandTheme` must dispatch to the conformer's
+    /// override, not statically bind to the extension's default.
+    var openedHeaderHeight: CGFloat? { get }
+}
+
+/// The uniform "still reads as this theme's own chrome, not a foreign grey"
+/// disabled recipe every `questionSubmitButton` override applies (overlay
+/// remediation Phase 2A-follow-up · F1): keep the button's own hue, just mute
+/// it, rather than falling back to `IslandActionButtonStyle`'s shared grey
+/// disabled literal (`IslandPanelView.swift`, `guard isEnabled else { … }`).
+/// None of Poured's `PouredApprovalButtonLabel`, Halo's `HaloHeroButton`, or
+/// Flight Deck's `FlightDeckApprovalButton` had a disabled state before this —
+/// each was only ever mounted while unconditionally actionable — so this is one
+/// shared pair (not three independently-tuned ones) applied as
+/// `.saturation(_:).opacity(_:)` over the conformer's own enabled paint, so a
+/// disabled Submit dims consistently across themes instead of drifting per
+/// conformer.
+enum IslandQuestionSubmitDisabledStyle {
+    /// `.saturation()` floor for a disabled themed Submit button.
+    static let saturation: Double = 0.35
+    /// `.opacity()` floor for a disabled themed Submit button.
+    static let opacity: Double = 0.5
 }
 
 // MARK: - Closed-pill ambient seam defaults (AB-330)
@@ -285,6 +471,25 @@ extension IslandTheme {
         activity: IslandClosedPillActivity?
     ) -> Color? { nil }
 
+    /// Default: the theme-agnostic `UnifiedBars` bar glyph, tinted by
+    /// `closedGlyphTint` — exactly what `islandGlyphOverlay` built inline
+    /// before this seam existed. Every theme but Halo takes this, so their
+    /// traveling glyph's render tree (and therefore its pixels) is unchanged.
+    func closedTravelingGlyph(
+        mode: UnifiedBars.Mode,
+        rightSlot: IslandRightSlotContent?,
+        activity: IslandClosedPillActivity?,
+        size: CGFloat
+    ) -> AnyView {
+        AnyView(
+            UnifiedBars(
+                mode: mode,
+                size: size,
+                tint: closedGlyphTint(mode: mode, rightSlot: rightSlot, activity: activity)
+            )
+        )
+    }
+
     /// Default: no dedicated full-meter surface. Every theme but Poured takes
     /// this, so the `meters` preview keeps drawing only the compact header ring.
     func usageMeterCard(providers: [UsageProviderPresentation], lang: LanguageManager) -> AnyView? { nil }
@@ -296,6 +501,37 @@ extension IslandTheme {
         shape: OpenedIslandSurfaceShape,
         context: IslandSurfaceEdgeContext
     ) -> AnyView? { nil }
+
+    /// Default: no themed CTA — `StructuredQuestionPromptView` falls back to
+    /// `IslandActionButtonStyle`. Classic/Annual/Instrument take this default;
+    /// Poured/Flight Deck/Halo override it (overlay remediation Phase
+    /// 2A-follow-up · F1).
+    func questionSubmitButton(
+        title: String,
+        isEnabled: Bool,
+        action: @escaping () -> Void
+    ) -> AnyView? { nil }
+
+    /// Default: no themed card container — the shared view keeps drawing its
+    /// own literal translucent rounded card. Classic/Annual/Instrument/Poured
+    /// take this default (Poured's layered glass already reads correctly with
+    /// the literal card nested inside its own gold wash); Halo/Flight Deck
+    /// override it (overlay remediation Phase 2A-follow-up · F1).
+    func questionCardContainer(content: AnyView) -> AnyView? { nil }
+
+    /// Default: no pagination — every question renders on one page and
+    /// `registerKeyboardHandlersIfNeeded` keeps multi-question keyboard
+    /// selection disabled (its pre-D1 behaviour). Classic/Annual/Instrument
+    /// take this default and are therefore byte-identical; Poured/Halo/Flight
+    /// Deck override it (overlay remediation Phase 2B · F1a/D1).
+    var questionPageSize: Int? { nil }
+
+    /// Default: use the closed pill's own height — the shared, unchanged
+    /// band every theme has always rendered its opened header into.
+    /// Classic/Annual/Instrument/Poured/Halo take this default and are
+    /// therefore byte-identical (overlay remediation Phase 5 · F8); Flight
+    /// Deck overrides it.
+    var openedHeaderHeight: CGFloat? { nil }
 }
 
 /// The closed-island agents-grid geometry a theme supplies. Expressed as plain

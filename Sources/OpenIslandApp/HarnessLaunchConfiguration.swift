@@ -3,6 +3,29 @@ import Foundation
 struct HarnessLaunchConfiguration {
     let scenario: IslandDebugScenario?
     let presentOverlay: Bool
+    /// Overlay remediation Phase 1 item 1.1 (P1.f): suppresses the "No agent
+    /// hooks installed" banner. The bundled harness binary's hooks-installed
+    /// probe (`AppModel.hasAnyInstalledAgent`) has no genuine hook state to
+    /// read in that environment and always reads `false`, so the banner
+    /// always renders — clipping short panels (`emptyState`,
+    /// `completedFailed`, ...). Defaults to `false` so an unset var changes
+    /// nothing; only an explicit `OPEN_ISLAND_HARNESS_SUPPRESS_INSTALL_HINT=1`
+    /// opts in.
+    let suppressInstallHint: Bool
+    /// Overlay remediation Phase 3 (Task 1): opt-in override that lets
+    /// `OverlayPanelController` install its `keyCommandMonitor` even during a
+    /// harness scenario launch. Before this existed,
+    /// `disablesOverlayEventMonitoringDuringHarness` (set unconditionally for
+    /// *any* harness scenario, `OpenIslandAppDelegate
+    /// .applicationDidFinishLaunching`) made `startEventMonitoring()` skip
+    /// installing the key monitor entirely — pressing `1`/Enter on a
+    /// harness-launched panel had zero effect, for every theme, and the
+    /// verification protocol's own interactive mode could not exercise
+    /// keyboard handling at all (confirmed by source read during Phase 2
+    /// verification, not inferred from a failure). Defaults to `false` so an
+    /// unset var changes nothing for existing capture runs — only an
+    /// explicit `OPEN_ISLAND_HARNESS_ENABLE_KEY_MONITOR=1` opts in.
+    let enableKeyMonitor: Bool
     let shouldStartBridge: Bool
     let shouldPerformBootAnimation: Bool
     let captureDelay: TimeInterval?
@@ -13,6 +36,14 @@ struct HarnessLaunchConfiguration {
         scenario = Self.scenarioValue(from: environment["OPEN_ISLAND_HARNESS_SCENARIO"])
         presentOverlay = Self.boolValue(
             environment["OPEN_ISLAND_HARNESS_PRESENT_OVERLAY"],
+            default: false
+        )
+        suppressInstallHint = Self.boolValue(
+            environment["OPEN_ISLAND_HARNESS_SUPPRESS_INSTALL_HINT"],
+            default: false
+        )
+        enableKeyMonitor = Self.boolValue(
+            environment["OPEN_ISLAND_HARNESS_ENABLE_KEY_MONITOR"],
             default: false
         )
         shouldStartBridge = Self.boolValue(

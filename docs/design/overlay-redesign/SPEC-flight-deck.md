@@ -10,17 +10,12 @@ Conventions: **mockup px @1x = SwiftUI pt.** Hex is compared against the exact
 `unchanged` (mockup == shipped), `changed` (mockup differs from a shipped token),
 `new` (no shipped token/treatment exists).
 
-> **Headline finding — read first.** The mockup's *color* mapping already matches
-> the shipped `flightDeck` tokens almost verbatim (ground/nominal/advisory/
-> caution/warning are byte-identical hexes). The real deltas are: (1) the
-> **two-tier alarm nomenclature** (permission = red **MASTER WARNING**, question =
-> amber **MASTER CAUTION**) — a *label + structure* change, NOT a token
-> remapping; (2) **phosphor glow** re-introduced on every lit lamp (shipped Flight
-> Deck is deliberately glow-free flat hardware); (3) a **sans-narration / mono-value
-> type split** (shipped renders everything mono); (4) the usage gauge changes from
-> **12-tick segmented** to **continuous tape + 70/90 threshold ticks + inline
-> RESETS-IN**; (5) a **STATUS text-code column** and **engine-cluster subagent
-> display** that do not exist in the shipped row.
+> **Current conformance state — read first.** The semantic `flightDeck` colors
+> remain byte-identical to the approved mapping. The two-tier nomenclature, lamp
+> glow, sans-narration/mono-value split, tape gauges with inline reset, STATUS
+> code, and engine-cluster display are shipped. Historic `new`/`changed` verdicts
+> below describe the pre-remediation baseline; the retained exceptions are recorded
+> in §7 and the typography Shipped column.
 
 ---
 
@@ -36,13 +31,13 @@ Conventions: **mockup px @1x = SwiftUI pt.** Hex is compared against the exact
 | Caution (question / interrupted) | `--caution #e6aa42` | `flightDeckCaution = rgb(230,170,66)` | `#E6AA42` | **unchanged** (exact) |
 | Warning (permission / failed) | `--warning #e04a42` | `flightDeckWarning = rgb(224,74,66)` | `#E04A42` | **unchanged** (exact) |
 | Legend ink / `paper` | `--paper #d8e1e6` | `flightDeckPaper = rgb(0xd4,0xda,0xd6)` | shipped `#D4DAD6` | **changed** — mockup is cooler/lighter (`#D8E1E6`, rgb 216,225,230). Small but real; either adopt `#D8E1E6` or keep `#D4DAD6` and document. Contrast on ink stays ≥ 4.5:1 either way. |
-| Opened panel body | `--surface #0e1113` | *(none — panel = `surfaceInk`)* | — | **new** — mockup panel body (`#0E1113`) is a distinct tone *lighter* than ground; shipped panel = `surfaceInk` (`#08090A`). Add a `surfacePanel` token or lift panel fill. |
-| Tiles / sub-panels | `--surface-2 #101519` | *(derived: `paper.opacity(0.012–0.035)` washes)* | — | **new** — mockup uses an explicit near-black tile tone; shipped derives tiles from paper washes over ink. |
-| Raised / hovered | `--surface-hi #161c22` | `paper.opacity(0.05)` hover wash | — | **changed** — hover is currently a paper wash, not a distinct surface tone. |
-| Recessed wells (code / tape track) | `--well #060708` | `paper.opacity(0.04–0.05)` over ink | — | **new** — mockup wells are *darker* than ground; shipped has no recessed well tone (uses light washes, which read raised, not recessed). |
-| Hairline tier 1 | `--hair rgba(154,176,188,0.14)` | `hairlineOpacity = 0.13` × `paper` | — | **changed** — mockup base is cool blue-grey `#9AB0BC`, not `paper`; opacity 0.14 ≈ 0.13. |
-| Hairline tier 2 | `--hair2 rgba(154,176,188,0.26)` | `hairlineOpacity*2 = 0.26` (inline, lamp housing) | — | **changed** — value matches (0.26) but exists only as an inline `*2`, not a token. |
-| Hairline tier 3 | `--hair3 rgba(154,176,188,0.40)` | *(none)* | — | **new** — a 3rd hairline tier (0.40) for strong bezels/ticks; no shipped equivalent. |
+| Opened panel body | `--surface #0e1113` | `FlightDeckSurfaces.panel` | `#0E1113` | **unchanged** (theme-local surface) |
+| Tiles / sub-panels | `--surface-2 #101519` | `FlightDeckSurfaces.tile` | `#101519` | **unchanged** (theme-local surface) |
+| Raised / hovered | `--surface-hi #161c22` | `FlightDeckSurfaces.hover` | `#161C22` | **unchanged** (theme-local surface) |
+| Recessed wells (code / tape track) | `--well #060708` | `FlightDeckSurfaces.well` | `#060708` | **unchanged** (theme-local surface) |
+| Hairline tier 1 | `--hair rgba(154,176,188,0.14)` | `FlightDeckSurfaces.hairline1` | — | **unchanged** (cool base @ 0.14) |
+| Hairline tier 2 | `--hair2 rgba(154,176,188,0.26)` | `FlightDeckSurfaces.hairline2` | — | **unchanged** |
+| Hairline tier 3 | `--hair3 rgba(154,176,188,0.40)` | `FlightDeckSurfaces.hairline3` | — | **unchanged** |
 | Dim text (`--dim #8a97a0`) | `#8a97a0` | `paper.opacity(secondaryTextOpacity=0.6)` | — | **changed** — mockup uses an explicit cooler grey; shipped derives from paper @ 0.6. |
 | Faint text (`--faint #5b656c`) | `#5b656c` | `paper.opacity(tertiaryTextOpacity=0.5)` | — | **changed** — same story @ 0.5. |
 | Idle lamp | `--well` + `--hair2` border | `statusIdle = paper.opacity(0.30)` / `statusInactive = 0.26` | — | **unchanged** (concept) |
@@ -63,21 +58,17 @@ red, interrupted → amber. **No `IslandColorTokens` tint-role remapping is
 required for the color axis.** `FlightDeckThemeTests.statusPaletteIsTheFour...`
 (lines 52–77) already pins these equalities and must stay green.
 
-What *is* wrong today is **nomenclature, not color**: the shipped
-`FlightDeckApprovalCard` paints the (red) permission block but labels it
-`island.flightDeck.approval.masterCaution` = **"Master Caution"** — an
-avionics category error (red must be WARNING; amber is CAUTION). And the
-**question** phase currently renders the bare `StructuredQuestionPromptView`
-with *no annunciator header at all*. The remapping to implement is therefore:
+The nomenclature correction is shipped: red permission is **MASTER WARNING** and
+the amber question wraps the shared prompt in **MASTER CAUTION**. The table is
+kept as the semantic mapping record:
 
 | Phase | Color token (unchanged) | Shipped placard | Required placard |
 |---|---|---|---|
-| `waitingForApproval` (permission) | `statusWaitingForApproval` = warning **red** | `masterCaution` "Master Caution" | **`masterWarning` "Master Warning"** (new string; red beacon) |
-| `waitingForAnswer` (question) | `statusWaitingForAnswer` = caution **amber** | *(none)* | **`masterCaution` "Master Caution"** amber annunciator header **added above the question prompt** |
+| `waitingForApproval` (permission) | `statusWaitingForApproval` = warning **red** | `masterWarning` "Master Warning" | **MASTER WARNING** red beacon |
+| `waitingForAnswer` (question) | `statusWaitingForAnswer` = caution **amber** | `masterCaution` "Master Caution" | **MASTER CAUTION** amber header above the question prompt |
 
-Net string change: add `island.flightDeck.approval.masterWarning`; repoint the
-permission card to it; reuse the existing `masterCaution` string for the *new*
-question annunciator. (All three locale files: en / zh-Hans / zh-Hant.)
+`island.flightDeck.approval.masterWarning` is shipped in all three locales; the
+question annunciator reuses `masterCaution`.
 
 ### 1b. Metrics (`IslandMetricsTokens.flightDeck`)
 
@@ -86,7 +77,7 @@ question annunciator. (All three locale files: en / zh-Hans / zh-Hant.)
 | `openedTopRadius` / `openedBottomRadius` | panel is a sharp rect (radius 0); chamfer lives on children via `--ch` | `6 / 6` | **unchanged** — keep 6 so the pill→panel morph has a radius to animate; children carry the chamfer (matches mockup's `.oct`). |
 | Chamfer default (`--ch`) | `6px` | `FlightDeckChamferedRectangle` card `6`, box `5`, button `5`, placard `3`, keycap `2.5` | **unchanged** — mockup per-element chamfers (`6/5/4/3/2`) map onto shipped `6/5/3/2.5`. |
 | `surfaceShadow` | panel relies on desk gradient (no hero drop shadow) | `black · 0.42 · r14 · y7` | **unchanged** (crisp shallow shadow is on-idiom). |
-| Attention pill bloom | `.attn-perm 0 6px 26px -14px rgba(224,74,66,.6)`; `.attn-caut 0 6px 24px -16px rgba(230,170,66,.5)` | *(none — flat pill)* | **new** — per-state **colored** drop-glow on the closed pill's attention states. `IslandShadowToken` models one black shadow only; needs a status-tinted shadow variant. |
+| Attention pill bloom | `.attn-perm 0 6px 26px -14px rgba(224,74,66,.6)`; `.attn-caut 0 6px 24px -16px rgba(230,170,66,.5)` | `FlightDeckClosedGlow` per-state seam | **implemented** — status-tinted colored glow outside the pill |
 | `closedHoverScale` | "~1.03" | `1.028` | **unchanged** |
 | Shadow insets | — | `18 / 22 / 12 / 14` | **unchanged** |
 | `filletRadius` | 0 (no poured fillet) | `0` | **unchanged** |
@@ -104,10 +95,10 @@ are illustrative and consistent with these.
 | `closeAnimation` | pill transitions `.32s`; morph not numerically specified | `.smooth(duration: 0.24)` | **unchanged** |
 | `popAnimation` | beacon flash / attention pop | `.spring(response: 0.22, dampingFraction: 0.6)` | **unchanged** |
 | `openedSurfaceUnmountDelay` | — | `0.28` | **unchanged** |
-| Lamp **snap-on 120ms** + soft decay | §K: "Lamp snap-on 120ms on · soft decay"; `snapon` uses `steps(1,end)` (instant on) | pulsing lane = 15fps `pulseClock` two-step (`>0.5 ? 1 : 0.45`); waiting lamp `easeInOut 0.6s` autoreverse; bridge lamp `easeInOut 0.9s` | **changed** — no explicit 120ms-on / asymmetric-decay curve today. Needs a view-level snap-on/decay constant (not a token). |
-| Running **breathe 2s** phosphor | `@keyframes phosphor 2s` (opacity 0.86→1 + glow 5px→11px) | closed-pill running lamp is **flat, steady, no glow**; list lane is a two-step blink off the shared clock | **changed** — running should breathe at 2s **with glow bloom**, not blink/stay-flat. |
-| Attention pulse | `attn 1s` (perm) / `1.2s` (caut), opacity 1→0.28 | caution glow = triangle breathe off shared clock; waiting lamp 0.6s ease | **changed** — retime to 1s (warning) / 1.2s (caution). |
-| Success settle | `settle 3s`: nominal flash+scale → advisory dim | shipped completion pop exists at panel level; no per-row nominal→advisory settle | **new** — A5 "brief blue advisory flash then calm dot". |
+| Lamp **snap-on 120ms** + soft decay | §K: "Lamp snap-on 120ms on · soft decay"; `snapon` uses `steps(1,end)` (instant on) | named `FlightDeckMotion.Snap` leaf constants | **implemented** (instant on / 120ms decay) |
+| Running **breathe 2s** phosphor | `@keyframes phosphor 2s` (opacity 0.86→1 + glow 5px→11px) | named `FlightDeckMotion.Breathe` + phosphor glow leaf | **implemented** |
+| Attention pulse | `attn 1s` (perm) / `1.2s` (caut), opacity 1→0.28 | named warning/caution attention periods | **implemented** |
+| Success settle | `settle 3s`: nominal flash+scale → advisory dim | named `FlightDeckMotion.Settle` leaf | **implemented** |
 | Reduce Motion | `animation-duration:.001ms` | every animated leaf gates on `accessibilityReduceMotion` and paints a steady state | **unchanged** (already conformant). |
 
 ### 1d. Material (`IslandMaterialTokens.flightDeck`)
@@ -118,16 +109,16 @@ are illustrative and consistent with these.
 | `usesVibrancy` | opaque | `false` | **unchanged** |
 | `tintOpacity` | opaque | `1.0` | **unchanged** |
 | `specularTopEdge` | none (flat) | `nil` | **unchanged** |
-| **Phosphor glow / self-lit lamps** | every lit lamp/beacon: `box-shadow: 0 0 5–14px <status>` bleeding outside the silhouette | shipped lamps are **flat, no glow** ("full cyan-green nominal — flat, no glow"); only `FlightDeckCautionGlow` (blurred halo behind the alarm block) exists | **new** — the single biggest visual delta. §7 fidelity bar mandates "glow that bleeds outside the silhouette." Extend the existing `FlightDeckCautionGlow` blur-halo technique to every lit lamp (pill grid, list lane, annunciator tiles, engine lamps, footer link, empty-state grid). |
+| **Phosphor glow / self-lit lamps** | every lit lamp/beacon: `box-shadow: 0 0 5–14px <status>` bleeding outside the silhouette | `FlightDeckPhosphorGlow` applied to lit lamps/beacons | **implemented** — static code confirms the shared bleed primitive; pixel extent remains manual verification. |
 
 ---
 
-## 2. Typography spec (NEW axis — currently hardcoded per view)
+## 2. Typography spec
 
-The token layer intentionally carries no typography; `FlightDeckTypography`
-(in `FlightDeckTheme.swift`) is a **mono-only** table and every slot view
-hardcodes literal sizes. The mockup demands a **two-font system** the shipped
-theme does not honor:
+The token layer intentionally carries no typography. `FlightDeckTypography`
+(in `FlightDeckTheme.swift`) now records the theme's readable-role floor and
+the **two-font system**; a few older view-local typography sites remain and
+are called out honestly in the Shipped column below:
 
 - **Sans narration** = `-apple-system / SF Pro Text` — session/workspace names,
   live activity narration prose, option labels, assistant-message rich text.
@@ -135,37 +126,37 @@ theme does not honor:
   all timers, counts, percentages, status codes, key hints, command/diff, brand
   wordmark, placards.
 
-> **Shipped gap:** `FlightDeckRowContent.scaledFont` renders `displayHeadline`
-> (the session name) with `design: .monospaced`. The mockup's `.row .ws` uses
-> `var(--sans)`. Introduce a `sansScaled(...)` helper and route the
-> headline + narration prose through it; keep values on the mono helper.
+> **Shipped state.** The row uses `sansScaled(...)` for the session headline and
+> narration; values retain the mono helper. SwiftUI exposes standard weight
+> stops, not CSS numeric interpolation, so 640/800-like mockup weights are
+> represented by the closest available `.semibold`/`.heavy` stop.
 
 ### Full scale (mockup value → role → floor compliance)
 
-| Role | Mockup | Font | Weight / tracking | Floor |
-|---|---|---|---|---|
-| Session/workspace name (`.ws`) | 13.5px | **sans** | 640 / −0.01em | ✅ |
-| Live narration (`.narr`, `.narr2`) | 12px | **sans** | 400–600 | ✅ |
-| Assistant rich text (`.assist`) | 13px/1.55 | **sans** | 400 | ✅ |
-| Option label (`.qopt .ol`) | 13px | **sans** | 600 | ✅ |
-| Option description (`.od`) | 11.5px | **sans** | 400 | ✅ |
-| Duration readout (`.dur`) | 12px | **mono** tabular | 600 | ✅ |
-| Model/meta (`.meta`) | 10.5px | **mono** | 400 | ✅ |
-| Age (`.age`) | 10px | **mono** | 400 | ✅ (at floor) |
-| Gauge value (`.gval`) | 12px | **mono** tabular | 700 | ✅ |
-| Command / diff (`.cmd`, `.diff`) | 13 / 12px | **mono** | 600 / 400 | ✅ |
-| Brand wordmark (`.brand .wm`) | 11px | **mono** | / 0.18em | ✅ |
-| MASTER placard (`.master .big`) | 12px | **mono** | 800 / 0.12em | ✅ |
-| ACK switch label (`.ack .lab`) | 12px | **mono** | 800 / 0.10em | ✅ |
-| Button (`.btn`) | 11px | **mono** | 600 / 0.04em | ✅ |
-| Caps micro-label (`.caps`) | 10px | **sans** | 600 / 0.14em UPPER | ✅ (at floor) |
-| **Status code (`.code`)** | **9.5px** | mono | 700 / 0.08em | ❌ → **lift to 10** |
-| **Column caption (`.colcap`)** | **9px** | sans | 600 / 0.14em UPPER | ❌ → **lift to 10** |
-| **Gauge label (`.glabel`)** | **9.5px** | sans | 600 / 0.13em UPPER | ❌ → **lift to 10** |
-| **Metacell/summary/donestat key** | **9px** | sans | 600 / 0.12–0.13em UPPER | ❌ → **lift to 10** |
-| **Unit tag (`.gval u` "%")** | **9px** | mono | / 0.1em | ❌ → **lift to 10** |
-| **Key hint (`.kk` `⌘Y`)** | **9px** | mono | | ❌ → **lift to 10** (shipped `keyHint` is already 10) |
-| Overflow `+N` (grid) | fitted | mono | 800 | **exempt** (fitted micro-indicator, sized to lamp — same exemption shipped uses) |
+| Role | Mockup | Font | Weight / tracking | Floor | Shipped |
+|---|---|---|---|---|---|
+| Session/workspace name (`.ws`) | 13.5px | **sans** | 640 / −0.01em | ✅ | **13.5pt SF Pro/default, semibold (600), −0.135pt;** one line/tail. |
+| Live narration (`.narr`, `.narr2`) | 12px | **sans** | 400–600 | ✅ | **12pt SF Pro/default, medium (500);** one line/tail. |
+| Assistant rich text (`.assist`) | 13px/1.55 | **sans** | 400 | ✅ | **13pt SF Pro/default, regular (400);** declared 1.55 line-height role. |
+| Option label (`.qopt .ol`) | 13px | **sans** | 600 | ✅ | **13pt SF Pro/default, semibold (600).** |
+| Option description (`.od`) | 11.5px | **sans** | 400 | ✅ | **11.5pt SF Pro/default, regular (400).** |
+| Duration readout (`.dur`) | 12px | **mono** tabular | 600 | ✅ | **13pt SF Mono, medium (500), tabular** in completion donestats; view-local, so not the 12pt target. |
+| Model/meta (`.meta`) | 10.5px | **mono** | 400 | ✅ | **10.5pt SF Mono, regular/medium by cell;** tabular where numeric. View-local. |
+| Age (`.age`) | 10px | **mono** | 400 | ✅ (at floor) | **10.5pt SF Mono, regular, tabular.** View-local. |
+| Gauge value (`.gval`) | 12px | **mono** tabular | 700 | ✅ | **11pt SF Mono, bold (700), tabular** (`gaugeValue`). See accepted deviation below. |
+| Command / diff (`.cmd`, `.diff`) | 13 / 12px | **mono** | 600 / 400 | ✅ | **Command 11.5pt SF Mono semibold (600); unified diff 10pt SF Mono regular (400)** in its style. |
+| Brand wordmark (`.brand .wm`) | 11px | **mono** | / 0.18em | ✅ | **11pt SF Mono, medium;** Latin caps/tracking are view-local. |
+| MASTER placard (`.master .big`) | 12px | **mono** | 800 / 0.12em | ✅ | **12pt SF Mono, heavy (nearest 800), 1.44pt tracking;** Latin caps, CJK un-cased/untracked. |
+| ACK switch label (`.ack .lab`) | 12px | **mono** | 800 / 0.10em | ✅ | **11.5pt SF Mono, semibold (600), 0.8pt tracking;** a view-local deviation. |
+| Button (`.btn`) | 11px | **mono** | 600 / 0.04em | ✅ | **11.5pt SF Mono, semibold (600), 0.8pt tracking;** question Submit is sentence case/no tracking. |
+| Caps micro-label (`.caps`) | 10px | **sans** | 600 / 0.14em UPPER | ✅ (at floor) | **10pt, contextual:** most captions SF Mono semibold; metacell/donestat keys SF Pro/default semibold; Latin caps + tracking, CJK neutralized. |
+| **Status code (`.code`)** | **9.5px** | mono | 700 / 0.08em | ❌ → **lift to 10** | **10pt SF Mono, bold (700), 0.8pt tracking;** Latin caps (`statusCode`). |
+| **Column caption (`.colcap`)** | **9px** | sans | 600 / 0.14em UPPER | ❌ → **lift to 10** | **10pt SF Mono, medium (500), typically 1.4pt tracking;** Latin caps. View-local. |
+| **Gauge label (`.glabel`)** | **9.5px** | sans | 600 / 0.13em UPPER | ❌ → **lift to 10** | **10pt SF Pro/default, semibold (600);** no explicit tracking/case at this call site (`gaugeLabel`). |
+| **Metacell/summary/donestat key** | **9px** | sans | 600 / 0.12–0.13em UPPER | ❌ → **lift to 10** | **10pt semibold (600), mixed family:** metacell/donestat default/sans, summary SF Mono; roughly 0.8–1.0pt Latin caps tracking. View-local. |
+| **Unit tag (`.gval u` "%")** | **9px** | mono | / 0.1em | ❌ → **lift to 10** | **10pt SF Mono, semibold (600), no explicit tracking** (`gaugeUnit`). |
+| **Key hint (`.kk` `⌘Y`)** | **9px** | mono | | ❌ → **lift to 10** (shipped `keyHint` is already 10) | **10pt SF Mono, semibold (600), no explicit tracking.** |
+| Overflow `+N` (grid) | fitted | mono | 800 | **exempt** (fitted micro-indicator, sized to lamp — same exemption shipped uses) | **Exempt fitted micro-indicator;** not a readable-role floor entry. |
 
 **≥10pt floor compliance:** the mockup routinely drops to 9–9.5px on micro-labels;
 the shipped theme pins `FlightDeckTypography.floor = 10` and asserts it in
@@ -180,6 +171,23 @@ locale (same rule EICAS legends and `FlightDeckUsagePlacard` follow).
 
 **Numeral rules:** `tabular-nums` on every timer/counter/meter/percentage — met
 for free by `design: .monospaced` on all mono roles.
+
+**Phase 6 role map (not legacy aliases).** `countGlyph` is the 11pt default/sans
+bold attention glyph (`⚠` / `?`); `countLabel` is the 11pt default/sans medium
+subagent phrase; `gaugeValue` is the 11pt bold mono numeric readout; `gaugeUnit`
+is the 10pt semibold mono `%`; and `annunciatorCount` is the distinct **17pt bold
+mono** summary-tile count. The last is intentionally not the 11pt closed-pill
+count. `completionJumpLabel` is the completion rail's **10.5pt semibold mono**
+Jump label; its arrow uses the existing 10pt `microLabel` role to satisfy the
+readable floor. Roles such as duration, model/meta, brand wordmark, ACK switch label,
+column caption, and metacell/summary/donestat key remain view-local rather than
+pretending to have a single table role.
+
+**Floor closure.** The formerly view-local reset countdown, actionable
+Model · Branch context, and HELD placard are now named `resetCountdown`,
+`annunciatorContext`, and `heldLabel` roles: each is **10pt SF Mono medium** and
+included in the readable-role sweep. This closes the audited Flight Deck 9–9.5pt
+readable-text escapes; fitted grid `+N` remains the sole stated exemption.
 
 ---
 
@@ -196,12 +204,10 @@ for free by `design: .monospaced` on all mono roles.
 - **Replaces/modifies:** `FlightDeckClosedPill` + `FlightDeckRightSlotView` +
   `FlightDeckAnnunciatorLight`. Keeps `V6ClosedPill` width math (morph frame
   stays identical).
-- **Hardest detail:** (a) **phosphor glow on the running lamp + 2s breathe** —
-  shipped lamps are flat; (b) the **attention `.seg` (ACK×1 / ANSWER×1)** and the
-  **usage mini-tape** are two *new* right-slot content kinds — `IslandRightSlotContent`
-  only has `.count` / `.agents`; adding attention-segment and usage need new
-  cases + plumbing (see §6); (c) colored attention bloom needs a status-tinted
-  shadow (see §1b).
+- **Hardest detail:** (a) **phosphor glow on the running lamp + 2s breathe**;
+  (b) the **attention `.seg` (ACK×1 / ANSWER×1)** and the **usage mini-tape**;
+  and (c) a status-tinted closed-pill bloom. All three are now shipped through
+  the right-slot and closed-glow seams; retain them as regression requirements.
 
 ### Slot 2 — `openedHeader` → `FlightDeckHeaderControls` + `FlightDeckUsageSummary`
 - **Mockup:** notch-split lanes; brand mark + wordmark; usage as **linear tape
@@ -220,20 +226,27 @@ for free by `design: .monospaced` on all mono roles.
   (sans) + branch chip + optional SSH / `⚙ N SUB` chip + narration sub-line.
   Actionable rows dominate: `act-perm` red inset bar + gradient wash;
   `act-caut` amber. Hover-reveal dismiss (`✕`).
-- **Replaces/modifies:** `FlightDeckRowContent`. Two structural changes vs shipped:
-  (1) **add a STATUS text-code column** (shipped conveys status only through the
-  colored lane, no text code); (2) the shipped grid is `Session|Model|App|Time` —
-  the mockup folds APP (SSH) into a chip and puts a **status code** first.
+- **Replaces/modifies:** `FlightDeckRowContent`. The shipped register is
+  `STATUS|SESSION|MODEL|TIME`: STATUS has a lamp plus text code, and former APP
+  data (SSH) is folded into the session chip lane.
 - **Actionable — permission** → `FlightDeckApprovalCard`: **MASTER WARNING** (see
   §1a two-tier). Red beacon + placard + `PERMISSION REQUIRED` kicker; command in
   a chamfered mono box; affected-path line; inline diff; ALLOW(inverted)/DENY
   (outlined) switches with **real ⌘Y / ⌘⇧Y / ⌘N** hints; scoped always-allow
   from `suggestedUpdates`; **held Ns** counter; Codex → jump-to-approve bar.
-- **Actionable — question** → add **MASTER CAUTION** amber annunciator header
-  above `StructuredQuestionPromptView` (currently header-less); numbered digits
-  1–9, multi-select, freeform Other, Enter submits.
+- **Actionable — question** → **MASTER CAUTION** amber annunciator header above
+  `StructuredQuestionPromptView`; numbered digits 1–9, multi-select, freeform
+  Other, and Enter submission.
 - **Actionable — completion** → chamfered mono card; outcome banner for
   interrupted/failed; reply input where supported.
+
+**Approved F2.4 identity-run deviation.** The board's third `.ann-ctx` flex
+column was evaluated in the placard/kicker/HELD top line. At both 540pt notch and
+520pt top-bar widths it produced a ~**0.61** placard:kicker cap-height ratio,
+truncated the kicker, and wrapped the HELD readout. Shipped places Model · Branch
+as a dedicated second line below the beacon/placard/kicker/HELD line. The settled
+top-line cap-height range is **1.06–1.70**; retain that measurable readability
+result rather than forcing the board's third-column geometry.
 - **Hardest detail:** the permission card is the hero — a *pulsing red glow*
   (`FlightDeckCautionGlow` retinted to warning), the two-tier rename, and keeping
   the **⌘Y/⌘⇧Y/⌘N** glyphs in lock-step with the global handler (never the
@@ -382,10 +395,9 @@ for free by `design: .monospaced` on all mono roles.
 
 ## 5. Conformance checklist
 
-### Fixtures (extend `AppearancePreviewFixtures.sessions`, `AppearanceSettingsPane.swift:1155`)
-Current fixtures cover only A2/A3/A4/A5-ish + C-partial (5 sessions:
-approval-codex, answer-claude, running-cursor, done-gemini, idle-codex). They
-**lack** everything the mockup adds. Map A–K to deterministic fixtures:
+### Fixture coverage (`AppearancePreviewFixtures.sessions`, `AppearanceSettingsPane.swift:1155`)
+The deterministic fixture/harness matrix now maps A–K as follows. Keep these rows
+as the required regression inventory rather than treating them as missing work:
 
 | Frame | Fixture need (fields to set) |
 |---|---|
@@ -397,14 +409,14 @@ approval-codex, answer-claude, running-cursor, done-gemini, idle-codex). They
 | A4 / F1 | `waitingForAnswer` + multi-`QuestionPromptItem` (single + `multiSelect` + option descriptions + Other) |
 | F2 | single-question prompt (`tool: .opencode`) |
 | A5 / H | `completed` + `outcome: .success` + assistant message (markdown) + `reply` action |
-| A6 / C-intr | `completed` + `outcome: .interrupted` **(new — no fixture has non-success outcome)** |
+| A6 / C-intr | `completed` + `outcome: .interrupted` |
 | A6 | `completed` + `outcome: .failed` |
 | C-dupe | two `the-automator` sessions w/ different `worktreeGitBranch` **(claude only)** |
 | D | running + `attachmentState: .attached` + `permissionMode: .acceptEdits` + `isRemote` (SSH) |
-| G | claude running + `activeSubagents[3]` (agentType/task/startedAt) + `activeTasks[6]` (4 done/1 inProgress/1 pending) **(new)** |
-| I | `UsageProviderPresentation` windows with **non-nil `resetsAt`** at 17/76/93% **(current preview usage has `resetsAt: nil`)** |
+| G | claude running + `activeSubagents[3]` (agentType/task/startedAt) + `activeTasks[6]` (4 done/1 inProgress/1 pending) |
+| I | `UsageProviderPresentation` windows with **non-nil `resetsAt`** at 17/76/93% |
 
-### Token equality tests (must stay green / update)
+### Token equality coverage
 - `FlightDeckThemeTests.statusPaletteIsTheFour...` — **unchanged** (two-tier color
   mapping already correct).
 - `everyReadableTypographyRoleHoldsTheTenPointFloor` — extend `readableRoleSizes`
@@ -413,10 +425,10 @@ approval-codex, answer-claude, running-cursor, done-gemini, idle-codex). They
 - `flightDeckIsAFlatPanelWithoutVibrancy` — unchanged.
 - `FlightDeckUsageWindowGauge.usageColor` band tests (90/70) — unchanged when the
   gauge geometry flips to tape (keep the same thresholds).
-- New: assert `masterWarning` string is wired to `statusWaitingForApproval` (red)
-  and `masterCaution` to `statusWaitingForAnswer` (amber).
-- New: assert `FlightDeckApprovalFormat.Shortcut.glyphString` == `⌘Y / ⌘⇧Y / ⌘N`
-  (already pinned — keep).
+- `masterWarning` is pinned to `statusWaitingForApproval` (red) and
+  `masterCaution` to `statusWaitingForAnswer` (amber).
+- `FlightDeckApprovalFormat.Shortcut.glyphString` is pinned as
+  `⌘Y / ⌘⇧Y / ⌘N`.
 
 ### Snapshot pins (Settings previews, AB-305)
 Pin one snapshot per frame A–K at the editing profile, both notch + top-bar,
@@ -440,19 +452,19 @@ tape gauges (NOM/CAUT/CRIT), empty (ALL SYSTEMS NOMINAL).
 
 | Shown in mockup | Status today | Source field (§3) | Action |
 |---|---|---|---|
-| **RESETS-IN** countdown on gauges | computed but only in `.help()` tooltip | `UsageWindowPresentation.resetsAt` | surface inline; preview fixtures set `resetsAt` non-nil |
-| **Attachment** readout (`ATTACHED`/stale/detached) | captured, not rendered | `AgentSession.attachmentState` | render as metagrid badge (D) |
-| **Narrated activity** ("Editing AppModel.swift") | shipped shows `$ <preview>` | current tool name + `currentCommandPreviewText` / `spotlightActivityLineText` | needs a **verb map** (Edit→"Editing", Task→"Orchestrating"); confirm whether narration exists or just echoes the tool — likely a **new translation layer** |
-| **Branch** chip + disambiguation | not surfaced in FlightDeck row | `worktreeGitBranch` (**claude only**) | render chip; ⚠ mockup shows a **codex** row w/ `feat/auth-bridge` — codex has no branch per §3, so that specific content is not truthful; gate the chip on availability |
-| **Permission mode** chip (`acceptEdits`) | not surfaced | `permissionMode` (**claude only**) | render chip/metagrid (C/D); gate on claude |
-| **Subagents engine cluster** + per-subagent elapsed | **not rendered at all** | `activeSubagents[]` (agentType/task/`startedAt`) | new surface (G); elapsed = now − startedAt |
-| **Todo list** (4/6) | not rendered | `activeTasks[]` (pending/inProgress/completed) | new surface (G) |
-| **`⚙ N SUB` / compression** in pill+row | not rendered | count of `activeSubagents` | roll-up wing + row chip |
-| **HELD Ns** on the alarm | not shown | *(no explicit "request arrived at" field)* | ⚠ needs a held-since timestamp; approximate from `session.updatedAt` or add one |
+| **RESETS-IN** countdown on gauges | surfaced inline (`RESET <countdown>`) | `UsageWindowPresentation.resetsAt` | keep fixtures non-nil; countdown is now named 10pt mono readable text |
+| **Attachment** readout (`ATTACHED`/stale/detached) | rendered as an honest detail badge | `AgentSession.attachmentState` | retain state-specific badge |
+| **Narrated activity** ("Editing AppModel.swift") | rendered as narration, not a raw `$ <preview>` echo | current tool name + `currentCommandPreviewText` / `spotlightActivityLineText` | keep truthful verb-map translation |
+| **Branch** chip + disambiguation | rendered when available; recency is fallback | `worktreeGitBranch` (**claude only**) | preserve availability gate; never invent Codex branch content |
+| **Permission mode** chip (`acceptEdits`) | rendered when available | `permissionMode` (**claude only**) | preserve Claude-only gate |
+| **Subagents engine cluster** + per-subagent elapsed | rendered; elapsed is live from `startedAt` | `activeSubagents[]` (agentType/task/`startedAt`) | retain; per-engine progress arc stays absent because no truthful source exists |
+| **Todo list** (4/6) | rendered with completed/in-progress/pending semantics | `activeTasks[]` (pending/inProgress/completed) | retain icon + text state channels |
+| **`⚙ N SUB` / compression** in pill+row | rendered as row chip and pill task-counter roll-up | count of `activeSubagents` | retain |
+| **HELD Ns** on the alarm | rendered using an explicitly bounded `updatedAt` approximation | *(no explicit "request arrived at" field)* | retain approximation disclosure; hide implausibly stale values |
 | **SSH** badge | shipped shows APP=`SSH` | `isRemote` | reuse; render as chip |
 | Diff / scoped always-allow / Codex jump | shipped ✅ | `fileDiffSource`, `suggestedUpdates`, `requiresTerminalApproval` | keep |
-| Usage compressed into pill (mini-tape) | **not routed to pill** | `usedPercentage` (worst window) | new `IslandRightSlotContent` case (usage) |
-| Attention `.seg` (ACK×1 / ANSWER×1) in pill | **not a right-slot kind** | waiting count by phase | new `IslandRightSlotContent` case (attention segment) |
+| Usage compressed into pill (mini-tape) | routed as a right-slot usage case | `usedPercentage` (worst window) | retain critical-only policy noted below |
+| Attention `.seg` (ACK×1 / ANSWER×1) in pill | routed as a right-slot attention-count case | waiting count by phase | retain glyph + placard + tint distinction |
 | **Footer `socket path` + `EVT/MIN`** | shipped footer = link + count only | **no source field** (EVT/MIN, socket path) | ⚠ **do not render** — invented precision (the "×4" trap, brief §1.2/§3). Keep shipped's honest link + session count. |
 
 ---
@@ -472,6 +484,20 @@ tape gauges (NOM/CAUT/CRIT), empty (ALL SYSTEMS NOMINAL).
 - Typography: `FlightDeckTypography` / `FlightDeckText` in `FlightDeckTheme.swift`.
 - Fixtures: `Views/AppearanceSettingsPane.swift` `AppearancePreviewFixtures` (L1155).
 - Strings: `Resources/{en,zh-Hans,zh-Hant}.lproj/Localizable.strings`
-  (`island.flightDeck.*` L251–272; add `approval.masterWarning`).
+  (`island.flightDeck.*`, including the shipped `approval.masterWarning`).
 - Tests: `Tests/OpenIslandAppTests/FlightDeckThemeTests.swift`,
   `FlightDeckSessionRowTests.swift`.
+
+## 7. Recorded implementation deviations
+
+- **Paper:** the mockup proposes `#D8E1E6`; shipped shared `flightDeckPaper` is
+  **`#D4DAD6`**. This is an intentional retained token deviation, not a semantic
+  status remap.
+- **Pill usage:** the mockup illustrates amber `7D 76%`; shipped prioritizes the
+  pill slot only for the worst **critical (≥90%)** usage window, so a production
+  usage pill normally reads red critical instead. Keep that cross-theme attention
+  policy unless product direction changes.
+- **Gauge value:** the mockup target is 12pt; shipped `gaugeValue` is **11pt bold
+  mono**. It is named and floor-compliant, but remains a documented size deviation.
+- **Weights:** where the board specifies 640/650/660/800, SwiftUI uses the nearest
+  standard weight stop. These are approximations, not falsely exact CSS weights.

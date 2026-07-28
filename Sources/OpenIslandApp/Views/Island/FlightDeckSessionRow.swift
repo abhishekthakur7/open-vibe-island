@@ -23,7 +23,7 @@ import OpenIslandCore
 /// draws the **MASTER CAUTION** annunciator — a full-width chamfered alert block
 /// with a pulsing status glow (static under Reduce Motion), a stenciled
 /// `MASTER CAUTION` placard + `PERMISSION REQUIRED` kicker, the command in a
-/// bordered mono box above the affected-path line and `PermissionDiffPreview`,
+/// bordered mono box above the affected-path line and `IslandDiffRenderer`,
 /// and chamfered ALLOW / DENY switches carrying the real ⌘Y / ⌘⇧Y / ⌘N key-hint
 /// glyphs — via `FlightDeckApprovalCard`; the question reuses the shared,
 /// token-driven `StructuredQuestionPromptView`, and the completion is a squared
@@ -418,6 +418,34 @@ enum FlightDeckSessionRowFormat {
 /// the ≥10pt floor on the alarm block) are unit-testable without rendering a
 /// SwiftUI view.
 enum FlightDeckApprovalFormat {
+    /// The completion card's action rail, in visual and keyboard-navigation
+    /// order. Jump is always available; Transcript follows only when the source
+    /// session exposes a non-empty transcript path.
+    enum CompletionAction: Equatable, Identifiable {
+        case jump
+        case transcript(path: String)
+
+        var id: String {
+            switch self {
+            case .jump:
+                return "jump"
+            case .transcript(let path):
+                return "transcript:\(path)"
+            }
+        }
+    }
+
+    static let completionJumpLabelKey = "island.flightDeck.row.jump"
+
+    static func completionActions(transcriptPath: String?) -> [CompletionAction] {
+        var result: [CompletionAction] = [.jump]
+        if let path = transcriptPath?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !path.isEmpty {
+            result.append(.transcript(path: path))
+        }
+        return result
+    }
+
     /// The three approval decisions the MASTER CAUTION block exposes, each paired
     /// with the **real** registered `OverlayPanelController` shortcut it fires. The
     /// glyph strings the ALLOW / DENY / always-allow switches print must stay in
@@ -439,6 +467,27 @@ enum FlightDeckApprovalFormat {
         /// The joined glyph string (e.g. `⌘⇧Y`) — the a11y / test-facing form.
         var glyphString: String { glyphs.joined() }
     }
+
+    /// The primary decision row's left-to-right order (overlay remediation
+    /// Phase 3 · F5). Allow leads, Deny trails — matching Poured
+    /// (`PouredSessionRow.swift:1613-1636`), Halo (`HaloSessionRow.swift
+    /// :1867-1880`), and Flight Deck's own board (`02-flight-deck.html
+    /// :1113-1115`, literal DOM order ALLOW ONCE → ALLOW ALWAYS → DENY). The
+    /// shipped view had DENY leading, reversed against all three references.
+    /// The risk that reversal posed was mouse/trackpad muscle memory, not
+    /// keyboard: each switch's `shortcut:` stays bound to its own action
+    /// regardless of position, and ⌘Y/⌘N is a single global keydown handler
+    /// (`OverlayPanelController.handleOverlayKeyDown`) independent of visual
+    /// layout.
+    ///
+    /// `FlightDeckApprovalCard` renders its two primary switches by iterating
+    /// this array (`primaryDecisionButton(for:)`), not by matching it in
+    /// parallel literal order, so the two can't silently drift apart again —
+    /// and `FlightDeckSessionRowTests
+    /// .primaryDecisionRowRendersAllowBeforeDeny` pins it directly. No
+    /// order test existed for any theme before this; the golden was the only
+    /// gate.
+    static let primaryDecisionOrder: [Shortcut] = [.allowOnce, .deny]
 
     /// The completion outcome banner glyph (AC #4): a stop for an interrupted
     /// turn, a cross for a failure. Only ever shown for a non-success outcome.
@@ -730,6 +779,9 @@ private struct FlightDeckRowContent: View {
         // and the other themes so rows read the same however they're skinned.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityRowSummaryText(referenceDate: referenceDate))
+        .modifier(NestedWorkAccessibilityValue(
+            value: nestedWorkAccessibilityValue(isExpanded: isExpanded)
+        ))
         .accessibilityAddTraits(isInteractive ? .isButton : [])
         .accessibilityAction {
             guard isInteractive else { return }
@@ -1246,6 +1298,17 @@ private struct FlightDeckRowContent: View {
             return nil
         }
         return tasks
+    }
+
+    private func nestedWorkAccessibilityValue(isExpanded: Bool) -> String? {
+        let taskRollup = activeTasks.map { PouredTaskRollup(statuses: $0.map(\.status)) }
+        return NestedWorkAccessibility.value(
+            activeSubagentCount: activeSubagentCount ?? 0,
+            completedTaskCount: taskRollup?.done ?? 0,
+            totalTaskCount: taskRollup?.total ?? 0,
+            isExpanded: isExpanded,
+            lang: lang
+        )
     }
 
     // MARK: - §4G engine cluster (AC · AB-339)
@@ -2246,7 +2309,7 @@ private struct FlightDeckActionableRowContent: View {
             // `StructuredQuestionPromptView` interior is *wrapped* (an annunciator
             // header lit above it), never modified.
             VStack(alignment: .leading, spacing: 10) {
-                FlightDeckQuestionAnnunciator(lang: lang, pulseClock: pulseClock)
+                FlightDeckQuestionAnnunciator(session: session, lang: lang, pulseClock: pulseClock)
                 StructuredQuestionPromptView(
                     prompt: session.questionPrompt,
                     lang: lang,
@@ -2307,6 +2370,12 @@ private struct FlightDeckActionableRowContent: View {
                 completionDonestats
             }
 
+            // The completion action rail is unconditional: every completed
+            // session can jump back to its source, while Transcript remains
+            // source-conditional and follows Jump when available. Reply and
+            // Dismiss keep their existing independent surfaces.
+            completionActionRail
+
             if actions.reply != nil {
                 Rectangle()
                     .fill(tokens.colors.paper.opacity(0.08))
@@ -2336,6 +2405,59 @@ private struct FlightDeckActionableRowContent: View {
         .padding(.horizontal, 12)
         .padding(.top, 10)
         .padding(.bottom, 4)
+    }
+
+    private var completionActionRail: some View {
+        HStack(spacing: 12) {
+            ForEach(FlightDeckApprovalFormat.completionActions(
+                transcriptPath: session.trackingTranscriptPath
+            )) { action in
+                switch action {
+                case .jump:
+                    completionJumpButton
+                case .transcript(let path):
+                    TranscriptAffordance(
+                        path: path,
+                        workspace: session.spotlightWorkspaceName,
+                        lang: lang
+                    )
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 8)
+        .padding(.bottom, actions.reply != nil ? 0 : 9)
+    }
+
+    /// The existing Flight Deck Jump treatment, repeated inside the completion
+    /// card so the primary completion action reads like the expanded-row action.
+    /// `handlePrimaryTap` preserves the row's `isInteractive` gate.
+    private var completionJumpButton: some View {
+        let completionJumpLabel = lang.t(FlightDeckApprovalFormat.completionJumpLabelKey)
+
+        return Button {
+            handlePrimaryTap()
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "arrow.up.forward")
+                    .font(FlightDeckTypography.microLabel)
+                    .accessibilityHidden(true)
+                Text(FlightDeckText.caps(completionJumpLabel, lang: lang))
+                    .font(FlightDeckTypography.completionJumpLabel)
+                    .tracking(FlightDeckText.tracking(0.8, lang: lang))
+            }
+            .foregroundStyle(tokens.colors.paper.opacity(contrastText(0.72)))
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .overlay(
+                Rectangle().strokeBorder(tokens.colors.paper.opacity(0.16), lineWidth: 1)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(completionJumpLabel)
     }
 
     /// The §4H `SUCCESS` badge (mockup `.donebadge`): an advisory-blue check + a
@@ -2597,8 +2719,9 @@ private struct FlightDeckActionableRowContent: View {
 // MARK: - Flight Deck annunciator header (AB-334)
 
 /// The shared annunciator-header grammar both actionable alarms wear: a pulsing
-/// beacon lamp, a filled placard chip, a kicker, and an optional right-aligned
-/// slot (the permission card fills it with `HELD`; the question leaves it empty).
+/// beacon lamp, a filled placard chip, a kicker, an optional compact Model ·
+/// Branch context run, and an optional right-aligned slot (the permission card
+/// fills it with `HELD`; the question leaves it empty).
 ///
 /// The permission card lights it **red** (`MASTER WARNING` · `PERMISSION
 /// REQUIRED`, 1.0s beacon); the question lights it **amber** (`MASTER CAUTION` ·
@@ -2609,6 +2732,16 @@ private struct FlightDeckAnnunciatorHeader<Trailing: View>: View {
     let tint: Color
     let placard: String
     let kicker: String
+    /// Overlay remediation Phase 4 (F2.4): the compact "Model · Branch" run —
+    /// `nil` when neither is available, so a Codex/no-branch session's header
+    /// stays exactly as narrow as before. Mirrors Halo's who-line (`modelName`
+    /// passed into `HaloHeroShell`), the sibling precedent for surfacing
+    /// identity data *inside* the actionable hero rather than only in the
+    /// expanded-detail `metagrid()`. Rendered visible to VoiceOver (unlike the
+    /// placard/kicker, which are decorative and `.accessibilityHidden`) so it
+    /// reaches the card's grouped `.accessibilityElement(children: .contain)`
+    /// summary.
+    let contextText: String?
     let beaconPeriod: Double
     let pulseClock: PulseClock?
     let lang: LanguageManager
@@ -2619,28 +2752,64 @@ private struct FlightDeckAnnunciatorHeader<Trailing: View>: View {
     private var increasesContrast: Bool { colorSchemeContrast == .increased }
 
     var body: some View {
-        HStack(spacing: 8) {
-            FlightDeckAnnunciatorBeacon(color: tint, period: beaconPeriod, pulseClock: pulseClock)
+        // Overlay remediation Phase 4 fix (post F2.3/F2.4): the beacon +
+        // placard + kicker + `trailing()` (HELD) already fully claim one
+        // line at both panel widths — that's the exact arrangement F2.3
+        // measured a PASS (cap-height ratio 1.087) against, before F2.4's
+        // context run existed. Rather than have `contextText` fight that
+        // line for the same horizontal space (which is what collapsed the
+        // kicker to truncation), it gets its own line underneath. The board uses
+        // a third top-line column for identity; production intentionally deviates
+        // by keeping identity on a second line so the placard, kicker, and `HELD`
+        // instrument remain legible at both 520pt and 540pt widths.
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 8) {
+                FlightDeckAnnunciatorBeacon(color: tint, period: beaconPeriod, pulseClock: pulseClock)
 
-            Text(FlightDeckText.caps(placard, lang: lang))
-                .font(.system(size: 10.5, weight: .bold, design: .monospaced))
-                .tracking(FlightDeckText.tracking(1.2, lang: lang))
-                .foregroundStyle(tokens.colors.surfaceInk)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(FlightDeckChamferedRectangle(chamfer: 3).fill(tint))
-                .accessibilityHidden(true)
+                // F2.3: 12px / 800 / 0.12em (SPEC-flight-deck.md:158) — was
+                // 10.5/.bold/1.2, smaller than the kicker beside it (cap-height
+                // ratio < 1.0). `.heavy` is SwiftUI's nearest weight to the
+                // spec's 800.
+                Text(FlightDeckText.caps(placard, lang: lang))
+                    .font(.system(size: 12, weight: .heavy, design: .monospaced))
+                    .tracking(FlightDeckText.tracking(1.44, lang: lang))
+                    .foregroundStyle(tokens.colors.surfaceInk)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(FlightDeckChamferedRectangle(chamfer: 3).fill(tint))
+                    .accessibilityHidden(true)
 
-            Text(FlightDeckText.caps(kicker, lang: lang))
-                .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                .tracking(FlightDeckText.tracking(0.6, lang: lang))
-                .foregroundStyle(tint.opacity(increasesContrast ? 1 : 0.92))
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
+                Text(FlightDeckText.caps(kicker, lang: lang))
+                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .tracking(FlightDeckText.tracking(0.6, lang: lang))
+                    .foregroundStyle(tint.opacity(increasesContrast ? 1 : 0.92))
+                    .lineLimit(1)
+                    // Measured, not assumed: with `contextText` off this line,
+                    // raising this back toward 0.85 was tried first and still
+                    // truncated "PERMISSION REQUIRED" to "PERMISSION REQU…" at
+                    // both panel widths — the bigger F2.3 placard (12pt/.heavy/
+                    // 1.44 tracking, `.fixedSize`, refuses to shrink) plus the
+                    // `HELD` readout alone already need this much shrink
+                    // headroom, independent of the context run. 0.6 renders the
+                    // kicker's full text untruncated at both profiles (verified
+                    // — see Phase 4 fix report); 0.85 does not.
+                    .minimumScaleFactor(0.6)
 
-            Spacer(minLength: 0)
+                Spacer(minLength: 0)
 
-            trailing()
+                trailing()
+            }
+
+            if let contextText, !contextText.isEmpty {
+                Text(contextText)
+                    .font(FlightDeckTypography.annunciatorContext)
+                    .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
     }
 }
@@ -2706,6 +2875,7 @@ private struct FlightDeckPulsingBeacon: View {
 /// interior. `MASTER CAUTION` placard + `QUESTION` kicker, tinted the caution
 /// amber (`statusWaitingForAnswer`), 1.2s beacon.
 private struct FlightDeckQuestionAnnunciator: View {
+    let session: AgentSession
     let lang: LanguageManager
     let pulseClock: PulseClock?
 
@@ -2716,12 +2886,31 @@ private struct FlightDeckQuestionAnnunciator: View {
             tint: tokens.colors.statusWaitingForAnswer,
             placard: lang.t("island.flightDeck.approval.masterCaution"),
             kicker: lang.t("island.flightDeck.question.kicker"),
+            contextText: FlightDeckAnnunciatorContext.modelBranchText(for: session),
             beaconPeriod: FlightDeckApprovalFormat.questionBeaconPeriod,
             pulseClock: pulseClock,
             lang: lang
         ) {
             EmptyView()
         }
+    }
+}
+
+/// Overlay remediation Phase 4 (F2.4): the "Model · Branch" text both
+/// annunciators show. `SessionDisambiguation.branch` is the same honesty gate
+/// the list row's branch chip uses — Codex computes a branch and throws it
+/// away, so this never invents one for a non-Claude session.
+private enum FlightDeckAnnunciatorContext {
+    static func modelBranchText(for session: AgentSession) -> String? {
+        var parts: [String] = []
+        if let model = session.displayModelName, !model.isEmpty {
+            parts.append(model)
+        }
+        if let branch = SessionDisambiguation.branch(for: session) {
+            parts.append(SessionDisambiguation.displayBranch(branch))
+        }
+        guard !parts.isEmpty else { return nil }
+        return parts.joined(separator: " · ")
     }
 }
 
@@ -2733,7 +2922,7 @@ private struct FlightDeckQuestionAnnunciator: View {
 /// off the shared clock, held steady under Reduce Motion); a stenciled
 /// `MASTER CAUTION` placard and `PERMISSION REQUIRED` kicker head it, the command
 /// sits in a chamfered mono box above the affected-path line and the optional
-/// `PermissionDiffPreview` (whose +/− already render in the phosphor green/red),
+/// `IslandDiffRenderer` (whose +/− render in the phosphor green/red),
 /// and the ALLOW (inverted) / DENY (outlined) chamfered switches each print the
 /// **real** ⌘Y / ⌘N key-hint glyph the global keyboard handler fires; the
 /// always-allow options carry ⌘⇧Y.
@@ -2787,36 +2976,26 @@ private struct FlightDeckApprovalCard: View {
             .overlay(FlightDeckChamferedRectangle(chamfer: 5).strokeBorder(FlightDeckSurfaces.hairline(tier: 2, increaseContrast: increasesContrast), lineWidth: 1))
 
             if let diffResult = permissionDiffResult {
-                // AB-335: the diff reads recessed too — seated in the same FD
-                // `well` tone as the command box, a matched pair of sunk panels.
-                PermissionDiffPreview(result: diffResult, lang: lang)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 7)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(FlightDeckChamferedRectangle(chamfer: 5).fill(FlightDeckSurfaces.well))
-                    .overlay(FlightDeckChamferedRectangle(chamfer: 5).strokeBorder(FlightDeckSurfaces.hairline(tier: 2, increaseContrast: increasesContrast), lineWidth: 1))
+                // F12/F14: one renderer-owned chamfered well. Keeping fill,
+                // bezel, and clipping in the same shape removes the old nested
+                // rounded preview edge while preserving the recessed FD treatment.
+                IslandDiffRenderer(
+                    result: diffResult,
+                    lang: lang,
+                    style: .flightDeck(tokens: tokens, increasesContrast: increasesContrast)
+                )
             }
 
             if session.permissionRequest?.requiresTerminalApproval == true {
                 terminalApprovalCTA
             } else {
+                // F5: rendered off `FlightDeckApprovalFormat.primaryDecisionOrder`
+                // (Allow before Deny) rather than two parallel literal blocks — see
+                // that array's doc comment for why.
                 HStack(spacing: 8) {
-                    FlightDeckApprovalButton(
-                        title: denyTitle,
-                        shortcut: .deny,
-                        kind: .outlined,
-                        lang: lang,
-                        accessibilityLabel: session.permissionRequest?.secondaryActionTitle ?? lang.t("a11y.approval.deny"),
-                        action: { actions.approve?(.deny) }
-                    )
-                    FlightDeckApprovalButton(
-                        title: allowTitle,
-                        shortcut: .allowOnce,
-                        kind: .inverted,
-                        lang: lang,
-                        accessibilityLabel: session.permissionRequest?.primaryActionTitle ?? lang.t("a11y.approval.allowOnce"),
-                        action: { actions.approve?(.allowOnce) }
-                    )
+                    ForEach(Array(FlightDeckApprovalFormat.primaryDecisionOrder.enumerated()), id: \.offset) { _, shortcut in
+                        primaryDecisionButton(for: shortcut)
+                    }
                 }
 
                 alwaysAllowOptions
@@ -2849,6 +3028,7 @@ private struct FlightDeckApprovalCard: View {
             tint: alarm,
             placard: lang.t("island.flightDeck.approval.masterWarning"),
             kicker: lang.t("island.flightDeck.approval.permissionRequired"),
+            contextText: FlightDeckAnnunciatorContext.modelBranchText(for: session),
             beaconPeriod: FlightDeckApprovalFormat.permissionBeaconPeriod,
             pulseClock: pulseClock,
             lang: lang
@@ -2870,13 +3050,25 @@ private struct FlightDeckApprovalCard: View {
             ) {
                 HStack(spacing: 5) {
                     Text(FlightDeckText.caps(lang.t("island.flightDeck.approval.held"), lang: lang))
-                        .font(.system(size: 9, weight: .medium, design: .monospaced))
+                        .font(FlightDeckTypography.heldLabel)
                         .tracking(FlightDeckText.tracking(1.2, lang: lang))
                         .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
+                        .lineLimit(1)
                     Text(elapsed)
                         .font(.system(size: 11, weight: .semibold, design: .monospaced).monospacedDigit())
                         .foregroundStyle(tokens.colors.paper.opacity(contrastText(0.86)))
+                        .lineLimit(1)
                 }
+                // Overlay remediation Phase 4 fix: neither `Text` had a
+                // `.lineLimit`/`.fixedSize` guard, so under layout pressure
+                // (F2.4's context run sharing this line) the HStack squeezed
+                // and both texts wrapped ("HEL"/"D", "0m"/"14s" stacked). The
+                // context run now has its own line below, but this readout
+                // still needs its own guard — it must never be the element
+                // that yields when the row is tight, matching EICAS
+                // convention (the HELD counter reads as a fixed instrument,
+                // not elastic text).
+                .fixedSize(horizontal: true, vertical: false)
                 .accessibilityElement(children: .combine)
             }
         }
@@ -2929,8 +3121,23 @@ private struct FlightDeckApprovalCard: View {
     /// Under Reduce Transparency (a no-op for this opaque theme, but guarded) and
     /// by default the card sits on the opaque ink ground with a faint alarm wash,
     /// so legibility never depends on anything showing through.
+    ///
+    /// Overlay remediation Phase 4 (F2.2): this used to be `alarm.opacity(0.08)`
+    /// — measured ~3× too light (#682E27 sampled vs. #231718 target). Forward-
+    /// computing 8% alarm over `surfaceInk` gives ≈(25,14,14), *darker* than
+    /// measured, not lighter — the residual brightness was the F2.1 caution glow
+    /// bleeding through the semi-transparent fill at full (un-bled) strength
+    /// underneath it. Sequenced after F2.1 so this isn't tuned against a glow
+    /// baseline that's about to move again. A literal opaque fill is the right
+    /// call *for this theme*, not a borrowed Poured pattern — Flight Deck ships
+    /// `usesVibrancy = false` (`FlightDeckTheme.swift:353`) where Poured ships
+    /// `usesVibrancy = true` (`PouredIslandTheme.swift:64`), and Poured's actual
+    /// card fill is a translucent accent gradient over the frosted slab
+    /// (`PouredSessionRow.swift:1764-1780`), the opposite of an opaque literal.
+    /// The value below is the mockup's own measured interior, not a precedent
+    /// borrowed from another theme.
     private var cardFill: Color {
-        reduceTransparency ? tokens.colors.surfaceInk : alarm.opacity(0.08)
+        reduceTransparency ? tokens.colors.surfaceInk : FlightDeckApprovalColors.cardFill
     }
 
     /// AB-235: scoped always-allow options (one per suggested update) or the
@@ -2973,16 +3180,92 @@ private struct FlightDeckApprovalCard: View {
         }
     }
 
+    /// One primary decision switch (F5). Exhaustive over `Shortcut` rather
+    /// than a `default:` fallthrough — `.alwaysAllow` never appears in
+    /// `FlightDeckApprovalFormat.primaryDecisionOrder`, but staying
+    /// exhaustive means a future case added to `Shortcut` fails to compile
+    /// here instead of silently rendering nothing.
+    @ViewBuilder
+    private func primaryDecisionButton(for shortcut: FlightDeckApprovalFormat.Shortcut) -> some View {
+        switch shortcut {
+        case .allowOnce:
+            FlightDeckApprovalButton(
+                title: allowTitle,
+                shortcut: .allowOnce,
+                kind: .inverted,
+                lang: lang,
+                accessibilityLabel: session.permissionRequest?.primaryActionTitle ?? lang.t("a11y.approval.allowOnce"),
+                action: { actions.approve?(.allowOnce) }
+            )
+        case .deny:
+            FlightDeckApprovalButton(
+                title: denyTitle,
+                shortcut: .deny,
+                kind: .outlined,
+                lang: lang,
+                accessibilityLabel: session.permissionRequest?.secondaryActionTitle ?? lang.t("a11y.approval.deny"),
+                action: { actions.approve?(.deny) }
+            )
+        case .alwaysAllow:
+            EmptyView()
+        }
+    }
+
+    /// Overlay remediation Phase 4 (F10): the E3 Codex-jump CTA used to be a
+    /// direct `.ghost`-kind child of the outer VStack — fully inside the
+    /// alarm-red `cardFill` field, `.frame(maxWidth: .infinity)` full-width like
+    /// the ALLOW/DENY pair. `.ghost`'s own tokens are confirmed neutral, but the
+    /// 3% fill let the red field behind it dominate, and the forced full width
+    /// borrowed the primary decision pair's visual weight even though this is
+    /// pure information ("you must ACK this elsewhere"), not a decision.
+    ///
+    /// The mockup's `.codexbar` (`02-flight-deck.html:1161-1189`) is not neutral
+    /// grey — it's `rgba(99,146,196,.06)`, the exact rgb of FD's own advisory-blue
+    /// `statusCompleted` token (`flightDeckComplete`, `IslandColorTokens.swift`) —
+    /// a differently-hued, hairline-separated sub-panel with explanatory copy and
+    /// an intrinsic-width button, distinct from the alarm-red decision surface
+    /// above it.
+    ///
+    /// ⛔ Restyled at THIS call site only — `FlightDeckApprovalButton(kind: .ghost)`
+    /// also backs `alwaysAllowOptions`, which must stay full-width per the mockup;
+    /// `.ghost` itself is untouched.
     private var terminalApprovalCTA: some View {
-        FlightDeckApprovalButton(
-            title: lang.t("approval.respondInTerminal"),
-            shortcut: nil,
-            kind: .ghost,
-            lang: lang,
-            leadingGlyph: "arrow.up.forward.square",
-            accessibilityLabel: lang.t("approval.respondInTerminal"),
-            action: { actions.jump() }
-        )
+        let advisory = tokens.colors.statusCompleted
+        return VStack(alignment: .leading, spacing: 0) {
+            Rectangle()
+                .fill(advisory.opacity(0.35))
+                .frame(height: 1)
+
+            HStack(alignment: .center, spacing: 12) {
+                Text(lang.t("approval.codexApprovesInApp"))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.secondaryTextOpacity)))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                FlightDeckApprovalButton(
+                    // Overlay remediation Phase 4 (F10): `island.halo.approval
+                    // .jumpToCodex` ("Jump to Codex") is the existing SHORT
+                    // label — `approval.jumpToCodex` ("Jump to Codex to
+                    // approve") is long enough to blow past the mockup's
+                    // ~27–30%-width button target on an intrinsic-width chip.
+                    // Reusing the shorter, already-shipped string rather than
+                    // inventing new copy.
+                    title: lang.t("island.halo.approval.jumpToCodex"),
+                    shortcut: nil,
+                    kind: .tinted(advisory),
+                    lang: lang,
+                    uppercases: false,
+                    leadingGlyph: "arrow.up.forward.square",
+                    expands: false,
+                    accessibilityLabel: lang.t("island.halo.approval.jumpToCodex"),
+                    action: { actions.jump() }
+                )
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 9)
+        }
+        .background(advisory.opacity(0.06))
     }
 
     private var allowTitle: String {
@@ -3011,6 +3294,15 @@ private struct FlightDeckApprovalCard: View {
     }
 }
 
+/// The MASTER WARNING card's literal fill (overlay remediation Phase 4 · F2.2).
+/// Theme-local like `PouredApprovalColors` (`PouredSessionRow.swift:2138`) —
+/// this exact hero hex lives beside the view rather than chasing an opacity
+/// tied to one base/glow combination.
+private enum FlightDeckApprovalColors {
+    /// #231718 — the mockup's measured MASTER WARNING interior.
+    static let cardFill = Color(red: 0x23 / 255, green: 0x17 / 255, blue: 0x18 / 255)
+}
+
 /// The pulsing MASTER CAUTION glow behind the alarm block. A blurred chamfered
 /// halo in the alarm tint whose opacity throbs off the shared 15fps clock;
 /// isolated in its own `View` so Observation's per-view tracking invalidates only
@@ -3032,17 +3324,30 @@ private struct FlightDeckCautionGlow: View {
     }
 
     /// The alarm halo is now the shared `FlightDeckPhosphorGlow` primitive
-    /// (AB-336) at the caution block's radius (9) — the same blur/bleed the
-    /// shipped inline halo drew, so the MASTER WARNING / CAUTION goldens are
+    /// (AB-336) at the caution block's radius (9) — the same blur the shipped
+    /// inline halo drew, so the MASTER WARNING / CAUTION goldens are otherwise
     /// unchanged, but there is one glow technique across the theme now.
     static let haloRadius: CGFloat = 9
+
+    /// Overlay remediation Phase 4 (F2.1): the shared `FlightDeckPhosphorGlow`
+    /// primitive's own default `bleed` (2pt) is tuned for a small lamp with
+    /// generous surrounding chrome (the closed-pill lamps, the engine cluster).
+    /// The near-full-width MASTER card sits close enough to its own painted
+    /// silhouette that 2pt reads as zero — a horizontal scan across the card's
+    /// left edge shows a hard 0px cut instead of a visible fading ramp. 8pt
+    /// (within the SPEC's 4–8pt target) is a deliberate, FD-hero-local override
+    /// — it does NOT touch `FlightDeckPhosphorGlow`'s shared default, so every
+    /// small lamp across the theme (closed pill, engine cluster, status lanes,
+    /// summary tiles) keeps its existing 2pt bleed untouched.
+    static let haloBleed: CGFloat = 8
 
     func halo(opacity: Double) -> some View {
         FlightDeckPhosphorGlow(
             shape: FlightDeckChamferedRectangle(chamfer: chamfer),
             tint: color,
             radius: Self.haloRadius,
-            intensity: opacity
+            intensity: opacity,
+            bleed: Self.haloBleed
         )
     }
 }
@@ -3057,7 +3362,8 @@ private struct FlightDeckPulsingGlow: View {
             shape: FlightDeckChamferedRectangle(chamfer: chamfer),
             tint: color,
             radius: FlightDeckCautionGlow.haloRadius,
-            intensity: FlightDeckApprovalFormat.glowOpacity(phase: pulseClock.phase, reduceMotion: false)
+            intensity: FlightDeckApprovalFormat.glowOpacity(phase: pulseClock.phase, reduceMotion: false),
+            bleed: FlightDeckCautionGlow.haloBleed
         )
         .onAppear { pulseClock.acquire() }
         .onDisappear { pulseClock.release() }
@@ -3066,10 +3372,22 @@ private struct FlightDeckPulsingGlow: View {
 
 /// A chamfered Flight Deck approval switch. `inverted` fills with paper for the
 /// loud affirmative (ALLOW), `outlined` is a paper hairline frame (DENY), and
-/// `ghost` is a dim outline for the stacked always-allow / terminal options. The
-/// trailing key-hint chip prints the real registered shortcut glyphs.
-private struct FlightDeckApprovalButton: View {
-    enum Kind { case inverted, outlined, ghost }
+/// `ghost` is a dim outline for the stacked always-allow / terminal options.
+/// `tinted` (overlay remediation Phase 2A-follow-up · F1) is the shared
+/// question card's Submit CTA: a translucent chip in a caller-supplied tint —
+/// carrying the tint as an associated value, not hardcoding one hue, so this
+/// stays reusable — the board's amber fill `rgba(230,170,66,.14)` / border
+/// `.5` / `--caution` label (`02-flight-deck.html:1233`) falls out of passing
+/// `tokens.colors.statusWaitingForAnswer`. ⛔ `.ghost`/`.outlined` are
+/// untouched — `.ghost` has a second caller (`alwaysAllowOptions`) that must
+/// keep its current dim-outline rendering. The trailing key-hint chip prints
+/// the real registered shortcut glyphs.
+///
+/// Not `private` (overlay remediation Phase 2A-follow-up · F1):
+/// `FlightDeckTheme.questionSubmitButton` constructs this directly from
+/// `FlightDeckTheme.swift`.
+struct FlightDeckApprovalButton: View {
+    enum Kind { case inverted, outlined, ghost, tinted(Color) }
 
     let title: String
     let shortcut: FlightDeckApprovalFormat.Shortcut?
@@ -3077,6 +3395,18 @@ private struct FlightDeckApprovalButton: View {
     let lang: LanguageManager
     var uppercases: Bool = true
     var leadingGlyph: String?
+    /// Overlay remediation Phase 2A-follow-up (F1): `false` for the question
+    /// card's Submit CTA — Flight Deck's own `.btn` is `display:inline-flex`
+    /// (intrinsic width) in the board, unlike the always-full-width ALLOW /
+    /// DENY / always-allow switches this component was built for.
+    var expands: Bool = true
+    /// Overlay remediation Phase 2A-follow-up (F1): none of the three existing
+    /// kinds were ever shown disabled (ALLOW/DENY/ghost only ever mount while
+    /// actionable); Submit's `canSubmit` toggles, so this button needs a real
+    /// disabled treatment. Dims + desaturates in place
+    /// (`IslandQuestionSubmitDisabledStyle`) rather than falling back to a
+    /// foreign grey, so a dimmed Submit still reads as Flight Deck chrome.
+    var isEnabled: Bool = true
     let accessibilityLabel: String
     let action: () -> Void
 
@@ -3103,14 +3433,17 @@ private struct FlightDeckApprovalButton: View {
                 }
             }
             .foregroundStyle(foreground)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: expands ? .infinity : nil)
             .padding(.horizontal, 11)
             .padding(.vertical, 8)
             .background(FlightDeckChamferedRectangle(chamfer: Self.chamfer).fill(background))
             .overlay(FlightDeckChamferedRectangle(chamfer: Self.chamfer).strokeBorder(border, lineWidth: 1))
+            .saturation(isEnabled ? 1 : IslandQuestionSubmitDisabledStyle.saturation)
+            .opacity(isEnabled ? 1 : IslandQuestionSubmitDisabledStyle.opacity)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .disabled(!isEnabled)
         .accessibilityLabel(accessibilityLabel)
     }
 
@@ -3134,6 +3467,8 @@ private struct FlightDeckApprovalButton: View {
             return tokens.colors.paper.opacity(tokens.colors.text(0.85, increaseContrast: increasesContrast))
         case .ghost:
             return tokens.colors.paper.opacity(tokens.colors.text(0.7, increaseContrast: increasesContrast))
+        case .tinted(let tint):
+            return tint
         }
     }
 
@@ -3143,6 +3478,8 @@ private struct FlightDeckApprovalButton: View {
             return tokens.colors.paper
         case .outlined, .ghost:
             return tokens.colors.paper.opacity(0.03)
+        case .tinted(let tint):
+            return tint.opacity(0.14)
         }
     }
 
@@ -3154,6 +3491,8 @@ private struct FlightDeckApprovalButton: View {
             return tokens.colors.paper.opacity(increasesContrast ? 0.7 : 0.4)
         case .ghost:
             return tokens.colors.paper.opacity(increasesContrast ? 0.5 : 0.18)
+        case .tinted(let tint):
+            return tint.opacity(increasesContrast ? 0.75 : 0.5)
         }
     }
 }

@@ -17,10 +17,17 @@ final class OverlayPanelController {
     /// is far cheaper to reason about than chasing that discrepancy, and
     /// erring tall avoids reintroducing clipping.
     private static let measuredContentSafetyPadding: CGFloat = 8
-    /// Height used only while sessions list is empty, or before the opened
-    /// surface has been measured for the first time. This is a fixed UI
-    /// constant (the empty-state/placeholder layout doesn't vary with agent
-    /// content), unlike the old per-phase estimates it used to sit next to.
+    /// Floor / pre-measurement fallback height for the opened content area:
+    /// the `panelSize` minimum so the window never shrinks below it, and the
+    /// value `openedContentHeight` returns before SwiftUI has reported a real
+    /// `GeometryReader` measurement for the current frame (any content case,
+    /// not just the empty state — see overlay remediation Phase 5's fix to
+    /// `openedContentHeight`, which stopped force-applying this constant
+    /// whenever `islandListSessions.isEmpty` regardless of the real measured
+    /// height). Themes' empty-state bodies are no longer guaranteed to fit
+    /// this constant — Flight Deck's and Halo's 2.0 bodies exceed it — so it
+    /// must never be treated as their final height, only as the value shown
+    /// for the one frame before measurement lands.
     private static let openedEmptyStateHeight: CGFloat = 108
 
     private var panel: NotchPanel?
@@ -217,15 +224,33 @@ final class OverlayPanelController {
     // MARK: - Mouse event monitoring
 
     private func startEventMonitoring() {
-        if model?.disablesOverlayEventMonitoringDuringHarness == true {
-            return
-        }
+        let disablesForHarness = model?.disablesOverlayEventMonitoringDuringHarness == true
 
-        if keyCommandMonitor == nil {
+        // The key monitor installs whenever the harness isn't disabling
+        // event monitoring at all, OR it is but verification has explicitly
+        // opted back in (`AppModel.enablesOverlayKeyMonitorDuringHarness`,
+        // overlay remediation Phase 3 Task 1 — doc comment there has the
+        // full history). Before that override existed this whole function
+        // returned early for *any* harness scenario launch, so a
+        // harness-launched panel never installed `keyCommandMonitor` at
+        // all — pressing `1`/Enter had zero effect, and the verification
+        // protocol's interactive mode could not exercise keyboard handling
+        // for any theme.
+        if keyCommandMonitor == nil,
+           !disablesForHarness || model?.enablesOverlayKeyMonitorDuringHarness == true {
             keyCommandMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
                 guard let self, self.handleOverlayKeyDown(event) else { return event }
                 return nil
             }
+        }
+
+        // Mouse monitoring stays governed solely by
+        // `disablesOverlayEventMonitoringDuringHarness`, opt-in or not — an
+        // automated capture run shouldn't have the host's real cursor
+        // driving hover-open/auto-collapse, and nothing about keyboard
+        // verification needs it.
+        if disablesForHarness {
+            return
         }
 
         guard !eventMonitors.isActive else { return }
@@ -558,9 +583,23 @@ final class OverlayPanelController {
         let contentHeight = model.map { max(openedContentHeight(for: $0), Self.openedEmptyStateHeight) }
             ?? Self.openedEmptyStateHeight
 
+        // Overlay remediation Phase 5 (F8): the window's reserved header-band
+        // budget must match what `IslandPanelView` actually gives
+        // `openedHeaderContent` (`theme.openedHeaderHeight ?? closedNotchHeight`
+        // there; mirrored here since this controller has no `theme` access at
+        // the view layer). `screen.notchSize.height` and `closedNotchHeight`
+        // are numerically identical on a real notch screen (both resolve to
+        // `safeAreaInsets.top`), so this is a no-op for the five themes that
+        // don't override `openedHeaderHeight` — but Flight Deck's taller
+        // override must inflate the *window*, or its own measured body
+        // content gets squeezed by a fixed-size window still sized for the
+        // old, shorter band (its bottom would be clipped by the surface's
+        // `.clipShape`).
+        let headerBandHeight = model?.islandTheme.openedHeaderHeight ?? screen.notchSize.height
+
         return IslandChromeLayout.windowSize(
             preferredContentWidth: openedPanelWidth(for: screen) + Self.openedContentWidthPadding,
-            contentHeight: screen.notchSize.height + contentHeight + Self.openedContentBottomPadding,
+            contentHeight: headerBandHeight + contentHeight + Self.openedContentBottomPadding,
             metrics: chromeMetrics(for: model),
             availableWidth: screen.visibleFrame.width
         )
@@ -601,11 +640,23 @@ final class OverlayPanelController {
     /// `AppModel.measuredOpenedContentHeight` /
     /// `measuredNotificationContentHeight`. This method just reads that
     /// measured value back.
+    ///
+    /// Overlay remediation Phase 5 (`emptyState` clipping, F9-adjacent): this
+    /// used to short-circuit to the fixed `openedEmptyStateHeight` constant
+    /// whenever `model.islandListSessions.isEmpty`, *before* ever consulting
+    /// the measured height — even though `IslandPanelView.openedContent`
+    /// measures the empty state exactly like every other content case (its
+    /// doc comment already says "hint banner + list/placeholder/empty state,
+    /// all included"). That early return was calibrated to Classic/Poured's
+    /// compact empty body and silently clipped taller bodies added later
+    /// (Flight Deck's lamp grid + sysline row, Halo's 34pt glyph + monitoring
+    /// pill) at the surface's `.clipShape` — the panel was sized to 108pt
+    /// while those themes' empty states needed more. The empty-state case now
+    /// goes through the same "measured, else floor" path as every other
+    /// content case; `openedEmptyStateHeight` remains the pre-measurement /
+    /// unmeasured-frame fallback (and the `panelSize` floor below), it is
+    /// simply no longer force-applied once a real measurement exists.
     private func openedContentHeight(for model: AppModel) -> CGFloat {
-        guard !model.islandListSessions.isEmpty else {
-            return Self.openedEmptyStateHeight
-        }
-
         let isNotificationMode = model.notchOpenReason == .notification && model.islandSurface.sessionID != nil
         let measured = isNotificationMode
             ? model.measuredNotificationContentHeight
@@ -613,11 +664,12 @@ final class OverlayPanelController {
 
         guard measured > 0 else {
             // Not measured yet (first frame after the surface/content
-            // changed, before SwiftUI has laid out and reported a height).
-            // Fall back to the empty-state floor; the measured-height
-            // `didSet` debounce corrects this with a follow-up reposition as
-            // soon as layout completes, matching how notification cards
-            // already behaved before this change.
+            // changed, before SwiftUI has laid out and reported a height) —
+            // including the very first empty-state frame. Fall back to the
+            // empty-state floor; the measured-height `didSet` debounce
+            // corrects this with a follow-up reposition as soon as layout
+            // completes, matching how notification cards already behaved
+            // before this change.
             return Self.openedEmptyStateHeight
         }
 

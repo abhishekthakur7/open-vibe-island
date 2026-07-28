@@ -18,6 +18,23 @@ struct CodexHooksTests {
         #expect(payload.defaultJumpTarget.warpPaneUUID == "D1A5DF3027E44FC080FE2656FAF2BA2E")
     }
 
+    /// F20 (overlay remediation Phase 3): `model` is required on the wire
+    /// (every real hook event reports one), but `defaultCodexMetadata` used
+    /// to drop it — copying six fields and never `model` — so a Codex
+    /// session's model never reached `AgentSession.displayModelName`.
+    @Test
+    func codexDefaultMetadataCopiesModel() {
+        let payload = CodexHookPayload(
+            cwd: "/tmp/demo",
+            hookEventName: .sessionStart,
+            model: "gpt-5-codex",
+            permissionMode: .default,
+            sessionID: "s1",
+            transcriptPath: nil
+        )
+        #expect(payload.defaultCodexMetadata.model == "gpt-5-codex")
+    }
+
     @Test
     func codexWithRuntimeContextPopulatesWarpPaneUUIDFromResolver() {
         let payload = CodexHookPayload(

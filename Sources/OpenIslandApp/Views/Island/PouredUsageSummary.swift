@@ -156,6 +156,13 @@ struct PouredUsageProviderGroup: View {
     }
 
     var body: some View {
+        let summaryText = UsageSummaryAccessibilityFormatter.summary(
+            for: provider,
+            usesShortTitle: usesShortTitle,
+            asOf: now,
+            lang: lang
+        )
+
         HStack(spacing: 12) {
             ForEach(provider.windows) { window in
                 PouredUsageWindowRing(
@@ -167,22 +174,11 @@ struct PouredUsageProviderGroup: View {
                 )
             }
         }
-        .help(helpText)
+        .help(summaryText)
         // AB-244 / AB-301: the whole group is one VoiceOver stop — the same
         // per-window summary the app surfaces through `.help()`.
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(providerTitle) \(helpText)")
-    }
-
-    private var helpText: String {
-        provider.windows.map { window in
-            var parts = ["\(window.label) \(window.roundedUsedPercentage)%"]
-            if let remaining = window.remainingLabel(asOf: now) {
-                parts.append(remaining)
-            }
-            return parts.joined(separator: " ")
-        }
-        .joined(separator: " · ")
+        .accessibilityLabel(summaryText)
     }
 }
 

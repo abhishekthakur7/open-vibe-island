@@ -119,9 +119,27 @@ struct FlightDeckThemeTests {
     func everyReadableTypographyRoleHoldsTheTenPointFloor() {
         #expect(FlightDeckTypography.floor == 10)
         #expect(!FlightDeckTypography.readableRoleSizes.isEmpty)
+        // F18: the usage gauge's `%` is a named readable role, so this same
+        // sweep prevents its unit tag from silently dropping below the floor.
+        #expect(FlightDeckTypography.roleFamilies.contains {
+            $0.name == "gaugeUnit" && $0.size == FlightDeckTypography.gaugeUnitSize
+        })
         for size in FlightDeckTypography.readableRoleSizes {
             #expect(size >= FlightDeckTypography.floor)
         }
+    }
+
+    /// The usage gauge value remains the shipped 11pt bold mono treatment,
+    /// but is now a named, floor-swept role rather than a raw font escapee.
+    @Test
+    func gaugeValueIsANamedElevenPointBoldMonoReadableRole() {
+        #expect(FlightDeckTypography.countSize == 11)
+        #expect(FlightDeckTypography.countSize >= FlightDeckTypography.floor)
+        #expect(FlightDeckTypography.roleFamilies.contains {
+            $0.name == "gaugeValue" && $0.size == 11
+        })
+        #expect(FlightDeckTypography.family(of: "gaugeValue") == .mono)
+        #expect(FlightDeckTypography.weight(of: "gaugeValue") == .bold)
     }
 
     // MARK: - Two-font split contract (AB-337 · SPEC §2)
@@ -139,14 +157,33 @@ struct FlightDeckThemeTests {
         #expect(FlightDeckTypography.family(of: "narration") == .sans)
         #expect(FlightDeckTypography.family(of: "assistant") == .sans)
         #expect(FlightDeckTypography.family(of: "gaugeLabel") == .sans)
+        #expect(FlightDeckTypography.family(of: "countGlyph") == .sans)
+        #expect(FlightDeckTypography.family(of: "countLabel") == .sans)
 
         // Value roles are mono — the status code and every counter/body ARE
         // monospaced (tabular numerals ride the mono design for free).
         #expect(FlightDeckTypography.family(of: "statusCode") == .mono)
+        #expect(FlightDeckTypography.family(of: "resetCountdown") == .mono)
+        #expect(FlightDeckTypography.family(of: "annunciatorContext") == .mono)
+        #expect(FlightDeckTypography.family(of: "heldLabel") == .mono)
+        #expect(FlightDeckTypography.family(of: "completionJumpLabel") == .mono)
         #expect(FlightDeckTypography.family(of: "count") == .mono)
         #expect(FlightDeckTypography.family(of: "microLabel") == .mono)
         #expect(FlightDeckTypography.family(of: "label") == .mono)
         #expect(FlightDeckTypography.family(of: "body") == .mono)
+        #expect(FlightDeckTypography.family(of: "gaugeValue") == .mono)
+        #expect(FlightDeckTypography.family(of: "gaugeUnit") == .mono)
+
+        // F17's three same-sized count roles intentionally differ by both
+        // semantic family and weight; do not fold them back into one font.
+        #expect(FlightDeckTypography.weight(of: "countGlyph") == .bold)
+        #expect(FlightDeckTypography.weight(of: "countLabel") == .medium)
+        #expect(FlightDeckTypography.weight(of: "count") == .semibold)
+        #expect(FlightDeckTypography.weight(of: "gaugeValue") == .bold)
+        #expect(FlightDeckTypography.weight(of: "resetCountdown") == .medium)
+        #expect(FlightDeckTypography.weight(of: "annunciatorContext") == .medium)
+        #expect(FlightDeckTypography.weight(of: "heldLabel") == .medium)
+        #expect(FlightDeckTypography.weight(of: "completionJumpLabel") == .semibold)
 
         // The two families map onto the two `Font.Design`s the split intends.
         #expect(FlightDeckTypography.Family.sans.design == .default)
@@ -154,7 +191,78 @@ struct FlightDeckThemeTests {
 
         // Every role in the table declares a family, and an unknown role is nil.
         #expect(FlightDeckTypography.family(of: "does-not-exist") == nil)
+        #expect(FlightDeckTypography.weight(of: "does-not-exist") == nil)
         #expect(FlightDeckTypography.roleFamilies.allSatisfy { !$0.name.isEmpty })
+    }
+
+    @Test
+    func resetCountdownAndActionableIdentityRolesAreNamedTenPointMonoReadableRoles() {
+        let roles = ["resetCountdown", "annunciatorContext", "heldLabel"]
+        for role in roles {
+            let entry = FlightDeckTypography.roleFamilies.first { $0.name == role }
+            #expect(entry?.family == .mono)
+            #expect(entry?.weight == .medium)
+            #expect(entry?.size == 10)
+        }
+    }
+
+    @Test
+    func completionJumpLabelIsANamedMonoReadableRole() {
+        let entry = FlightDeckTypography.roleFamilies.first { $0.name == "completionJumpLabel" }
+        #expect(entry?.family == .mono)
+        #expect(entry?.weight == .semibold)
+        #expect(entry?.size == 10.5)
+        #expect(FlightDeckTypography.completionJumpLabelSize >= FlightDeckTypography.floor)
+    }
+
+    // MARK: - Annunciator summary tile geometry / typography (overlay remediation F9)
+
+    /// The strip's own count role (`annunciatorCount`, 17pt/mono/700) is a
+    /// *distinct* role from the shared `count` role (11pt) the closed-pill
+    /// count badge also draws from — the AC's explicit "do NOT bump
+    /// `countSize` in place" guardrail, pinned so a future edit can't silently
+    /// collapse the two roles back together.
+    @Test
+    func annunciatorCountIsItsOwnRoleDistinctFromTheClosedPillBadge() {
+        #expect(FlightDeckTypography.annunciatorCountSize == 17)
+        #expect(FlightDeckTypography.annunciatorCountSize != FlightDeckTypography.countSize)
+        #expect(FlightDeckTypography.family(of: "annunciatorCount") == .mono)
+        // The plan's acceptance criterion: count ≥15pt, stacked above a
+        // caption that stays ≤10pt (the shared `microLabel` the caption
+        // draws from).
+        #expect(FlightDeckTypography.annunciatorCountSize >= 15)
+        #expect(FlightDeckTypography.microLabelSize <= 10)
+        // Registered in the role table like every other readable role, so it
+        // is swept by the ≥10pt floor test above.
+        #expect(FlightDeckTypography.roleFamilies.contains { $0.name == "annunciatorCount" })
+    }
+
+    /// The tile's own geometry constants (padding, stack gap, accent-bar
+    /// width) — pinned so a regression can't quietly shrink the tile back
+    /// toward the retired ~21pt inline-lamp geometry the plan measured as
+    /// 2.4× too small. `verticalPadding * 2` alone (the padding this AC's
+    /// 49–55pt tile height is built from, on top of the two stacked text
+    /// lines) must clear the old tile's entire intrinsic height.
+    @Test
+    func annunciatorTileGeometryHoldsThePlanAcceptanceCriteria() {
+        #expect(FlightDeckAnnunciatorGeometry.verticalPadding == 9)
+        #expect(FlightDeckAnnunciatorGeometry.horizontalPadding == 12)
+        #expect(FlightDeckAnnunciatorGeometry.stackSpacing == 3)
+        // A ≥2pt accent mark spanning the full tile height when lit.
+        #expect(FlightDeckAnnunciatorGeometry.accentBarWidth >= 2)
+
+        // A coarse nominal-height proxy (padding + the two stacked type
+        // sizes + the gap between them, ignoring font ascent/descent slop a
+        // pure-logic test can't measure) stays comfortably inside the
+        // plan's 49–55pt @1x band, and clears the retired ~21pt geometry by
+        // a wide margin.
+        let nominalHeight = FlightDeckAnnunciatorGeometry.verticalPadding * 2
+            + FlightDeckTypography.annunciatorCountSize
+            + FlightDeckAnnunciatorGeometry.stackSpacing
+            + FlightDeckTypography.microLabelSize
+        #expect(nominalHeight >= 45)
+        #expect(nominalHeight <= 55)
+        #expect(nominalHeight > 21)
     }
 
     // MARK: - Own square-annunciator-light grid geometry (AC #6)
@@ -190,6 +298,54 @@ struct FlightDeckThemeTests {
         // row to its own bounds and would clip that out-of-bounds bleed — the same
         // reason Poured is unsafe — so the row opts out of rasterization.
         #expect(FlightDeckTheme().rowIsDrawingGroupSafe == false)
+    }
+
+    // MARK: - Question-prompt pagination (overlay remediation Phase 2B · F1a/D1)
+
+    /// Flight Deck's board (`02-flight-deck.html:1194-1265`) stacks every
+    /// question on one page (`Q 1/2` then `Q 2/2`, one shared "Submit"), so its
+    /// page size covers every question — `Int.max` rather than a literal count,
+    /// so the seam never needs revisiting if a fixture or a live prompt grows.
+    /// Pinned here at the type level, alongside the visual proof in
+    /// `ThemeSnapshotHarnessTests.testFlightDeckQuestionMasterCautionNotch` /
+    /// `testFlightDeckQuestionMasterCautionSubmitEnabledNotch`.
+    @Test
+    func questionPageSizeCoversEveryQuestion() {
+        #expect(FlightDeckTheme().questionPageSize == Int.max)
+    }
+
+    // MARK: - Opened-header band height (overlay remediation Phase 5 · F8)
+
+    /// Flight Deck claims a taller opened-header band than the closed pill's
+    /// own height — needed once its column-stacked right lane (controls
+    /// above the gauge, `IslandHeaderLaneLayout.ControlsLaneArrangement
+    /// .columnStacked`) must clear controls (22pt) + spacing (8pt) + a
+    /// reset-row gauge chip (≈57pt) + the header's own 2pt top padding ≈
+    /// 89pt of content — comfortably more than the closed pill's ~24-38pt.
+    @Test
+    func openedHeaderHeightClearsTheColumnStackedContentBudgetWithMargin() {
+        let height = FlightDeckTheme().openedHeaderHeight
+        #expect(height != nil)
+        let columnStackedContentBudget: CGFloat = 2 // header top padding
+            + FlightDeckHeaderControls.headerControlButtonSize
+            + FlightDeckHeaderControls.headerControlSpacing
+            + 57 // measured reset-row gauge chip height (this ticket's report)
+        #expect(height! > columnStackedContentBudget)
+    }
+
+    /// The other five themes must not move: none of them override
+    /// `openedHeaderHeight`, so `IslandPanelView`'s
+    /// `theme.openedHeaderHeight ?? closedNotchHeight` falls back to the
+    /// unchanged closed-pill height exactly as before this ticket, and
+    /// `OverlayPanelController.panelSize`'s window-sizing budget
+    /// (`model?.islandTheme.openedHeaderHeight ?? screen.notchSize.height`)
+    /// is likewise unaffected for them.
+    @Test
+    func onlyFlightDeckOverridesTheOpenedHeaderHeight() {
+        for theme in ThemeRegistry.all where theme.id != "flightDeck" {
+            #expect(theme.openedHeaderHeight == nil, "\(theme.id) unexpectedly overrides openedHeaderHeight")
+        }
+        #expect(FlightDeckTheme().openedHeaderHeight != nil)
     }
 
     // MARK: - Uppercase micro-labels neutralize for CJK
@@ -230,15 +386,24 @@ struct FlightDeckThemeTests {
 
     @Test
     func tickGaugeColoursBandOnTheExactUsageCutoffs() {
-        // `>= 90` red, `70..<90` orange, else green — the same cut-offs the app
-        // ships in `IslandUsageSummary`; the theme must not drift. Screenshot
-        // points 99% (CRIT/red) and 7% (NOM/green) are covered by the endpoints.
-        #expect(FlightDeckUsageWindowGauge.usageColor(for: 99) == Color.red.opacity(0.95))
-        #expect(FlightDeckUsageWindowGauge.usageColor(for: 90) == Color.red.opacity(0.95))
-        #expect(FlightDeckUsageWindowGauge.usageColor(for: 89.9) == Color.orange.opacity(0.95))
-        #expect(FlightDeckUsageWindowGauge.usageColor(for: 70) == Color.orange.opacity(0.95))
-        #expect(FlightDeckUsageWindowGauge.usageColor(for: 69.9) == Color.green.opacity(0.95))
-        #expect(FlightDeckUsageWindowGauge.usageColor(for: 7) == Color.green.opacity(0.95))
+        // `>= 90` / `70..<90` / else — the same cut-offs the app ships in
+        // `IslandUsageSummary`; the theme must not drift. Overlay remediation
+        // F15: the colours themselves are FD's own status tokens
+        // (`SPEC-flight-deck.md:56-58`), not the retired raw
+        // `.red`/`.orange`/`.green` this test previously pinned.
+        let tokens = FlightDeckTheme().tokens.colors
+        #expect(FlightDeckUsageWindowGauge.usageColor(for: 99, tokens: tokens) == tokens.statusWaitingForApproval)
+        #expect(FlightDeckUsageWindowGauge.usageColor(for: 90, tokens: tokens) == tokens.statusWaitingForApproval)
+        #expect(FlightDeckUsageWindowGauge.usageColor(for: 89.9, tokens: tokens) == tokens.statusWaitingForAnswer)
+        #expect(FlightDeckUsageWindowGauge.usageColor(for: 70, tokens: tokens) == tokens.statusWaitingForAnswer)
+        #expect(FlightDeckUsageWindowGauge.usageColor(for: 69.9, tokens: tokens) == tokens.statusRunning)
+        #expect(FlightDeckUsageWindowGauge.usageColor(for: 7, tokens: tokens) == tokens.statusRunning)
+
+        // Exact AC points (plan §F15): ≥90 → warning red #E04A42, 70-89 →
+        // caution amber #E6AA42, <70 → nominal green #4AC99E.
+        #expect(FlightDeckUsageWindowGauge.usageColor(for: 92, tokens: tokens) == tokens.statusWaitingForApproval)
+        #expect(FlightDeckUsageWindowGauge.usageColor(for: 78, tokens: tokens) == tokens.statusWaitingForAnswer)
+        #expect(FlightDeckUsageWindowGauge.usageColor(for: 34, tokens: tokens) == tokens.statusRunning)
     }
 
     @Test
@@ -261,6 +426,96 @@ struct FlightDeckThemeTests {
         #expect(FlightDeckTapeGauge.hairlineTickPosition == 0.70)
         #expect(FlightDeckTapeGauge.criticalTickPosition == 0.90)
         #expect(FlightDeckTapeGauge.thresholdTicks == [0.70, 0.90])
+    }
+
+    // MARK: - Hidden-window indicator (overlay remediation E3)
+
+    /// The exact invariant the live pixel capture named as missing: whenever
+    /// any window is hidden (`overflowCount > 0`), *some* affordance must
+    /// render — either the inline "+N" badge (`allowsOverflowBadge == true`,
+    /// the lane's own width-fit check found room) or the corner indicator
+    /// (`allowsOverflowBadge == false`, it didn't). The retired behaviour
+    /// resolved the `false` branch to nothing at all — a hidden window with
+    /// zero visual trace, the defect this ticket fixes. `laneWidthInvariant
+    /// HoldsForTheCanonicalFixtureAndDegenerateCases`
+    /// (`IslandHeaderLaneLayoutTests.swift`) only ever asserted the width
+    /// arithmetic and would have happily accepted `.none` here — this is the
+    /// assertion that closes that gap.
+    @Test
+    func overflowAffordanceIsNeverNoneWhenAWindowIsHidden() {
+        for count in 1...4 {
+            #expect(
+                FlightDeckUsageProviderChip.OverflowAffordance.decide(overflowCount: count, allowsOverflowBadge: true)
+                    == .inline(count: count)
+            )
+            #expect(
+                FlightDeckUsageProviderChip.OverflowAffordance.decide(overflowCount: count, allowsOverflowBadge: false)
+                    == .corner(count: count)
+            )
+        }
+    }
+
+    /// The other half: nothing hidden means no affordance at all, regardless
+    /// of whether the inline badge would have fit — there is nothing to
+    /// signal, so neither `.inline` nor `.corner` should ever fire on
+    /// `overflowCount == 0`.
+    @Test
+    func overflowAffordanceIsNoneWhenNothingIsHidden() {
+        #expect(FlightDeckUsageProviderChip.OverflowAffordance.decide(overflowCount: 0, allowsOverflowBadge: true) == .none)
+        #expect(FlightDeckUsageProviderChip.OverflowAffordance.decide(overflowCount: 0, allowsOverflowBadge: false) == .none)
+    }
+
+    /// Whichever affordance renders must carry the *exact* hidden-window
+    /// count, not just a boolean "something's hidden" flag — a corner
+    /// indicator reading "+1" when actually 2 windows are hidden would be its
+    /// own silent-drop bug one layer up.
+    @Test
+    func overflowAffordanceCarriesTheExactHiddenWindowCount() {
+        #expect(
+            FlightDeckUsageProviderChip.OverflowAffordance.decide(overflowCount: 1, allowsOverflowBadge: false)
+                == .corner(count: 1)
+        )
+        #expect(
+            FlightDeckUsageProviderChip.OverflowAffordance.decide(overflowCount: 2, allowsOverflowBadge: false)
+                == .corner(count: 2)
+        )
+        #expect(
+            FlightDeckUsageProviderChip.OverflowAffordance.decide(overflowCount: 3, allowsOverflowBadge: true)
+                == .inline(count: 3)
+        )
+    }
+
+    /// End-to-end trace of the exact E3 regression at the pure-arithmetic
+    /// seam, reusing the real geometry from
+    /// `IslandHeaderLaneLayoutTests.overflowBadgeFitsOnlyInLeftoverWidthNeverByDisplacingAGauge`:
+    /// a lane assigned 2 flattened windows at capacity 1 (FD's real
+    /// notch-hardware capacity, the canonical 3-window fixture) renders 1
+    /// visible gauge and hides 1 — and the inline badge's 37pt requirement
+    /// doesn't fit the ~4pt of leftover width a 100pt reduced lane has after
+    /// that one gauge. This confirms the corner indicator, not silence, is
+    /// what actually reaches the screen for that exact case.
+    @Test
+    func e3RegressionCanonicalFixtureLaneGetsACornerIndicatorNotSilence() {
+        let capacity = 1
+        let assignedCount = 2
+        let visible = IslandHeaderLaneLayout.visibleItemCount(assignedCount: assignedCount, capacity: capacity)
+        let overflowCount = assignedCount - visible
+        #expect(overflowCount == 1)
+
+        let reducedLaneWidth: CGFloat = 100 // 119.5pt real left lane − 2×9pt chip padding
+        let badgeFits = IslandHeaderLaneLayout.overflowBadgeFits(
+            laneWidth: reducedLaneWidth,
+            itemWidth: FlightDeckUsageWindowGauge.compactGaugeWidth,
+            itemSpacing: FlightDeckUsageProviderChip.interGaugeSpacing,
+            badgeWidth: FlightDeckUsageProviderChip.overflowBadgeWidth,
+            visibleCount: visible
+        )
+        #expect(badgeFits == false)
+
+        #expect(
+            FlightDeckUsageProviderChip.OverflowAffordance.decide(overflowCount: overflowCount, allowsOverflowBadge: badgeFits)
+                == .corner(count: 1)
+        )
     }
 
     // MARK: - Theme name / descriptor localize (AC #1)

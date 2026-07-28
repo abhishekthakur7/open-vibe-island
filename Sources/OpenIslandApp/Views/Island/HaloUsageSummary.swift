@@ -234,6 +234,13 @@ struct HaloUsageProviderGroup: View {
     }
 
     var body: some View {
+        let summaryText = UsageSummaryAccessibilityFormatter.summary(
+            for: provider,
+            usesShortTitle: usesShortTitle,
+            asOf: now,
+            lang: lang
+        )
+
         HStack(spacing: 12) {
             ForEach(provider.windows) { window in
                 HaloUsageWindowFilament(
@@ -245,22 +252,11 @@ struct HaloUsageProviderGroup: View {
                 )
             }
         }
-        .help(helpText)
+        .help(summaryText)
         // One VoiceOver stop per provider — the same per-window summary the app
         // surfaces through `.help()`, matching the other themes (AB-244).
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(providerTitle) \(helpText)")
-    }
-
-    private var helpText: String {
-        provider.windows.map { window in
-            var parts = ["\(window.label) \(window.roundedUsedPercentage)%"]
-            if let remaining = window.remainingLabel(asOf: now) {
-                parts.append(remaining)
-            }
-            return parts.joined(separator: " ")
-        }
-        .joined(separator: " · ")
+        .accessibilityLabel(summaryText)
     }
 }
 

@@ -10,12 +10,62 @@ struct HarnessArtifactReport: Codable {
     }
 
     struct AccessibilityNode: Codable {
+        enum AccessibleNameSource: String, Codable, Equatable {
+            case title = "AXTitle"
+            case description = "AXDescription"
+        }
+
         let typeName: String
         let role: String?
         let subrole: String?
+        /// Raw AX attributes stay distinct for consumers that must prove a
+        /// control's actual title and state. `label` remains the legacy
+        /// title/description/help fallback for existing summary contracts.
+        /// `identifier` is the raw `AXIdentifier` when the system AX tree
+        /// provides one; it is never inferred from a view type or label.
+        let identifier: String?
+        let title: String?
+        let description: String?
+        let help: String?
+        let enabled: Bool?
+        /// The resolved native name for an AXButton. This deliberately accepts
+        /// only AXTitle, then AXDescription; AXHelp is supplementary text and
+        /// must never establish an action's identity.
+        let accessibleName: String?
+        let accessibleNameSource: AccessibleNameSource?
         let label: String?
         let value: String?
         let children: [AccessibilityNode]
+
+        init(
+            typeName: String,
+            role: String?,
+            subrole: String?,
+            identifier: String? = nil,
+            title: String?,
+            description: String?,
+            help: String?,
+            enabled: Bool?,
+            accessibleName: String? = nil,
+            accessibleNameSource: AccessibleNameSource? = nil,
+            label: String?,
+            value: String?,
+            children: [AccessibilityNode]
+        ) {
+            self.typeName = typeName
+            self.role = role
+            self.subrole = subrole
+            self.identifier = identifier
+            self.title = title
+            self.description = description
+            self.help = help
+            self.enabled = enabled
+            self.accessibleName = accessibleName
+            self.accessibleNameSource = accessibleNameSource
+            self.label = label
+            self.value = value
+            self.children = children
+        }
     }
 
     struct WindowArtifact: Codable {
@@ -357,10 +407,13 @@ enum HarnessArtifactRecorder {
             var value = selectorStringValue("accessibilityValue", on: object)
             var role = selectorStringValue("accessibilityRole", on: object)
             let subrole = selectorStringValue("accessibilitySubrole", on: object)
+            let identifier = selectorStringValue("accessibilityIdentifier", on: object)
+            var enabled = selectorBoolValue("accessibilityIsEnabled", on: object)
 
             if let button = rawElement as? NSButton {
                 label = label ?? trimmedString(button.title)
                 role = role ?? "AXButton"
+                enabled = button.isEnabled
             } else if let textField = rawElement as? NSTextField {
                 value = value ?? trimmedString(textField.stringValue)
                 role = role ?? "AXStaticText"
@@ -372,6 +425,7 @@ enum HarnessArtifactRecorder {
                value == nil,
                role == nil,
                subrole == nil,
+               identifier == nil,
                children.isEmpty {
                 return nil
             }
@@ -380,6 +434,13 @@ enum HarnessArtifactRecorder {
                 typeName: String(describing: type(of: rawElement)),
                 role: role,
                 subrole: subrole,
+                identifier: identifier,
+                title: nil,
+                description: nil,
+                help: nil,
+                enabled: enabled,
+                accessibleName: nil,
+                accessibleNameSource: nil,
                 label: label,
                 value: value,
                 children: children
@@ -399,6 +460,13 @@ enum HarnessArtifactRecorder {
                 typeName: String(describing: type(of: rawElement)),
                 role: nil,
                 subrole: nil,
+                identifier: nil,
+                title: nil,
+                description: nil,
+                help: nil,
+                enabled: nil,
+                accessibleName: nil,
+                accessibleNameSource: nil,
                 label: nil,
                 value: nil,
                 children: children
@@ -466,10 +534,22 @@ enum HarnessArtifactRecorder {
 
         let role = copyStringValue(of: element, attribute: kAXRoleAttribute as CFString)
         let subrole = copyStringValue(of: element, attribute: kAXSubroleAttribute as CFString)
+        let title = copyStringValue(of: element, attribute: kAXTitleAttribute as CFString)
+        let description = copyStringValue(of: element, attribute: kAXDescriptionAttribute as CFString)
+        let help = copyStringValue(of: element, attribute: kAXHelpAttribute as CFString)
+        let identifier = copyStringValue(of: element, attribute: kAXIdentifierAttribute as CFString)
+        let accessibleName = HarnessArtifactReport.AccessibilityNode.resolvedAccessibleName(
+            role: role,
+            title: title,
+            description: description
+        )
         let label = firstNonEmpty(
-            copyStringValue(of: element, attribute: kAXTitleAttribute as CFString),
-            copyStringValue(of: element, attribute: kAXDescriptionAttribute as CFString),
-            copyStringValue(of: element, attribute: kAXHelpAttribute as CFString)
+            title,
+            description,
+            help
+        )
+        let enabled = boolValue(
+            from: copyAttributeValue(of: element, attribute: kAXEnabledAttribute as CFString)
         )
         let value = stringValue(
             from: copyAttributeValue(of: element, attribute: kAXValueAttribute as CFString)
@@ -477,6 +557,7 @@ enum HarnessArtifactRecorder {
 
         if role == nil,
            subrole == nil,
+           identifier == nil,
            label == nil,
            value == nil,
            children.isEmpty {
@@ -487,6 +568,13 @@ enum HarnessArtifactRecorder {
             typeName: "AXUIElement",
             role: role,
             subrole: subrole,
+            identifier: identifier,
+            title: title,
+            description: description,
+            help: help,
+            enabled: enabled,
+            accessibleName: accessibleName?.name,
+            accessibleNameSource: accessibleName?.source,
             label: label,
             value: value,
             children: children
@@ -565,6 +653,16 @@ enum HarnessArtifactRecorder {
         }
     }
 
+    static func boolValue(from rawValue: Any?) -> Bool? {
+        guard let rawValue,
+              CFGetTypeID(rawValue as CFTypeRef) == CFBooleanGetTypeID(),
+              let value = rawValue as? Bool else {
+            return nil
+        }
+
+        return value
+    }
+
     private static func selectorStringValue(_ selectorName: String, on object: NSObject) -> String? {
         let selector = NSSelectorFromString(selectorName)
         guard object.responds(to: selector) else {
@@ -572,6 +670,15 @@ enum HarnessArtifactRecorder {
         }
 
         return stringValue(from: object.perform(selector)?.takeUnretainedValue())
+    }
+
+    private static func selectorBoolValue(_ selectorName: String, on object: NSObject) -> Bool? {
+        let selector = NSSelectorFromString(selectorName)
+        guard object.responds(to: selector) else {
+            return nil
+        }
+
+        return boolValue(from: object.perform(selector)?.takeUnretainedValue())
     }
 
     private static func selectorArrayValue(_ selectorName: String, on object: NSObject) -> [Any]? {
@@ -646,5 +753,33 @@ enum HarnessArtifactRecorder {
             }
             return value.isEmpty == false
         }) ?? nil
+    }
+}
+
+extension HarnessArtifactReport.AccessibilityNode {
+    static func resolvedAccessibleName(
+        role: String?,
+        title: String?,
+        description: String?
+    ) -> (name: String, source: AccessibleNameSource)? {
+        guard role == "AXButton" else {
+            return nil
+        }
+
+        if let title = trimmedAccessibilityString(title) {
+            return (title, .title)
+        }
+        if let description = trimmedAccessibilityString(description) {
+            return (description, .description)
+        }
+        return nil
+    }
+
+    private static func trimmedAccessibilityString(_ value: String?) -> String? {
+        guard let value else {
+            return nil
+        }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }

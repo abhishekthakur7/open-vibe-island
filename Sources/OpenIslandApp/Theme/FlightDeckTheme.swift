@@ -45,6 +45,13 @@ enum FlightDeckTypography {
     static let labelSize: CGFloat = 11
     static let countSize: CGFloat = 11
     static let bodySize: CGFloat = 12
+    /// The annunciator summary tile's own count readout (`.sn`,
+    /// `02-flight-deck.html:328`): mono, 17px/700, `line-height:1` — stacked
+    /// **above** the tile's caption (SPEC `.sumtile{flex-direction:column}`).
+    /// A dedicated role, deliberately distinct from the shared `countSize`
+    /// (11pt): `countSize` is also the closed-pill "×N" badge, so bumping it
+    /// in place would inflate that badge too (overlay remediation F9).
+    static let annunciatorCountSize: CGFloat = 17
 
     /// Session / workspace name (`.ws`, SPEC §2): sans, 13.5pt, weight 640,
     /// −0.01em. `Font.Weight` has no 640 stop, so the nearest standard weight
@@ -57,9 +64,41 @@ enum FlightDeckTypography {
     /// Gauge legend (`.glabel`, SPEC §2): sans, lifted from the mockup's 9.5px to
     /// the 10pt floor. The role is defined here; T19 (tape gauges) consumes it.
     static let gaugeLabelSize: CGFloat = 10
+    /// Gauge unit tag (`.gval u "%"`, `SPEC-flight-deck.md:166`): mono, lifted
+    /// from the mockup's 9px — and the shipped 9pt (`countSize - 2`) — to the
+    /// 10pt floor (overlay remediation F18).
+    static let gaugeUnitSize: CGFloat = 10
     /// Row STATUS code (`.code`, SPEC §2 / §3-Slot3): mono, lifted from the
     /// mockup's 9.5px to the 10pt floor, 700 weight, 0.08em tracking.
     static let statusCodeSize: CGFloat = 10
+    /// Usage gauge reset countdown (`RESET 2H 10M`): mono, lifted from the
+    /// mockup's 9.5px to the 10pt floor.
+    static let resetCountdownSize: CGFloat = 10
+    /// Actionable hero Model · Branch context: mono, lifted from the mockup's
+    /// 9.5px to the 10pt floor.
+    static let annunciatorContextSize: CGFloat = 10
+    /// Actionable permission `HELD` placard: mono, lifted from the shipped 9pt
+    /// treatment to the 10pt floor.
+    static let heldLabelSize: CGFloat = 10
+    /// Completion action-rail Jump label: mono, semibold, preserving the
+    /// established 10.5pt Flight Deck action treatment. The adjacent arrow
+    /// uses the existing 10pt `microLabel` role so it remains above the floor.
+    static let completionJumpLabelSize: CGFloat = 10.5
+
+    /// Question text (`.qtext`, §F question board `02-flight-deck.html:563`):
+    /// sans, 14pt, weight 600. Overlay remediation Phase 2A — the shared
+    /// `StructuredQuestionPromptView` had no Flight Deck roles to read at all
+    /// before this; these four are authored fresh, not wired from an existing
+    /// table (unlike Poured/Halo, which already had them).
+    static let questionTextSize: CGFloat = 14
+    /// Option label (`.opt .ol`, `:557`): sans, 13pt, weight 600.
+    static let optionLabelSize: CGFloat = 13
+    /// Option description (`.opt .od`, `:558`): sans, 11.5pt, weight 400.
+    static let optionDescSize: CGFloat = 11.5
+    /// Option ordinal digit (`.opt .num` / `.qopt .digit`, `:551-554`): mono —
+    /// a *scanned* value, not narration — 11pt, weight 800 (`.heavy`, the
+    /// nearest SwiftUI stop).
+    static let optionNumberSize: CGFloat = 11
 
     /// The session name's −0.01em tracking expressed at its 13.5pt size.
     static let sessionNameTracking: CGFloat = -0.135
@@ -75,23 +114,49 @@ enum FlightDeckTypography {
     /// role that flips family here flips its rendered font too — the contract
     /// `FlightDeckThemeTests.monoSansSplitHoldsTheTwoFontContract` pins. Narration
     /// roles are `.sans`; every value / code / placard role is `.mono`.
-    static let roleFamilies: [(name: String, family: Family, size: CGFloat)] = [
+    static let roleFamilies: [(name: String, family: Family, weight: Font.Weight, size: CGFloat)] = [
         // Sans narration prose.
-        ("sessionName", .sans, sessionNameSize),
-        ("narration", .sans, narrationSize),
-        ("assistant", .sans, assistantSize),
-        ("gaugeLabel", .sans, gaugeLabelSize),
+        ("sessionName", .sans, .semibold, sessionNameSize),
+        ("narration", .sans, .medium, narrationSize),
+        ("assistant", .sans, .regular, assistantSize),
+        ("gaugeLabel", .sans, .semibold, gaugeLabelSize),
+        // Closed-pill non-value content (overlay remediation F17).
+        ("countGlyph", .sans, .bold, countSize),
+        ("countLabel", .sans, .medium, countSize),
         // Mono tabular values.
-        ("statusCode", .mono, statusCodeSize),
-        ("microLabel", .mono, microLabelSize),
-        ("label", .mono, labelSize),
-        ("count", .mono, countSize),
-        ("body", .mono, bodySize),
+        ("statusCode", .mono, .bold, statusCodeSize),
+        ("resetCountdown", .mono, .medium, resetCountdownSize),
+        ("annunciatorContext", .mono, .medium, annunciatorContextSize),
+        ("heldLabel", .mono, .medium, heldLabelSize),
+        ("completionJumpLabel", .mono, .semibold, completionJumpLabelSize),
+        ("microLabel", .mono, .semibold, microLabelSize),
+        ("label", .mono, .medium, labelSize),
+        ("count", .mono, .semibold, countSize),
+        ("body", .mono, .regular, bodySize),
+        // Gauge numeric readout — retains its shipped 11pt bold mono treatment.
+        ("gaugeValue", .mono, .bold, countSize),
+        // Gauge unit tag (overlay remediation F18) — the usage `%` glyph.
+        ("gaugeUnit", .mono, .semibold, gaugeUnitSize),
+        // Annunciator summary tile count (overlay remediation F9) — the
+        // strip's own large readout, distinct from the shared `count` badge.
+        ("annunciatorCount", .mono, .bold, annunciatorCountSize),
+        // §F question board (overlay remediation Phase 2A) — sans narration
+        // for the sentence/label/description, mono for the scanned digit.
+        ("questionText", .sans, .semibold, questionTextSize),
+        ("optionLabel", .sans, .semibold, optionLabelSize),
+        ("optionDesc", .sans, .regular, optionDescSize),
+        ("optionNumber", .mono, .heavy, optionNumberSize),
     ]
 
     /// The `Family` a named role draws in, or `nil` for an unknown name.
     static func family(of role: String) -> Family? {
         roleFamilies.first { $0.name == role }?.family
+    }
+
+    /// The declared weight for a named role, paired with `family(of:)` so tests
+    /// can pin both font axes even though SwiftUI's `Font` is opaque.
+    static func weight(of role: String) -> Font.Weight? {
+        roleFamilies.first { $0.name == role }?.weight
     }
 
     /// Every readable role's point size — the vector `FlightDeckThemeTests`
@@ -111,12 +176,57 @@ enum FlightDeckTypography {
     /// The "×N" count badge in the closed pill's right slot.
     static let count = Font.system(size: countSize, weight: .semibold, design: Family.mono.design)
 
+    /// The usage gauge's numeric readout — mono, bold, at the shipped 11pt
+    /// count scale. This stays distinct from the semibold closed-pill `count`.
+    static let gaugeValue = Font.system(size: countSize, weight: .bold, design: Family.mono.design)
+
+    /// The usage gauge's percent sign — mono, semibold, and deliberately held
+    /// at the named 10pt floor independently from the 11pt numeric value.
+    static let gaugeUnit = Font.system(size: gaugeUnitSize, weight: .semibold, design: Family.mono.design)
+
+    /// The closed pill's attention glyph (`⚠` / `?`) — bold sans at the shared
+    /// count scale, intentionally distinct from the numeric mono `count` role.
+    static let countGlyph = Font.system(size: countSize, weight: .bold, design: Family.sans.design)
+
+    /// The closed pill's task-count phrase (for example, "3 subagents") —
+    /// medium sans at the shared count scale, distinct from numeric values.
+    static let countLabel = Font.system(size: countSize, weight: .medium, design: Family.sans.design)
+
+    /// The annunciator summary tile's own count readout — mono, 700, its own
+    /// role (see `annunciatorCountSize`).
+    static let annunciatorCount = Font.system(size: annunciatorCountSize, weight: .bold, design: Family.mono.design)
+
     /// Body copy inside the opened panel.
     static let body = Font.system(size: bodySize, weight: .regular, design: Family.mono.design)
 
     /// The row STATUS code (`RUN` / `DONE` / `CAUT` / `WARN` / `INTR` / `FAIL` /
     /// `IDLE`) — mono, 700, letterspaced.
     static let statusCode = Font.system(size: statusCodeSize, weight: .bold, design: Family.mono.design)
+
+    /// The usage gauge's inline reset countdown — mono, medium, at the readable
+    /// 10pt floor independently from its `RESET` micro-label.
+    static let resetCountdown = Font.system(size: resetCountdownSize, weight: .medium, design: Family.mono.design)
+
+    /// The actionable hero's compact Model · Branch identity context — mono,
+    /// medium, at the readable 10pt floor.
+    static let annunciatorContext = Font.system(size: annunciatorContextSize, weight: .medium, design: Family.mono.design)
+
+    /// The permission hero's `HELD` placard — mono, medium, at the readable
+    /// 10pt floor.
+    static let heldLabel = Font.system(size: heldLabelSize, weight: .medium, design: Family.mono.design)
+
+    /// The completion rail's Jump action label — mono, semibold, retaining the
+    /// established 10.5pt action treatment without a view-local font escape.
+    static let completionJumpLabel = Font.system(
+        size: completionJumpLabelSize,
+        weight: .semibold,
+        design: Family.mono.design
+    )
+
+    /// The shared question card's leading ordinal digit (§F `.opt .num`) — a
+    /// *scanned* value, so mono; heavy (the mockup's 800 weight has no closer
+    /// SwiftUI stop).
+    static let optionNumber = Font.system(size: optionNumberSize, weight: .heavy, design: Family.mono.design)
 
     // MARK: Sans narration fonts
 
@@ -131,6 +241,15 @@ enum FlightDeckTypography {
 
     /// Gauge legend caps (T19) — sans, semibold.
     static let gaugeLabel = Font.system(size: gaugeLabelSize, weight: .semibold, design: Family.sans.design)
+
+    /// The shared question card's sentence (§F `.qtext`) — sans, semibold.
+    static let questionText = Font.system(size: questionTextSize, weight: .semibold, design: Family.sans.design)
+
+    /// An option's label (§F `.opt .ol`) — sans, semibold.
+    static let optionLabel = Font.system(size: optionLabelSize, weight: .semibold, design: Family.sans.design)
+
+    /// An option's description (§F `.opt .od`) — sans, regular.
+    static let optionDesc = Font.system(size: optionDescSize, weight: .regular, design: Family.sans.design)
 }
 
 /// Flight Deck's layered surface hierarchy (AB-335).
@@ -522,6 +641,90 @@ struct FlightDeckTheme: IslandTheme {
         )
     }
 
+    // MARK: Question-prompt seams (overlay remediation Phase 2A-follow-up · F1)
+
+    /// The §F question card's Submit CTA: `FlightDeckApprovalButton`'s new
+    /// `.tinted` kind, in the caution amber `tokens.colors
+    /// .statusWaitingForAnswer` (`#E6AA42` for this theme — the same hex the
+    /// board's `--caution` resolves to, `02-flight-deck.html:1233`).
+    /// `uppercases: false` because this button maps to the board's `.btn`
+    /// family ("Submit", sentence case), not the `.ack` family ALLOW / DENY /
+    /// ghost use (`ALLOW ONCE` / `DENY`, uppercased — `:1113-1115`); passing
+    /// the default `uppercases: true` here would print "SUBMIT", which the
+    /// board does not. `lang` therefore goes unread (`FlightDeckApprovalButton`
+    /// only consults it when `uppercases` is true) — `.shared` is a safe
+    /// filler, not a locale bug. `expands: false` keeps it inline-width,
+    /// matching the board's `display:inline-flex` (unlike the always-full
+    /// -width ALLOW / DENY switches). The chamfered clip shape comes for
+    /// free — every `FlightDeckApprovalButton` kind already draws on
+    /// `FlightDeckChamferedRectangle`, never `RoundedRectangle`.
+    func questionSubmitButton(
+        title: String,
+        isEnabled: Bool,
+        action: @escaping () -> Void
+    ) -> AnyView? {
+        AnyView(
+            FlightDeckApprovalButton(
+                title: title,
+                shortcut: nil,
+                kind: .tinted(tokens.colors.statusWaitingForAnswer),
+                lang: .shared,
+                uppercases: false,
+                expands: false,
+                isEnabled: isEnabled,
+                accessibilityLabel: title,
+                action: action
+            )
+        )
+    }
+
+    /// The §F question card's own container: an opaque chamfered instrument
+    /// sub-panel, not Poured's rounded translucent glass (remediation plan
+    /// DO-NOT-FIX table — Flight Deck is opaque hardware with chamfer
+    /// geometry). Mirrors `FlightDeckSessionRow.completionBody`'s own card
+    /// chrome exactly (`FlightDeckSurfaces.tile` fill, chamfer 6, tier-2
+    /// hairline border) so every FD actionable-body card — approval,
+    /// completion, question — seats on the same sub-panel tone. The caution
+    /// amber annunciator (`FlightDeckQuestionAnnunciator`) stays a plain
+    /// header line above this card, unchanged.
+    func questionCardContainer(content: AnyView) -> AnyView? {
+        AnyView(FlightDeckQuestionCardContainer(content: content))
+    }
+
+    /// D1 pagination: every question collapses onto one page
+    /// (`02-flight-deck.html:1194-1265` — both `Q 1/2`/`Q 2/2` stacked in one
+    /// card, one shared "Submit"), visually identical to the pre-D1 literal
+    /// rendering. Unlike `nil` (`IslandTheme`'s default) this is a *distinct*
+    /// opt-in: the keyboard stays active, with digits running continuously
+    /// across the stacked questions (1-3 then 4-7) instead of staying
+    /// disabled. `Int.max` rather than a literal question count so the seam
+    /// never needs revisiting if a fixture or a live prompt grows past two
+    /// questions. See `IslandTheme.questionPageSize`'s doc for the full
+    /// mechanism.
+    var questionPageSize: Int? { Int.max }
+
+    // MARK: - Opened-header band height (overlay remediation Phase 5 · F8)
+
+    /// The board's own `.phead` (`02-flight-deck.html:274-284,872-911`) has no
+    /// declared height — DERIVED from its children: the taller lane is the
+    /// right one, stacked column (`.phead .lane{flex-direction:column}`):
+    /// `.ctrls` (26px) + its 9px gap + one `.gauge` (headline row ≈22.4px
+    /// incl. margin + an 8px tape incl. border ≈10px + a `.greset` row
+    /// ≈18.8px incl. margin, using the file's own `body{line-height:1.45}`)
+    /// ≈51px, inside the lane's own `12px 14px` padding (24pt vertical) plus
+    /// the header's 1px bottom border ⇒ **≈111pt**.
+    ///
+    /// This app's own measured geometry gives a tighter, code-grounded
+    /// number: 22pt control row + 8pt spacing + a real reset-row gauge chip
+    /// (≈57pt, `FlightDeckUsageSummary.swift`) + the header's own 2pt top
+    /// padding (`FlightDeckHeaderControls.headerTopPadding`) ≈ 89pt needed.
+    /// **96pt** is used — a 7pt margin over that 89pt need (9pt over the
+    /// bare 87pt control+spacing+chip budget, ignoring the header's own top
+    /// padding), while staying comfortably under the board's own ≈111pt
+    /// figure so the window doesn't grow further than the real content
+    /// requires. See this ticket's report for the full reconciliation.
+    var openedHeaderHeight: CGFloat? { 96 }
+
     // MARK: Flight Deck empty / bootstrap / install states (AB-312)
 
     func emptyState(
@@ -541,5 +744,32 @@ struct FlightDeckTheme: IslandTheme {
 
     func installHint(lang: LanguageManager, onTap: @escaping () -> Void) -> AnyView {
         AnyView(FlightDeckInstallHooksHint(lang: lang, onTap: onTap))
+    }
+}
+
+/// The question card's opaque chamfered container (overlay remediation Phase
+/// 2A-follow-up · F1, Task 2): `FlightDeckTheme.questionCardContainer`'s leaf.
+/// A dedicated `View` (rather than composing `AnyView` modifiers inline in the
+/// protocol method) so it can read `\.colorSchemeContrast` for the border's
+/// Increase Contrast boost — the same environment
+/// `FlightDeckSessionRow.completionBody` reads for its identical chrome.
+/// `FlightDeckChamferedRectangle` / `FlightDeckSurfaces` are already
+/// module-internal, so this needed no visibility changes in
+/// `FlightDeckSessionRow.swift`.
+private struct FlightDeckQuestionCardContainer: View {
+    let content: AnyView
+
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    private var increasesContrast: Bool { colorSchemeContrast == .increased }
+
+    private static let chamfer: CGFloat = 6
+
+    var body: some View {
+        content
+            .background(FlightDeckChamferedRectangle(chamfer: Self.chamfer).fill(FlightDeckSurfaces.tile))
+            .overlay(
+                FlightDeckChamferedRectangle(chamfer: Self.chamfer)
+                    .strokeBorder(FlightDeckSurfaces.hairline(tier: 2, increaseContrast: increasesContrast), lineWidth: 1)
+            )
     }
 }

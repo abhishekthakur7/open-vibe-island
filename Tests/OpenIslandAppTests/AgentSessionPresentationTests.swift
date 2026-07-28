@@ -416,6 +416,22 @@ struct AgentSessionPresentationTests {
             cursorMetadata: CursorSessionMetadata(model: "gpt-5-codex")
         )
         #expect(withCursorModel.displayModelName == "GPT-5")
+
+        // F20 (overlay remediation Phase 3): codexMetadata joined the union
+        // — a Codex session's model, reported on every real hook event
+        // (`CodexHookPayload.model`), used to be dropped before it ever
+        // reached this union, so a codex-tool session's model badge/cell
+        // could never draw.
+        let withCodexModel = AgentSession(
+            id: "session-6",
+            title: "Codex · repo",
+            tool: .codex,
+            phase: .running,
+            summary: "Working",
+            updatedAt: .now,
+            codexMetadata: CodexSessionMetadata(model: "gpt-5-codex")
+        )
+        #expect(withCodexModel.displayModelName == "GPT-5")
     }
 
     // MARK: - AB-230: elapsed running time

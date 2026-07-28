@@ -371,7 +371,18 @@ extension AgentSession {
     /// `nil` when no model metadata is present (AB-230) — the model badge is
     /// hidden entirely in that case.
     var displayModelName: String? {
-        let rawModel = claudeMetadata?.model ?? openCodeMetadata?.model ?? cursorMetadata?.model
+        // F20 (overlay remediation Phase 3): `codexMetadata?.model` joins the
+        // union — Codex CLI hooks report a model on every event
+        // (`CodexHookPayload.model`, required), but the value used to be
+        // dropped between the hook payload and this union, so a Codex
+        // session's model badge/cell (e.g. Halo's §H completion grid) never
+        // drew. Closes the gap for CLI-hook Codex sessions only — the
+        // Codex.app/MCP path (`CodexAppServerCoordinator.swift`) has no
+        // model-equivalent field to plumb yet.
+        let rawModel = claudeMetadata?.model
+            ?? openCodeMetadata?.model
+            ?? cursorMetadata?.model
+            ?? codexMetadata?.model
         guard let trimmed = rawModel?.trimmedForSurface, !trimmed.isEmpty else {
             return nil
         }

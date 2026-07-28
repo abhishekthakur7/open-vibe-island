@@ -323,6 +323,23 @@ struct IslandPanelView: View {
         // Computed once here (collision detection is list-level) so every row —
         // in any theme — resolves the same suffix from one source of truth.
         .environment(\.islandSessionDisambiguators, model.sessionDisambiguators)
+        // Overlay remediation Phase 1 item 1.7 (P1.a): forces every expandable
+        // row's detail open for the `subagentsExpanded` debug scenario, via the
+        // existing preview/test seam `\.islandRowExpandedByDefault`
+        // (`IslandThemeEnvironment.swift:107-127`, built for AB-339 but never
+        // wired into `IslandDebugScenario` until now). `false` outside that one
+        // scenario (including the shipping app).
+        //
+        // Deliberately injected *here* — inside this tracked `body`, like every
+        // other model-derived environment value above — rather than baked once
+        // into `OverlayPanelController.makePanel(model:)`'s `IslandPanelView(model:)`
+        // construction, as the remediation plan's fix sketch originally proposed.
+        // That call site runs exactly once, from `AppModel.startIfNeeded()`
+        // (via `ensureOverlayPanel()`), *before* `loadDebugSnapshot()` ever sets
+        // `debugForcesRowExpansion` — a value baked in there would permanently
+        // read `false`. Reading it here instead re-evaluates on every `body`
+        // pass, same as `islandBridgeIsLive`/`islandSessionDisambiguators` above.
+        .environment(\.islandRowExpandedByDefault, model.debugForcesRowExpansion)
         .ignoresSafeArea()
         .preferredColorScheme(.dark)
         .alert(model.lang.t("island.quit.confirmTitle"), isPresented: $showingQuitConfirmation) {
@@ -524,6 +541,19 @@ struct IslandPanelView: View {
 
     // MARK: - Opened surface
 
+    /// The opened header's actual reserved band height — `theme
+    /// .openedHeaderHeight` when the active theme claims one (Flight Deck),
+    /// else `closedNotchHeight` exactly as every theme rendered before this
+    /// seam existed (overlay remediation Phase 5 · F8). Both the header's own
+    /// `.frame(height:)` and the body's `maxHeight` budget below MUST read
+    /// this same value — `OverlayPanelController.panelSize` sizes the window
+    /// around it too (mirrored there since it has no `theme` access at the
+    /// View layer), so all three stay in lockstep and the body is never
+    /// handed more (or less) room than the header actually consumed.
+    private var openedHeaderBandHeight: CGFloat {
+        theme.openedHeaderHeight ?? closedNotchHeight
+    }
+
     /// Header + session-list content only — no background, shape, shadow, or
     /// stroke. Shared by `openedSurface` (the Reduce Motion crossfade, which
     /// draws its own chrome around this) and `morphingIslandSurface` (which
@@ -533,7 +563,7 @@ struct IslandPanelView: View {
     private func openedSurfaceContent(width openedWidth: CGFloat, height openedHeight: CGFloat) -> some View {
         VStack(spacing: 0) {
             openedHeaderContent
-                .frame(height: closedNotchHeight)
+                .frame(height: openedHeaderBandHeight)
 
             openedContent
                 .frame(width: openedWidth)
@@ -545,7 +575,7 @@ struct IslandPanelView: View {
                 // stale/wrong estimate. The intentional scroll cap for
                 // long session lists lives in `AutoHeightScrollView`
                 // inside `sessionList`, which scrolls instead of clipping.
-                .frame(maxHeight: max(0, openedHeight - closedNotchHeight), alignment: .top)
+                .frame(maxHeight: max(0, openedHeight - openedHeaderBandHeight), alignment: .top)
         }
         .frame(width: openedWidth, height: openedHeight, alignment: .top)
     }
@@ -614,29 +644,30 @@ struct IslandPanelView: View {
     /// content instead, exactly as it did before this ticket.
     private var travelsGlyphOnOpen: Bool { usesNotchAwareOpenedHeader }
 
-    /// The `UnifiedBars` glyph, mounted once and continuously, whose leading
-    /// inset (and, on layouts with nowhere safe to land, opacity) is driven
-    /// straight off `opened` — the same boolean driving the shape/frame
-    /// below. A single stable view identity is enough to get free, fully
-    /// interruptible position animation from SwiftUI's layout system, so
-    /// there's no need for `matchedGeometryEffect`'s separate source/
-    /// destination bookkeeping (and no risk of the ambiguity that comes with
-    /// it if both branches were ever simultaneously mounted).
+    /// The theme's traveling glyph, mounted once and continuously, whose
+    /// leading inset (and, on layouts with nowhere safe to land, opacity) is
+    /// driven straight off `opened` — the same boolean driving the
+    /// shape/frame below. A single stable view identity is enough to get
+    /// free, fully interruptible position animation from SwiftUI's layout
+    /// system, so there's no need for `matchedGeometryEffect`'s separate
+    /// source/destination bookkeeping (and no risk of the ambiguity that
+    /// comes with it if both branches were ever simultaneously mounted).
     @ViewBuilder
     private func islandGlyphOverlay(opened: Bool, closedLeadingInset: CGFloat) -> some View {
-        // AB-330: the traveling glyph *is* the closed pill's left indicator in
-        // the morph path (the pill draws a transparent placeholder), so it takes
-        // the active theme's ambient tint — running blue, question gold, etc.
-        // `nil` for every theme but Poured, where `UnifiedBars` keeps its own
-        // paper tone exactly as before.
-        UnifiedBars(
+        // AB-330 / overlay remediation Phase 3B (F3): the traveling glyph *is*
+        // the closed pill's left indicator in the morph path (the pill draws a
+        // transparent placeholder), so it is the theme's own
+        // `closedTravelingGlyph` — the theme-agnostic `UnifiedBars` bars for
+        // every theme but Halo (tinted per `closedGlyphTint`; `nil` stays the
+        // paper tone, unchanged for every theme but Poured), and Halo's own
+        // liveness-glyph / ringed-permission-dot / outcome-mark indicator —
+        // the same shape its closed pill already draws correctly under Reduce
+        // Motion, now reaching this default animated path too.
+        theme.closedTravelingGlyph(
             mode: model.islandClosedMode,
-            size: 24,
-            tint: theme.closedGlyphTint(
-                mode: model.islandClosedMode,
-                rightSlot: model.islandClosedRightSlotContent(),
-                activity: model.islandClosedActivity()
-            )
+            rightSlot: model.islandClosedRightSlotContent(),
+            activity: model.islandClosedActivity(),
+            size: 24
         )
             .frame(width: 24, height: 24)
             .padding(.leading, opened && travelsGlyphOnOpen ? Self.openedGlyphLeadingInset : closedLeadingInset)
@@ -864,7 +895,10 @@ struct IslandPanelView: View {
 
     private var openedContent: some View {
         VStack(spacing: 8) {
-            if !model.hasAnyInstalledAgent {
+            // Overlay remediation Phase 1 item 1.1 (P1.f): `debugSuppressesInstallHint`
+            // is a harness-only opt-in (see `AppModel`) that never fires for a
+            // real user — `hasAnyInstalledAgent`, the actual probe, is unchanged.
+            if !model.hasAnyInstalledAgent && !model.debugSuppressesInstallHint {
                 theme.installHint(lang: lang, onTap: { model.showOnboarding() })
                     .padding(.horizontal, 18)
                     .padding(.top, 8)
@@ -874,6 +908,16 @@ struct IslandPanelView: View {
                 theme.bootstrapPlaceholder(lang: lang)
                     .padding(.horizontal, 18)
                     .padding(.top, 8)
+                    // Overlay remediation Phase 5 (emptyState hang, F9-adjacent
+                    // regression fix): every `*BootstrapPlaceholder` body is a
+                    // `VStack { Spacer(); …; Spacer() }` used to vertically
+                    // centre its content — a flexible layout that, without
+                    // this modifier, renders at *whatever height its parent
+                    // proposes* rather than the height its content actually
+                    // needs. See the `.fixedSize` comment on `theme.emptyState`
+                    // just below for the full non-convergence mechanism this
+                    // breaks; identical reasoning applies here.
+                    .fixedSize(horizontal: false, vertical: true)
             } else if model.islandListSessions.isEmpty {
                 theme.emptyState(
                     lang: lang,
@@ -883,6 +927,55 @@ struct IslandPanelView: View {
                 )
                     .padding(.horizontal, 18)
                     .padding(.top, 8)
+                    // Overlay remediation Phase 5 (emptyState hang, ship-blocker):
+                    // every `*EmptyState` body (Classic/Poured/FlightDeck/Halo/…)
+                    // is a `VStack(spacing:…) { Spacer(); <content>; Spacer() }`
+                    // — a flexible layout, greedy for whatever height its parent
+                    // proposes, so it can vertically centre `<content>` within
+                    // it. That parent proposal is `openedSurfaceContent`'s
+                    // `.frame(maxHeight: openedHeight - openedHeaderBandHeight)`
+                    // (`IslandPanelView.swift:578`), and `openedHeight` is
+                    // *itself* derived from the LAST measurement this view
+                    // published (`OverlayPanelController.panelSize`/
+                    // `openedContentHeight`, which adds a flat 8pt
+                    // `measuredContentSafetyPadding` on every recompute). With
+                    // the `isEmpty` short-circuit removed (this phase's
+                    // clipping fix), that made the empty state's own measured
+                    // height a function of its own last output: propose H,
+                    // Spacers fill to H, GeometryReader reports H, next
+                    // proposal is H+8, filled again, reports H+8, next is
+                    // H+16 … an unconditional +8/cycle with no fixed point —
+                    // a genuine unbounded resize loop (confirmed live: pinned
+                    // CPU, ~5MB/s RSS growth, harness auto-exit never firing),
+                    // not mere sub-pixel jitter the existing 2pt debounce in
+                    // `AppModel.measuredOpenedContentHeight` could absorb.
+                    // `sessionList` never hits this because `AutoHeightScrollView`
+                    // already measures itself inside an unconstrained
+                    // `ScrollView` and reports an explicit, proposal-independent
+                    // height (see that type's own doc comment) — it was never
+                    // the mechanism that changed.
+                    //
+                    // `.fixedSize(vertical: true)` forces this branch to report
+                    // its own intrinsic height regardless of what height it is
+                    // offered: SwiftUI proposes `nil` (its own ideal size) down
+                    // this subtree instead of the ancestor's `maxHeight`, so
+                    // each `Spacer` collapses to its minimum length instead of
+                    // expanding to fill — the identical "give it an
+                    // unconstrained proposal so intrinsic content measures
+                    // truthfully" idea `AutoHeightScrollView` already uses,
+                    // applied without an actual `ScrollView` (which would add
+                    // unwanted scroll chrome to a state that must never
+                    // scroll). The reported height becomes a pure function of
+                    // today's copy/lamp-grid/glyph content — independent of
+                    // the previous cycle's output — so it is idempotent from
+                    // the very first measurement: no growth, no oscillation,
+                    // fixed point on frame one. This does not reintroduce the
+                    // original clipping bug (restoring the 108pt short-circuit
+                    // would): the window still sizes itself from this real,
+                    // full intrinsic height via `openedContentHeight`, so
+                    // Flight Deck's/Halo's taller bodies still get all the
+                    // room they measure as needing.
+                    .fixedSize(horizontal: false, vertical: true)
             } else {
                 sessionList
             }
@@ -2282,19 +2375,65 @@ struct IslandSessionRow: View {
     }
 }
 
+private struct IslandQuestionPromptPreselectsFirstOptionKey: EnvironmentKey {
+    static let defaultValue: Bool = false
+}
+
+extension EnvironmentValues {
+    /// Overlay remediation Phase 2A: seeds `StructuredQuestionPromptView`'s
+    /// `selections` with each question's first displayed option on first
+    /// appearance, instead of the empty `@State` a real question card always
+    /// starts from.
+    ///
+    /// `selections`/`typedReply` are interaction-driven `@State` with no
+    /// external hook, so `canSubmit` is always `false` at capture time and
+    /// the *enabled* submit CTA — the gradient/chip chrome the redesign
+    /// boards actually depict — is unreachable from a still. This override
+    /// lets a harness (or a computer-use pass) pin the enabled state without
+    /// a real click; it is a **preview / test seam only**, mirroring
+    /// `islandRowExpandedByDefault` (`Theme/IslandThemeEnvironment.swift:
+    /// 107-127`, built for AB-339). Defaults to `false`, so production
+    /// question cards are unaffected and still start from a clean, empty
+    /// selection.
+    ///
+    /// Declared here rather than in `Theme/IslandThemeEnvironment.swift`
+    /// (where every other seam in this family lives) because
+    /// `StructuredQuestionPromptView` is this key's only consumer and this
+    /// ticket's file set doesn't include that file — see the phase report.
+    var islandQuestionPromptPreselectsFirstOption: Bool {
+        get { self[IslandQuestionPromptPreselectsFirstOptionKey.self] }
+        set { self[IslandQuestionPromptPreselectsFirstOptionKey.self] = newValue }
+    }
+}
+
 /// AB-303: internal (not `private`) so Poured's actionable question body can
 /// reuse the same structured prompt — the numbered option rows, 1–9 / Enter
 /// keyboard wiring, multi-select toggles, freeform + quick-reply fields and
 /// submit are contract-level behaviour, driven by tokens that already read on
 /// glass, so they're shared rather than re-implemented.
+/// Stable accessibility contracts for the shared question-prompt surface.
+///
+/// Keep the primary-action identifier here, at the one shared submit seam,
+/// rather than duplicating it in theme-specific CTA renderers. Poured, Flight
+/// Deck, and Halo all use this seam, and a prompt renders exactly one submit
+/// action at a time.
+enum QuestionPromptAccessibility {
+    static let primaryActionIdentifier = "open-island.question.primary-action"
+}
+
 struct StructuredQuestionPromptView: View {
     let prompt: QuestionPrompt?
     var lang: LanguageManager = .shared
     /// When set, registers this card's option-select/submit actions so
     /// `OverlayPanelController`'s keyboard monitor can drive them (1–9 /
-    /// ⌘1–9 select, Enter submits — AB-227). Only wired for single-question
-    /// prompts, the overwhelmingly common case; multi-question prompts fall
-    /// back to mouse-only selection for v1.
+    /// ⌘1–9 select, Enter submits — AB-227). Wired whenever the *current
+    /// page* holds a single question (`registerKeyboardHandlersIfNeeded`) —
+    /// trivially every single-question prompt, and, since D1 (overlay
+    /// remediation Phase 2B), every page of a themed pagination-opted-in
+    /// multi-question prompt too (Poured/Halo restart per page, Flight
+    /// Deck's all-questions page runs continuously). Classic/Annual/
+    /// Instrument's multi-question prompts still fall back to mouse-only
+    /// selection, unchanged.
     var keyboardCoordinator: OverlayUICoordinator?
     let onAnswer: (QuestionPromptResponse) -> Void
 
@@ -2303,7 +2442,26 @@ struct StructuredQuestionPromptView: View {
     @State private var typedReply: String = ""
     @State private var hoveredOptionKey: String?
 
+    /// D1 pagination (overlay remediation Phase 2B): which page of
+    /// `questionPages` is on screen. Reset to `0` whenever the prompt's
+    /// identity changes (`.onChange(of: prompt?.id)`), mirroring
+    /// `seedPreselectionIfNeeded`'s reset point — a fresh question set always
+    /// starts back on its first page.
+    @State private var currentPageIndex: Int = 0
+
     @Environment(\.islandTokens) private var tokens
+
+    /// Overlay remediation Phase 2A (F1): read alongside `tokens` so the four
+    /// hardcoded typography sites and the submit-button seam below can resolve
+    /// per-theme values. Already injected at the overlay root
+    /// (`IslandPanelView.swift:316`) and propagates to this subtree for free —
+    /// no call site threads it through.
+    @Environment(\.islandTheme) private var theme
+
+    /// Preview/test-only (see `\.islandQuestionPromptPreselectsFirstOption`
+    /// below): pre-populates `selections` on appear so `canSubmit` can be
+    /// driven `true` without a real click.
+    @Environment(\.islandQuestionPromptPreselectsFirstOption) private var preselectsFirstOption
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -2318,8 +2476,12 @@ struct StructuredQuestionPromptView: View {
                 freeformAnswerBody
             } else {
                 VStack(alignment: .leading, spacing: 8) {
-                    ForEach(Array(structuredQuestions.enumerated()), id: \.element.question) { index, question in
-                        questionRow(question, questionIndex: index)
+                    ForEach(Array(currentPage.enumerated()), id: \.element.question) { localIndex, question in
+                        questionRow(
+                            question,
+                            questionIndex: currentPageStartIndex + localIndex,
+                            digitBase: currentPageDigitBases[localIndex]
+                        )
                     }
                 }
 
@@ -2332,27 +2494,168 @@ struct StructuredQuestionPromptView: View {
 
                 quickReplyField
 
-                Button(submitButtonTitle) {
-                    submitAnswer()
-                }
-                .buttonStyle(IslandActionButtonStyle(kind: canSubmit ? .primary : .secondary, expands: true))
-                .disabled(!canSubmit)
+                submitButton(title: submitButtonTitle)
             }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color.white.opacity(0.03))
-        )
-        .onAppear { registerKeyboardHandlersIfNeeded() }
-        .onChange(of: prompt?.id) { _, _ in registerKeyboardHandlersIfNeeded() }
+        .modifier(QuestionCardContainerModifier())
+        .onAppear {
+            registerKeyboardHandlersIfNeeded()
+            seedPreselectionIfNeeded()
+        }
+        .onChange(of: prompt?.id) { _, _ in
+            currentPageIndex = 0
+            registerKeyboardHandlersIfNeeded()
+            seedPreselectionIfNeeded()
+        }
         .onDisappear { keyboardCoordinator?.clearQuestionCardKeyboardHandlers() }
-        .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(.white.opacity(0.05))
-        )
+    }
+
+    // MARK: - Per-theme typography (overlay remediation Phase 2A · F1)
+
+    /// The question sentence's font. Poured/Halo already define a
+    /// `questionText` role (`PouredTypography.swift:203`, `HaloTheme.swift:85`);
+    /// Flight Deck's is authored fresh (`FlightDeckTheme.swift`, this phase)
+    /// since it had none of the four roles below. Classic/Annual/Instrument
+    /// keep the exact literal this view has always rendered, so they stay
+    /// byte-identical.
+    private var questionTextFont: Font {
+        switch theme.id {
+        case "poured": return PouredType.Role.questionText.font
+        case "halo": return .system(size: HaloTypography.questionTextSize, weight: .medium)
+        case "flightDeck": return FlightDeckTypography.questionText
+        default: return .system(size: 12, weight: .medium)
+        }
+    }
+
+    /// Letter-spacing for `questionTextFont`. Poured's role carries −0.01em
+    /// (`PouredTypography.swift:203`) and Halo's board pins the identical
+    /// −0.01em (`06-halo.html:402`) even though `HaloTypography`'s
+    /// `(name, family, size)` role table can't express it — resolved here at
+    /// the call site instead (see `optionNumberFont`'s doc for why weight
+    /// takes the same route). Flight Deck's `.qtext` sets no tracking, and the
+    /// default literal never had any, so both resolve to `0`, a no-op
+    /// `.tracking()` call.
+    private var questionTextTracking: CGFloat {
+        switch theme.id {
+        case "poured": return PouredType.Role.questionText.spec.trackingPoints
+        case "halo": return HaloTypography.questionTextSize * -0.01
+        default: return 0
+        }
+    }
+
+    /// An option's label font (`optionLabel` role: Poured 13/600, Halo 13/600,
+    /// Flight Deck 13/600 — all sans).
+    private var optionLabelFont: Font {
+        switch theme.id {
+        case "poured": return PouredType.Role.optionLabel.font
+        case "halo": return .system(size: HaloTypography.optionLabelSize, weight: .semibold)
+        case "flightDeck": return FlightDeckTypography.optionLabel
+        default: return .system(size: 12.2, weight: .medium)
+        }
+    }
+
+    /// An option's description font (`optionDesc` role: 11.5pt regular on
+    /// every theme that defines it).
+    private var optionDescFont: Font {
+        switch theme.id {
+        case "poured": return PouredType.Role.optionDesc.font
+        case "halo": return .system(size: HaloTypography.optionDescSize, weight: .regular)
+        case "flightDeck": return FlightDeckTypography.optionDesc
+        default: return .system(size: 10.5)
+        }
+    }
+
+    /// The option's leading ordinal digit font. Poured/Halo keep it on the
+    /// *sans* face with tabular figures — `PouredTypography`'s "never
+    /// switches the whole face to mono just to line up digits" rule, and
+    /// Halo's `roleFamilies` explicitly marks `optionNumber` `.sans`. Flight
+    /// Deck's digit is one of its five scanned *value* roles and stays mono,
+    /// matching its two-font split.
+    ///
+    /// Halo's weight is picked here rather than stored on `HaloTypography`:
+    /// its role table is `(name, family, size)` — structurally no weight
+    /// field — and all 37 existing `HaloTypography` call sites already pick
+    /// their weight inline at the call site (see `HaloSessionRow.swift`, e.g.
+    /// `.font(.system(size: HaloTypography.workspaceTitleSize, weight: .semibold))`).
+    /// Extending the tuple for these four new call sites alone would add a
+    /// field the other 37 don't use, not remove an inconsistency — matching
+    /// the established idiom exactly is the lower-risk, zero-test-churn
+    /// choice (see the phase report's "Deviations" section for the full
+    /// reasoning against the plan's "extend the tuple" suggestion).
+    private var optionNumberFont: Font {
+        switch theme.id {
+        case "poured": return PouredType.Role.optionNumber.font
+        case "halo": return .system(size: HaloTypography.optionNumberSize, weight: .bold).monospacedDigit()
+        case "flightDeck": return FlightDeckTypography.optionNumber
+        default: return .system(size: 10.5, weight: .semibold, design: .monospaced)
+        }
+    }
+
+    /// The multi-question header's ("Auth", "Scope") text colour — F1's only
+    /// prescribed fix for this element is mapping it onto a "theme
+    /// secondary-text token"; no board pins a distinct size for it, so the
+    /// literal `10/.bold` stays for every theme.
+    private var multiQuestionHeaderColor: Color {
+        switch theme.id {
+        case "poured", "halo", "flightDeck":
+            return tokens.colors.surfaceText.opacity(tokens.colors.secondaryTextOpacity)
+        default:
+            return .white.opacity(0.5)
+        }
+    }
+
+    /// Whether the trailing selection marker still renders on an *unselected*
+    /// option (F1b). Poured and Halo's boards emit no trailing element at all
+    /// on an unselected row; Flight Deck's `.check` is a persistent hollow
+    /// ring by design, and Classic/Annual/Instrument keep today's
+    /// unconditional ring.
+    private var selectionMarkerAlwaysVisible: Bool {
+        theme.id != "poured" && theme.id != "halo"
+    }
+
+    /// The submit CTA. Tries the theme's `questionSubmitButton` seam first —
+    /// Poured/Halo/Flight Deck now override it (overlay remediation Phase
+    /// 2A-follow-up · F1); Classic/Annual/Instrument still return `nil` and
+    /// fall back to the `IslandActionButtonStyle` rendering every theme used
+    /// before this. Shared by both submit call sites (structured questions and
+    /// the plain freeform answer body) so the seam only needs wiring once.
+    @ViewBuilder
+    private func submitButton(title: String) -> some View {
+        if let themed = theme.questionSubmitButton(title: title, isEnabled: canSubmit, action: submitAnswer) {
+            themed
+                .accessibilityIdentifier(QuestionPromptAccessibility.primaryActionIdentifier)
+        } else {
+            Button(title) {
+                submitAnswer()
+            }
+            .buttonStyle(IslandActionButtonStyle(kind: canSubmit ? .primary : .secondary, expands: true))
+            .disabled(!canSubmit)
+            .accessibilityIdentifier(QuestionPromptAccessibility.primaryActionIdentifier)
+        }
+    }
+
+    /// Preview/test-only: seeds every question's selection with its first
+    /// displayed option so `canSubmit` is `true` on first render, making the
+    /// enabled CTA reachable — `selections`/`typedReply` otherwise always
+    /// start empty, so `canSubmit` is always `false` at capture time and the
+    /// enabled state (the one the mockups depict) can't be photographed.
+    /// Mirrors `islandRowExpandedByDefault`
+    /// (`Theme/IslandThemeEnvironment.swift:107-127`). Inert unless
+    /// `\.islandQuestionPromptPreselectsFirstOption` is explicitly injected
+    /// `true`; production question cards never set it, so real users still
+    /// see a clean, empty selection.
+    private func seedPreselectionIfNeeded() {
+        guard preselectsFirstOption else { return }
+        for question in structuredQuestions {
+            guard selections[question.question] == nil,
+                  let first = QuestionPromptFormat.orderedOptions(question.options).first else {
+                continue
+            }
+            selections[question.question] = [first.option.label]
+        }
     }
 
     // MARK: - Per-question row
@@ -2360,8 +2663,17 @@ struct StructuredQuestionPromptView: View {
     /// Renders a single question with its progress readout, header, text, and
     /// vertical option list. Options render in *display* order ("Other" pinned
     /// last) so the visible numbering matches the keyboard digit shortcuts.
+    ///
+    /// `digitBase` (overlay remediation Phase 2B · D1) is the running digit
+    /// offset contributed by every *earlier* question on the current page —
+    /// `0` for a page's first (or only) question, and the prior question's
+    /// option count for a later one. This is what makes Flight Deck's
+    /// all-questions page number continuously (1-3 then 4-7) while a
+    /// one-question page (Poured, Halo) trivially renders `digitBase == 0`,
+    /// indistinguishable from today's per-question restart — one mechanism,
+    /// not a per-theme branch.
     @ViewBuilder
-    private func questionRow(_ question: QuestionPromptItem, questionIndex: Int) -> some View {
+    private func questionRow(_ question: QuestionPromptItem, questionIndex: Int, digitBase: Int) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             if let progress = QuestionPromptFormat.progressReadout(
                 questionIndex: questionIndex,
@@ -2377,11 +2689,12 @@ struct StructuredQuestionPromptView: View {
             if structuredQuestions.count > 1 {
                 Text(question.header)
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(multiQuestionHeaderColor)
             }
 
             Text(question.question)
-                .font(.system(size: 12, weight: .medium))
+                .font(questionTextFont)
+                .tracking(questionTextTracking)
                 .foregroundStyle(.white.opacity(0.88))
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -2390,7 +2703,7 @@ struct StructuredQuestionPromptView: View {
                     Array(QuestionPromptFormat.orderedOptions(question.options).enumerated()),
                     id: \.element.id
                 ) { displayIndex, displayOption in
-                    optionRow(displayOption.option, optionIndex: displayIndex, question: question)
+                    optionRow(displayOption.option, optionIndex: digitBase + displayIndex, question: question)
                 }
             }
         }
@@ -2414,7 +2727,7 @@ struct StructuredQuestionPromptView: View {
             } label: {
                 HStack(spacing: 10) {
                     Text("\(optionIndex + 1)")
-                        .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
+                        .font(optionNumberFont)
                         .foregroundStyle(isSelected ? .black.opacity(0.82) : tokens.colors.paper.opacity(0.42))
                         .frame(width: 22, height: 20)
                         .background(
@@ -2428,12 +2741,12 @@ struct StructuredQuestionPromptView: View {
 
                     VStack(alignment: .leading, spacing: 1) {
                         Text(option.label)
-                            .font(.system(size: 12.2, weight: .medium))
+                            .font(optionLabelFont)
                             .foregroundStyle(.white.opacity(isSelected ? 1 : 0.78))
 
                         if !option.description.isEmpty {
                             Text(option.description)
-                                .font(.system(size: 10.5))
+                                .font(optionDescFont)
                                 .foregroundStyle(.white.opacity(isHovered || isSelected ? 0.48 : 0.38))
                                 .lineLimit(1)
                         }
@@ -2441,10 +2754,12 @@ struct StructuredQuestionPromptView: View {
 
                     Spacer(minLength: 0)
 
-                    selectionMarker(
-                        shape: QuestionPromptFormat.markerShape(multiSelect: question.multiSelect),
-                        isSelected: isSelected
-                    )
+                    if isSelected || selectionMarkerAlwaysVisible {
+                        selectionMarker(
+                            shape: QuestionPromptFormat.markerShape(multiSelect: question.multiSelect),
+                            isSelected: isSelected
+                        )
+                    }
                 }
                 .contentShape(Rectangle())
                 .padding(.vertical, 5)
@@ -2484,6 +2799,14 @@ struct StructuredQuestionPromptView: View {
     /// a rounded square (checkbox) for multi-select, a circle (radio) for
     /// single-select — so state is never conveyed by colour alone: an empty
     /// outline when unselected, a filled tint plus a tick when selected.
+    ///
+    /// F1b: on Poured/Halo the call site only invokes this when `isSelected`
+    /// (`selectionMarkerAlwaysVisible == false`), so the unconditional ring
+    /// below only ever renders selected there. Flight Deck keeps it
+    /// unconditional by design (`02-flight-deck.html:560`, a persistent hollow
+    /// `.check`) but swaps the *shape* — its board (`:64-68`) draws a chamfered
+    /// octagon, not a circle, so `shape` (multi vs single select) is ignored
+    /// for Flight Deck and `FlightDeckChamferedRectangle` always wins.
     @ViewBuilder
     private func selectionMarker(
         shape: QuestionPromptFormat.MarkerShape,
@@ -2491,16 +2814,23 @@ struct StructuredQuestionPromptView: View {
     ) -> some View {
         let tint = tokens.colors.statusWaitingForAnswer
         ZStack {
-            switch shape {
-            case .square(let cornerRadius):
-                let square = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                square
+            if theme.id == "flightDeck" {
+                let chamfered = FlightDeckChamferedRectangle(chamfer: 3)
+                chamfered
                     .fill(isSelected ? tint : Color.clear)
-                    .overlay(square.strokeBorder(isSelected ? Color.clear : tint.opacity(0.5), lineWidth: 1.2))
-            case .circle:
-                Circle()
-                    .fill(isSelected ? tint : Color.clear)
-                    .overlay(Circle().strokeBorder(isSelected ? Color.clear : tint.opacity(0.5), lineWidth: 1.2))
+                    .overlay(chamfered.strokeBorder(isSelected ? Color.clear : tint.opacity(0.5), lineWidth: 1.2))
+            } else {
+                switch shape {
+                case .square(let cornerRadius):
+                    let square = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    square
+                        .fill(isSelected ? tint : Color.clear)
+                        .overlay(square.strokeBorder(isSelected ? Color.clear : tint.opacity(0.5), lineWidth: 1.2))
+                case .circle:
+                    Circle()
+                        .fill(isSelected ? tint : Color.clear)
+                        .overlay(Circle().strokeBorder(isSelected ? Color.clear : tint.opacity(0.5), lineWidth: 1.2))
+                }
             }
 
             if isSelected {
@@ -2523,8 +2853,14 @@ struct StructuredQuestionPromptView: View {
                 set: { freeformTexts[key] = $0 }
             ),
             onSubmit: {
-                if hasCompleteSelection {
-                    onAnswer(QuestionPromptResponse(answers: answerMap))
+                // D1 (overlay remediation Phase 2B): routed through
+                // `submitAnswer()` — not a direct `onAnswer(...)` call, as
+                // before — so Enter from an inline "Other" field respects
+                // pagination exactly like the Submit button and the global
+                // reply field: it advances on a non-final page instead of
+                // finishing early with an incomplete `answerMap`.
+                if hasCompleteSelectionForCurrentPage {
+                    submitAnswer()
                 }
             }
         )
@@ -2537,11 +2873,7 @@ struct StructuredQuestionPromptView: View {
         VStack(alignment: .leading, spacing: 8) {
             quickReplyField
 
-            Button(lang.t("question.submit")) {
-                submitAnswer()
-            }
-            .buttonStyle(IslandActionButtonStyle(kind: canSubmit ? .primary : .secondary, expands: true))
-            .disabled(!canSubmit)
+            submitButton(title: lang.t("question.submit"))
         }
     }
 
@@ -2645,7 +2977,7 @@ struct StructuredQuestionPromptView: View {
     }
 
     private var canSubmit: Bool {
-        !trimmedReply.isEmpty || (!structuredQuestions.isEmpty && hasCompleteSelection)
+        !trimmedReply.isEmpty || (!structuredQuestions.isEmpty && hasCompleteSelectionForCurrentPage)
     }
 
     /// The single question when the prompt is exactly one multi-select question —
@@ -2659,18 +2991,48 @@ struct StructuredQuestionPromptView: View {
         return question
     }
 
-    /// The keyboard-shortcut hint caption, shown below the options for
-    /// single-question prompts whose digit/Enter keys are actually wired to the
-    /// overlay coordinator. `nil` (no caption) for multi-question prompts or when
-    /// no coordinator is registered, so the hint never advertises dead keys.
+    /// The keyboard-shortcut hint caption, shown below the options whenever
+    /// `currentPage`'s digits are numbered as one contiguous run starting at
+    /// 1 — the same condition `registerKeyboardHandlersIfNeeded` gates actual
+    /// keyboard registration on (see its doc). `nil` (no caption) when no
+    /// coordinator is registered, or the page's digits restart per question
+    /// (Classic/Annual/Instrument's unpaginated multi-question prompts), so
+    /// the hint never advertises a range that doesn't hold.
+    ///
+    /// D1 (overlay remediation Phase 2B): reads `currentPage`, not
+    /// `structuredQuestions`, so the caption tracks whichever page is on
+    /// screen — page 2 describes page 2's question, not page 1's. This closes
+    /// a latent bug pagination would otherwise introduce (the hint silently
+    /// staying pinned to `structuredQuestions.first` regardless of the active
+    /// page).
+    ///
+    /// Overlay remediation Phase 2C generalized the gate from "the page holds
+    /// exactly one question" to "the page holds one question, **or** the
+    /// theme opted into D1 pagination at all" — `QuestionPromptFormat
+    /// .pageDigitsAreContiguous`, extracted as a pure, directly-testable
+    /// function since no snapshot harness fixture wires a live
+    /// `keyboardCoordinator` (`ThemeSnapshotting.swift:507` always passes
+    /// `nil`), so this gate has no golden-level coverage to lean on. Flight
+    /// Deck's all-questions page (`currentPage.count > 1`) numbers every
+    /// stacked question's options with a running offset
+    /// (`currentPageDigitBases`), exactly as contiguous as a one-question
+    /// page, just longer (F1a). `optionCount` is therefore
+    /// `currentPageFlatOptions.count` — the page's *combined* option total,
+    /// not one question's — so Flight Deck's two-question/seven-option
+    /// conformance page now renders "1–7" instead of staying silent.
+    /// `QuestionPromptFormat.keyboardHint` no longer takes a `questionCount`:
+    /// the contiguity decision belongs entirely here, where `theme` and
+    /// `currentPage` are both in scope; see its doc.
     private var keyboardHintCaption: String? {
         guard keyboardCoordinator != nil,
-              let question = structuredQuestions.first else {
+              QuestionPromptFormat.pageDigitsAreContiguous(
+                  pageSize: theme.questionPageSize,
+                  pageQuestionCount: currentPage.count
+              ) else {
             return nil
         }
         return QuestionPromptFormat.keyboardHint(
-            optionCount: question.options.count,
-            questionCount: structuredQuestions.count,
+            optionCount: currentPageFlatOptions.count,
             lang: lang
         )
     }
@@ -2678,6 +3040,16 @@ struct StructuredQuestionPromptView: View {
     private var submitButtonTitle: String {
         if !trimmedReply.isEmpty {
             return lang.t("question.sendReply")
+        }
+
+        // D1 (overlay remediation Phase 2B): a non-final page relabels the
+        // button as an advance action ("Submit & next" / "Next") rather than a
+        // terminal one — checked before the final-page-only branches below,
+        // which only apply once `structuredQuestions.count == 1` (impossible
+        // mid-pagination: a page holding one of *several* questions never
+        // satisfies that) or `primarySelectedAnswer` is defined (same guard).
+        if let nonFinalPageLabel {
+            return nonFinalPageLabel
         }
 
         // A single multi-select question surfaces its running selection count so
@@ -2698,9 +3070,41 @@ struct StructuredQuestionPromptView: View {
         return lang.t("question.submit")
     }
 
+    /// D1's non-final-page advance label ("Submit & next" — Poured;
+    /// "Next" — Halo), or `nil` on the final page (or when pagination isn't
+    /// engaged for this theme), in which case `submitButtonTitle` falls
+    /// through to its existing final-page copy unchanged. Flight Deck never
+    /// has a non-final page (its page size holds every question, so
+    /// `isFinalPage` is always `true`) and never reaches the `switch` below.
+    ///
+    /// Overlay remediation Phase 2C: routed through `lang.t(…)` —
+    /// `question.submitAndNext` / `question.next` — closing the bilingual-
+    /// release gap (`CLAUDE.md` → Release) Phase 2B's plain English literals
+    /// left open (`Resources/*.lproj/Localizable.strings` was outside its file
+    /// set). Both keys resolve in all three locale tables; `QuestionPromptFormat
+    /// Tests.allNewKeysLocalizeInEveryLanguage` pins it.
+    private var nonFinalPageLabel: String? {
+        guard theme.questionPageSize != nil, !isFinalPage else {
+            return nil
+        }
+        switch theme.id {
+        case "poured": return lang.t("question.submitAndNext")
+        case "halo": return lang.t("question.next")
+        default: return lang.t("question.submit")
+        }
+    }
+
     private func submitAnswer() {
         if !trimmedReply.isEmpty {
             onAnswer(QuestionPromptResponse(answer: trimmedReply))
+            return
+        }
+
+        // D1: a non-final page advances instead of finishing — the answer
+        // round-trip (`onAnswer`) only fires once every page has been walked,
+        // exactly like Classic/Annual/Instrument's single, always-final page.
+        guard isFinalPage else {
+            advanceToNextPage()
             return
         }
 
@@ -2712,8 +3116,22 @@ struct StructuredQuestionPromptView: View {
         )
     }
 
-    private var hasCompleteSelection: Bool {
-        structuredQuestions.allSatisfy { question in
+    /// D1: advances to the next page — the "Submit & next" / "Next" action.
+    /// Clamped so a stray double-fire right at the boundary (e.g. Enter and a
+    /// click landing in the same run-loop turn) can't walk `currentPageIndex`
+    /// past the last page.
+    private func advanceToNextPage() {
+        currentPageIndex = Swift.min(currentPageIndex + 1, Swift.max(questionPages.count - 1, 0))
+    }
+
+    /// Whether every question on `currentPage` — not the whole prompt — has a
+    /// complete selection. Scoped to the current page (overlay remediation
+    /// Phase 2B · D1) so a later page's still-empty selection can't hold
+    /// `canSubmit` false on an earlier, already-answered page; renamed from
+    /// the pre-D1 `hasCompleteSelection` to make that scoping explicit at
+    /// every call site.
+    private var hasCompleteSelectionForCurrentPage: Bool {
+        currentPage.allSatisfy { question in
             let selected = selectedLabels(for: question)
             guard !selected.isEmpty else {
                 return false
@@ -2805,40 +3223,68 @@ struct StructuredQuestionPromptView: View {
         selections[question.question] = selected
     }
 
-    // MARK: - Keyboard shortcuts (AB-227)
+    // MARK: - Keyboard shortcuts (AB-227 · D1 overlay remediation Phase 2B)
 
     /// Registers (or clears) this card's number-key/Enter handlers with the
     /// shared overlay coordinator. Called on appear and whenever the prompt
     /// identity changes, so a fresh question always gets fresh handlers.
+    ///
+    /// D1: the enable/disable decision is no longer "exactly one question in
+    /// the whole prompt" — it is "there is at least one question, **and**
+    /// either the whole prompt is exactly one question (unchanged: works for
+    /// every theme, pagination or not) **or** the theme has opted into the D1
+    /// pagination mechanism at all" (`theme.questionPageSize != nil`). That
+    /// second clause is what lets Poured and Halo gain keyboard selection
+    /// they don't have today (their page always holds exactly one question
+    /// once paginated, so digits are unambiguous) and lets Flight Deck's
+    /// all-questions page stay active too (its digits just run continuously
+    /// instead of restarting). Only Classic/Annual/Instrument with more than
+    /// one question still fall through to disabled — their pre-D1 behaviour,
+    /// since they never set `questionPageSize`.
+    ///
+    /// The leading `!structuredQuestions.isEmpty` is not redundant: without
+    /// it, a *freeform-only* prompt (no structured questions at all —
+    /// `structuredQuestions.count == 0`) would satisfy `questionPageSize !=
+    /// nil` for Poured/Halo/Flight Deck and register a live-but-empty handler
+    /// (`optionCount` 0, digits inert, but `submit` newly wired to Enter) —
+    /// a behaviour change with no D1 justification, since there is nothing to
+    /// paginate. Requiring at least one question keeps that edge case
+    /// disabled on every theme, exactly the pre-D1 `count == 1` guard did.
+    ///
+    /// The registered closures read `currentPage`/`currentPageFlatOptions`
+    /// fresh on every invocation (not a snapshot captured at registration
+    /// time), so they stay correct across a page advance without needing
+    /// re-registration — `advanceToNextPage()` only mutates `currentPageIndex`
+    /// state, it never re-runs this function.
     private func registerKeyboardHandlersIfNeeded() {
         guard let keyboardCoordinator else {
             return
         }
 
-        // Multi-question prompts have no single flat 1–9 numbering (each
-        // question restarts at 1), so keyboard selection is scoped to the
-        // common single-question case for v1; mouse selection still works.
-        guard structuredQuestions.count == 1 else {
+        guard !structuredQuestions.isEmpty,
+              theme.questionPageSize != nil || structuredQuestions.count == 1 else {
             keyboardCoordinator.clearQuestionCardKeyboardHandlers()
             return
         }
 
         keyboardCoordinator.registerQuestionCardKeyboardHandlers(
             OverlayUICoordinator.QuestionCardKeyboardHandlers(
-                optionCount: { structuredQuestions.first?.options.count ?? 0 },
+                optionCount: { currentPageFlatOptions.count },
                 toggleOption: { index in
-                    // Resolve the pressed digit through *display* order so digit N
-                    // selects the option the user sees numbered N even when "Other"
-                    // was authored mid-list and pinned last (AB-325). The count is
-                    // reorder-invariant, so `optionCount` above is unchanged.
-                    guard let question = structuredQuestions.first else {
+                    // Resolve the pressed digit through the current page's
+                    // flattened, *display*-ordered option list — the same
+                    // running numbering the visible digit chips render
+                    // (`currentPageDigitBases`), so digit N always selects the
+                    // option the user sees numbered N. A one-question page
+                    // (Poured, Halo) makes this indistinguishable from a
+                    // per-question restart; an all-questions page (Flight
+                    // Deck) makes it run continuously — one mechanism either
+                    // way, never a per-theme branch.
+                    guard currentPageFlatOptions.indices.contains(index) else {
                         return
                     }
-                    let ordered = QuestionPromptFormat.orderedOptions(question.options)
-                    guard ordered.indices.contains(index) else {
-                        return
-                    }
-                    toggle(option: ordered[index].option.label, for: question)
+                    let entry = currentPageFlatOptions[index]
+                    toggle(option: entry.option.label, for: entry.question)
                 },
                 submit: {
                     if canSubmit {
@@ -2847,6 +3293,139 @@ struct StructuredQuestionPromptView: View {
                 }
             )
         )
+    }
+
+    // MARK: - Pagination (overlay remediation Phase 2B · D1)
+
+    /// `structuredQuestions` grouped into pages of `theme.questionPageSize`
+    /// questions each — the single mechanism D1 settled on
+    /// (`REMEDIATION-PLAN.md` §5 D1) so the three approved boards are honoured
+    /// without two parallel code paths. `nil` (Classic/Annual/Instrument's
+    /// default) yields exactly one page holding every question — today's
+    /// unpaginated rendering, byte-identical. A concrete size chunks the
+    /// list: `1` (Poured, Halo) puts one question per page; a size at or past
+    /// the question count (Flight Deck's `Int.max`) also collapses to one
+    /// page holding everything — visually identical to the `nil` case, but a
+    /// *distinct* theme-opted-in configuration `registerKeyboardHandlersIfNeeded`
+    /// tells apart from `nil` (see its doc).
+    ///
+    /// `pageSize < structuredQuestions.count` guards the chunking loop below
+    /// from ever touching arithmetic on `Int.max` — a huge-but-still-finite
+    /// page size never enters the `start + pageSize` loop, it takes the same
+    /// single-page early return `nil` does.
+    private var questionPages: [[QuestionPromptItem]] {
+        guard !structuredQuestions.isEmpty else { return [] }
+        guard let pageSize = theme.questionPageSize, pageSize > 0, pageSize < structuredQuestions.count else {
+            return [structuredQuestions]
+        }
+        var pages: [[QuestionPromptItem]] = []
+        var start = 0
+        while start < structuredQuestions.count {
+            let end = Swift.min(start + pageSize, structuredQuestions.count)
+            pages.append(Array(structuredQuestions[start..<end]))
+            start = end
+        }
+        return pages
+    }
+
+    /// The page currently on screen, clamped to `questionPages`' bounds (a
+    /// prompt swap can shrink the list out from under a stale index between
+    /// the state mutation and the next `registerKeyboardHandlersIfNeeded`/
+    /// `seedPreselectionIfNeeded` reset).
+    private var currentPage: [QuestionPromptItem] {
+        guard questionPages.indices.contains(currentPageIndex) else {
+            return questionPages.last ?? []
+        }
+        return questionPages[currentPageIndex]
+    }
+
+    /// The absolute index (into `structuredQuestions`) of `currentPage`'s
+    /// first question — the sum of every *earlier* page's question count.
+    /// Feeds `questionRow`'s `questionIndex` so `QuestionPromptFormat
+    /// .progressReadout` keeps reading a global "Question N of M" position
+    /// (unchanged contract) even though only one page's questions are ever
+    /// mounted at a time.
+    private var currentPageStartIndex: Int {
+        questionPages.prefix(currentPageIndex).reduce(0) { $0 + $1.count }
+    }
+
+    /// The running digit offset contributed by every question *before* each
+    /// index in `currentPage` — `[0]` for a one-question page (Poured, Halo),
+    /// `[0, 3]` for Flight Deck's two-question page (a 3-option question
+    /// followed by a 4-option one), so the second question's digits render
+    /// 4-7 rather than restarting at 1.
+    ///
+    /// `nil` page size (Classic/Annual/Instrument) takes the all-zero branch
+    /// even though `currentPage` still holds every question there (their one
+    /// and only "page" is the whole list, per `questionPages`'s doc) — without
+    /// this branch every question's digits would run continuously for them
+    /// too, a *visible* rendering change (not just a keyboard one) with no D1
+    /// justification, since they never opted into the mechanism. This is what
+    /// keeps their multi-question rendering byte-identical: each question's
+    /// options still restart at 1, exactly the pre-D1 per-question `ForEach`.
+    private var currentPageDigitBases: [Int] {
+        guard theme.questionPageSize != nil else {
+            return currentPage.map { _ in 0 }
+        }
+        var bases: [Int] = []
+        var running = 0
+        for question in currentPage {
+            bases.append(running)
+            running += question.options.count
+        }
+        return bases
+    }
+
+    /// `currentPage`'s options flattened into one ordered list, each paired
+    /// with the question it belongs to — the same list `currentPageDigitBases`
+    /// numbers for display, so index `N` here is exactly the option digit `N`
+    /// selects. This single flattening is what both the rendered digit chips
+    /// and the keyboard handler's `toggleOption(_:)` resolve through, so a
+    /// one-question page and an all-questions page share one mechanism.
+    private var currentPageFlatOptions: [(question: QuestionPromptItem, option: QuestionOption)] {
+        currentPage.flatMap { question in
+            QuestionPromptFormat.orderedOptions(question.options).map { (question, $0.option) }
+        }
+    }
+
+    /// Whether `currentPage` is the last one — gates `submitButtonTitle`'s
+    /// non-final-page relabel and `submitAnswer`'s advance-vs-finish branch.
+    /// Trivially `true` whenever there is only one page (the `nil`-page-size
+    /// default, or a page size that already covers every question), so
+    /// Classic/Annual/Instrument and Flight Deck always finish on their one
+    /// and only page — the same "submit is terminal" behaviour every theme
+    /// had before D1.
+    private var isFinalPage: Bool {
+        currentPageIndex >= questionPages.count - 1
+    }
+}
+
+/// Wraps `StructuredQuestionPromptView`'s content in the theme's own
+/// question-card chrome (overlay remediation Phase 2A-follow-up · F1, Task 2),
+/// falling back to the literal translucent rounded card every theme drew
+/// before this seam existed. A `ViewModifier` — not a computed property — so
+/// `content` arrives as the modifier's own opaque `Content`, matching
+/// `AnyView(content)` only at the seam boundary the protocol crosses, and
+/// reads `\.islandTheme` itself (mirroring `PouredAmberGlow` and this file's
+/// other self-sufficient environment-reading modifiers) rather than being
+/// threaded an already-fetched value from the caller.
+private struct QuestionCardContainerModifier: ViewModifier {
+    @Environment(\.islandTheme) private var theme
+
+    func body(content: Content) -> some View {
+        if let themed = theme.questionCardContainer(content: AnyView(content)) {
+            themed
+        } else {
+            content
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color.white.opacity(0.03))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(.white.opacity(0.05))
+                )
+        }
     }
 }
 

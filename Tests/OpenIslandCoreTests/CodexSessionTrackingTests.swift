@@ -34,7 +34,11 @@ struct CodexSessionTrackingTests {
                     lastUserPrompt: "Check the rollout watcher state.",
                     lastAssistantMessage: "Inspecting rollout watcher.",
                     currentTool: "exec_command",
-                    currentCommandPreview: "git status -sb"
+                    currentCommandPreview: "git status -sb",
+                    // F20 (overlay remediation Phase 3): round-trips the new
+                    // field through the same store this test already proves
+                    // round-trips everything else.
+                    model: "gpt-5-codex"
                 )
             )
         ]
@@ -46,6 +50,7 @@ struct CodexSessionTrackingTests {
         #expect(reloaded.first?.session.codexMetadata?.transcriptPath == "/tmp/rollout.jsonl")
         #expect(reloaded.first?.session.codexMetadata?.initialUserPrompt == "Start by checking the rollout watcher.")
         #expect(reloaded.first?.session.codexMetadata?.lastUserPrompt == "Check the rollout watcher state.")
+        #expect(reloaded.first?.session.codexMetadata?.model == "gpt-5-codex")
         #expect(reloaded.first?.session.origin == .live)
         #expect(reloaded.first?.session.attachmentState == .attached)
     }
@@ -147,6 +152,60 @@ struct CodexSessionTrackingTests {
         #expect(records.first?.session.attachmentState == .stale)
     }
 
+    /// F20 (overlay remediation Phase 3): `CodexSessionMetadata.model` is a
+    /// plain `Optional` stored property with no custom `CodingKeys` on the
+    /// type, so the synthesized `Decodable` should `decodeIfPresent` it —
+    /// this is the JSON shape every session persisted before F20 has on
+    /// disk, so it must keep decoding cleanly with `model == nil` rather
+    /// than failing the whole array (and losing every restorable session).
+    @Test
+    func codexSessionStoreLoadsLegacyRecordsWithoutModel() throws {
+        let rootURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("open-island-legacy-model-tracking-\(UUID().uuidString)", isDirectory: true)
+        let fileURL = rootURL.appendingPathComponent("session-terminals.json")
+        let store = CodexSessionStore(fileURL: fileURL)
+
+        defer {
+            try? FileManager.default.removeItem(at: rootURL)
+        }
+
+        try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
+        let legacyJSON = """
+        [
+          {
+            "codexMetadata" : {
+              "currentTool" : "exec_command",
+              "lastAssistantMessage" : "Inspecting rollout watcher.",
+              "transcriptPath" : "/tmp/rollout.jsonl"
+            },
+            "origin" : "live",
+            "phase" : "running",
+            "sessionID" : "codex-session-legacy-model",
+            "summary" : "Inspecting rollout watcher.",
+            "title" : "Codex · open-island",
+            "updatedAt" : "1970-01-01T00:16:40Z"
+          }
+        ]
+        """
+        try legacyJSON.write(to: fileURL, atomically: true, encoding: .utf8)
+
+        let records = try store.load()
+
+        #expect(records.count == 1)
+        #expect(records.first?.session.codexMetadata?.model == nil)
+        #expect(records.first?.session.codexMetadata?.currentTool == "exec_command")
+    }
+
+    /// F20: an all-nil `CodexSessionMetadata` is still `isEmpty`, but one
+    /// carrying only a model is real information now — it must not be
+    /// normalized away to `nil` by the `isEmpty`-gated call sites
+    /// (`BridgeServer.swift`, `SessionState.swift`).
+    @Test
+    func codexSessionMetadataIsEmptyAccountsForModel() {
+        #expect(CodexSessionMetadata().isEmpty)
+        #expect(!CodexSessionMetadata(model: "gpt-5-codex").isEmpty)
+    }
+
     @Test
     func codexRolloutReducerTracksPromptCommandAndCompletion() {
         let initialLines = [
@@ -169,11 +228,18 @@ struct CodexSessionTrackingTests {
             ),
         ]
         let initialSnapshot = CodexRolloutReducer.snapshot(for: initialLines)
+        // F20 clobber fix (overlay remediation Phase 3C): `existingMetadata` stands
+        // in for what the hook path already merged onto this session (mirroring
+        // `BridgeServer.mergedCodexMetadata`'s output) before this rollout-sourced
+        // update runs — see `codexRolloutReducerPreservesHookSourcedModelAcrossRolloutMetadataUpdate`
+        // below for the dedicated clobber regression.
+        let hookSourcedMetadata = CodexSessionMetadata(model: "gpt-5-codex")
         let initialEvents = CodexRolloutReducer.events(
             from: nil,
             to: initialSnapshot,
             sessionID: "codex-session-1",
-            transcriptPath: "/tmp/rollout.jsonl"
+            transcriptPath: "/tmp/rollout.jsonl",
+            existingMetadata: hookSourcedMetadata
         )
 
         #expect(initialSnapshot.initialUserPrompt == "Check the rollout watcher status.")
@@ -184,6 +250,15 @@ struct CodexSessionTrackingTests {
         #expect(initialEvents.contains(where: { $0.trackedMetadataUpdate?.codexMetadata.lastUserPrompt == "Check the rollout watcher status." }))
         #expect(initialEvents.contains(where: { $0.trackedMetadataUpdate?.codexMetadata.currentCommandPreview == "git status -sb" }))
         #expect(initialEvents.contains(where: { $0.trackedActivityUpdate?.summary == "Running command." }))
+        // F20 clobber fix (overlay remediation Phase 3C): this used to pin the bug
+        // rather than leave it as a prose note — `CodexRolloutSnapshot` has no
+        // model field, so a rollout-sourced metadata update built purely from the
+        // snapshot always carried `model == nil`, clobbering whatever the hook path
+        // had set the instant `SessionState.apply` applied it (blind overwrite, not
+        // a merge — `SessionState.swift`'s `.sessionMetadataUpdated` case). Now
+        // `events(...)` merges against `existingMetadata`, so the model set above
+        // survives this rollout-sourced update instead.
+        #expect(initialEvents.contains(where: { $0.trackedMetadataUpdate?.codexMetadata.model == "gpt-5-codex" }))
 
         let finalSnapshot = CodexRolloutReducer.snapshot(
             for: initialLines + [
@@ -209,7 +284,8 @@ struct CodexSessionTrackingTests {
             from: initialSnapshot,
             to: finalSnapshot,
             sessionID: "codex-session-1",
-            transcriptPath: "/tmp/rollout.jsonl"
+            transcriptPath: "/tmp/rollout.jsonl",
+            existingMetadata: hookSourcedMetadata
         )
 
         #expect(finalSnapshot.phase == .completed)
@@ -219,6 +295,65 @@ struct CodexSessionTrackingTests {
         #expect(finalEvents.contains(where: { $0.trackedSessionCompletion?.isInterrupt != true }))
         #expect(finalEvents.contains(where: { $0.trackedMetadataUpdate?.codexMetadata.currentTool == nil }))
         #expect(finalEvents.contains(where: { $0.trackedMetadataUpdate?.codexMetadata.currentCommandPreview == nil }))
+        // The model survives all the way through completion too, not just the
+        // first rollout-sourced update.
+        #expect(finalEvents.contains(where: { $0.trackedMetadataUpdate?.codexMetadata.model == "gpt-5-codex" }))
+    }
+
+    /// F20 clobber fix (overlay remediation Phase 3C) — regression test for the
+    /// production bug documented in `docs/design/overlay-redesign/
+    /// REMEDIATION-PLAN.md`'s Phase 3A outcome: a hook-reported `model` was being
+    /// reset to `nil` by the very next rollout poll (~3s later,
+    /// `SessionDiscoveryCoordinator.refreshCodexRolloutTracking` →
+    /// `CodexRolloutWatcher`) because `CodexRolloutSnapshot` has no field for it
+    /// and `events(...)` built `CodexSessionMetadata` purely from the snapshot.
+    /// Confirmed failing before the fix (asserting `model == "gpt-5-codex"`
+    /// against the unmerged construction produced `model == nil`) and passing
+    /// after — see the Phase 3C report for both directions.
+    @Test
+    func codexRolloutReducerPreservesHookSourcedModelAcrossRolloutMetadataUpdate() {
+        // Step 1: the hook path already resolved and merged a model onto this
+        // session (mirrors what `BridgeServer.mergedCodexMetadata` produces from
+        // `CodexHookPayload.model` — reconstructed directly here since that merge
+        // lives outside this file). It also carries a `currentTool` the hook had
+        // reported, to prove the fix below doesn't over-apply.
+        let hookSourcedMetadata = CodexSessionMetadata(
+            currentTool: "exec_command",
+            currentCommandPreview: "git status -sb",
+            model: "gpt-5-codex"
+        )
+
+        // Step 2: a rollout-sourced poll ~3s later — Codex finished the tool call
+        // the hook had reported, so `currentTool`/`currentCommandPreview`
+        // legitimately clear. `CodexRolloutSnapshot` never carries `model` at all.
+        let oldSnapshot = CodexRolloutSnapshot(
+            currentTool: "exec_command",
+            currentCommandPreview: "git status -sb"
+        )
+        let newSnapshot = CodexRolloutSnapshot(
+            summary: "Thinking.",
+            currentTool: nil,
+            currentCommandPreview: nil
+        )
+
+        let events = CodexRolloutReducer.events(
+            from: oldSnapshot,
+            to: newSnapshot,
+            sessionID: "codex-session-1",
+            transcriptPath: "/tmp/rollout.jsonl",
+            existingMetadata: hookSourcedMetadata
+        )
+
+        // The clobber this regression test exists to catch: the model must
+        // survive a rollout-sourced update, even though the rollout itself never
+        // observes it.
+        #expect(events.contains(where: { $0.trackedMetadataUpdate?.codexMetadata.model == "gpt-5-codex" }))
+        // The inverse error the fix must not introduce: a field the rollout DOES
+        // legitimately clear must still be allowed to clear, despite
+        // `existingMetadata` carrying a stale non-nil value for it — merging must
+        // not freeze it.
+        #expect(events.contains(where: { $0.trackedMetadataUpdate?.codexMetadata.currentTool == nil }))
+        #expect(events.contains(where: { $0.trackedMetadataUpdate?.codexMetadata.currentCommandPreview == nil }))
     }
 
     @Test
@@ -918,6 +1053,71 @@ struct CodexSessionTrackingTests {
         #expect(events.contains(where: { $0.trackedMetadataUpdate?.codexMetadata.currentTool == "exec_command" }))
         #expect(events.contains(where: { $0.trackedMetadataUpdate?.codexMetadata.currentCommandPreview == "git status -sb" }))
         #expect(events.contains(where: { $0.trackedSessionCompletion?.summary == "Finished the rollout tracking slice." }))
+    }
+
+    /// F20 clobber fix (overlay remediation Phase 3C) — the same clobber as
+    /// `codexRolloutReducerPreservesHookSourcedModelAcrossRolloutMetadataUpdate`,
+    /// exercised through the actual `CodexRolloutWatcher` timer/file-polling path
+    /// (like `codexRolloutWatcherTracksAppendedLines` above) rather than the pure
+    /// reducer, so the watcher-level wiring — `updateKnownMetadata(_:)` →
+    /// `knownMetadataBySessionID` → `refresh(observation:)` — is proven connected
+    /// end to end, not just correct in isolation.
+    @Test
+    func codexRolloutWatcherPreservesKnownMetadataAcrossPolls() async throws {
+        let rootURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("open-island-rollout-metadata-\(UUID().uuidString)", isDirectory: true)
+        let rolloutURL = rootURL.appendingPathComponent("rollout.jsonl")
+        try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
+        try Data().write(to: rolloutURL)
+
+        defer {
+            try? FileManager.default.removeItem(at: rootURL)
+        }
+
+        let recorder = EventRecorder()
+        let watcher = CodexRolloutWatcher(pollInterval: 0.05)
+        watcher.eventHandler = { event in
+            Task {
+                await recorder.append(event)
+            }
+        }
+
+        // Mirrors `SessionDiscoveryCoordinator.refreshCodexRolloutTracking`:
+        // known metadata is refreshed before `sync(targets:)` on every applied
+        // event, so it is already populated by the time the very first poll
+        // runs — not just from the second poll onward.
+        watcher.updateKnownMetadata([
+            "codex-session-1": CodexSessionMetadata(model: "gpt-5-codex"),
+        ])
+        watcher.sync(targets: [
+            CodexRolloutWatchTarget(
+                sessionID: "codex-session-1",
+                transcriptPath: rolloutURL.path
+            )
+        ])
+
+        try appendRolloutLine(
+            rolloutLine(
+                timestamp: "2026-04-02T04:03:44.894Z",
+                type: "event_msg",
+                payload: [
+                    "type": "user_message",
+                    "message": "Inspect the README.",
+                ]
+            ),
+            to: rolloutURL
+        )
+
+        try await Task.sleep(for: .milliseconds(200))
+        watcher.stop()
+
+        let events = await recorder.snapshot()
+        #expect(events.contains(where: { $0.trackedMetadataUpdate?.codexMetadata.lastUserPrompt == "Inspect the README." }))
+        // The clobber this test exists to catch: every real poll tick used to
+        // rebuild `codexMetadata` purely from the rollout snapshot (no `model`
+        // field exists on `CodexRolloutSnapshot`), so this assertion would have
+        // failed with `model == nil` before the fix.
+        #expect(events.contains(where: { $0.trackedMetadataUpdate?.codexMetadata.model == "gpt-5-codex" }))
     }
 
     @Test

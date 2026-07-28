@@ -527,6 +527,9 @@
 "question.hint.keyboard.single" = "1 select · Enter submits · Esc closes";
 "question.hint.keyboard.range" = "1–%lld select · Enter submits · Esc closes";
 "question.submit.multiSelect" = "Submit — %lld selected";
+/* D1 pagination — per-page non-final advance label (overlay remediation Phase 2C) */
+"question.submitAndNext" = "Submit & next";
+"question.next" = "Next";
 
 /* Island Panel - Completion */
 "completion.done" = "Done";
@@ -552,6 +555,12 @@
 "a11y.session.collapseDetail" = "Collapse session detail";
 "a11y.session.dismiss" = "Dismiss session";
 "a11y.session.summary" = "%@, %@, %@, %@";
+"a11y.usage.resetsIn" = "resets in %@";
+"a11y.nestedWork.subagents.one" = "%lld subagent";
+"a11y.nestedWork.subagents.other" = "%lld subagents";
+"a11y.nestedWork.tasks.one" = "%1$lld of %2$lld task completed";
+"a11y.nestedWork.tasks.other" = "%1$lld of %2$lld tasks completed";
+"a11y.nestedWork.combined" = "%@, %@";
 "a11y.transcript" = "Transcript, %@";
 "a11y.phase.running" = "running";
 "a11y.phase.waitingForApproval" = "waiting for permission";

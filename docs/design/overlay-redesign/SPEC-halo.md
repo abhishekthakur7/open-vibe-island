@@ -5,13 +5,10 @@ Implementation-ready spec derived from the **approved** mockup
 and the repo theme system in `Sources/OpenIslandApp/Theme/*` +
 `Sources/OpenIslandApp/Views/Island/*`.
 
-**This is a from-scratch build**, unlike the two sibling specs. There is no
-shipped Halo implementation to diff against, so every row below is
-`mockup value → proposed token/value → note`, not `unchanged/changed/new`.
-Where the two sibling themes (`FlightDeckTheme`, `AnnualTheme`) already prove a
-non-vibrancy, flat-panel structure, this spec cribs that structure verbatim and
-notes it. Where Poured proves the glow/specular idiom, this spec cribs its
-`.shadow`-bleed technique.
+Halo is now shipped. This document preserves the approved mockup target while
+recording the current implementation in its typography and conformance notes;
+do not read historic “proposed”/“crib from” language as evidence that a slot is
+unimplemented. The sibling themes remain architectural precedents only.
 
 Conventions:
 - **Mockup px @1× = SwiftUI pt** (brief §5). All px below are pt.
@@ -232,43 +229,43 @@ values / selected labels) · **t2 0.63** (secondary body) · **t3 0.50**
 (*corrected* from .42 — tertiary meta/age/disamb). Idle-edge hairline and dividers
 are a separate 0.08 white (not text).
 
-| Role (mockup class) | Mockup | Font | Weight / tracking | Tabular? | Floor |
-|---|---|---|---|---|---|
-| Pill label (`.lab`) | 12.5 | sans | 400 / −0.01em | no | ✅ |
-| Pill mono value (`.lab .mn`) | 11 | **mono** | 400 | no | ✅ |
-| Workspace title (`.ws`) | 14 | sans | 600 / −0.01em | no | ✅ |
-| Branch disamb (`.disamb`) | 10.5 | **mono** | 400 @ t3 | no | ✅ |
-| Activity line (`.act`) | 12.5 | sans | 400–500 | no | ✅ |
-| Activity verb (`.act .live`) | 12.5 | sans | 500, cyan | no | ✅ |
-| Meta chips (`.chip`) | 10.5 | sans | 500 | no | ✅ |
-| Mono chip (`.chip.mn`) | 10 | **mono** | 500 | no | ✅ |
-| Age (`.age`) | 11 | sans | 400 @ t3 | **yes** | ✅ |
-| Section header (`.grp`) | **10** | sans | 700 / 0.10em UPPER | no | ✅ (at floor) |
-| Summary strip label (`.summary`) | 11 | sans | 400 | no | ✅ |
-| Summary number (`.b .n`) | 12 | sans | 700 | **yes** | ✅ |
-| Outcome badge (`.outc`) | 10.5 | sans | 700 | no | ✅ |
-| Jump chip (`.jump`) | 11.5 | sans | 600 | no | ✅ |
-| Hero title (`.ht`) | 14 | sans | 650 / −0.01em | no | ✅ |
-| Hero subtitle (`.hs`) | 11 | sans | 400 | no | ✅ |
-| Command block (`.cmd`) | 12 | **mono** | 600 cmd / 400 | no | ✅ |
-| Diff (`.diff`) | 11.5 | **mono** | 400 | no | ✅ |
-| Keycap (`.kc kbd`) | 10 | sans | 600 | no | ✅ (at floor) |
-| Question text (`.qtext`) | 14.5 | sans | 560 / −0.01em | no | ✅ |
-| Option label (`.opt .ol`) | 13 | sans | 600 | no | ✅ |
-| Option desc (`.opt .od`) | 11.5 | sans | 400 | no | ✅ |
-| Option number (`.opt .num`) | 11 | **mono** | 700 | **yes** | ✅ |
-| Q chip (`.q-tag`) | 10 | sans | 700 / 0.05em UPPER | no | ✅ (at floor) |
-| Subagent type (`.sty`) | 12 | sans | 600 | no | ✅ |
-| Subagent task (`.stk`) | 11 | sans | 400 | no | ✅ |
-| Subagent elapsed (`.sti`) | 11 | sans | 400 | **yes** | ✅ |
-| Nest header (`.nest-h`) | 10 | sans | 700 / 0.09em UPPER | no | ✅ (at floor) |
-| Todo (`.todo`) | 12 | sans | 400 | no | ✅ |
-| Assistant body (`.assistant`) | 12.5 | sans | 400 (strong 640) | no | ✅ |
-| Assistant inline `code` | 11 | **mono** | 400 | no | ✅ |
-| Metadata value (`.mv`) | 12.5 | sans | 560 | no | ✅ |
-| Meter value (`.mp`) | 22 | sans | 660 / −0.02em | **yes** | ✅ |
-| Empty title (`.et`) | 14 | sans | 600 | no | ✅ |
-| Empty subtitle (`.es`) | 12 | sans | 400 | no | ✅ |
+| Role (mockup class) | Mockup | Font | Weight / tracking | Tabular? | Floor | Shipped |
+|---|---|---|---|---|---|---|
+| Pill label (`.lab`) | 12.5 | sans | 400 / −0.01em | no | ✅ | **12.5pt SF Pro/default regular;** state-specific tracking/view-local. |
+| Pill mono value (`.lab .mn`) | 11 | **mono** | 400 | no | ✅ | **11pt SF Mono regular** (`pillValue`). |
+| Workspace title (`.ws`) | 14 | sans | 600 / −0.01em | no | ✅ | **14pt SF Pro/default semibold, −0.14pt tracking;** one line/tail. |
+| Branch disamb (`.disamb`) | 10.5 | **mono** | 400 @ t3 | no | ✅ | **10.5pt SF Mono regular @ t3.** |
+| Activity line (`.act`) | 12.5 | sans | 400–500 | no | ✅ | **12.5pt SF Pro/default regular.** |
+| Activity verb (`.act .live`) | 12.5 | sans | 500, cyan | no | ✅ | **12.5pt SF Pro/default medium, running cyan.** |
+| Meta chips (`.chip`) | 10.5 | sans | 500 | no | ✅ | **10.5pt SF Pro/default medium.** |
+| Mono chip (`.chip.mn`) | 10 | **mono** | 500 | no | ✅ | **10pt SF Mono medium** only for the explicit model chip; tabular numeric meta pins remain default/sans + `.monospacedDigit()`. |
+| Age (`.age`) | 11 | sans | 400 @ t3 | **yes** | ✅ | **11pt SF Pro/default regular @ t3 + tabular digits.** |
+| Section header (`.grp`) | **10** | sans | 700 / 0.10em UPPER | no | ✅ (at floor) | **10pt SF Pro/default bold, 1.0pt tracking, uppercase.** |
+| Summary strip label (`.summary`) | 11 | sans | 400 | no | ✅ | **11pt SF Pro/default regular.** |
+| Summary number (`.b .n`) | 12 | sans | 700 | **yes** | ✅ | **12pt SF Pro/default bold + tabular digits.** |
+| Outcome badge (`.outc`) | 10.5 | sans | 700 | no | ✅ | **10.5pt SF Pro/default bold.** |
+| Jump chip (`.jump`) | 11.5 | sans | 600 | no | ✅ | **11.5pt SF Pro/default semibold.** |
+| Hero title (`.ht`) | 14 | sans | 650 / −0.01em | no | ✅ | **14pt SF Pro/default semibold, −0.14pt tracking.** |
+| Hero subtitle (`.hs`) | 11 | sans | 400 | no | ✅ | **11pt SF Pro/default regular.** |
+| Command block (`.cmd`) | 12 | **mono** | 600 cmd / 400 | no | ✅ | **12pt SF Mono regular**; syntax runs apply their own weights. |
+| Diff (`.diff`) | 11.5 | **mono** | 400 | no | ✅ | **11.5pt SF Mono regular.** |
+| Keycap (`.kc kbd`) | 10 | sans | 600 | no | ✅ (at floor) | **10pt SF Pro/default semibold.** |
+| Question text (`.qtext`) | 14.5 | sans | 560 / −0.01em | no | ✅ | **14.5pt SF Pro/default medium, −0.145pt tracking.** |
+| Option label (`.opt .ol`) | 13 | sans | 600 | no | ✅ | **13pt SF Pro/default semibold.** |
+| Option desc (`.opt .od`) | 11.5 | sans | 400 | no | ✅ | **11.5pt SF Pro/default regular.** |
+| Option number (`.opt .num`) | 11 | **mono** | 700 | **yes** | ✅ | **11pt SF Pro/default bold + tabular digits; not mono.** Mono remains reserved for command/diff/branch/inline-code/pill-value. |
+| Q chip (`.q-tag`) | 10 | sans | 700 / 0.05em UPPER | no | ✅ (at floor) | **10pt SF Pro/default bold, 0.5pt tracking, uppercase.** |
+| Subagent type (`.sty`) | 12 | sans | 600 | no | ✅ | **12pt SF Pro/default semibold.** |
+| Subagent task (`.stk`) | 11 | sans | 400 | no | ✅ | **11pt SF Pro/default regular.** |
+| Subagent elapsed (`.sti`) | 11 | sans | 400 | **yes** | ✅ | **11pt SF Pro/default regular + tabular digits.** |
+| Nest header (`.nest-h`) | 10 | sans | 700 / 0.09em UPPER | no | ✅ (at floor) | **10pt SF Pro/default bold, 0.9pt tracking, uppercase** (`nestHeader`); shared by both nest-header call sites. |
+| Todo (`.todo`) | 12 | sans | 400 | no | ✅ | **12pt SF Pro/default regular.** |
+| Assistant body (`.assistant`) | 12.5 | sans | 400 (strong 640) | no | ✅ | **Declared 12.5pt default/sans;** Markdown completion theme owns final rich-text runs. |
+| Assistant inline `code` | 11 | **mono** | 400 | no | ✅ | **11pt SF Mono regular** (`assistantInlineCode`). |
+| Metadata value (`.mv`) | 12.5 | sans | 560 | no | ✅ | **12.5pt SF Pro/default medium.** |
+| Meter value (`.mp`) | 22 | sans | 660 / −0.02em | **yes** | ✅ | **22pt SF Pro/default semibold, −0.4pt tracking + tabular digits.** |
+| Empty title (`.et`) | 14 | sans | 600 | no | ✅ | **14pt SF Pro/default semibold.** |
+| Empty subtitle (`.es`) | 12 | sans | 400 | no | ✅ | **12pt SF Pro/default regular.** |
 
 **Sub-10pt roles lifted to the 10pt floor** (mockup value → corrected):
 - Usage kicker `.fk` **9 → 10**; usage value `.fv` 11 ✅.
@@ -279,19 +276,30 @@ are a separate 0.08 white (not text).
   unlike the grid's fitted `+N` which stays exempt).
 - Multi-select hint kbd (inline `1`–`3`) **10** ✅.
 
+**Current implementation state.** The 10pt monogram now renders the declared
+default/sans bold face (with −0.2pt tracking), so it agrees with the role table
+and the five-role mono reservation.
+
 **Numeral rule:** `.monospacedDigit()` on age, all timers (`1m 42s`, subagent
 `0m 46s`, duration `14m 08s`), summary counts, question progress (`1 of 2`),
 usage percentages + reset countdowns (`2h 10m`, `3d 4h`, `19h`), task counters
 (`2 of 5`). Prose and labels stay proportional. Do **not** switch the whole face
 to mono — mono is reserved for command/diff/branch/inline-code/pill-value.
 
+**Shipped-role honesty.** `HaloTypography` is the canonical family/size inventory,
+but several weights and tracking values are intentionally selected at consumption
+sites because SwiftUI `Font` is opaque and only exposes standard stops. The
+Shipped column records those call-site values; “mono chip” does not authorize
+changing the whole Halo value system to mono.
+
 ---
 
-## 3. Slot-by-slot build plan
+## 3. Slot-by-slot conformance map
 
-Each slot below: what the mockup specifies, the closest existing component to
-crib from, and the hardest detail. Sections **3a–3c** carry the special-depth
-engineering the task calls out.
+Each slot below records the mockup target, the shipped component, and its
+load-bearing detail. The older “Crib from” text is retained as design provenance,
+not a statement that Halo still delegates to that theme. Sections **3a–3c** carry
+the special-depth engineering the implementation uses.
 
 ### Slot 1 — `closedPill` → `HaloClosedPill`
 - **Mockup (§A, §G′, §I′):** 38pt tall, radius = height/2, content in **wings**
@@ -714,18 +722,17 @@ Values are the checkable targets (mockup px = pt; "glow" = colored `.shadow`).
 
 ---
 
-## 6. Conformance checklist + prerequisites
+## 6. Conformance checklist + retained prerequisites
 
-### 6.1 Fixtures needed (map A–K → deterministic demo sessions)
+### 6.1 Fixture coverage (map A–K → deterministic demo sessions)
 
-`AppearancePreviewFixtures.sessions` (in `AppearanceSettingsPane.swift`, ~L1155)
-ships **5** sessions (approval / answer / running / done / idle). Halo needs the
-**same additional** fixtures the sibling specs require — reuse them verbatim where
-identical, all `origin: .demo`, fixed `updatedAt` offsets:
+The deterministic fixture set and harness scenarios now cover these shapes. Keep
+them `origin: .demo` with fixed `updatedAt` offsets; the table is a regression
+inventory, not a request to add an otherwise missing Halo implementation:
 
 | Scenario | Fixture | Shared with siblings? |
 |---|---|---|
-| A6 | `completed` + `outcome: .interrupted` **and** `.failed` | **shared** (both siblings flag it missing) |
+| A6 | `completed` + `outcome: .interrupted` **and** `.failed` | **shared** |
 | C | duplicate-workspace pair with **branches** (`the-automator` ×2+) | **shared** |
 | D | running + `attachmentState: .attached` + `permissionMode: .acceptEdits` + assistant message | **shared** |
 | E1/E2 | permission with **command** (`swift build`/`rtk grep`) and with **fileDiffSource** (old/new Edit) | **shared** |
@@ -737,10 +744,10 @@ identical, all `origin: .demo`, fixed `updatedAt` offsets:
 | **A5** | **just-completed success within the bloom window** (recent `updatedAt`) so the green bloom→settle renders | **Halo-specific** (bloom is time-sensitive) |
 | **A2** | running with narrated activity (`Editing AppModel.swift`) for the orbit + narration | shared, but Halo also needs it at **orbit phase 0** for snapshots |
 
-### 6.2 Token-equality tests to add (`HaloThemeTests`)
+### 6.2 Token-equality coverage (`HaloThemeTests`)
 
-Following `AnnualThemeTests` / `FlightDeckThemeTests`, pin every `.halo` value from
-§1:
+`HaloThemeTests` now pins the `.halo` values from §1; retain this list as the
+required coverage inventory:
 - `surfaceInk == #000000` (assert pure black — the theme's defining value);
   `paper == .white`.
 - Status tints: running cyan `#33dcff`, completed green `#5fe39a`, approval amber
@@ -770,10 +777,9 @@ Following `AnnualThemeTests` / `FlightDeckThemeTests`, pin every `.halo` value f
 One deterministic snapshot per frame A1–K, both notch (540) + top-bar (520)
 profiles, default + Increase Contrast + Reduce Motion, en + zh-Hans.
 
-⚠️ **The animated edge-light needs a frozen phase.** Expose a
-**pause/phase parameter** — an environment key `\.haloEdgePhase` (or an injectable
-`HaloClock`) carrying `(orbitAngle: Double, pulse: Double)`, defaulting to the live
-clock and **overridable to a fixed value** in snapshot tests. Render snapshots at
+**The animated edge-light uses a frozen phase.** The `\.haloEdgePhase` environment
+key carries `(orbitAngle: Double, pulse: Double)`, defaults to the live clock, and
+is overridable in snapshot tests. Render snapshots at
 **orbitAngle 0 / pulse 0** with **Reduce Motion ON** so the orbit, pulse, bloom and
 sweep all render at a settled, deterministic phase. Without this, edge-light
 snapshots are non-reproducible. Hero pins: permission ring (E1, amber), diff (E2),
@@ -816,10 +822,10 @@ and shows subagent/task counts, not invented precision. Keep it that way.
 
 ---
 
-## 7. Registry & rollout note
+## 7. Registry and shipped identity
 
-**Identity strings** (append to all three `Localizable.strings`, matching the
-bilingual convention at L192–199):
+**Identity strings** are shipped in all three `Localizable.strings`, matching the
+bilingual convention:
 
 | Key | en | zh-Hans |
 |---|---|---|
@@ -827,12 +833,11 @@ bilingual convention at L192–199):
 | `theme.halo.descriptor` | `Prismatic edge-light on a true-black void.` | `纯黑虚空中流动的棱彩光边。` |
 
 - `id = "halo"` — data, never localized (the `IslandTheme.id`).
-- (Add zh-Hant too: name `光環`, descriptor `純黑虛空中流動的稜彩光邊。`)
+- zh-Hant: name `光環`, descriptor `純黑虛空中流動的稜彩光邊。`.
 
-**Registry position.** Append `HaloTheme()` to `ThemeRegistry.all` **after**
-`AnnualTheme()`, **non-default** — Poured Island stays `all[0]` (the product's
-face). Adding a theme is a one-line append + the `IslandTheme` conformance +
-strings (architecture.md §"Adding a theme"); nothing in `IslandPanelView` changes.
+**Registry position.** `HaloTheme()` is registered **after** `AnnualTheme()`,
+**non-default** — Poured Island stays `all[0]`. This remains the required order;
+`HaloThemeTests` pins it.
 
 ```
 static let all: [any IslandTheme] = [
