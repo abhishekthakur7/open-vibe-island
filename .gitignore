@@ -21,6 +21,10 @@ Package.resolved
 .playwright-mcp/
 output/
 
+# Python test caches
+__pycache__/
+*.pyc
+
 # Logs and temp files
 *.log
 *.tmp

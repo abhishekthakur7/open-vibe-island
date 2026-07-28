@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import subprocess
 from pathlib import Path
 
 
@@ -65,6 +67,11 @@ REMOTE_SWIFTPM_REFERENCE = re.compile(r"\.package\s*\(\s*url\s*:")
 REMOTE_XCODE_PACKAGE_REFERENCE = re.compile(
     r"XCRemoteSwiftPackageReference|repositoryURL\s*=|XCRemoteSwiftPackageProductDependency"
 )
+REMOTE_DEPENDENCY_FILENAMES = {"Package.swift", "project.pbxproj"}
+
+
+class RepositoryScopeError(RuntimeError):
+    """Raised when Git cannot provide a safe repository-local audit scope."""
 
 
 def fail(errors: list[str], message: str) -> None:
@@ -88,6 +95,75 @@ def inventory_ids(inventory: dict[str, list[dict[str, object]]]) -> set[str]:
         for entry in entries
         if isinstance(entry, dict) and entry.get("id")
     }
+
+
+def repository_candidate_paths(root: Path, filenames: set[str]) -> list[Path]:
+    """Return tracked and non-ignored untracked candidate files from Git.
+
+    Git's index and untracked-file discovery define the repository boundary, so
+    nested repositories/worktrees and ignored local tooling state are never
+    traversed by this audit.
+    """
+    try:
+        result = subprocess.run(
+            [
+                "git",
+                "-C",
+                os.fspath(root),
+                "ls-files",
+                "--cached",
+                "--others",
+                "--exclude-standard",
+                "-z",
+            ],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except OSError as exc:
+        raise RepositoryScopeError(
+            f"cannot enumerate repository audit scope with git: {exc}"
+        ) from exc
+    if result.returncode:
+        diagnostic = result.stderr.decode(errors="replace").strip()
+        if diagnostic:
+            raise RepositoryScopeError(
+                f"cannot enumerate repository audit scope with git: {diagnostic}"
+            )
+        raise RepositoryScopeError(
+            f"cannot enumerate repository audit scope with git (exit {result.returncode})"
+        )
+
+    paths: list[Path] = []
+    for raw_path in result.stdout.split(b"\0"):
+        if not raw_path:
+            continue
+        relative = Path(os.fsdecode(raw_path))
+        if (
+            relative.name not in filenames
+            or relative.is_absolute()
+            or ".git" in relative.parts
+            or ".build" in relative.parts
+        ):
+            continue
+        path = root / relative
+        if path.is_file():
+            paths.append(path)
+    return sorted(set(paths), key=lambda path: path.relative_to(root).as_posix())
+
+
+def remote_dependency_reference_errors(root: Path) -> list[str]:
+    """Find forbidden remote package references within the current Git repository."""
+    errors: list[str] = []
+    candidate_paths = repository_candidate_paths(root, REMOTE_DEPENDENCY_FILENAMES)
+    for path in candidate_paths:
+        text = path.read_text(errors="ignore")
+        relative = path.relative_to(root).as_posix()
+        if path.name == "Package.swift" and REMOTE_SWIFTPM_REFERENCE.search(text):
+            errors.append(f"remote SwiftPM package reference is forbidden: {relative}")
+        if path.name == "project.pbxproj" and REMOTE_XCODE_PACKAGE_REFERENCE.search(text):
+            errors.append(f"remote Xcode package reference is forbidden: {relative}")
+    return errors
 
 
 def main() -> int:
@@ -153,18 +229,10 @@ def main() -> int:
             fail(errors, f"required audited surface missing from inventory: {marker}")
 
     package_text = (ROOT / "Package.swift").read_text()
-    manifest_paths = [
-        path for path in ROOT.rglob("Package.swift")
-        if ".build" not in path.parts and ".git" not in path.parts
-    ]
-    for path in manifest_paths:
-        if REMOTE_SWIFTPM_REFERENCE.search(path.read_text(errors="ignore")):
-            fail(errors, f"remote SwiftPM package reference is forbidden: {path.relative_to(ROOT)}")
-    for path in ROOT.rglob("project.pbxproj"):
-        if ".build" in path.parts or ".git" in path.parts:
-            continue
-        if REMOTE_XCODE_PACKAGE_REFERENCE.search(path.read_text(errors="ignore")):
-            fail(errors, f"remote Xcode package reference is forbidden: {path.relative_to(ROOT)}")
+    try:
+        errors.extend(remote_dependency_reference_errors(ROOT))
+    except RepositoryScopeError as exc:
+        fail(errors, str(exc))
     provenance_path = ROOT / "docs/audits/dependency-provenance.md"
     if not provenance_path.is_file() or "zero third-party SwiftPM dependencies" not in provenance_path.read_text(errors="ignore"):
         fail(errors, "Round 4 dependency provenance must record the zero-vendor state")
