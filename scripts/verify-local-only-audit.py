@@ -7,6 +7,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -27,6 +28,12 @@ POWERFUL_PATTERN = re.compile(
     r"HookInstaller|ManagedHooksBinary"
 )
 SOURCE_SUFFIXES = {".swift", ".js", ".py"}
+POLICY_IMPLEMENTATION_PATHS = {
+    "scripts/verify-local-only-audit.py",
+    "scripts/verify-no-network-policy.py",
+    "scripts/tests/test_verify_local_only_audit.py",
+    "scripts/tests/test_verify_no_network_policy.py",
+}
 ROUND_2_REMOVED_PATHS = (
     "ios",
     "Sources/OpenIslandCore/WatchHTTPEndpoint.swift",
@@ -166,6 +173,24 @@ def remote_dependency_reference_errors(root: Path) -> list[str]:
     return errors
 
 
+def no_network_policy_errors(root: Path) -> list[str]:
+    """Run the Round 5 policy as part of the repository audit gate."""
+    policy = root / "scripts/verify-no-network-policy.py"
+    if not policy.is_file():
+        return ["Round 5 static no-network policy is missing"]
+    result = subprocess.run(
+        [sys.executable, os.fspath(policy), "--root", os.fspath(root)],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    if result.returncode:
+        details = (result.stdout + result.stderr).strip()
+        return [f"Round 5 static no-network policy failed: {details}"]
+    return []
+
+
 def main() -> int:
     errors: list[str] = []
     try:
@@ -233,6 +258,7 @@ def main() -> int:
         errors.extend(remote_dependency_reference_errors(ROOT))
     except RepositoryScopeError as exc:
         fail(errors, str(exc))
+    errors.extend(no_network_policy_errors(ROOT))
     provenance_path = ROOT / "docs/audits/dependency-provenance.md"
     if not provenance_path.is_file() or "zero third-party SwiftPM dependencies" not in provenance_path.read_text(errors="ignore"):
         fail(errors, "Round 4 dependency provenance must record the zero-vendor state")
@@ -251,7 +277,7 @@ def main() -> int:
             if not path.is_file() or path.suffix not in SOURCE_SUFFIXES:
                 continue
             relative = path.relative_to(ROOT).as_posix()
-            if relative == "scripts/verify-local-only-audit.py":
+            if relative in POLICY_IMPLEMENTATION_PATHS:
                 continue
             if POWERFUL_PATTERN.search(path.read_text(errors="ignore")) and relative not in known_paths:
                 fail(errors, f"unknown powerful source match: {relative}")

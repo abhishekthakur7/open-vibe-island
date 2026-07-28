@@ -475,8 +475,8 @@ private enum DebugSessionFactory {
                 terminalSessionID: "ghostty-recent"
             ),
             codexMetadata: CodexSessionMetadata(
-                initialUserPrompt: "读一下这篇论文 https://arxiv.org/html/2603.28052",
-                lastUserPrompt: "读一下这篇论文 https://arxiv.org/html/2603.28052v1 感觉和我们在做的 agent 很像。",
+                initialUserPrompt: "读一下本地的研究笔记，看看和我们在做的 agent 有什么关联。",
+                lastUserPrompt: "本地笔记里的思路感觉和我们在做的 agent 很像。",
                 lastAssistantMessage: "整理完了，已经提炼出和 autoreserach 相关的几段关键差异。"
             )
         )

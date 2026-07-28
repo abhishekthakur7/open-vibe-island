@@ -60,7 +60,7 @@ enum AppearancePreviewFixtures {
         ))
     }
 
-    /// One 64-bit FNV-1a pass (http://www.isthe.com/chongo/tech/comp/fnv/)
+    /// One 64-bit FNV-1a pass.
     /// over `bytes`, seeded with a caller-chosen offset basis so two passes
     /// over the same input with different bases produce independent-looking
     /// 64-bit halves for ``stableID(_:)``.

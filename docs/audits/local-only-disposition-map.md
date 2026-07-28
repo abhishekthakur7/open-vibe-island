@@ -23,6 +23,9 @@ document is the review-oriented map of its decisions.
 - Round 4 removed all remote SwiftPM dependencies. Native Markdown rendering
   and golden assertions retain the app and test behavior; no vendored package
   is required. See [`dependency-provenance.md`](dependency-provenance.md).
+- Round 5 removed network entitlements, loopback reply handling, and live SSH
+  setup instructions. `scripts/verify-no-network-policy.py` enforces a
+  Git-scoped static boundary; runtime traffic observation remains Round 10.
 
 ## Boundary and audit rule
 
@@ -39,6 +42,16 @@ Consequently, a newly discovered powerful file fails closed until it has a
 disposition. The inventory itself rejects unknown dispositions and incomplete
 entries.
 
+Round 5 separately rejects Network and URL-loading APIs, IP socket
+families/listeners, remote endpoints and package references, network shell
+tools, telemetry/update surfaces, and network entitlements. `AF_UNIX` is
+permitted only in the policy's named bridge and local-cmux adapter files. The
+dependency provenance document is the sole scanned documentation exception for
+inert upstream URLs. Policy implementation and invariant-fixture files are
+excluded from content scanning because they deliberately contain signatures
+that the fixtures test; all other live source, manifests, build/test/package/
+verification scripts, entitlements, and packaged metadata are covered.
+
 ## Product, build graph, and delivery disposition
 
 | Current item | Disposition / owner | Acceptance evidence | Migration / rollback |
@@ -52,6 +65,7 @@ entries.
 | Removed GitHub workflows, release/notary/upload scripts and claims | removed in Round 3 | workflow/release symbol audit | no partial release-path restoration |
 | Removed remote Swift packages, including transitive `swift-cmark`, `NetworkImage`, `swift-syntax`, `swift-custom-dump`, and `xctest-dynamic-overlay` | removed in Round 4 | empty-cache offline resolve/build/test plus static manifest/Xcode audit | future dependency requires reviewed repository-local source; currently zero vendored dependencies |
 | macOS entitlement network client | remove, Round 5 | entitlement and prohibited-API audit | no rollback to broad network entitlement |
+| Network client/server entitlement, loopback reply path, and live SSH setup | removed, Round 5 | static policy fixtures and packaged entitlement inspection | no restoration without an approved boundary change |
 
 All macOS source, resource, test, fixture, documentation, and design paths are
 listed by path group in the canonical inventory. Test targets are migrated with
@@ -104,6 +118,7 @@ Run the following before using this map as a destructive-round gate:
 
 ```sh
 python3 scripts/verify-local-only-audit.py
+python3 scripts/verify-no-network-policy.py
 swift package describe
 swift build --product OpenIslandApp
 ```

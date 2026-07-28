@@ -38,36 +38,6 @@ function sendToSocket(json) {
   });
 }
 
-function sendAndWaitResponse(json, timeoutMs = 300000) {
-  return new Promise((resolve) => {
-    try {
-      const sock = connect({ path: SOCKET_PATH }, () => {
-        sock.write(encodeEnvelope(json));
-      });
-      let buf = "";
-      sock.on("data", (chunk) => {
-        buf += chunk.toString();
-        // BridgeServer sends hello first, then response after processing
-        const lines = buf.split("\n").filter(Boolean);
-        if (lines.length >= 2) {
-          sock.destroy();
-          try { resolve(JSON.parse(lines[1])); } catch { resolve(null); }
-        }
-      });
-      sock.on("end", () => {
-        const lines = buf.split("\n").filter(Boolean);
-        if (lines.length >= 2) {
-          try { resolve(JSON.parse(lines[1])); } catch { resolve(null); }
-        } else {
-          resolve(null);
-        }
-      });
-      sock.on("error", () => resolve(null));
-      sock.setTimeout(timeoutMs, () => { sock.destroy(); resolve(null); });
-    } catch { resolve(null); }
-  });
-}
-
 // Terminal environment detection
 let detectedTty = null;
 try {
@@ -173,9 +143,7 @@ function normalizeQuestion(question, index) {
   };
 }
 
-export default async ({ client, serverUrl }) => {
-  const serverPort = serverUrl ? parseInt(serverUrl.port) || 4096 : 4096;
-  const internalFetch = client?._client?.getConfig?.()?.fetch || null;
+export default async () => {
   const msgRoles = new Map();
   const sessionCwd = new Map();
   const sessions = new Map();
@@ -329,47 +297,8 @@ export default async ({ client, serverUrl }) => {
         }
         if (!mapped) return;
 
-        // Permission request — hold connection for approval
-        if (mapped.openCodeHook.hook_event_name === "PermissionRequest" && internalFetch) {
-          const requestId = mapped.openCodeHook._opencode_request_id;
-          sendAndWaitResponse(mapped).then(async (response) => {
-            if (!response) return;
-            const directive = response?.response?.directive;
-            if (!directive) return;
-            const reply = directive.type === "allow" ? "once" : "reject";
-            const message = directive.type === "deny" ? directive.reason : undefined;
-            try {
-              await internalFetch(new Request(`http://localhost:${serverPort}/permission/${requestId}/reply`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ reply, message }),
-              }));
-            } catch {}
-          });
-          return;
-        }
-
-        // Question — hold connection for answer
-        if (mapped.openCodeHook.hook_event_name === "QuestionAsked" && internalFetch) {
-          const requestId = mapped.openCodeHook._opencode_request_id;
-          sendAndWaitResponse(mapped).then(async (response) => {
-            if (!response) return;
-            const directive = response?.response?.directive;
-            if (!directive) return;
-            if (directive.type === "answer") {
-              try {
-                await internalFetch(new Request(`http://localhost:${serverPort}/question/${requestId}/reply`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ answers: [[directive.text]] }),
-                }));
-              } catch {}
-            }
-          });
-          return;
-        }
-
-        // Regular events — fire and forget
+        // Every event uses the local Unix bridge. The former loopback reply
+        // path would create an IP request from this bundled resource.
         await sendToSocket(mapped);
       } catch {
         // Fail open: if Open Island is unavailable, don't block OpenCode

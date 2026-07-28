@@ -4,7 +4,8 @@
 # This script never resolves dependencies, contacts a notary service, uploads,
 # publishes, creates a feed, or mutates a remote service. It requires the
 # checkout to contain all of its own source; it has no external SwiftPM
-# dependencies to resolve.
+# dependencies to resolve. `--disable-sandbox` permits an outer macOS sandbox
+# to supply the actual network denial without SwiftPM attempting a nested one.
 
 set -euo pipefail
 
@@ -30,11 +31,11 @@ if [[ "$bundle_dir" != "$package_root/"*.app || "$zip_path" != "$package_root/"*
 fi
 
 cd "$repo_root"
-swift build --disable-automatic-resolution -c release --product OpenIslandApp
-swift build --disable-automatic-resolution -c release --product OpenIslandHooks
-swift build --disable-automatic-resolution -c release --product OpenIslandSetup
+swift build --disable-automatic-resolution --disable-sandbox -c release --product OpenIslandApp
+swift build --disable-automatic-resolution --disable-sandbox -c release --product OpenIslandHooks
+swift build --disable-automatic-resolution --disable-sandbox -c release --product OpenIslandSetup
 
-build_bin_dir="$(swift build --disable-automatic-resolution -c release --show-bin-path)"
+build_bin_dir="$(swift build --disable-automatic-resolution --disable-sandbox -c release --show-bin-path)"
 app_binary="$build_bin_dir/OpenIslandApp"
 hooks_binary="$build_bin_dir/OpenIslandHooks"
 setup_binary="$build_bin_dir/OpenIslandSetup"

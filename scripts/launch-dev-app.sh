@@ -3,7 +3,8 @@
 #
 # This script never resolves dependencies, uploads, publishes, notarizes, or
 # contacts an update feed. The package has no external SwiftPM dependencies and
-# only signs with the local development identity (or ad-hoc).
+# only signs with the local development identity (or ad-hoc). `--disable-sandbox`
+# permits an outer macOS sandbox to supply network denial without nesting it.
 
 set -euo pipefail
 
@@ -15,11 +16,11 @@ bundle_binary="$bundle_dir/Contents/MacOS/OpenIslandApp"
 
 cd "$repo_root"
 
-swift build --disable-automatic-resolution -c debug --product OpenIslandApp
-swift build --disable-automatic-resolution -c debug --product OpenIslandHooks
-swift build --disable-automatic-resolution -c debug --product OpenIslandSetup
+swift build --disable-automatic-resolution --disable-sandbox -c debug --product OpenIslandApp
+swift build --disable-automatic-resolution --disable-sandbox -c debug --product OpenIslandHooks
+swift build --disable-automatic-resolution --disable-sandbox -c debug --product OpenIslandSetup
 
-build_root="$(swift build --disable-automatic-resolution -c debug --show-bin-path)"
+build_root="$(swift build --disable-automatic-resolution --disable-sandbox -c debug --show-bin-path)"
 app_binary="$build_root/OpenIslandApp"
 hooks_binary="$build_root/OpenIslandHooks"
 setup_binary="$build_root/OpenIslandSetup"
