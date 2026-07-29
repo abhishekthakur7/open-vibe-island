@@ -104,10 +104,6 @@ EOF
 
 plutil -lint "$bundle_dir/Contents/Info.plist" >/dev/null
 
-# The inventory is generated only after all helper/template bytes are final
-# and is placed under Contents/Resources before the enclosing app is signed.
-python3 "$repo_root/scripts/generate-artifact-manifest.py" "$bundle_dir"
-
 sign_identity="-"
 if security find-identity -p codesigning -v "$HOME/Library/Keychains/login.keychain-db" 2>/dev/null \
         | grep -q "\"$local_identity_name\""; then
@@ -116,6 +112,11 @@ fi
 
 codesign --force --sign "$sign_identity" "$bundle_dir/Contents/Helpers/OpenIslandHooks"
 codesign --force --sign "$sign_identity" "$bundle_dir/Contents/Helpers/OpenIslandSetup"
+
+# Helper signing changes its bytes. Generate the inventory only after all
+# helper/template bytes are final, then sign the enclosing app that contains it.
+python3 "$repo_root/scripts/generate-artifact-manifest.py" "$bundle_dir"
+
 codesign --force --sign "$sign_identity" --entitlements "$entitlements_path" "$bundle_dir"
 codesign --verify --deep --strict --verbose=2 "$bundle_dir"
 python3 "$repo_root/scripts/verify-no-network-policy.py" --bundle "$bundle_dir"
