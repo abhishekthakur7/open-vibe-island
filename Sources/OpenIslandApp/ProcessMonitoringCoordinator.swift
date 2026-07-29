@@ -745,9 +745,7 @@ final class ProcessMonitoringCoordinator {
                 workspaceName: workspaceName,
                 paneTitle: "Claude \(workspaceName)",
                 workingDirectory: workingDirectory,
-                terminalTTY: process.terminalTTY,
-                tmuxTarget: process.tmuxTarget,
-                tmuxSocketPath: process.tmuxSocketPath
+                terminalTTY: process.terminalTTY
             )
         )
         session.isProcessAlive = true
@@ -822,9 +820,7 @@ final class ProcessMonitoringCoordinator {
                 workspaceName: workspaceName,
                 paneTitle: "Cursor \(sessionID.prefix(8))",
                 workingDirectory: workingDirectory,
-                terminalTTY: process.terminalTTY,
-                tmuxTarget: process.tmuxTarget,
-                tmuxSocketPath: process.tmuxSocketPath
+                terminalTTY: process.terminalTTY
             ),
             cursorMetadata: CursorSessionMetadata(
                 conversationId: process.sessionID,
@@ -1173,8 +1169,6 @@ final class ProcessMonitoringCoordinator {
                 workingDirectory: workingDirectory,
                 terminalSessionID: session.jumpTarget?.terminalSessionID,
                 terminalTTY: process.terminalTTY ?? session.jumpTarget?.terminalTTY,
-                tmuxTarget: process.tmuxTarget ?? session.jumpTarget?.tmuxTarget,
-                tmuxSocketPath: process.tmuxSocketPath ?? session.jumpTarget?.tmuxSocketPath,
                 warpPaneUUID: session.jumpTarget?.warpPaneUUID,
                 codexThreadID: session.jumpTarget?.codexThreadID
             )

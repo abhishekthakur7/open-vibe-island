@@ -112,20 +112,14 @@ public enum WarpProcessResolver {
     }
 
     private static func runSubprocess(executable: String, arguments: [String]) -> String? {
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: executable)
-        task.arguments = arguments
-        let stdout = Pipe()
-        task.standardOutput = stdout
-        task.standardError = Pipe()
-        do {
-            try task.run()
-            task.waitUntilExit()
-        } catch {
-            return nil
-        }
-        guard task.terminationStatus == 0 else { return nil }
-        let data = stdout.fileHandleForReading.readDataToEndOfFile()
-        return String(data: data, encoding: .utf8)
+        guard executable == "/bin/ps",
+              arguments.count == 4,
+              arguments[0] == "-o",
+              arguments[2] == "-p",
+              let pid = pid_t(arguments[3]) else { return nil }
+        let action: LocalAutomationAction = arguments[1] == "ppid=" ? .inspectProcessParent : .inspectProcessCommand
+        guard let result = try? LocalProcessRunner.shared.run(action, pid: pid),
+              let value = String(data: result.stdout, encoding: .utf8) else { return nil }
+        return value
     }
 }

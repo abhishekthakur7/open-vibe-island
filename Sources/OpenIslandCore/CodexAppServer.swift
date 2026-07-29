@@ -81,12 +81,13 @@ public enum CodexAppServerNotification: Sendable {
 
 // MARK: - JSON-RPC transport
 
-/// A lightweight JSON-RPC client that communicates with Codex app-server
-/// over a stdio-based `Process`.  Uses newline-delimited JSON messages
-/// (one JSON object per line, no Content-Length framing).
+/// A bounded JSON-RPC line parser retained for protocol fixtures.
+///
+/// Open Island deliberately does not start Codex's app-server: that would
+/// require spawning a third-party executable and feeding it RPC data. The
+/// parser remains useful to tests, but production `start()` always fails
+/// closed and no process can be selected or launched through this type.
 public final class CodexAppServerClient: @unchecked Sendable {
-    private let codexPath: String
-    private var process: Process?
     /// Internal access so tests can inject a discard `Pipe` and drive
     /// the request path without launching a real codex subprocess.
     var stdin: FileHandle?
@@ -107,66 +108,22 @@ public final class CodexAppServerClient: @unchecked Sendable {
 
     public var onNotification: (@Sendable (CodexAppServerNotification) -> Void)?
 
-    public init(codexPath: String = "/Applications/Codex.app/Contents/Resources/codex") {
-        self.codexPath = codexPath
-    }
+    public init(codexPath _: String = "/Applications/Codex.app/Contents/Resources/codex") {}
 
-    public var isRunning: Bool {
-        process?.isRunning == true
-    }
+    public var isRunning: Bool { false }
 
     // MARK: - Lifecycle
 
     /// Launch the app-server subprocess and perform the `initialize` handshake.
     public func start() async throws {
-        guard !isRunning else { return }
-
-        let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: codexPath)
-        proc.arguments = ["app-server", "--listen", "stdio://"]
-
-        let stdinPipe = Pipe()
-        let stdoutPipe = Pipe()
-        let stderrPipe = Pipe()
-        proc.standardInput = stdinPipe
-        proc.standardOutput = stdoutPipe
-        proc.standardError = stderrPipe
-
-        self.stdin = stdinPipe.fileHandleForWriting
-        self.process = proc
-
-        // Read stdout in a background thread.
-        stdoutPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
-            let data = handle.availableData
-            guard !data.isEmpty else { return }
-            self?.handleIncomingData(data)
-        }
-
-        // Drain stderr so a full pipe can't block the child process.
-        stderrPipe.fileHandleForReading.readabilityHandler = { handle in
-            _ = handle.availableData
-        }
-
-        try proc.run()
-
-        // Send initialize request.
-        struct InitializeParams: Encodable {
-            struct ClientInfo: Encodable {
-                let name: String
-                let version: String
-            }
-            let clientInfo: ClientInfo
-        }
-        _ = try await sendRequest(
-            method: "initialize",
-            params: InitializeParams(clientInfo: .init(name: "OpenIsland", version: "1.0.0"))
-        )
+        // A third-party app-server executable is not a signed Open Island
+        // helper and can accept arbitrary RPC payloads. It is intentionally
+        // unavailable in the local-only runtime.
+        throw LocalAutomationPolicyError.unsupportedAction
     }
 
-    /// Stop the app-server subprocess.
+    /// Clears test-only transport state. No subprocess is ever owned.
     public func stop() {
-        process?.terminate()
-        process = nil
         stdin = nil
         lock.lock()
         let pending = pendingRequests

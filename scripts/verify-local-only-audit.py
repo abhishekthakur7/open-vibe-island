@@ -21,6 +21,22 @@ REQUIRED_ALLOWLISTS = {
     "local_urls",
     "cmux_operations",
 }
+DIRECT_AUTOMATION_PATTERNS = {
+    "process": re.compile(r"\bProcess\(\)"),
+    "process-executable": re.compile(r"\.executableURL\s*="),
+    "process-arguments": re.compile(r"\.arguments\s*="),
+    "process-environment": re.compile(r"\.environment\s*="),
+    "process-cwd": re.compile(r"\.currentDirectoryURL\s*="),
+    "osascript": re.compile(r'"/usr/bin/osascript"'),
+    "path-lookup": re.compile(r'"/usr/bin/env"'),
+    "apple-script-api": re.compile(r"\bNSAppleScript\b"),
+    "node-child-process": re.compile(r"\bchild_process\b"),
+    "node-spawn": re.compile(r"\bspawnSync\s*\("),
+    "workspace-open": re.compile(
+        r"NSWorkspace\.shared\.(?:open|openURL|openApplication|activateFileViewerSelecting)"
+    ),
+    "shell-script": re.compile(r"\bdo\s+shell\s+script\b", re.IGNORECASE),
+}
 POWERFUL_PATTERN = re.compile(
     r"AF_UNIX|socket\(|SOCK_STREAM|NWListener|NWBrowser|URLSession|URLRequest|"
     r"Process\(\)|executableURL|osascript|NSWorkspace|openURL|openApplication|"
@@ -147,7 +163,7 @@ def repository_candidate_paths(root: Path, filenames: set[str]) -> list[Path]:
             continue
         relative = Path(os.fsdecode(raw_path))
         if (
-            relative.name not in filenames
+            (relative.name not in filenames and relative.suffix not in filenames)
             or relative.is_absolute()
             or ".git" in relative.parts
             or ".build" in relative.parts
@@ -191,6 +207,60 @@ def no_network_policy_errors(root: Path) -> list[str]:
     return []
 
 
+def direct_automation_errors(root: Path, dispositions: list[object]) -> list[str]:
+    """Fail closed on direct launch/open/AppleScript additions.
+
+    The only permitted direct primitives have a file-and-symbol disposition in
+    the audit map.  A new primitive, a move to another file, or an additional
+    occurrence beyond the reviewed count is a CI failure rather than an
+    invitation to add a broad directory allowlist.
+    """
+    errors: list[str] = []
+    allowed: dict[tuple[str, str], int] = {}
+    for entry in dispositions:
+        if not isinstance(entry, dict):
+            errors.append("automation_source_dispositions contains a non-object entry")
+            continue
+        for key in ("id", "path", "symbol", "action", "role", "patterns", "evidence"):
+            if not entry.get(key):
+                errors.append(f"automation_source_dispositions.{entry.get('id', '<unknown>')} missing {key}")
+        path = entry.get("path")
+        patterns = entry.get("patterns")
+        if not isinstance(path, str) or not isinstance(patterns, dict):
+            continue
+        for name, count in patterns.items():
+            if name not in DIRECT_AUTOMATION_PATTERNS or not isinstance(count, int) or count < 0:
+                errors.append(f"automation_source_dispositions.{entry.get('id', '<unknown>')} has invalid pattern count")
+                continue
+            allowed[(path, name)] = allowed.get((path, name), 0) + count
+
+    observed: dict[tuple[str, str], int] = {}
+    for path in repository_candidate_paths(root, {".swift", ".js"}):
+        relative = path.relative_to(root).as_posix()
+        if not relative.startswith("Sources/"):
+            continue
+        text = path.read_text(errors="ignore")
+        for name, pattern in DIRECT_AUTOMATION_PATTERNS.items():
+            count = len(pattern.findall(text))
+            if count:
+                observed[(relative, name)] = count
+
+    for key, count in sorted(observed.items()):
+        expected = allowed.get(key, 0)
+        if count != expected:
+            errors.append(
+                f"uninventoryed direct automation primitive: {key[0]} {key[1]} "
+                f"(observed {count}, reviewed {expected})"
+            )
+    for key, expected in sorted(allowed.items()):
+        if observed.get(key, 0) != expected:
+            errors.append(
+                f"stale direct automation disposition: {key[0]} {key[1]} "
+                f"(reviewed {expected}, observed {observed.get(key, 0)})"
+            )
+    return errors
+
+
 def main() -> int:
     errors: list[str] = []
     try:
@@ -230,6 +300,11 @@ def main() -> int:
         value = allowlists.get(name)
         if not isinstance(value, list) or not value:
             fail(errors, f"allowlists.{name} must be a non-empty list")
+    dispositions = payload.get("automation_source_dispositions")
+    if not isinstance(dispositions, list) or not dispositions:
+        fail(errors, "automation_source_dispositions must be a non-empty list")
+        dispositions = []
+    errors.extend(direct_automation_errors(ROOT, dispositions))
 
     all_paths = flattened_paths(inventory)
     all_ids = inventory_ids(inventory)

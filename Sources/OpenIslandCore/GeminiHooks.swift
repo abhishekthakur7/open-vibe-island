@@ -204,8 +204,8 @@ public extension GeminiHookPayload {
     func withRuntimeContext(environment: [String: String]) -> GeminiHookPayload {
         withRuntimeContext(
             environment: environment,
-            currentTTYProvider: { currentTTY() },
-            terminalLocatorProvider: { terminalLocator(for: $0) }
+            currentTTYProvider: { nil },
+            terminalLocatorProvider: { _ in (nil, nil, nil) }
         )
     }
 
@@ -394,135 +394,6 @@ public extension GeminiHookPayload {
         return nil
     }
 
-    private func currentTTY() -> String? {
-        if let tty = commandOutput(executablePath: "/usr/bin/tty", arguments: []),
-           !tty.contains("not a tty") {
-            return tty
-        }
-
-        return parentProcessTTY()
-    }
-
-    private func parentProcessTTY() -> String? {
-        let ppid = getppid()
-        guard let raw = commandOutput(executablePath: "/bin/ps", arguments: ["-p", "\(ppid)", "-o", "tty="]) else {
-            return nil
-        }
-
-        let tty = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !tty.isEmpty, tty != "??", tty != "-" else {
-            return nil
-        }
-
-        return tty.hasPrefix("/dev/") ? tty : "/dev/\(tty)"
-    }
-
-    private func terminalLocator(for terminalApp: String) -> (sessionID: String?, tty: String?, title: String?) {
-        let normalized = terminalApp.lowercased()
-
-        if normalized.contains("iterm") {
-            let values = osascriptValues(script: Self.terminalLocatorAppleScript(for: "iTerm"))
-            return (
-                sessionID: values[safe: 0],
-                tty: values[safe: 1],
-                title: values[safe: 2]
-            )
-        }
-
-        if normalized == "cmux" {
-            return (sessionID: nil, tty: nil, title: nil)
-        }
-
-        if normalized.contains("ghostty") {
-            let values = osascriptValues(script: Self.terminalLocatorAppleScript(for: "Ghostty"))
-            return (
-                sessionID: values[safe: 0],
-                tty: nil,
-                title: values[safe: 2]
-            )
-        }
-
-        if normalized.contains("terminal") {
-            let values = osascriptValues(script: Self.terminalLocatorAppleScript(for: "Terminal"))
-            return (
-                sessionID: nil,
-                tty: values[safe: 0],
-                title: values[safe: 1]
-            )
-        }
-
-        return (nil, nil, nil)
-    }
-
-    static func terminalLocatorAppleScript(for terminalApp: String) -> String {
-        switch terminalApp {
-        case "iTerm":
-            """
-            tell application "iTerm"
-                if not (it is running) then return ""
-                tell current session of current window
-                    return (id as text) & (ASCII character 31) & (tty as text) & (ASCII character 31) & (name as text)
-                end tell
-            end tell
-            """
-        case "Ghostty":
-            """
-            tell application "Ghostty"
-                if not (it is running) then return ""
-                tell focused terminal of selected tab of front window
-                    return (id as text) & (ASCII character 31) & (working directory as text) & (ASCII character 31) & (name as text)
-                end tell
-            end tell
-            """
-        case "Terminal":
-            """
-            tell application "Terminal"
-                if not (it is running) then return ""
-                tell selected tab of front window
-                    return (tty as text) & (ASCII character 31) & (custom title as text)
-                end tell
-            end tell
-            """
-        default:
-            ""
-        }
-    }
-
-    private func osascriptValues(script: String) -> [String] {
-        guard let raw = commandOutput(executablePath: "/usr/bin/osascript", arguments: ["-e", script]) else {
-            return []
-        }
-
-        let separator = String(UnicodeScalar(31)!)
-        return raw
-            .components(separatedBy: separator)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-    }
-
-    private func commandOutput(executablePath: String, arguments: [String]) -> String? {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: executablePath)
-        process.arguments = arguments
-
-        let outputPipe = Pipe()
-        process.standardOutput = outputPipe
-        process.standardError = Pipe()
-
-        do {
-            try process.run()
-            process.waitUntilExit()
-        } catch {
-            return nil
-        }
-
-        let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        guard !data.isEmpty else {
-            return nil
-        }
-
-        return String(data: data, encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-    }
 }
 
 private extension CodexHookJSONValue {

@@ -549,32 +549,17 @@ public extension CodexHookPayload {
     func withRuntimeContext(environment: [String: String]) -> CodexHookPayload {
         withRuntimeContext(
             environment: environment,
-            currentTTYProvider: { currentTTY() },
-            terminalLocatorProvider: { terminalLocator(for: $0) },
-            warpPaneResolver: Self.defaultWarpPaneResolver
+            currentTTYProvider: { nil },
+            terminalLocatorProvider: { _ in (nil, nil, nil) },
+            warpPaneResolver: { _ in nil }
         )
-    }
-
-    /// Default production resolver — PID-based lookup first, cwd-based
-    /// as the fallback. Mirrors ClaudeHookPayload.defaultWarpPaneResolver;
-    /// see that file for the rationale.
-    static let defaultWarpPaneResolver: @Sendable (String) -> String? = { cwd in
-        let reader = WarpSQLiteReader()
-        if let context = WarpProcessResolver.resolveCurrentPaneContext(),
-           let uuid = reader.lookupPaneUUIDByShellPID(
-               context.shellPID,
-               terminalServerPID: context.terminalServerPID
-           ) {
-            return uuid
-        }
-        return reader.lookupPaneUUID(forCwd: cwd)
     }
 
     func withRuntimeContext(
         environment: [String: String],
         currentTTYProvider: () -> String?,
         terminalLocatorProvider: (String) -> (sessionID: String?, tty: String?, title: String?),
-        warpPaneResolver: (String) -> String? = Self.defaultWarpPaneResolver
+        warpPaneResolver: (String) -> String? = { _ in nil }
     ) -> CodexHookPayload {
         var payload = self
 
@@ -586,35 +571,12 @@ public extension CodexHookPayload {
             payload.warpPaneUUID = warpPaneResolver(payload.cwd)
         }
 
-        // For cmux, use CMUX_SURFACE_ID as the terminal session identifier.
-        if payload.terminalApp == "cmux" {
-            if payload.terminalSessionID == nil {
-                payload.terminalSessionID = environment["CMUX_SURFACE_ID"]
-            }
-        }
-
-        // For Zellij, encode pane ID and session name so the jump service
-        // can focus the correct pane via the Zellij CLI.
-        if isZellijTerminalApp(payload.terminalApp) {
-            if payload.terminalSessionID == nil {
-                let paneID = environment["ZELLIJ_PANE_ID"] ?? ""
-                let sessionName = environment["ZELLIJ_SESSION_NAME"] ?? ""
-                if !paneID.isEmpty {
-                    payload.terminalSessionID = "\(paneID):\(sessionName)"
-                }
-            }
-        }
-
         if payload.terminalTTY == nil {
             payload.terminalTTY = currentTTYProvider()
         }
 
         let useLocator: Bool
-        if isCmuxTerminalApp(payload.terminalApp) || isZellijTerminalApp(payload.terminalApp) {
-            // cmux/Zellij session IDs come from environment variables;
-            // no AppleScript locator is available, so skip entirely.
-            useLocator = false
-        } else if let terminalApp = payload.terminalApp, isGhosttyTerminalApp(terminalApp) {
+        if let terminalApp = payload.terminalApp, isGhosttyTerminalApp(terminalApp) {
             if payload.hookEventName == .sessionStart || payload.hookEventName == .userPromptSubmit {
                 useLocator = true
             } else {
@@ -762,128 +724,6 @@ public extension CodexHookPayload {
         return nil
     }
 
-    private func currentTTY() -> String? {
-        if let tty = commandOutput(executablePath: "/usr/bin/tty", arguments: []),
-           !tty.contains("not a tty") {
-            return tty
-        }
-
-        return parentProcessTTY()
-    }
-
-    private func parentProcessTTY() -> String? {
-        let ppid = getppid()
-        guard let raw = commandOutput(executablePath: "/bin/ps", arguments: ["-p", "\(ppid)", "-o", "tty="]) else {
-            return nil
-        }
-
-        let tty = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !tty.isEmpty, tty != "??", tty != "-" else {
-            return nil
-        }
-
-        return tty.hasPrefix("/dev/") ? tty : "/dev/\(tty)"
-    }
-
-    private func terminalLocator(for terminalApp: String) -> (sessionID: String?, tty: String?, title: String?) {
-        let normalized = terminalApp.lowercased()
-
-        if normalized.contains("iterm") {
-            let values = osascriptValues(script: """
-            tell application "iTerm"
-                if not (it is running) then return ""
-                tell current session of current window
-                    return (id as text) & (ASCII character 31) & (tty as text) & (ASCII character 31) & (name as text)
-                end tell
-            end tell
-            """)
-            return (
-                sessionID: values[safe: 0],
-                tty: values[safe: 1],
-                title: values[safe: 2]
-            )
-        }
-
-        if normalized == "cmux" {
-            // cmux uses its own socket API; AppleScript locator is not available.
-            return (sessionID: nil, tty: nil, title: nil)
-        }
-
-        if normalized.contains("ghostty") {
-            let values = osascriptValues(script: """
-            tell application "Ghostty"
-                if not (it is running) then return ""
-                tell focused terminal of selected tab of front window
-                    return (id as text) & (ASCII character 31) & (working directory as text) & (ASCII character 31) & (name as text)
-                end tell
-            end tell
-            """)
-            return (
-                sessionID: values[safe: 0],
-                tty: nil,
-                title: values[safe: 2]
-            )
-        }
-
-        if normalized.contains("terminal") {
-            let values = osascriptValues(script: """
-            tell application "Terminal"
-                if not (it is running) then return ""
-                tell selected tab of front window
-                    return (tty as text) & (ASCII character 31) & (custom title as text)
-                end tell
-            end tell
-            """)
-            return (
-                sessionID: nil,
-                tty: values[safe: 0],
-                title: values[safe: 1]
-            )
-        }
-
-        return (nil, nil, nil)
-    }
-
-    private func osascriptValues(script: String) -> [String] {
-        guard let raw = commandOutput(executablePath: "/usr/bin/osascript", arguments: ["-e", script]) else {
-            return []
-        }
-
-        let separator = String(UnicodeScalar(31)!)
-        return raw
-            .components(separatedBy: separator)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-    }
-
-    private func commandOutput(executablePath: String, arguments: [String]) -> String? {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: executablePath)
-        process.arguments = arguments
-
-        let outputPipe = Pipe()
-        process.standardOutput = outputPipe
-        process.standardError = Pipe()
-
-        do {
-            try process.run()
-            process.waitUntilExit()
-        } catch {
-            return nil
-        }
-
-        guard process.terminationStatus == 0 else {
-            return nil
-        }
-
-        let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        guard let output = String(data: data, encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-              !output.isEmpty else {
-            return nil
-        }
-
-        return output
-    }
 }
 
 private extension Array {

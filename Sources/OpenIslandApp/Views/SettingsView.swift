@@ -1113,18 +1113,7 @@ struct SetupSettingsPane: View {
     }
 
     private func revealInFinder(_ url: URL) {
-        let fileManager = FileManager.default
-        let standardizedURL = url.standardizedFileURL
-
-        if fileManager.fileExists(atPath: standardizedURL.path) {
-            NSWorkspace.shared.activateFileViewerSelecting([standardizedURL])
-            return
-        }
-
-        let directoryURL = standardizedURL.deletingLastPathComponent()
-        if fileManager.fileExists(atPath: directoryURL.path) {
-            NSWorkspace.shared.open(directoryURL)
-        }
+        LocalFileReveal.reveal(url)
     }
 }
 

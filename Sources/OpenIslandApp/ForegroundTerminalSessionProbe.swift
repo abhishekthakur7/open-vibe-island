@@ -4,7 +4,7 @@ import OpenIslandCore
 
 struct ForegroundTerminalSessionProbe {
     typealias FrontmostBundleIdentifierProvider = @Sendable () -> String?
-    typealias AppleScriptRunner = @Sendable (String) async throws -> String
+    typealias AppleScriptRunner = @Sendable (LocalAppleScriptTemplate, [String]) async throws -> String
 
     private static let fieldSeparator = "\u{1f}"
     private static let appleScriptTimeout: DispatchTimeInterval = .seconds(1)
@@ -112,38 +112,15 @@ struct ForegroundTerminalSessionProbe {
     }
 
     private func ghosttyFocusedTerminalID() async -> String? {
-        let script = """
-        tell application "Ghostty"
-            if not (it is running) then return ""
-            return id of focused terminal of selected tab of front window as text
-        end tell
-        """
-
-        return nonEmptyValue(try? await appleScriptRunner(script))
+        return nonEmptyValue(try? await appleScriptRunner(.ghosttyFocusedTerminalProbe, []))
     }
 
     private func terminalFocusedTTY() async -> String? {
-        let script = """
-        tell application "Terminal"
-            if not (it is running) then return ""
-            return tty of selected tab of front window as text
-        end tell
-        """
-
-        return nonEmptyValue(try? await appleScriptRunner(script))
+        return nonEmptyValue(try? await appleScriptRunner(.terminalFocusedTTYProbe, []))
     }
 
     private func itermFocusedSession() async -> (sessionID: String?, tty: String?)? {
-        let script = """
-        tell application "iTerm"
-            if not (it is running) then return ""
-            tell current session of current window
-                return (id as text) & "\(Self.fieldSeparator)" & (tty as text)
-            end tell
-        end tell
-        """
-
-        guard let output = nonEmptyValue(try? await appleScriptRunner(script)) else {
+        guard let output = nonEmptyValue(try? await appleScriptRunner(.iTermFocusedSessionProbe, [])) else {
             return nil
         }
 
@@ -175,63 +152,10 @@ struct ForegroundTerminalSessionProbe {
         return trimmed.hasPrefix("/dev/") ? trimmed : "/dev/\(trimmed)"
     }
 
-    private static func runAppleScript(_ script: String) async throws -> String {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        process.arguments = ["-e", script]
-
-        let pipeBox = PipeBox()
-        process.standardOutput = pipeBox.outputPipe
-        process.standardError = pipeBox.errorPipe
-
-        return try await withCheckedThrowingContinuation { continuation in
-            let continuationBox = ContinuationBox()
-
-            let finish: @Sendable (Result<String, Error>) -> Void = { result in
-                continuationBox.resumeOnce {
-                    continuation.resume(with: result)
-                }
-            }
-
-            process.terminationHandler = { terminatedProcess in
-                let output = pipeBox.outputString()
-                let errorText = pipeBox.errorString()
-                pipeBox.closePipes()
-
-                guard terminatedProcess.terminationStatus == 0 else {
-                    finish(.failure(NSError(
-                        domain: "ForegroundTerminalSessionProbe",
-                        code: Int(terminatedProcess.terminationStatus),
-                        userInfo: [
-                            NSLocalizedDescriptionKey: errorText.isEmpty ? "AppleScript probe failed." : errorText,
-                        ]
-                    )))
-                    return
-                }
-
-                finish(.success(output))
-            }
-
-            do {
-                try process.run()
-            } catch {
-                pipeBox.closePipes()
-                finish(.failure(error))
-                return
-            }
-
-            DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + Self.appleScriptTimeout) {
-                guard process.isRunning else {
-                    return
-                }
-
-                process.terminate()
-                finish(.failure(NSError(
-                    domain: "ForegroundTerminalSessionProbe",
-                    code: 408,
-                    userInfo: [NSLocalizedDescriptionKey: "AppleScript probe timed out."]
-                )))
-            }
-        }
+    private static func runAppleScript(_ template: LocalAppleScriptTemplate, _ parameters: [String]) async throws -> String {
+        let result = try await Task.detached(priority: .utility) {
+            try LocalProcessRunner.shared.runAppleScript(template, parameters: parameters, timeout: 1)
+        }.value
+        return String(data: result.stdout, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 }

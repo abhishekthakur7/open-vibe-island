@@ -361,25 +361,8 @@ public struct WarpSQLiteReader: Sendable {
     /// when pgrep exits with code 1 (no children found) — a valid
     /// result, not an error.
     static func enumerateChildPIDs(of pid: pid_t) -> [pid_t]? {
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
-        task.arguments = ["-P", "\(pid)"]
-        let stdout = Pipe()
-        task.standardOutput = stdout
-        task.standardError = Pipe()
-        do {
-            try task.run()
-            task.waitUntilExit()
-        } catch {
-            return nil
-        }
-        // pgrep: 0 = matches found, 1 = no matches (not an error),
-        // 2+    = genuine error.
-        guard task.terminationStatus == 0 || task.terminationStatus == 1 else {
-            return nil
-        }
-        let data = stdout.fileHandleForReading.readDataToEndOfFile()
-        guard let output = String(data: data, encoding: .utf8) else { return [] }
+        guard let result = try? LocalProcessRunner.shared.run(.inspectChildProcesses, pid: pid),
+              let output = String(data: result.stdout, encoding: .utf8) else { return nil }
         return output
             .split(separator: "\n")
             .compactMap { pid_t($0.trimmingCharacters(in: .whitespaces)) }

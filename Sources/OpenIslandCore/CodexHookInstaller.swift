@@ -393,18 +393,13 @@ public enum CodexHookInstaller {
             || featureValue(for: legacyFeatureKey, lines: lines) == true
     }
 
-    /// Detects the Codex hook feature flag supported by the installed CLI.
+    /// Uses the current documented Codex hook feature flag.
+    ///
+    /// This intentionally does not execute a user-installed `codex` binary:
+    /// hook installation must not turn a compatibility check into a PATH or
+    /// external-process execution surface. Older CLIs simply leave the managed
+    /// entry inert until they are upgraded.
     public static func preferredCodexHooksFeatureKey() -> CodexHooksFeatureFlagKey {
-        if let featureKey = commandOutput(arguments: ["features", "list"])
-            .flatMap(preferredCodexHooksFeatureKey(fromFeatureList:)) {
-            return featureKey
-        }
-
-        if let featureKey = commandOutput(arguments: ["--version"])
-            .flatMap(preferredCodexHooksFeatureKey(fromVersionOutput:)) {
-            return featureKey
-        }
-
         return .current
     }
 
@@ -651,62 +646,6 @@ public enum CodexHookInstaller {
         let major = components[0]
         let minor = components[1]
         return major > 0 || minor >= 130 ? .current : .legacy
-    }
-
-    private static func commandOutput(arguments: [String]) -> String? {
-        for command in codexCommandCandidates() {
-            if let output = runCommand(
-                executableURL: command.executableURL,
-                arguments: command.prefixArguments + arguments
-            ) {
-                return output
-            }
-        }
-
-        return nil
-    }
-
-    /// Returns Codex CLI locations to probe, including app-bundled and shell-installed builds.
-    private static func codexCommandCandidates() -> [(executableURL: URL, prefixArguments: [String])] {
-        var candidates: [(executableURL: URL, prefixArguments: [String])] = [
-            (URL(fileURLWithPath: "/usr/bin/env"), ["codex"]),
-        ]
-
-        for path in [
-            "/Applications/Codex.app/Contents/Resources/codex",
-            "/opt/homebrew/bin/codex",
-            "/usr/local/bin/codex",
-        ] {
-            if FileManager.default.isExecutableFile(atPath: path) {
-                candidates.append((URL(fileURLWithPath: path), []))
-            }
-        }
-
-        return candidates
-    }
-
-    private static func runCommand(executableURL: URL, arguments: [String]) -> String? {
-        let process = Process()
-        process.executableURL = executableURL
-        process.arguments = arguments
-
-        let output = Pipe()
-        process.standardOutput = output
-        process.standardError = Pipe()
-
-        do {
-            try process.run()
-            process.waitUntilExit()
-        } catch {
-            return nil
-        }
-
-        guard process.terminationStatus == 0 else {
-            return nil
-        }
-
-        let data = output.fileHandleForReading.readDataToEndOfFile()
-        return String(data: data, encoding: .utf8)
     }
 
     private static func shellQuote(_ string: String) -> String {

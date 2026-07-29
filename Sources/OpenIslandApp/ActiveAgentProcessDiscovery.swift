@@ -16,8 +16,6 @@ struct ActiveAgentProcessDiscovery {
         var terminalTTY: String?
         var terminalApp: String?
         var transcriptPath: String?
-        var tmuxTarget: String?
-        var tmuxSocketPath: String?
 
         init(
             tool: AgentTool,
@@ -25,9 +23,7 @@ struct ActiveAgentProcessDiscovery {
             workingDirectory: String?,
             terminalTTY: String?,
             terminalApp: String? = nil,
-            transcriptPath: String? = nil,
-            tmuxTarget: String? = nil,
-            tmuxSocketPath: String? = nil
+            transcriptPath: String? = nil
         ) {
             self.tool = tool
             self.sessionID = sessionID
@@ -35,8 +31,6 @@ struct ActiveAgentProcessDiscovery {
             self.terminalTTY = terminalTTY
             self.terminalApp = terminalApp
             self.transcriptPath = transcriptPath
-            self.tmuxTarget = tmuxTarget
-            self.tmuxSocketPath = tmuxSocketPath
         }
     }
 
@@ -158,25 +152,13 @@ struct ActiveAgentProcessDiscovery {
                     continue
                 }
 
-                var snapshot = ProcessSnapshot(
+                let snapshot = ProcessSnapshot(
                     tool: .openCode,
                     sessionID: nil,
                     workingDirectory: cwd,
                     terminalTTY: process.terminalTTY,
                     terminalApp: terminalApp(for: process, processesByPID: processesByPID)
                 )
-
-                if snapshot.terminalApp == nil, let agentTTY = process.terminalTTY {
-                    if let (tmuxTarget, hostTerminalApp, socketPath) = resolveTmuxInfo(
-                        agentTTY: agentTTY,
-                        processes: processesByPID.values.map { $0 },
-                        processesByPID: processesByPID
-                    ) {
-                        snapshot.terminalApp = hostTerminalApp
-                        snapshot.tmuxTarget = tmuxTarget
-                        snapshot.tmuxSocketPath = socketPath
-                    }
-                }
 
                 snapshots.append(snapshot)
                 continue
@@ -260,26 +242,13 @@ struct ActiveAgentProcessDiscovery {
             return nil
         }
 
-        var snapshot = ProcessSnapshot(
+        let snapshot = ProcessSnapshot(
             tool: .codex,
             sessionID: sessionID,
             workingDirectory: workingDirectory(from: lsofOutput),
             terminalTTY: process.terminalTTY,
             terminalApp: terminalApp(for: process, processesByPID: processesByPID)
         )
-
-        // If terminalApp is nil and we have a TTY, try to resolve tmux info
-        if snapshot.terminalApp == nil, let agentTTY = process.terminalTTY {
-            if let (tmuxTarget, hostTerminalApp, socketPath) = resolveTmuxInfo(
-                agentTTY: agentTTY,
-                processes: processesByPID.values.map { $0 },
-                processesByPID: processesByPID
-            ) {
-                snapshot.terminalApp = hostTerminalApp
-                snapshot.tmuxTarget = tmuxTarget
-                snapshot.tmuxSocketPath = socketPath
-            }
-        }
 
         return snapshot
     }
@@ -296,25 +265,13 @@ struct ActiveAgentProcessDiscovery {
             return nil
         }
 
-        var snapshot = ProcessSnapshot(
+        let snapshot = ProcessSnapshot(
             tool: .cursor,
             sessionID: sessionID,
             workingDirectory: workingDirectory,
             terminalTTY: process.terminalTTY,
             terminalApp: terminalApp(for: process, processesByPID: processesByPID)
         )
-
-        if snapshot.terminalApp == nil, let agentTTY = process.terminalTTY {
-            if let (tmuxTarget, hostTerminalApp, socketPath) = resolveTmuxInfo(
-                agentTTY: agentTTY,
-                processes: processesByPID.values.map { $0 },
-                processesByPID: processesByPID
-            ) {
-                snapshot.terminalApp = hostTerminalApp
-                snapshot.tmuxTarget = tmuxTarget
-                snapshot.tmuxSocketPath = socketPath
-            }
-        }
 
         return snapshot
     }
@@ -361,7 +318,7 @@ struct ActiveAgentProcessDiscovery {
             return nil
         }
 
-        var snapshot = ProcessSnapshot(
+        let snapshot = ProcessSnapshot(
             tool: .claudeCode,
             sessionID: sessionID,
             workingDirectory: workingDirectory,
@@ -369,19 +326,6 @@ struct ActiveAgentProcessDiscovery {
             terminalApp: terminalApp(for: process, processesByPID: processesByPID),
             transcriptPath: transcriptPath
         )
-
-        // If terminalApp is nil and we have a TTY, try to resolve tmux info
-        if snapshot.terminalApp == nil, let agentTTY = process.terminalTTY {
-            if let (tmuxTarget, hostTerminalApp, socketPath) = resolveTmuxInfo(
-                agentTTY: agentTTY,
-                processes: processesByPID.values.map { $0 },
-                processesByPID: processesByPID
-            ) {
-                snapshot.terminalApp = hostTerminalApp
-                snapshot.tmuxTarget = tmuxTarget
-                snapshot.tmuxSocketPath = socketPath
-            }
-        }
 
         return snapshot
     }
@@ -787,182 +731,19 @@ struct ActiveAgentProcessDiscovery {
     }
 
     private static func commandOutput(executablePath: String, arguments: [String]) -> String? {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: executablePath)
-        process.arguments = arguments
-
-        let outputPipe = Pipe()
-        process.standardOutput = outputPipe
-        process.standardError = Pipe()
-        let completionGroup = DispatchGroup()
-        completionGroup.enter()
-        process.terminationHandler = { _ in
-            completionGroup.leave()
-        }
-        let outputGroup = DispatchGroup()
-        outputGroup.enter()
-        let outputBox = OutputBox()
-        DispatchQueue.global(qos: .utility).async {
-            outputBox.data = outputPipe.fileHandleForReading.readDataToEndOfFile()
-            outputGroup.leave()
-        }
-        let timeout: TimeInterval = executablePath.hasSuffix("/lsof")
-            ? Self.lsofCommandTimeout
-            : Self.processCommandTimeout
-
-        do {
-            try process.run()
-        } catch {
+        let action: LocalAutomationAction
+        let pid: pid_t?
+        switch (executablePath, arguments) {
+        case ("/bin/ps", ["-Ao", "pid=,ppid=,tty=,command="]):
+            action = .inspectProcessSnapshot; pid = nil
+        case ("/usr/sbin/lsof", let values) where values.count == 4 && values[0] == "-a" && values[1] == "-p" && values[3] == "-Fn":
+            action = .inspectOpenFiles; pid = pid_t(values[2])
+        default:
             return nil
         }
-
-        let waitResult = completionGroup.wait(timeout: .now() + timeout)
-        if waitResult == .timedOut {
-            process.terminate()
-            _ = completionGroup.wait(timeout: .now() + 0.1)
-            return nil
-        }
-
-        guard process.terminationStatus == 0 else {
-            return nil
-        }
-
-        _ = outputGroup.wait(timeout: .now() + 0.1)
-        guard let output = String(data: outputBox.data, encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-              !output.isEmpty else {
-            return nil
-        }
-
+        guard let result = try? LocalProcessRunner.shared.run(action, pid: pid, timeout: action == .inspectOpenFiles ? Self.lsofCommandTimeout : Self.processCommandTimeout),
+              let output = String(data: result.stdout, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !output.isEmpty else { return nil }
         return output
-    }
-
-    // MARK: - Tmux support
-
-    private func resolveTmuxPath() -> String? {
-        let candidates = [
-            "/opt/homebrew/bin/tmux",
-            "/usr/local/bin/tmux",
-            "/usr/bin/tmux",
-        ]
-
-        if let found = candidates.first(where: { FileManager.default.isExecutableFile(atPath: $0) }) {
-            return found
-        }
-
-        // Fallback to 'which'
-        guard let output = commandRunner("/usr/bin/which", ["tmux"]) else {
-            return nil
-        }
-
-        let path = output.trimmingCharacters(in: .whitespacesAndNewlines)
-        return path.isEmpty ? nil : path
-    }
-
-    private func resolveTmuxInfo(
-        agentTTY: String,
-        processes: [RunningProcess],
-        processesByPID: [String: RunningProcess]
-    ) -> (target: String, hostTerminalApp: String?, socketPath: String?)? {
-        guard let tmuxPath = resolveTmuxPath() else {
-            return nil
-        }
-
-        // Find tmux-server process to extract socket path if custom
-        var socketPath: String? = nil
-        for process in processes {
-            if isTmuxServerProcess(command: process.command) {
-                // Extract socket path from tmux-server command line
-                let parts = process.command.split(separator: " ").map(String.init)
-                for (index, part) in parts.enumerated() {
-                    if (part == "-S" || part == "-L"), parts.indices.contains(index + 1) {
-                        socketPath = String(parts[index + 1])
-                        break
-                    }
-                }
-                break
-            }
-        }
-
-        // Query tmux list-panes to find the pane matching our TTY
-        guard let tmuxTarget = queryTmuxTarget(agentTTY: agentTTY, tmuxPath: tmuxPath, socketPath: socketPath) else {
-            return nil
-        }
-
-        // Find the terminal app hosting the tmux client connected to this pane
-        guard let hostTerminalApp = findTmuxClientTerminal(tmuxPath: tmuxPath, socketPath: socketPath, processesByPID: processesByPID) else {
-            return nil
-        }
-
-        return (tmuxTarget, hostTerminalApp, socketPath)
-    }
-
-    private func queryTmuxTarget(agentTTY: String, tmuxPath: String, socketPath: String?) -> String? {
-        var args: [String] = ["list-panes", "-a", "-F", "#{pane_tty}\t#{session_name}:#{window_index}.#{pane_index}"]
-
-        if let socketPath = socketPath {
-            args = ["-S", socketPath] + args
-        }
-
-        guard let output = commandRunner(tmuxPath, args) else {
-            return nil
-        }
-
-        for line in output.split(separator: "\n") {
-            let parts = line.split(separator: "\t", maxSplits: 1).map(String.init)
-            guard parts.count == 2 else {
-                continue
-            }
-
-            let ptrTTY = parts[0].trimmingCharacters(in: .whitespacesAndNewlines)
-            let target = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
-
-            if ptrTTY == agentTTY {
-                return target
-            }
-        }
-
-        return nil
-    }
-
-    private func findTmuxClientTerminal(
-        tmuxPath: String,
-        socketPath: String?,
-        processesByPID: [String: RunningProcess]
-    ) -> String? {
-        var args: [String] = ["list-clients", "-F", "#{client_tty}"]
-
-        if let socketPath = socketPath {
-            args = ["-S", socketPath] + args
-        }
-
-        guard let output = commandRunner(tmuxPath, args) else {
-            return nil
-        }
-
-        for clientTTYLine in output.split(separator: "\n") {
-            let clientTTY = clientTTYLine.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !clientTTY.isEmpty else {
-                continue
-            }
-
-            // Find the process whose TTY matches this client TTY, then walk its parents
-            for process in processesByPID.values {
-                if process.terminalTTY == clientTTY {
-                    if let terminalApp = terminalApp(for: process, processesByPID: processesByPID) {
-                        return terminalApp
-                    }
-                }
-            }
-        }
-
-        return nil
-    }
-
-    private func isTmuxServerProcess(command: String) -> Bool {
-        let lowered = command.lowercased()
-        return lowered.contains("tmux") && lowered.contains("new-session")
-            || lowered.hasSuffix("tmux-server")
-            || lowered.contains("tmux") && lowered.contains("server")
     }
 }

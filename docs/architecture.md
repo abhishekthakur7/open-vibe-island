@@ -73,17 +73,32 @@ Each event carries a stable session identifier, agent type, timestamps, and enou
 
 ## Terminal Jump-Back
 
+### Local automation boundary
+
+Automation is a closed, typed action set in `LocalAutomationPolicy`. It may
+inspect a local process through fixed `/bin/ps`, `/usr/sbin/lsof`, and
+`/usr/bin/pgrep` argument shapes, or use one of the immutable AppleScript
+probe/focus templates. The runner starts direct absolute executables with an
+empty environment, `/` as its fixed cwd, bounded output, a short timeout, and
+process-group cleanup. It accepts neither shells nor command strings.
+
+AppleScript source is never built from session data: immutable `on run argv`
+templates receive only bounded typed parameters. External inputs cannot choose
+an executable, bundle identifier, URL, script source, cmux command, cwd, or
+environment. Unsupported terminal reply injection, tmux/zellij/WezTerm CLI
+discovery, Codex app-server spawning, and generic file/URL opening are denied.
+Only the app-internal bridge role can invoke a powerful local action; all other
+roles fail closed.
+
 Terminal focus restoration is implemented per-terminal:
 
 | Terminal | Strategy |
 |---|---|
 | Terminal.app | TTY targeting via AppleScript |
 | Ghostty | Window ID matching |
-| cmux | Unix socket API |
-| Kaku | CLI pane targeting |
-| WezTerm | CLI pane targeting |
-| iTerm2 | AppleScript session/TTY probe |
-| tmux (multiplexer) | switch-client → select-window → select-pane |
+| cmux | unsupported in local-only mode |
+| iTerm2 | immutable AppleScript session/TTY probe |
+| Kaku, WezTerm, tmux, zellij | unsupported in local-only mode |
 
 The hook helper enriches payloads with terminal-local hints (terminal app, TTY, session ID, window title) from environment inspection at hook invocation time.
 

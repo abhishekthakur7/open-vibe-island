@@ -220,14 +220,6 @@ struct GeminiHooksTests {
     }
 
     @Test
-    func geminiGhosttyLocatorScriptSeparatesIDWorkingDirectoryAndTitle() {
-        let script = GeminiHookPayload.terminalLocatorAppleScript(for: "Ghostty")
-
-        #expect(script.contains("(id as text) & (ASCII character 31) & (working directory as text)"))
-        #expect(script.contains("(working directory as text) & (ASCII character 31) & (name as text)"))
-    }
-
-    @Test
     func geminiCompletionMessageUsesLastBodySegmentAndDropsRepeatedTail() {
         let response = """
         I'll review the integration guide and summarize the migration plan.

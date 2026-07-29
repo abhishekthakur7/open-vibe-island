@@ -17,37 +17,19 @@ function debugLog(msg) {
 
 // OpenCode never speaks the bridge protocol directly. The fixed bundled helper
 // owns the signed hook-event-submit role and the Keychain bootstrap material.
-const HOOK_HELPERS = [
-  "/Applications/Open Island.app/Contents/Helpers/OpenIslandHooks",
-  `${process.env.HOME || homedir()}/Applications/Open Island Dev.app/Contents/Helpers/OpenIslandHooks`,
-];
+const BUNDLED_HOOK_HELPER = "/Applications/Open Island.app/Contents/Helpers/OpenIslandHooks";
 
 function sendToSocket(json) {
   try {
-    const helper = HOOK_HELPERS.find(existsSync);
-    if (!helper) return Promise.resolve(false);
-    const result = spawnSync(helper, ["--source", "opencode"], {
+    if (!existsSync(BUNDLED_HOOK_HELPER)) return Promise.resolve(false);
+    const result = spawnSync(BUNDLED_HOOK_HELPER, ["--source", "opencode"], {
       input: JSON.stringify(json.openCodeHook), encoding: "utf8", timeout: 3000,
+      killSignal: "SIGKILL", cwd: "/", env: {},
       stdio: ["pipe", "ignore", "ignore"],
     });
     return Promise.resolve(!result.error && result.status === 0);
   } catch { return Promise.resolve(false); }
 }
-
-// Terminal environment detection
-let detectedTty = null;
-try {
-  const { execSync } = require("child_process");
-  let walkPid = process.pid;
-  for (let i = 0; i < 8; i++) {
-    const info = execSync(`ps -o tty=,ppid= -p ${walkPid}`, { timeout: 1000 }).toString().trim();
-    const parts = info.split(/\s+/);
-    const tty = parts[0], ppid = parseInt(parts[1]);
-    if (tty && tty !== "??" && tty !== "?") { detectedTty = `/dev/${tty}`; break; }
-    if (!ppid || ppid <= 1) break;
-    walkPid = ppid;
-  }
-} catch {}
 
 const ENV_KEYS = [
   "TERM_PROGRAM", "ITERM_SESSION_ID", "TERM_SESSION_ID",
@@ -83,7 +65,6 @@ function terminalFields() {
   } else if (env.TERM_PROGRAM) {
     result.terminal_app = env.TERM_PROGRAM;
   }
-  if (detectedTty) result.terminal_tty = detectedTty;
   return result;
 }
 

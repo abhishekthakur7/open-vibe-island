@@ -6,7 +6,7 @@ final class ForegroundTerminalSessionProbeTests: XCTestCase {
     func testMatchesGhosttyFrontmostTerminalBySessionID() async {
         let probe = ForegroundTerminalSessionProbe(
             frontmostBundleIdentifierProvider: { "com.mitchellh.ghostty" },
-            appleScriptRunner: { _ in "ghostty-frontmost" }
+            appleScriptRunner: { _, _ in "ghostty-frontmost" }
         )
 
         let matches = await probe.matches(
@@ -24,7 +24,7 @@ final class ForegroundTerminalSessionProbeTests: XCTestCase {
     func testMatchesTerminalFrontmostTabByTTY() async {
         let probe = ForegroundTerminalSessionProbe(
             frontmostBundleIdentifierProvider: { "com.apple.Terminal" },
-            appleScriptRunner: { _ in "ttys001" }
+            appleScriptRunner: { _, _ in "ttys001" }
         )
 
         let matches = await probe.matches(
@@ -42,7 +42,7 @@ final class ForegroundTerminalSessionProbeTests: XCTestCase {
     func testMatchesITermFrontmostSessionByTTYFallback() async {
         let probe = ForegroundTerminalSessionProbe(
             frontmostBundleIdentifierProvider: { "com.googlecode.iterm2" },
-            appleScriptRunner: { _ in "different-session\u{1f}/dev/ttys002" }
+            appleScriptRunner: { _, _ in "different-session\u{1f}/dev/ttys002" }
         )
 
         let matches = await probe.matches(
@@ -61,7 +61,7 @@ final class ForegroundTerminalSessionProbeTests: XCTestCase {
     func testReturnsFalseForUnsupportedFrontmostApp() async {
         let probe = ForegroundTerminalSessionProbe(
             frontmostBundleIdentifierProvider: { "com.example.Editor" },
-            appleScriptRunner: { _ in "" }
+            appleScriptRunner: { _, _ in "" }
         )
 
         let matches = await probe.matches(

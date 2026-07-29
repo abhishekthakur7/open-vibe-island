@@ -73,7 +73,6 @@ struct TerminalSessionAttachmentProbe {
     private static let liveGraceWindow: TimeInterval = 120
     private static let staleGraceWindow: TimeInterval = 15 * 60
     private static let inactiveClaudeMatchWindow: TimeInterval = 120
-    private static let appleScriptTimeout: TimeInterval = 1.0
     private static let fieldSeparator = "\u{1f}"
     private static let recordSeparator = "\u{1e}"
 
@@ -1168,35 +1167,7 @@ struct TerminalSessionAttachmentProbe {
     }
 
     private func ghosttySnapshots() throws -> [GhosttyTerminalSnapshot] {
-        let script = """
-        set fieldSeparator to ASCII character 31
-        set recordSeparator to ASCII character 30
-        tell application "Ghostty"
-            if not (it is running) then return ""
-            set outputLines to {}
-            repeat with aTerminal in terminals
-                set terminalID to ""
-                set terminalDirectory to ""
-                set terminalTitle to ""
-                try
-                    set terminalID to (id of aTerminal as text)
-                end try
-                try
-                    set terminalDirectory to (working directory of aTerminal as text)
-                end try
-                try
-                    set terminalTitle to (name of aTerminal as text)
-                end try
-                set end of outputLines to terminalID & fieldSeparator & terminalDirectory & fieldSeparator & terminalTitle
-            end repeat
-            set AppleScript's text item delimiters to recordSeparator
-            set joinedOutput to outputLines as string
-            set AppleScript's text item delimiters to ""
-            return joinedOutput
-        end tell
-        """
-
-        let output = try runAppleScript(script)
+        let output = try runAppleScript(.ghosttySnapshot)
         return output
             .split(separator: Character(Self.recordSeparator), omittingEmptySubsequences: true)
             .map(String.init)
@@ -1215,33 +1186,7 @@ struct TerminalSessionAttachmentProbe {
     }
 
     private func terminalSnapshots() throws -> [TerminalTabSnapshot] {
-        let script = """
-        set fieldSeparator to ASCII character 31
-        set recordSeparator to ASCII character 30
-        tell application "Terminal"
-            if not (it is running) then return ""
-            set outputLines to {}
-            repeat with aWindow in windows
-                repeat with aTab in tabs of aWindow
-                    set tabTTY to ""
-                    set tabTitle to ""
-                    try
-                        set tabTTY to (tty of aTab as text)
-                    end try
-                    try
-                        set tabTitle to (custom title of aTab as text)
-                    end try
-                    set end of outputLines to tabTTY & fieldSeparator & tabTitle
-                end repeat
-            end repeat
-            set AppleScript's text item delimiters to recordSeparator
-            set joinedOutput to outputLines as string
-            set AppleScript's text item delimiters to ""
-            return joinedOutput
-        end tell
-        """
-
-        let output = try runAppleScript(script)
+        let output = try runAppleScript(.terminalSnapshot)
         return output
             .split(separator: Character(Self.recordSeparator), omittingEmptySubsequences: true)
             .map(String.init)
@@ -1259,39 +1204,7 @@ struct TerminalSessionAttachmentProbe {
     }
 
     private func itermSnapshots() throws -> [ITermSessionSnapshot] {
-        let script = """
-        set fieldSeparator to ASCII character 31
-        set recordSeparator to ASCII character 30
-        tell application "iTerm"
-            if not (it is running) then return ""
-            set outputLines to {}
-            repeat with aWindow in windows
-                repeat with aTab in tabs of aWindow
-                    repeat with aSession in sessions of aTab
-                        set sessionID to ""
-                        set sessionTTY to ""
-                        set sessionTitle to ""
-                        try
-                            set sessionID to (id of aSession as text)
-                        end try
-                        try
-                            set sessionTTY to (tty of aSession as text)
-                        end try
-                        try
-                            set sessionTitle to (name of aSession as text)
-                        end try
-                        set end of outputLines to sessionID & fieldSeparator & sessionTTY & fieldSeparator & sessionTitle
-                    end repeat
-                end repeat
-            end repeat
-            set AppleScript's text item delimiters to recordSeparator
-            set joinedOutput to outputLines as string
-            set AppleScript's text item delimiters to ""
-            return joinedOutput
-        end tell
-        """
-
-        let output = try runAppleScript(script)
+        let output = try runAppleScript(.iTermSnapshot)
         return output
             .split(separator: Character(Self.recordSeparator), omittingEmptySubsequences: true)
             .map(String.init)
@@ -1319,42 +1232,9 @@ struct TerminalSessionAttachmentProbe {
         NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).isEmpty == false
     }
 
-    private func runAppleScript(_ script: String) throws -> String {
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        task.arguments = ["-e", script]
-
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-        task.standardOutput = outputPipe
-        task.standardError = errorPipe
-        let completionGroup = DispatchGroup()
-        completionGroup.enter()
-        task.terminationHandler = { _ in
-            completionGroup.leave()
-        }
-
-        try task.run()
-        let waitResult = completionGroup.wait(timeout: .now() + Self.appleScriptTimeout)
-        if waitResult == .timedOut {
-            task.terminate()
-            _ = completionGroup.wait(timeout: .now() + 0.2)
-            throw NSError(domain: "TerminalSessionAttachmentProbe", code: 408, userInfo: [
-                NSLocalizedDescriptionKey: "AppleScript probe timed out.",
-            ])
-        }
-
-        let output = String(data: outputPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
+    private func runAppleScript(_ template: LocalAppleScriptTemplate) throws -> String {
+        let result = try LocalProcessRunner.shared.runAppleScript(template, parameters: [], timeout: 1)
+        return String(data: result.stdout, encoding: .utf8)?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-
-        guard task.terminationStatus == 0 else {
-            let stderr = String(data: errorPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
-                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            throw NSError(domain: "TerminalSessionAttachmentProbe", code: Int(task.terminationStatus), userInfo: [
-                NSLocalizedDescriptionKey: stderr.isEmpty ? "AppleScript probe failed." : stderr,
-            ])
-        }
-
-        return output
     }
 }

@@ -1,22 +1,14 @@
-import AppKit
 import Foundation
 import OpenIslandCore
 
 /// Manages the lifecycle of the Codex app-server connection.
 ///
-/// Automatically starts the app-server subprocess when Codex.app is
-/// detected, and tears it down when the app quits.  Converts incoming
-/// app-server notifications into `AgentEvent`s that flow through the
-/// standard `SessionState` reducer.
+/// The app-server transport is intentionally unavailable in local-only mode.
+/// Hook and process-discovery events continue to flow through the standard
+/// `SessionState` reducer without locating or launching Codex executables.
 @Observable
 @MainActor
 final class CodexAppServerCoordinator {
-    @ObservationIgnored
-    private var client: CodexAppServerClient?
-
-    @ObservationIgnored
-    private var connectTask: Task<Void, Never>?
-
     /// Callback to emit AgentEvents into AppModel.
     @ObservationIgnored
     var onEvent: ((AgentEvent) -> Void)?
@@ -35,83 +27,17 @@ final class CodexAppServerCoordinator {
 
     // MARK: - Public API
 
-    /// Ensure a connection exists.  Called from the monitoring loop when
-    /// Codex.app is detected as running.  Idempotent — does nothing if
-    /// already connected or a connection attempt is in progress.
+    /// App-server spawning is denied in local-only mode.
     func ensureConnected() {
-        guard !isConnected, connectTask == nil else { return }
-
-        // Resolve the Codex.app bundle location dynamically — users may
-        // have installed Codex outside `/Applications` (e.g. ~/Applications).
-        guard let bundleURL = NSWorkspace.shared.urlForApplication(
-            withBundleIdentifier: "com.openai.codex"
-        ) else {
-            return
-        }
-        let codexPath = bundleURL
-            .appendingPathComponent("Contents/Resources/codex")
-            .path
-        guard FileManager.default.isExecutableFile(atPath: codexPath) else {
-            return
-        }
-
-        connectTask = Task { [weak self] in
-            guard let self else { return }
-            do {
-                let newClient = CodexAppServerClient(codexPath: codexPath)
-                newClient.onNotification = { [weak self] notification in
-                    Task { @MainActor [weak self] in
-                        self?.handleNotification(notification)
-                    }
-                }
-                try await newClient.start()
-
-                self.client = newClient
-                self.isConnected = true
-                self.connectTask = nil
-
-                self.onStatusMessage?("Connected to Codex app-server.")
-
-                // Fetch currently loaded threads and create sessions.
-                await self.syncLoadedThreads()
-            } catch {
-                self.connectTask = nil
-                self.onStatusMessage?("Failed to connect to Codex app-server: \(error.localizedDescription)")
-            }
-        }
+        onStatusMessage?("Codex app-server integration is unavailable in local-only mode.")
     }
 
     /// Disconnect and clean up.  Called when Codex.app is no longer running.
     func disconnect() {
-        connectTask?.cancel()
-        connectTask = nil
-        client?.stop()
-        client = nil
         isConnected = false
     }
 
     // MARK: - Thread sync
-
-    private func syncLoadedThreads() async {
-        guard let client else { return }
-        do {
-            let threads = try await client.listLoadedThreads()
-            var created = 0
-            for thread in threads where !thread.ephemeral {
-                // Skip threads already tracked — re-emitting sessionStarted
-                // rebuilds the AgentSession and would wipe richer state
-                // already accumulated from hooks or rediscovery.
-                if isSessionTracked?(thread.id) == true { continue }
-                emitSessionStarted(from: thread)
-                created += 1
-            }
-            if created > 0 {
-                onStatusMessage?("Synced \(created) new Codex thread(s) from app-server.")
-            }
-        } catch {
-            onStatusMessage?("Failed to list loaded Codex threads: \(error.localizedDescription)")
-        }
-    }
 
     // MARK: - Notification handling
 

@@ -74,6 +74,24 @@ class RepositoryScopedDependencyAuditTests(unittest.TestCase):
             ):
                 AUDIT.repository_candidate_paths(REPO_ROOT, AUDIT.REMOTE_DEPENDENCY_FILENAMES)
 
+    def test_uninventoryed_direct_process_primitive_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = pathlib.Path(temporary_directory)
+            self.make_repository(root)
+            source = root / "Sources"
+            source.mkdir()
+            (source / "Unreviewed.swift").write_text("let child = Process()\n")
+
+            errors = AUDIT.direct_automation_errors(root, [])
+
+            self.assertEqual(
+                errors,
+                [
+                    "uninventoryed direct automation primitive: "
+                    "Sources/Unreviewed.swift process (observed 1, reviewed 0)"
+                ],
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

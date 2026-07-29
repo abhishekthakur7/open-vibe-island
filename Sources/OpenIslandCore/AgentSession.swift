@@ -151,10 +151,9 @@ public struct JumpTarget: Equatable, Codable, Sendable {
     /// Sentinel stamped into `terminalApp` when the host application could not
     /// be classified — no `TERM_PROGRAM`, no recognizable env marker, or a
     /// session rediscovered from a `.jsonl` transcript with no live process to
-    /// inspect. Kept internally because the jump path reads it as
-    /// "unclassifiable" and falls back to the Finder cwd instead of activating
-    /// an arbitrary terminal; presentation code hides it because it carries no
-    /// host information.
+    /// inspect. Kept internally so the jump path fails closed rather than
+    /// activating an arbitrary terminal; presentation code hides it because it
+    /// carries no host information.
     public static let unknownTerminalApp = "Unknown"
 
     public var terminalApp: String
@@ -163,12 +162,9 @@ public struct JumpTarget: Equatable, Codable, Sendable {
     public var workingDirectory: String?
     public var terminalSessionID: String?
     public var terminalTTY: String?
-    public var tmuxTarget: String?
-    public var tmuxSocketPath: String?
     public var warpPaneUUID: String?
-    /// Codex.app thread/conversation ID.  When set and `terminalApp` is
-    /// `"Codex.app"`, the jump uses the `codex://threads/<id>` URL scheme
-    /// to open the conversation directly rather than just activating the app.
+    /// Codex.app thread/conversation ID used only for local session
+    /// correlation. It is never converted into a URL or application action.
     public var codexThreadID: String?
 
     public init(
@@ -178,8 +174,6 @@ public struct JumpTarget: Equatable, Codable, Sendable {
         workingDirectory: String? = nil,
         terminalSessionID: String? = nil,
         terminalTTY: String? = nil,
-        tmuxTarget: String? = nil,
-        tmuxSocketPath: String? = nil,
         warpPaneUUID: String? = nil,
         codexThreadID: String? = nil
     ) {
@@ -189,8 +183,6 @@ public struct JumpTarget: Equatable, Codable, Sendable {
         self.workingDirectory = workingDirectory
         self.terminalSessionID = terminalSessionID
         self.terminalTTY = terminalTTY
-        self.tmuxTarget = tmuxTarget
-        self.tmuxSocketPath = tmuxSocketPath
         self.warpPaneUUID = warpPaneUUID
         self.codexThreadID = codexThreadID
     }

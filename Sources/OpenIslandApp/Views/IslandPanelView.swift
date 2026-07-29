@@ -3688,29 +3688,16 @@ struct TranscriptAffordance: View {
     }
 }
 
-/// Opens the transcript JSONL file in whatever app the user has set as
-/// default for that file type — mirrors the plain `NSWorkspace.shared.open`
-/// pattern used elsewhere in the app (e.g. `CodexAppServerCoordinator`).
+/// The transcript action is Finder-only. Session data is not allowed to select
+/// a default application, URL scheme, or application bundle identifier.
 private func openTranscriptFile(at path: String) {
-    NSWorkspace.shared.open(URL(fileURLWithPath: path))
+    LocalFileReveal.reveal(URL(fileURLWithPath: path))
 }
 
-/// Reveals the transcript file in Finder, falling back to its containing
-/// directory if the file itself is already gone — same fallback pattern as
-/// `GeneralSettingsPane.revealInFinder` in `SettingsView.swift`.
+/// Reveals only an existing, validated transcript in Finder. Missing paths and
+/// paths outside approved local agent roots fail closed.
 private func revealTranscriptFileInFinder(at path: String) {
-    let fileManager = FileManager.default
-    let url = URL(fileURLWithPath: path).standardizedFileURL
-
-    if fileManager.fileExists(atPath: url.path) {
-        NSWorkspace.shared.activateFileViewerSelecting([url])
-        return
-    }
-
-    let directoryURL = url.deletingLastPathComponent()
-    if fileManager.fileExists(atPath: directoryURL.path) {
-        NSWorkspace.shared.open(directoryURL)
-    }
+    LocalFileReveal.reveal(URL(fileURLWithPath: path))
 }
 
 /// Puts the full transcript path — session-id filename included — on the
