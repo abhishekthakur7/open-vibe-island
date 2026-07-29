@@ -1,4 +1,5 @@
 import AppKit
+import OpenIslandCore
 import SwiftUI
 
 @MainActor
@@ -15,6 +16,7 @@ final class OpenIslandAppDelegate: NSObject, NSApplicationDelegate {
         ProcessInfo.processInfo.disableSuddenTermination()
         NSApp.setActivationPolicy(model.showDockIcon ? .regular : .accessory)
         harnessRuntimeMonitor.recordMilestone("applicationDidFinishLaunching")
+        _ = RuntimeNetworkPolicy.validateProductionInvariant()
 
         DispatchQueue.main.async { [self] in
             harnessRuntimeMonitor.recordMilestone("bootstrapStarted")

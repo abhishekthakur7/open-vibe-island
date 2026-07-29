@@ -25,6 +25,7 @@ approved_evidence_parent="$repo_root/shots/after"
 fixed_staging_parent="/private/tmp"
 script_executable="/usr/bin/script"
 orca_executable="/usr/local/bin/orca"
+runtime_network_observer="$repo_root/scripts/observe-runtime-network.py"
 
 dry_run=false
 
@@ -1299,6 +1300,37 @@ build_harness_executable() {
         echo "ERROR: pinned Orca executable is unavailable: $orca_executable" >&2
         return 1
     }
+    [[ -f "$runtime_network_observer" ]] || {
+        echo "ERROR: runtime network observer is unavailable: $runtime_network_observer" >&2
+        return 1
+    }
+}
+
+observe_owned_process_tree() {
+    local evidence="$scenario_dir_physical/network-observation.json"
+    validate_owned_app_identity || {
+        mark_terminal_unsafe "owned app identity changed before runtime network observation"
+        return 1
+    }
+    safe_exec_new_output \
+        "$scenario_dir_physical" "$scenario_dir_identity" network-observation.json \
+        /usr/bin/python3 "$runtime_network_observer" \
+        --root-pid "$owned_app_pid" \
+        --root-start-identity "$(normalize_start_identity "$owned_app_start_identity")" \
+        --expected-root "$harness_executable" \
+        --duration 1.2 --interval 0.05 || return 1
+    verify_fresh_artifact "$evidence" || return 1
+    /usr/bin/python3 - "$evidence" <<'PY'
+import json
+import pathlib
+import sys
+
+report = json.loads(pathlib.Path(sys.argv[1]).read_text())
+if report.get("policyVersion") != "round-10" or report.get("result") != "PASS":
+    raise SystemExit(1)
+if not report.get("processTreeSnapshots"):
+    raise SystemExit(1)
+PY
 }
 
 apply_theme() {
@@ -1544,6 +1576,10 @@ PY
         mark_terminal_unsafe "final Orca evidence is not fresh in the identity-bound cell"
         return 1
     }
+    verify_fresh_artifact "$scenario_dir_physical/network-observation.json" || {
+        mark_terminal_unsafe "runtime network observation is missing or not fresh in the identity-bound cell"
+        return 1
+    }
     for artifact in "${final_artifacts[@]}"; do
         verify_fresh_artifact "$artifact" || {
             mark_terminal_unsafe "final copied artifact failed identity/freshness validation: $artifact"
@@ -1581,7 +1617,7 @@ PY
         printf 'orca_observation_succeeded\t%s\n' "$orca_observation_succeeded"
         printf 'validated_staging_identity\t%s\n' "$staging_dir_identity"
         printf 'validated_epoch\t%s\n' "$(date +%s)"
-        for artifact in "$final_report" "$orca_report" "${final_artifacts[@]}"; do
+        for artifact in "$final_report" "$orca_report" "$scenario_dir_physical/network-observation.json" "${final_artifacts[@]}"; do
             printf 'validated_artifact\t%s\t%s\n' \
                 "${artifact:t}" "$(/usr/bin/stat -f '%B' "$artifact")"
         done
@@ -1634,6 +1670,9 @@ run_scenario() {
     local orca_exit_status=0
     local orca_evidence="$scenario_dir_physical/orca-app-state.json"
     if ! launch_scenario "$scenario"; then
+        scenario_status=1
+    elif ! observe_owned_process_tree; then
+        echo "ERROR: runtime process-tree network observation failed for exact owned PID $owned_app_pid." >&2
         scenario_status=1
     elif wait_for_staging_capture; then
         staging_ready=true

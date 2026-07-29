@@ -57,7 +57,10 @@ cp "$hooks_binary" "$bundle_dir/Contents/Helpers/OpenIslandHooks"
 cp "$setup_binary" "$bundle_dir/Contents/Helpers/OpenIslandSetup"
 cp "$brand_icon" "$bundle_dir/Contents/Resources/OpenIsland.icns"
 cp -R "$resource_bundle" "$bundle_dir/Contents/Resources/"
-cp -R "$resource_bundle/ClaudeStatusLineTemplates" "$bundle_dir/Contents/Resources/"
+mkdir -p "$bundle_dir/Contents/Resources/ClaudeStatusLineTemplates"
+for template in status-line-v1.sh.template status-line-wrapper-v1.sh.template status-line-delegate-v1.sh.template; do
+    cp "$resource_bundle/$template" "$bundle_dir/Contents/Resources/ClaudeStatusLineTemplates/$template"
+done
 chmod +x "$bundle_dir/Contents/MacOS/OpenIslandApp" \
     "$bundle_dir/Contents/Helpers/OpenIslandHooks" \
     "$bundle_dir/Contents/Helpers/OpenIslandSetup"
@@ -115,6 +118,7 @@ codesign --force --sign "$sign_identity" "$bundle_dir/Contents/Helpers/OpenIslan
 codesign --force --sign "$sign_identity" "$bundle_dir/Contents/Helpers/OpenIslandSetup"
 codesign --force --sign "$sign_identity" --entitlements "$entitlements_path" "$bundle_dir"
 codesign --verify --deep --strict --verbose=2 "$bundle_dir"
+python3 "$repo_root/scripts/verify-no-network-policy.py" --bundle "$bundle_dir"
 
 ditto -c -k --keepParent "$bundle_dir" "$zip_path"
 

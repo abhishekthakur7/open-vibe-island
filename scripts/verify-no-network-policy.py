@@ -18,15 +18,17 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-POLICY_VERSION = "round-5"
+POLICY_VERSION = "round-10"
 SOURCE_SUFFIXES = {".swift", ".js", ".py", ".sh", ".bash", ".zsh", ".entitlements", ".plist", ".pbxproj", ".xcconfig"}
 SHELL_SUFFIXES = {".sh", ".bash", ".zsh"}
 MANIFEST_NAMES = {"Package.swift", "project.pbxproj"}
 POLICY_IMPLEMENTATION_PATHS = {
     "scripts/verify-local-only-audit.py",
     "scripts/verify-no-network-policy.py",
+    "scripts/observe-runtime-network.py",
     "scripts/tests/test_verify_local_only_audit.py",
     "scripts/tests/test_verify_no_network_policy.py",
+    "scripts/tests/test_observe_runtime_network.py",
 }
 AF_UNIX_ALLOWED_PATHS = {
     "Sources/OpenIslandCore/BridgeTransport.swift",
@@ -212,6 +214,24 @@ def packaged_app_policy_errors(bundle: Path) -> list[str]:
         errors.append(f"cannot inspect packaged app entitlements: {bundle}: {result.stderr.strip()}")
     else:
         errors.extend(entitlement_policy_errors(result.stdout + result.stderr, bundle.as_posix()))
+        if "com.apple.security.automation.apple-events" not in result.stdout + result.stderr:
+            errors.append(f"required automation entitlement is missing: {bundle}")
+    for helper_name in ("OpenIslandHooks", "OpenIslandSetup"):
+        helper = bundle / "Contents/Helpers" / helper_name
+        if not helper.is_file():
+            errors.append(f"packaged helper is missing: {helper}")
+            continue
+        helper_result = subprocess.run(
+            ["codesign", "-d", "--entitlements", ":-", os.fspath(helper)],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        if helper_result.returncode:
+            errors.append(f"cannot inspect packaged helper entitlements: {helper}: {helper_result.stderr.strip()}")
+        else:
+            errors.extend(entitlement_policy_errors(helper_result.stdout + helper_result.stderr, helper.as_posix()))
     return errors
 
 

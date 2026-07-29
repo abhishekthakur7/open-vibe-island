@@ -47,8 +47,10 @@ SOURCE_SUFFIXES = {".swift", ".js", ".py"}
 POLICY_IMPLEMENTATION_PATHS = {
     "scripts/verify-local-only-audit.py",
     "scripts/verify-no-network-policy.py",
+    "scripts/observe-runtime-network.py",
     "scripts/tests/test_verify_local_only_audit.py",
     "scripts/tests/test_verify_no_network_policy.py",
+    "scripts/tests/test_observe_runtime_network.py",
 }
 ROUND_2_REMOVED_PATHS = (
     "ios",

@@ -116,6 +116,15 @@ print -r -- "$LAST_WRITTEN_CONTENT"
         self.assertNotIn('open "/Applications/Open Island.app"', source)
         self.assertNotIn('open -a "Open Island"', source)
 
+    def test_each_owned_cell_requires_a_process_tree_network_observation(self) -> None:
+        source = RUNNER_PATH.read_text()
+        self.assertIn('runtime_network_observer="$repo_root/scripts/observe-runtime-network.py"', source)
+        self.assertIn("observe_owned_process_tree()", source)
+        self.assertIn("network-observation.json", source)
+        self.assertIn("--root-start-identity", source)
+        self.assertIn("--expected-root", source)
+        self.assertIn('report.get("result") != "PASS"', source)
+
     def test_production_proof_exactly_matches_empty_single_and_multiple_populations(self) -> None:
         executable = PRODUCTION_EXECUTABLE
         cases = {

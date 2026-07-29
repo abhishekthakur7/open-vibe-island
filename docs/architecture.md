@@ -71,6 +71,24 @@ Each event carries a stable session identifier, agent type, timestamps, and enou
 - Newline-delimited JSON envelopes (`BridgeCodec`)
 - Bridge server lives inside the app process
 
+## Runtime no-network evidence
+
+Release builds validate the compiled `round-10` policy version and their
+expected entitlement set at launch. A mismatch writes only a 1 KiB,
+mode-restricted local diagnostic containing a timestamp and policy code; it
+never records entitlement values, paths, commands, or user data.
+
+`scripts/smoke-all-scenarios.sh` writes `network-observation.json` for every
+identity-bound harness action. The observer uses fixed `/bin/ps` and
+`/usr/sbin/lsof` invocations to follow the exact app PID and birth identity,
+record its descendant tree, reject unallowlisted descendants and prohibited
+tool/remote-URL shapes, and fail on live IP sockets. It never scans or
+attributes a separately running application that Open Island only focuses.
+Unix-domain bridge sockets remain allowed. Sampling is passive rather than a
+privileged historical event feed, so fixtures keep short-lived sockets alive
+across multiple samples and the static no-network gate remains the companion
+control for prohibited API use.
+
 ## Terminal Jump-Back
 
 ### Local automation boundary
