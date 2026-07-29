@@ -1,2 +1,0 @@
-theme=halo
-display=F3BDCAC0-1700-415E-817D-AC4E69D405BC

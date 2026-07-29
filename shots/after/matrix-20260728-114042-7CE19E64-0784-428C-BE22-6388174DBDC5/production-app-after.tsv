@@ -1,7 +1,0 @@
-production_app_executable	/Applications/Open Island.app/Contents/MacOS/OpenIslandApp
-observation	after-run
-production_app_baseline_count	0
-production_app_baseline	NONE
-production_app_after	NONE
-production_app_none_baseline_proof	PASS
-production_app_population_count_proof	PASS

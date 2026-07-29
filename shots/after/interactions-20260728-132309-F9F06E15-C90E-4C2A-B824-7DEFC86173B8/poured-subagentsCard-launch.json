@@ -1,9 +1,0 @@
-{
-  "theme": "poured",
-  "scenario": "subagentsCard",
-  "launcher_pid": "88109",
-  "app_pid": "88109",
-  "expected_executable": "/Users/abhishekthakur/Developer/open-vibe-island/.claude/worktrees/overlay-remediation/.build/arm64-apple-macosx/debug/OpenIslandApp",
-  "ps": "88109 88080 Tue Jul 28 13:24:06 2026     /Users/abhishekt /Users/abhishekthakur/Developer/open-vibe-island/.claude/worktrees/overlay-remediation/.build/arm64-apple-macosx/debug/OpenIslandApp",
-  "ps_exit": 0
-}

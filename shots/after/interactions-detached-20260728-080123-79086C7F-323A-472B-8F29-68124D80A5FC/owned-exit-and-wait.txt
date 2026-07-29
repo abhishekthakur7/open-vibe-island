@@ -1,6 +1,0 @@
-checked_utc=2026-07-28T08:02:36Z
-owned_pid=94535
-expected_binary=/Users/abhishekthakur/Developer/open-vibe-island/.claude/worktrees/overlay-remediation/.build/arm64-apple-macosx/debug/OpenIslandApp
-ps_exit=1
-zsh:wait:13: pid 94535 is not a child of this shell
-wait_exit=127 (not a child of this evidence shell)

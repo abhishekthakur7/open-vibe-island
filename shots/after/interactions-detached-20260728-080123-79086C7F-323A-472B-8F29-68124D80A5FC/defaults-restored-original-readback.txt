@@ -1,3 +1,0 @@
-restored_theme=halo
-restored_display_read=Error: Could not find key 'overlay.display.preference' in domain 'app.openisland.dev'.
-exit=1
