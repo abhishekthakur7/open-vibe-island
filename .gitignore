@@ -18,8 +18,12 @@ Package.resolved
 
 # Local tooling artifacts
 .claude/
+.codegraph/
+.cursor/
+.gemini/
 .playwright-mcp/
 output/
+shots/
 
 # Python test caches
 __pycache__/
