@@ -1,0 +1,264 @@
+{
+  "children" : [
+    {
+      "children" : [
+        {
+          "accessibleName" : "Mute sound",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Mute sound",
+          "enabled" : true,
+          "identifier" : "speaker.wave.2.fill",
+          "label" : "Mute sound",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "Open Island Settings",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Open Island Settings",
+          "enabled" : true,
+          "identifier" : "gearshape.fill",
+          "label" : "Open Island Settings",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "Quit Open Island",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Quit Open Island",
+          "enabled" : true,
+          "identifier" : "power",
+          "label" : "Quit Open Island",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "Claude Code, open-vibe-island, waiting for an answer, 19 seconds ago",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Claude Code, open-vibe-island, waiting for an answer, 19 seconds ago",
+          "enabled" : true,
+          "label" : "Claude Code, open-vibe-island, waiting for an answer, 19 seconds ago",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "enabled" : true,
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "QUESTION"
+        },
+        {
+          "children" : [
+
+          ],
+          "enabled" : true,
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "Sonnet 5 · feat\/bridge-auth"
+        },
+        {
+          "children" : [
+
+          ],
+          "enabled" : true,
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "Bridge configuration"
+        },
+        {
+          "children" : [
+
+          ],
+          "enabled" : true,
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "Question 1 of 2"
+        },
+        {
+          "children" : [
+
+          ],
+          "enabled" : true,
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "Auth"
+        },
+        {
+          "children" : [
+
+          ],
+          "enabled" : true,
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "Which auth method should the bridge use?"
+        },
+        {
+          "accessibleName" : "1, OAuth 2.0, Delegated tokens that rotate automatically.",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "1, OAuth 2.0, Delegated tokens that rotate automatically.",
+          "enabled" : true,
+          "label" : "1, OAuth 2.0, Delegated tokens that rotate automatically.",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "2, API key, A single shared secret stored in the keychain.",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "2, API key, A single shared secret stored in the keychain.",
+          "enabled" : true,
+          "label" : "2, API key, A single shared secret stored in the keychain.",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "3, mTLS, A client certificate per machine.",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "3, mTLS, A client certificate per machine.",
+          "enabled" : true,
+          "label" : "3, mTLS, A client certificate per machine.",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "enabled" : true,
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "Question 2 of 2"
+        },
+        {
+          "children" : [
+
+          ],
+          "enabled" : true,
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "Scope"
+        },
+        {
+          "children" : [
+
+          ],
+          "enabled" : true,
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "Which surfaces should the bridge expose?"
+        },
+        {
+          "accessibleName" : "4, Local socket",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "4, Local socket",
+          "enabled" : true,
+          "label" : "4, Local socket",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "5, Loopback HTTP",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "5, Loopback HTTP",
+          "enabled" : true,
+          "label" : "5, Loopback HTTP",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "6, SSH tunnel",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "6, SSH tunnel",
+          "enabled" : true,
+          "label" : "6, SSH tunnel",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "7, Other",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "7, Other",
+          "enabled" : true,
+          "label" : "7, Other",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "enabled" : true,
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "1–7 select · Enter submits · Esc closes"
+        },
+        {
+          "accessibleName" : "Submit Answers",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Submit Answers",
+          "enabled" : false,
+          "identifier" : "open-island.question.primary-action",
+          "label" : "Submit Answers",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "Show all 9 sessions",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Show all 9 sessions",
+          "enabled" : true,
+          "label" : "Show all 9 sessions",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        }
+      ],
+      "role" : "AXGroup",
+      "subrole" : "AXHostingView",
+      "typeName" : "AXUIElement"
+    }
+  ],
+  "role" : "AXWindow",
+  "subrole" : "AXSystemDialog",
+  "typeName" : "AXUIElement"
+}

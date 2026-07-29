@@ -1,0 +1,57 @@
+{
+  "id": "53ab1f3c-61f0-40ee-8b42-50ae0061312a",
+  "ok": true,
+  "result": {
+    "screenshot": {
+      "format": "png",
+      "height": 1056,
+      "scale": 2,
+      "width": 1152,
+      "path": "/var/folders/52/7304w2xn42qbtvqcxmxz4tlm0000gn/T/orca-computer-use/53ab1f3c-61f0-40ee-8b42-50ae0061312a-screenshot.png",
+      "dataOmitted": true,
+      "expiresAt": "2026-07-28T21:38:39.323Z"
+    },
+    "snapshot": {
+      "window": {
+        "width": 576,
+        "isMinimized": false,
+        "platform": {
+          "layer": 25
+        },
+        "isOffscreen": false,
+        "screenIndex": 0,
+        "x": 468,
+        "y": 0,
+        "title": "",
+        "id": 19253,
+        "height": 528
+      },
+      "elementCount": 15,
+      "focusedElementId": null,
+      "app": {
+        "name": "OpenIslandApp",
+        "pid": 69413,
+        "bundleId": null
+      },
+      "id": "956DFDB6-D16A-4869-A146-973E87E05E82",
+      "truncation": {
+        "truncated": false,
+        "maxNodes": 1200,
+        "maxDepth": 64,
+        "maxDepthReached": false
+      },
+      "coordinateSpace": "window",
+      "treeText": "App=OpenIslandApp (pid 69413)\nWindow: \"\", App: OpenIslandApp.\n\n0 system dialog\n\t1 button\n\t2 button\n\t3 button\n\t4 button\n\t5 text QUESTION\n\t6 text Sonnet 5 · feat/question-flow\n\t7 text Which authentication method should we use?\n\t8 button\n\t9 button\n\t10 button\n\t11 button\n\t12 text 1–4 select · Enter submits · Esc closes\n\t13 button (disabled)\n\t14 button\n\nNo UI element is currently focused."
+    },
+    "screenshotStatus": {
+      "metadata": {
+        "windowId": 19253,
+        "engine": "screenCaptureKit"
+      },
+      "state": "captured"
+    }
+  },
+  "_meta": {
+    "runtimeId": "b88107f1-4fc2-4d0d-b8b5-1ecd9d71ef30"
+  }
+}

@@ -1,0 +1,986 @@
+{
+  "children" : [
+    {
+      "children" : [
+        {
+          "accessibleName" : "Mute sound",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Mute sound",
+          "enabled" : true,
+          "identifier" : "speaker.wave.2.fill",
+          "label" : "Mute sound",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "Open Island Settings",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Open Island Settings",
+          "enabled" : true,
+          "identifier" : "gearshape.fill",
+          "label" : "Open Island Settings",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "Quit Open Island",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Quit Open Island",
+          "enabled" : true,
+          "identifier" : "power",
+          "label" : "Quit Open Island",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "enabled" : true,
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "SESSIONS, 9, 1, run, 1, done, 7, idle"
+        },
+        {
+          "children" : [
+            {
+              "accessibleName" : "Claude Code, open-vibe-island, running, 6 seconds ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Claude Code, open-vibe-island, running, 6 seconds ago",
+              "enabled" : true,
+              "label" : "Claude Code, open-vibe-island, running, 6 seconds ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "3 SUBAGENTS"
+            },
+            {
+              "children" : [
+
+              ],
+              "description" : "Running, Explore, Map the theme token surface, 0:42",
+              "enabled" : true,
+              "label" : "Running, Explore, Map the theme token surface, 0:42",
+              "role" : "AXUnknown",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "description" : "Running, general-purpose, Port the session rows to Poured 2.0, 1:15",
+              "enabled" : true,
+              "label" : "Running, general-purpose, Port the session rows to Poured 2.0, 1:15",
+              "role" : "AXUnknown",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "description" : "Running, Plan, Sequence the Flight Deck follow-ups, 0:08",
+              "enabled" : true,
+              "label" : "Running, Plan, Sequence the Flight Deck follow-ups, 0:08",
+              "role" : "AXUnknown",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "TASKS · 2 OF 5 DONE"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Completed, Palette + material tokens"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Completed, Closed-pill ambient states"
+            },
+            {
+              "children" : [
+
+              ],
+              "description" : "In progress, Header + meters + scaffold, now",
+              "enabled" : true,
+              "label" : "In progress, Header + meters + scaffold, now",
+              "role" : "AXUnknown",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "description" : "Pending, Session rows",
+              "enabled" : true,
+              "label" : "Pending, Session rows",
+              "role" : "AXUnknown",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "description" : "Pending, Permission hero + conformance",
+              "enabled" : true,
+              "label" : "Pending, Permission hero + conformance",
+              "role" : "AXUnknown",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "AGENT"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "LIVE"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Claude Code"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "<1m"
+            },
+            {
+              "accessibleName" : "Jump to terminal",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Jump to terminal",
+              "enabled" : true,
+              "label" : "Jump to terminal",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Pane attached"
+            },
+            {
+              "accessibleName" : "Codex, open-agent-sdk, completed, 3 minutes ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, open-agent-sdk, completed, 3 minutes ago",
+              "enabled" : true,
+              "label" : "Codex, open-agent-sdk, completed, 3 minutes ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "AGENT"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "DIRECTORY"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Codex"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Users\/…\/Personal\/open-agent-sdk"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "LAST MESSAGE · CODEX"
+            },
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "整理完了，已经提炼出和 autoreserach 相关的几段关键差异。"
+                }
+              ],
+              "role" : "AXScrollArea",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Jump to terminal",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Jump to terminal",
+              "enabled" : true,
+              "label" : "Jump to terminal",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Pane attached"
+            },
+            {
+              "accessibleName" : "Codex, claude-research, completed, 27 minutes ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, claude-research, completed, 27 minutes ago",
+              "enabled" : true,
+              "label" : "Codex, claude-research, completed, 27 minutes ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "AGENT"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "DIRECTORY"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Codex"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Users\/…\/Personal\/claude-research"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "LAST MESSAGE · CODEX"
+            },
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "不建议按“最古老”来选。最古老不等于最轻量且最适合这个任务。"
+                }
+              ],
+              "role" : "AXScrollArea",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Jump to terminal",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Jump to terminal",
+              "enabled" : true,
+              "label" : "Jump to terminal",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Pane attached"
+            },
+            {
+              "accessibleName" : "Codex, Personal, completed, 32 minutes ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, Personal, completed, 32 minutes ago",
+              "enabled" : true,
+              "label" : "Codex, Personal, completed, 32 minutes ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "AGENT"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "DIRECTORY"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Codex"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Users\/…\/Personal\/Personal"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "LAST MESSAGE · CODEX"
+            },
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "这张图里的模型，严格说不是这个 voice-input App 应该选的模…"
+                }
+              ],
+              "role" : "AXScrollArea",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Jump to terminal",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Jump to terminal",
+              "enabled" : true,
+              "label" : "Jump to terminal",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Pane attached"
+            },
+            {
+              "accessibleName" : "Codex, open-agent-sdk, completed, 1 hour ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, open-agent-sdk, completed, 1 hour ago",
+              "enabled" : true,
+              "label" : "Codex, open-agent-sdk, completed, 1 hour ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "AGENT"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "DIRECTORY"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Codex"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Users\/…\/Personal\/open-agent-sdk"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "LAST MESSAGE · CODEX"
+            },
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "PR 已经提好了："
+                }
+              ],
+              "role" : "AXScrollArea",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Jump to terminal",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Jump to terminal",
+              "enabled" : true,
+              "label" : "Jump to terminal",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Pane attached"
+            },
+            {
+              "accessibleName" : "Codex, voice-input, completed, 1 hour ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, voice-input, completed, 1 hour ago",
+              "enabled" : true,
+              "label" : "Codex, voice-input, completed, 1 hour ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "AGENT"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "DIRECTORY"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Codex"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Users\/…\/Personal\/voice-input"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "LAST MESSAGE · CODEX"
+            },
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "如果目标是轻量实时，不建议直接按 Cursor 现成套餐来映射。"
+                }
+              ],
+              "role" : "AXScrollArea",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Jump to terminal",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Jump to terminal",
+              "enabled" : true,
+              "label" : "Jump to terminal",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Pane attached"
+            },
+            {
+              "accessibleName" : "Codex, agents, completed, 1 hour ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, agents, completed, 1 hour ago",
+              "enabled" : true,
+              "label" : "Codex, agents, completed, 1 hour ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "AGENT"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "DIRECTORY"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Codex"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "\/Users\/wangruobing\/Personal\/agents"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "LAST MESSAGE · CODEX"
+            },
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "已经重启了。现在跑的是新的 dev 进程。"
+                }
+              ],
+              "role" : "AXScrollArea",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Jump to terminal",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Jump to terminal",
+              "enabled" : true,
+              "label" : "Jump to terminal",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Pane attached"
+            },
+            {
+              "accessibleName" : "Codex, claude-code, completed, 1 hour ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, claude-code, completed, 1 hour ago",
+              "enabled" : true,
+              "label" : "Codex, claude-code, completed, 1 hour ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "AGENT"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "DIRECTORY"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Codex"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Users\/…\/Personal\/claude-code"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "LAST MESSAGE · CODEX"
+            },
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "展开态高度已经改成按内容自适应。"
+                }
+              ],
+              "role" : "AXScrollArea",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Jump to terminal",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Jump to terminal",
+              "enabled" : true,
+              "label" : "Jump to terminal",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Pane attached"
+            },
+            {
+              "accessibleName" : "Codex, hooks, completed, 2 hours ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, hooks, completed, 2 hours ago",
+              "enabled" : true,
+              "label" : "Codex, hooks, completed, 2 hours ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "AGENT"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "DIRECTORY"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Codex"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "\/Users\/wangruobing\/Personal\/hooks"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "LAST MESSAGE · CODEX"
+            },
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "代码里已经有几条更直接的路可以走。"
+                }
+              ],
+              "role" : "AXScrollArea",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Jump to terminal",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Jump to terminal",
+              "enabled" : true,
+              "label" : "Jump to terminal",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Pane attached"
+            }
+          ],
+          "role" : "AXScrollArea",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "enabled" : true,
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "All quiet elsewhere · 7 idle"
+        }
+      ],
+      "role" : "AXGroup",
+      "subrole" : "AXHostingView",
+      "typeName" : "AXUIElement"
+    }
+  ],
+  "role" : "AXWindow",
+  "subrole" : "AXSystemDialog",
+  "typeName" : "AXUIElement"
+}

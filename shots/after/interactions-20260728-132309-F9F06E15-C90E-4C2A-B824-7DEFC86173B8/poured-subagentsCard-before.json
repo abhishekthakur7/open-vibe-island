@@ -1,0 +1,19 @@
+{
+  "id": "25b64ece-0823-48fb-8f8c-621216325ac2",
+  "ok": false,
+  "error": {
+    "code": "app_not_found",
+    "message": "app 'pid:88109' not found",
+    "data": {
+      "nextSteps": [
+        "Run `orca computer list-apps --json` and retry with the exact app name or bundle ID.",
+        "If the target is a website or web app such as Gmail, choose the desktop browser app/window that contains it; `orca computer` app selectors refer to desktop apps, not website names.",
+        "Do not retry the same `orca computer ... --app <web app>` command unchanged.",
+        "If the desired browser is not listed, open or focus that browser first, then retry `orca computer list-apps --json` and `orca computer list-windows --app <browser> --json`."
+      ]
+    }
+  },
+  "_meta": {
+    "runtimeId": "b88107f1-4fc2-4d0d-b8b5-1ecd9d71ef30"
+  }
+}

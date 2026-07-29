@@ -1,0 +1,69 @@
+[
+  {
+    "category" : "milestone",
+    "name" : "applicationDidFinishLaunching",
+    "offsetSeconds" : 0.2590799331665039
+  },
+  {
+    "category" : "milestone",
+    "name" : "bootstrapStarted",
+    "offsetSeconds" : 0.29725396633148193
+  },
+  {
+    "category" : "log",
+    "message" : "Waiting for agent hook events...",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.29726099967956543
+  },
+  {
+    "category" : "log",
+    "message" : "Deterministic harness mode active. Runtime discovery and bridge startup skipped.",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.31196796894073486
+  },
+  {
+    "category" : "milestone",
+    "message" : "Deterministic harness mode active. Runtime discovery and bridge startup skipped.",
+    "name" : "bridgeSkipped",
+    "offsetSeconds" : 0.3119690418243408
+  },
+  {
+    "category" : "milestone",
+    "name" : "modelStarted",
+    "offsetSeconds" : 0.31197094917297363
+  },
+  {
+    "category" : "log",
+    "message" : "Loaded debug scenario: Session List.",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.31215202808380127
+  },
+  {
+    "category" : "milestone",
+    "message" : "Session List",
+    "name" : "scenarioLoaded",
+    "offsetSeconds" : 0.31215202808380127
+  },
+  {
+    "category" : "milestone",
+    "name" : "bootstrapCompleted",
+    "offsetSeconds" : 0.3417140245437622
+  },
+  {
+    "category" : "milestone",
+    "message" : "1.000s",
+    "name" : "captureScheduled",
+    "offsetSeconds" : 0.3417459726333618
+  },
+  {
+    "category" : "milestone",
+    "message" : "Session List",
+    "name" : "overlayPresented",
+    "offsetSeconds" : 0.4317430257797241
+  },
+  {
+    "category" : "milestone",
+    "name" : "captureStarted",
+    "offsetSeconds" : 1.3901129961013794
+  }
+]

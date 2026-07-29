@@ -1,0 +1,201 @@
+{
+  "attentionCount" : 1,
+  "capturedAt" : "2026-07-27T02:24:09Z",
+  "islandSurface" : "sessionList",
+  "launchToCaptureSeconds" : 1.9792569875717163,
+  "liveSessionCount" : 9,
+  "notchStatus" : "closed",
+  "overlay" : {
+    "mode" : "Notch area",
+    "overlayFrame" : {
+      "height" : 184,
+      "width" : 620,
+      "x" : 446,
+      "y" : 798
+    },
+    "safeAreaInsets" : {
+      "bottom" : 0,
+      "left" : 0,
+      "right" : 0,
+      "top" : 32
+    },
+    "screenFrame" : {
+      "height" : 982,
+      "width" : 1512,
+      "x" : 0,
+      "y" : 0
+    },
+    "screenID" : "37D8832A-2D66-02CA-B9F7-8F30A301B230",
+    "screenName" : "Built-in Retina Display",
+    "selectionSummary" : "automatic",
+    "visibleFrame" : {
+      "height" : 949,
+      "width" : 1512,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  "performedBootAnimation" : false,
+  "presentOverlay" : true,
+  "runtime" : {
+    "eventCount" : 13,
+    "latestMessage" : "Loaded debug scenario: Closed Notch — Permission.",
+    "launchCompleted" : true,
+    "logPath" : "runtime.log",
+    "milestones" : [
+      {
+        "name" : "applicationDidFinishLaunching",
+        "offsetSeconds" : 0.2247229814529419
+      },
+      {
+        "name" : "bootstrapStarted",
+        "offsetSeconds" : 0.25919604301452637
+      },
+      {
+        "name" : "bridgeSkipped",
+        "offsetSeconds" : 0.27646100521087646
+      },
+      {
+        "name" : "modelStarted",
+        "offsetSeconds" : 0.27646195888519287
+      },
+      {
+        "name" : "scenarioLoaded",
+        "offsetSeconds" : 0.2766399383544922
+      },
+      {
+        "name" : "bootstrapCompleted",
+        "offsetSeconds" : 0.2903449535369873
+      },
+      {
+        "name" : "captureScheduled",
+        "offsetSeconds" : 0.2903709411621094
+      },
+      {
+        "name" : "autoExitScheduled",
+        "offsetSeconds" : 0.29037702083587646
+      },
+      {
+        "name" : "overlayPresented",
+        "offsetSeconds" : 0.30688297748565674
+      },
+      {
+        "name" : "captureStarted",
+        "offsetSeconds" : 1.8636720180511475
+      }
+    ],
+    "timelinePath" : "timeline.json",
+    "timings" : {
+      "bootstrapSeconds" : 0.2903449535369873,
+      "captureScheduledSeconds" : 0.2903709411621094,
+      "captureStartedSeconds" : 1.8636720180511475,
+      "launchToCaptureSeconds" : 1.9792569875717163,
+      "overlayPresentedSeconds" : 0.30688297748565674,
+      "scenarioLoadSeconds" : 0.2766399383544922
+    }
+  },
+  "scenario" : "closedAttention",
+  "selectedSessionID" : "session-approval",
+  "sessionCount" : 9,
+  "sessions" : [
+    {
+      "attachmentState" : "attached",
+      "id" : "session-approval",
+      "phase" : "waitingForApproval",
+      "summary" : "Allow exec_command to rewrite SettingsView.swift?",
+      "title" : "Codex · open-island",
+      "tool" : "codex"
+    },
+    {
+      "attachmentState" : "attached",
+      "id" : "session-recent",
+      "phase" : "completed",
+      "summary" : "The session list now matches the original island more closely.",
+      "title" : "Codex · open-agent-sdk",
+      "tool" : "codex"
+    },
+    {
+      "attachmentState" : "attached",
+      "id" : "session-claude-research",
+      "phase" : "completed",
+      "summary" : "不建议按“最古老”来选。最古老不等于最轻量且最适合这个任务。",
+      "title" : "Codex · claude-research",
+      "tool" : "codex"
+    },
+    {
+      "attachmentState" : "attached",
+      "id" : "session-personal",
+      "phase" : "completed",
+      "summary" : "这张图里的模型，严格说不是这个 `voice-input` App 应该选的模…",
+      "title" : "Codex · Personal",
+      "tool" : "codex"
+    },
+    {
+      "attachmentState" : "attached",
+      "id" : "session-open-agent-sdk",
+      "phase" : "completed",
+      "summary" : "PR 已经提好了：",
+      "title" : "Codex · open-agent-sdk",
+      "tool" : "codex"
+    },
+    {
+      "attachmentState" : "attached",
+      "id" : "session-voice-input",
+      "phase" : "completed",
+      "summary" : "如果目标是轻量实时，不建议直接按 Cursor 现成套餐来映射。",
+      "title" : "Codex · voice-input",
+      "tool" : "codex"
+    },
+    {
+      "attachmentState" : "attached",
+      "id" : "session-agents",
+      "phase" : "completed",
+      "summary" : "已经重启了。现在跑的是新的 dev 进程。",
+      "title" : "Codex · agents",
+      "tool" : "codex"
+    },
+    {
+      "attachmentState" : "attached",
+      "id" : "session-claude",
+      "phase" : "completed",
+      "summary" : "展开态高度已经改成按内容自适应。",
+      "title" : "Codex · claude-code",
+      "tool" : "codex"
+    },
+    {
+      "attachmentState" : "attached",
+      "id" : "session-hooks",
+      "phase" : "completed",
+      "summary" : "代码里已经有几条更直接的路可以走。",
+      "title" : "Codex · hooks",
+      "tool" : "codex"
+    }
+  ],
+  "startedBridge" : false,
+  "windows" : [
+    {
+      "accessibilityPath" : "overlay.ax.json",
+      "accessibilitySummary" : {
+        "buttonLabels" : [
+
+        ],
+        "labels" : [
+
+        ],
+        "textValues" : [
+          "1 waiting for approval",
+          "Approve head?"
+        ]
+      },
+      "frame" : {
+        "height" : 184,
+        "width" : 620,
+        "x" : 446,
+        "y" : 798
+      },
+      "imagePath" : "overlay.png",
+      "kind" : "overlay",
+      "title" : ""
+    }
+  ]
+}

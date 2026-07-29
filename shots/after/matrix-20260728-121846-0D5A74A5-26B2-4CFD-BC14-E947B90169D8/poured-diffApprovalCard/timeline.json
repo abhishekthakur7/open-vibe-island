@@ -1,0 +1,69 @@
+[
+  {
+    "category" : "milestone",
+    "name" : "applicationDidFinishLaunching",
+    "offsetSeconds" : 0.2727329730987549
+  },
+  {
+    "category" : "milestone",
+    "name" : "bootstrapStarted",
+    "offsetSeconds" : 0.31142497062683105
+  },
+  {
+    "category" : "log",
+    "message" : "Waiting for agent hook events...",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.31143200397491455
+  },
+  {
+    "category" : "log",
+    "message" : "Deterministic harness mode active. Runtime discovery and bridge startup skipped.",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.32805395126342773
+  },
+  {
+    "category" : "milestone",
+    "message" : "Deterministic harness mode active. Runtime discovery and bridge startup skipped.",
+    "name" : "bridgeSkipped",
+    "offsetSeconds" : 0.3280550241470337
+  },
+  {
+    "category" : "milestone",
+    "name" : "modelStarted",
+    "offsetSeconds" : 0.3280559778213501
+  },
+  {
+    "category" : "log",
+    "message" : "Loaded debug scenario: Diff Approval Card.",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.3283170461654663
+  },
+  {
+    "category" : "milestone",
+    "message" : "Diff Approval Card",
+    "name" : "scenarioLoaded",
+    "offsetSeconds" : 0.3283179998397827
+  },
+  {
+    "category" : "milestone",
+    "name" : "bootstrapCompleted",
+    "offsetSeconds" : 0.35019898414611816
+  },
+  {
+    "category" : "milestone",
+    "message" : "1.000s",
+    "name" : "captureScheduled",
+    "offsetSeconds" : 0.3502340316772461
+  },
+  {
+    "category" : "milestone",
+    "message" : "Diff Approval Card",
+    "name" : "overlayPresented",
+    "offsetSeconds" : 0.44120097160339355
+  },
+  {
+    "category" : "milestone",
+    "name" : "captureStarted",
+    "offsetSeconds" : 1.3535740375518799
+  }
+]

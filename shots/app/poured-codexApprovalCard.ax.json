@@ -1,0 +1,116 @@
+{
+  "children" : [
+    {
+      "children" : [
+        {
+          "children" : [
+
+          ],
+          "label" : "Mute sound",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "Open Island Settings",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "Quit Open Island",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "No agent hooks installed — sessions won't surface events. Tap to set up.",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "Codex, open-vibe-island, waiting for permission, 19 seconds ago",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+            {
+              "children" : [
+
+              ],
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Tool permission requested"
+            },
+            {
+              "children" : [
+
+              ],
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "$ git push origin main"
+            },
+            {
+              "children" : [
+
+              ],
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Codex wants to run: git push origin main"
+            },
+            {
+              "children" : [
+
+              ],
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Codex approves in-app. Open the pane to allow or deny there."
+            },
+            {
+              "children" : [
+
+              ],
+              "label" : "Jump to Codex to approve",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Auto-collapses in 10s · hover pauses"
+            }
+          ],
+          "role" : "AXGroup",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "Show all 9 sessions",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        }
+      ],
+      "role" : "AXGroup",
+      "subrole" : "AXHostingView",
+      "typeName" : "AXUIElement"
+    }
+  ],
+  "role" : "AXWindow",
+  "subrole" : "AXSystemDialog",
+  "typeName" : "AXUIElement"
+}

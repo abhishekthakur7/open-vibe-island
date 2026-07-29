@@ -1,0 +1,69 @@
+[
+  {
+    "category" : "milestone",
+    "name" : "applicationDidFinishLaunching",
+    "offsetSeconds" : 0.26871299743652344
+  },
+  {
+    "category" : "milestone",
+    "name" : "bootstrapStarted",
+    "offsetSeconds" : 0.31010007858276367
+  },
+  {
+    "category" : "log",
+    "message" : "Waiting for agent hook events...",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.31012606620788574
+  },
+  {
+    "category" : "log",
+    "message" : "Deterministic harness mode active. Runtime discovery and bridge startup skipped.",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.32360708713531494
+  },
+  {
+    "category" : "milestone",
+    "message" : "Deterministic harness mode active. Runtime discovery and bridge startup skipped.",
+    "name" : "bridgeSkipped",
+    "offsetSeconds" : 0.32360804080963135
+  },
+  {
+    "category" : "milestone",
+    "name" : "modelStarted",
+    "offsetSeconds" : 0.3236100673675537
+  },
+  {
+    "category" : "log",
+    "message" : "Loaded debug scenario: Codex Terminal Approval.",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.32384002208709717
+  },
+  {
+    "category" : "milestone",
+    "message" : "Codex Terminal Approval",
+    "name" : "scenarioLoaded",
+    "offsetSeconds" : 0.3238410949707031
+  },
+  {
+    "category" : "milestone",
+    "name" : "bootstrapCompleted",
+    "offsetSeconds" : 0.3418149948120117
+  },
+  {
+    "category" : "milestone",
+    "message" : "1.000s",
+    "name" : "captureScheduled",
+    "offsetSeconds" : 0.3418550491333008
+  },
+  {
+    "category" : "milestone",
+    "message" : "Codex Terminal Approval",
+    "name" : "overlayPresented",
+    "offsetSeconds" : 0.41363799571990967
+  },
+  {
+    "category" : "milestone",
+    "name" : "captureStarted",
+    "offsetSeconds" : 1.352403998374939
+  }
+]

@@ -1,0 +1,69 @@
+[
+  {
+    "category" : "milestone",
+    "name" : "applicationDidFinishLaunching",
+    "offsetSeconds" : 0.238974928855896
+  },
+  {
+    "category" : "milestone",
+    "name" : "bootstrapStarted",
+    "offsetSeconds" : 0.27521002292633057
+  },
+  {
+    "category" : "log",
+    "message" : "Waiting for agent hook events...",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.2752169370651245
+  },
+  {
+    "category" : "log",
+    "message" : "Deterministic harness mode active. Runtime discovery and bridge startup skipped.",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.28988099098205566
+  },
+  {
+    "category" : "milestone",
+    "message" : "Deterministic harness mode active. Runtime discovery and bridge startup skipped.",
+    "name" : "bridgeSkipped",
+    "offsetSeconds" : 0.28988194465637207
+  },
+  {
+    "category" : "milestone",
+    "name" : "modelStarted",
+    "offsetSeconds" : 0.289883017539978
+  },
+  {
+    "category" : "log",
+    "message" : "Loaded debug scenario: Question Card.",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.2901209592819214
+  },
+  {
+    "category" : "milestone",
+    "message" : "Question Card",
+    "name" : "scenarioLoaded",
+    "offsetSeconds" : 0.2901209592819214
+  },
+  {
+    "category" : "milestone",
+    "name" : "bootstrapCompleted",
+    "offsetSeconds" : 0.30543792247772217
+  },
+  {
+    "category" : "milestone",
+    "message" : "1.000s",
+    "name" : "captureScheduled",
+    "offsetSeconds" : 0.30546998977661133
+  },
+  {
+    "category" : "milestone",
+    "message" : "Question Card",
+    "name" : "overlayPresented",
+    "offsetSeconds" : 0.36400091648101807
+  },
+  {
+    "category" : "milestone",
+    "name" : "captureStarted",
+    "offsetSeconds" : 1.319828987121582
+  }
+]

@@ -1,0 +1,113 @@
+{
+  "children" : [
+    {
+      "children" : [
+        {
+          "accessibleName" : "Mute sound",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Mute sound",
+          "enabled" : true,
+          "identifier" : "speaker.wave.2.fill",
+          "label" : "Mute sound",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "Open Island Settings",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Open Island Settings",
+          "enabled" : true,
+          "identifier" : "gearshape.fill",
+          "label" : "Open Island Settings",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "Quit Open Island",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Quit Open Island",
+          "enabled" : true,
+          "identifier" : "power",
+          "label" : "Quit Open Island",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "Codex, open-vibe-island, failed, 3 minutes ago",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Codex, open-vibe-island, failed, 3 minutes ago",
+          "enabled" : true,
+          "label" : "Codex, open-vibe-island, failed, 3 minutes ago",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "enabled" : true,
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "FAILED"
+        },
+        {
+          "children" : [
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "swift build exited non-zero — BridgeServer.swift has two type errors I could not resolve."
+            }
+          ],
+          "role" : "AXScrollArea",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "Jump",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Jump",
+          "enabled" : true,
+          "label" : "Jump",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "Show all 9 sessions",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Show all 9 sessions",
+          "enabled" : true,
+          "label" : "Show all 9 sessions",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        }
+      ],
+      "role" : "AXGroup",
+      "subrole" : "AXHostingView",
+      "typeName" : "AXUIElement"
+    }
+  ],
+  "role" : "AXWindow",
+  "subrole" : "AXSystemDialog",
+  "typeName" : "AXUIElement"
+}

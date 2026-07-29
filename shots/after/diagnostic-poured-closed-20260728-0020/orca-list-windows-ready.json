@@ -1,0 +1,18 @@
+{
+  "id": "d1a48626-0901-4900-a76c-108615e8cad1",
+  "ok": true,
+  "result": {
+    "app": {
+      "isRunning": true,
+      "bundleId": null,
+      "useCount": null,
+      "pid": 11146,
+      "lastUsedAt": null,
+      "name": "OpenIslandApp"
+    },
+    "windows": []
+  },
+  "_meta": {
+    "runtimeId": "b88107f1-4fc2-4d0d-b8b5-1ecd9d71ef30"
+  }
+}

@@ -1,0 +1,182 @@
+{
+  "children" : [
+    {
+      "children" : [
+        {
+          "children" : [
+
+          ],
+          "label" : "Mute sound",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "Open Island Settings",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "Quit Open Island",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "No agent hooks installed — sessions won't surface events. Tap to set up.",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "Claude Code, open-vibe-island, waiting for an answer, 20 seconds ago",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "Bridge configuration"
+        },
+        {
+          "children" : [
+
+          ],
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "Question 1 of 2"
+        },
+        {
+          "children" : [
+
+          ],
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "Auth"
+        },
+        {
+          "children" : [
+
+          ],
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "Which auth method should the bridge use?"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "1, OAuth 2.0, Delegated tokens that rotate automatically.",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "1, OAuth 2.0, Delegated tokens that rotate automatically.",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "1, OAuth 2.0, Delegated tokens that rotate automatically.",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "Question 2 of 2"
+        },
+        {
+          "children" : [
+
+          ],
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "Scope"
+        },
+        {
+          "children" : [
+
+          ],
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "Which surfaces should the bridge expose?"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "1, Local socket",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "1, Local socket",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "1, Local socket",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "1, Local socket",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "Submit Answers",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "Show all 9 sessions",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        }
+      ],
+      "role" : "AXGroup",
+      "subrole" : "AXHostingView",
+      "typeName" : "AXUIElement"
+    }
+  ],
+  "role" : "AXWindow",
+  "subrole" : "AXSystemDialog",
+  "typeName" : "AXUIElement"
+}

@@ -1,0 +1,129 @@
+{
+  "attentionCount" : 0,
+  "capturedAt" : "2026-07-28T06:49:43Z",
+  "islandSurface" : "sessionList",
+  "launchToCaptureSeconds" : 1.4921460151672363,
+  "liveSessionCount" : 0,
+  "notchStatus" : "opened",
+  "overlay" : {
+    "mode" : "Notch area",
+    "overlayFrame" : {
+      "height" : 266,
+      "width" : 620,
+      "x" : 446,
+      "y" : 716
+    },
+    "safeAreaInsets" : {
+      "bottom" : 0,
+      "left" : 0,
+      "right" : 0,
+      "top" : 32
+    },
+    "screenFrame" : {
+      "height" : 982,
+      "width" : 1512,
+      "x" : 0,
+      "y" : 0
+    },
+    "screenID" : "37D8832A-2D66-02CA-B9F7-8F30A301B230",
+    "screenName" : "Built-in Retina Display",
+    "selectionSummary" : "automatic",
+    "visibleFrame" : {
+      "height" : 949,
+      "width" : 1512,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  "performedBootAnimation" : false,
+  "presentOverlay" : true,
+  "runtime" : {
+    "eventCount" : 12,
+    "latestMessage" : "Loaded debug scenario: Empty State.",
+    "launchCompleted" : true,
+    "logPath" : "runtime.log",
+    "milestones" : [
+      {
+        "name" : "applicationDidFinishLaunching",
+        "offsetSeconds" : 0.26576995849609375
+      },
+      {
+        "name" : "bootstrapStarted",
+        "offsetSeconds" : 0.3125269412994385
+      },
+      {
+        "name" : "bridgeSkipped",
+        "offsetSeconds" : 0.3292640447616577
+      },
+      {
+        "name" : "modelStarted",
+        "offsetSeconds" : 0.3292649984359741
+      },
+      {
+        "name" : "scenarioLoaded",
+        "offsetSeconds" : 0.32930803298950195
+      },
+      {
+        "name" : "bootstrapCompleted",
+        "offsetSeconds" : 0.36115896701812744
+      },
+      {
+        "name" : "captureScheduled",
+        "offsetSeconds" : 0.3611999750137329
+      },
+      {
+        "name" : "overlayPresented",
+        "offsetSeconds" : 0.38272297382354736
+      },
+      {
+        "name" : "captureStarted",
+        "offsetSeconds" : 1.409906029701233
+      }
+    ],
+    "timelinePath" : "timeline.json",
+    "timings" : {
+      "bootstrapSeconds" : 0.36115896701812744,
+      "captureScheduledSeconds" : 0.3611999750137329,
+      "captureStartedSeconds" : 1.409906029701233,
+      "launchToCaptureSeconds" : 1.4921460151672363,
+      "overlayPresentedSeconds" : 0.38272297382354736,
+      "scenarioLoadSeconds" : 0.32930803298950195
+    }
+  },
+  "scenario" : "emptyState",
+  "sessionCount" : 0,
+  "sessions" : [
+
+  ],
+  "startedBridge" : false,
+  "windows" : [
+    {
+      "accessibilityPath" : "overlay.ax.json",
+      "accessibilitySummary" : {
+        "buttonLabels" : [
+          "Mute sound",
+          "Open Island Settings",
+          "Quit Open Island"
+        ],
+        "labels" : [
+          "Mute sound",
+          "Open Island Settings",
+          "Quit Open Island"
+        ],
+        "textValues" : [
+          "No open terminal sessions",
+          "Start a coding agent in your terminal"
+        ]
+      },
+      "frame" : {
+        "height" : 266,
+        "width" : 620,
+        "x" : 446,
+        "y" : 716
+      },
+      "imagePath" : "overlay.png",
+      "kind" : "overlay",
+      "title" : ""
+    }
+  ]
+}

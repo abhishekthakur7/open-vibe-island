@@ -1,0 +1,57 @@
+{
+  "id": "72317965-d113-4abd-a69e-81c2eed4af77",
+  "ok": true,
+  "result": {
+    "screenshotStatus": {
+      "state": "captured",
+      "metadata": {
+        "engine": "screenCaptureKit",
+        "windowId": 18844
+      }
+    },
+    "snapshot": {
+      "window": {
+        "width": 576,
+        "isMinimized": false,
+        "platform": {
+          "layer": 25
+        },
+        "isOffscreen": false,
+        "screenIndex": 0,
+        "x": 468,
+        "y": 0,
+        "title": "",
+        "id": 18844,
+        "height": 701
+      },
+      "elementCount": 16,
+      "focusedElementId": 0,
+      "app": {
+        "pid": 85939,
+        "name": "OpenIslandApp",
+        "bundleId": null
+      },
+      "id": "256BE586-49EB-41DF-A34D-7785053E3A80",
+      "truncation": {
+        "truncated": false,
+        "maxNodes": 1200,
+        "maxDepth": 64,
+        "maxDepthReached": false
+      },
+      "coordinateSpace": "window",
+      "treeText": "App=OpenIslandApp (pid 85939)\nWindow: \"\", App: OpenIslandApp.\n\n0 system dialog\n\t1 button\n\t2 button\n\t3 button\n\t4 text Sessions 0 Attn, 1 Run, 1 Done, 7 Idle\n\t5 scroll area, Secondary Actions: scroll up, scroll down\n\t\t6 button, Secondary Actions: name: dismiss session\n target:0x0\n selector:(null), name: expand session detail\n target:0x0\n selector:(null)\n\t\t7 button, Secondary Actions: name: dismiss session\n target:0x0\n selector:(null), name: expand session detail\n target:0x0\n selector:(null)\n\t\t8 button, Secondary Actions: name: dismiss session\n target:0x0\n selector:(null), name: expand session detail\n target:0x0\n selector:(null)\n\t\t9 button, Secondary Actions: name: dismiss session\n target:0x0\n selector:(null), name: expand session detail\n target:0x0\n selector:(null)\n\t\t10 button, Secondary Actions: name: dismiss session\n target:0x0\n selector:(null), name: expand session detail\n target:0x0\n selector:(null)\n\t\t11 button, Secondary Actions: name: dismiss session\n target:0x0\n selector:(null), name: expand session detail\n target:0x0\n selector:(null)\n\t\t12 button, Secondary Actions: name: dismiss session\n target:0x0\n selector:(null), name: expand session detail\n target:0x0\n selector:(null)\n\t\t13 button, Secondary Actions: name: dismiss session\n target:0x0\n selector:(null), name: expand session detail\n target:0x0\n selector:(null)\n\t\t14 button, Secondary Actions: name: dismiss session\n target:0x0\n selector:(null), name: expand session detail\n target:0x0\n selector:(null)\n\t15 text BRIDGE LINK, NO LINK, 9 SESSIONS\n\nThe focused UI element is 0 system dialog."
+    },
+    "screenshot": {
+      "format": "png",
+      "height": 1402,
+      "scale": 2,
+      "width": 1152,
+      "path": "/var/folders/52/7304w2xn42qbtvqcxmxz4tlm0000gn/T/orca-computer-use/72317965-d113-4abd-a69e-81c2eed4af77-screenshot.png",
+      "dataOmitted": true,
+      "expiresAt": "2026-07-28T21:04:23.408Z"
+    }
+  },
+  "_meta": {
+    "runtimeId": "b88107f1-4fc2-4d0d-b8b5-1ecd9d71ef30"
+  }
+}

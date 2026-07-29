@@ -1,0 +1,132 @@
+{
+  "children" : [
+    {
+      "children" : [
+        {
+          "children" : [
+
+          ],
+          "description" : "Mute sound",
+          "enabled" : true,
+          "label" : "Mute sound",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "description" : "Open Island Settings",
+          "enabled" : true,
+          "label" : "Open Island Settings",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "description" : "Quit Open Island",
+          "enabled" : true,
+          "label" : "Quit Open Island",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "description" : "Claude Code, open-island, waiting for an answer, 18 seconds ago",
+          "enabled" : true,
+          "label" : "Claude Code, open-island, waiting for an answer, 18 seconds ago",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "enabled" : true,
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "Which authentication method should we use?"
+        },
+        {
+          "children" : [
+
+          ],
+          "description" : "1, JWT tokens, Stateless, scalable",
+          "enabled" : true,
+          "label" : "1, JWT tokens, Stateless, scalable",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "description" : "2, Session cookies, Traditional approach",
+          "enabled" : true,
+          "label" : "2, Session cookies, Traditional approach",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "description" : "3, OAuth 2.0, Third-party auth",
+          "enabled" : true,
+          "label" : "3, OAuth 2.0, Third-party auth",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "description" : "4, Other",
+          "enabled" : true,
+          "label" : "4, Other",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "enabled" : true,
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "1–4 select · Enter submits · Esc closes"
+        },
+        {
+          "children" : [
+
+          ],
+          "description" : "Submit Answers",
+          "enabled" : false,
+          "label" : "Submit Answers",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "description" : "Show all 9 sessions",
+          "enabled" : true,
+          "label" : "Show all 9 sessions",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        }
+      ],
+      "role" : "AXGroup",
+      "subrole" : "AXHostingView",
+      "typeName" : "AXUIElement"
+    }
+  ],
+  "role" : "AXWindow",
+  "subrole" : "AXSystemDialog",
+  "typeName" : "AXUIElement"
+}

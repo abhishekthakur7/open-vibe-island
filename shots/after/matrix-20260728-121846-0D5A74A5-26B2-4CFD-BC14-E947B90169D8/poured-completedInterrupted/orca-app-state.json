@@ -1,0 +1,57 @@
+{
+  "id": "ae8d40bc-daa6-4ca7-a93f-580c77a08834",
+  "ok": true,
+  "result": {
+    "screenshot": {
+      "format": "png",
+      "height": 630,
+      "scale": 2,
+      "width": 1240,
+      "path": "/var/folders/52/7304w2xn42qbtvqcxmxz4tlm0000gn/T/orca-computer-use/ae8d40bc-daa6-4ca7-a93f-580c77a08834-screenshot.png",
+      "dataOmitted": true,
+      "expiresAt": "2026-07-29T06:49:34.402Z"
+    },
+    "screenshotStatus": {
+      "state": "captured",
+      "metadata": {
+        "engine": "screenCaptureKit",
+        "windowId": 21025
+      }
+    },
+    "snapshot": {
+      "app": {
+        "bundleId": null,
+        "name": "OpenIslandApp",
+        "pid": 5796
+      },
+      "id": "AE822B92-4865-4BB3-A3BA-BA0B523772D3",
+      "treeText": "App=OpenIslandApp (pid 5796)\nWindow: \"\", App: OpenIslandApp.\n\n0 system dialog\n\t1 button\n\t2 button\n\t3 button\n\t4 button, Secondary Actions: name: collapse session detail\n target:0x0\n selector:(null)\n\t5 text Interrupted\n\t6 text finished 4m ago\n\t7 scroll area, Secondary Actions: scroll up, scroll down\n\t\t8 text Interrupted while moving the scorer — no files were left half-written.\n\t9 button\n\t10 button\n\t11 button\n\nNo UI element is currently focused.",
+      "window": {
+        "width": 620,
+        "platform": {
+          "layer": 25
+        },
+        "title": "",
+        "height": 315,
+        "id": 21025,
+        "y": 0,
+        "isMinimized": false,
+        "isOffscreen": false,
+        "screenIndex": 0,
+        "x": 446
+      },
+      "elementCount": 12,
+      "truncation": {
+        "truncated": false,
+        "maxNodes": 1200,
+        "maxDepth": 64,
+        "maxDepthReached": false
+      },
+      "focusedElementId": null,
+      "coordinateSpace": "window"
+    }
+  },
+  "_meta": {
+    "runtimeId": "b88107f1-4fc2-4d0d-b8b5-1ecd9d71ef30"
+  }
+}

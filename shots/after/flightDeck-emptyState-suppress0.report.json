@@ -1,0 +1,136 @@
+{
+  "attentionCount" : 0,
+  "capturedAt" : "2026-07-26T21:42:29Z",
+  "islandSurface" : "sessionList",
+  "launchToCaptureSeconds" : 2.0184249877929688,
+  "liveSessionCount" : 0,
+  "notchStatus" : "opened",
+  "overlay" : {
+    "mode" : "Top bar fallback",
+    "overlayFrame" : {
+      "height" : 168,
+      "width" : 556,
+      "x" : 682,
+      "y" : 864
+    },
+    "safeAreaInsets" : {
+      "bottom" : 0,
+      "left" : 0,
+      "right" : 0,
+      "top" : 0
+    },
+    "screenFrame" : {
+      "height" : 1080,
+      "width" : 1920,
+      "x" : 0,
+      "y" : 0
+    },
+    "screenID" : "F3BDCAC0-1700-415E-817D-AC4E69D405BC",
+    "screenName" : "DELL U3223QE",
+    "selectionSummary" : "manual",
+    "visibleFrame" : {
+      "height" : 1050,
+      "width" : 1920,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  "performedBootAnimation" : false,
+  "presentOverlay" : true,
+  "runtime" : {
+    "eventCount" : 13,
+    "latestMessage" : "Loaded debug scenario: Empty State.",
+    "launchCompleted" : true,
+    "logPath" : "runtime.log",
+    "milestones" : [
+      {
+        "name" : "applicationDidFinishLaunching",
+        "offsetSeconds" : 0.32353103160858154
+      },
+      {
+        "name" : "bootstrapStarted",
+        "offsetSeconds" : 0.36599695682525635
+      },
+      {
+        "name" : "bridgeSkipped",
+        "offsetSeconds" : 0.3808579444885254
+      },
+      {
+        "name" : "modelStarted",
+        "offsetSeconds" : 0.38085997104644775
+      },
+      {
+        "name" : "scenarioLoaded",
+        "offsetSeconds" : 0.38090193271636963
+      },
+      {
+        "name" : "bootstrapCompleted",
+        "offsetSeconds" : 0.40936899185180664
+      },
+      {
+        "name" : "captureScheduled",
+        "offsetSeconds" : 0.4094109535217285
+      },
+      {
+        "name" : "autoExitScheduled",
+        "offsetSeconds" : 0.4094200134277344
+      },
+      {
+        "name" : "overlayPresented",
+        "offsetSeconds" : 0.44351303577423096
+      },
+      {
+        "name" : "captureStarted",
+        "offsetSeconds" : 1.9835909605026245
+      }
+    ],
+    "timelinePath" : "timeline.json",
+    "timings" : {
+      "bootstrapSeconds" : 0.40936899185180664,
+      "captureScheduledSeconds" : 0.4094109535217285,
+      "captureStartedSeconds" : 1.9835909605026245,
+      "launchToCaptureSeconds" : 2.0184249877929688,
+      "overlayPresentedSeconds" : 0.44351303577423096,
+      "scenarioLoadSeconds" : 0.38090193271636963
+    }
+  },
+  "scenario" : "emptyState",
+  "sessionCount" : 0,
+  "sessions" : [
+
+  ],
+  "startedBridge" : false,
+  "windows" : [
+    {
+      "accessibilityPath" : "overlay.ax.json",
+      "accessibilitySummary" : {
+        "buttonLabels" : [
+          "Mute sound",
+          "No agent hooks installed — sessions won't surface events. Tap to set up.",
+          "Open Island Settings",
+          "Quit Open Island"
+        ],
+        "labels" : [
+          "Mute sound",
+          "No agent hooks installed — sessions won't surface events. Tap to set up.",
+          "Open Island Settings",
+          "Quit Open Island"
+        ],
+        "textValues" : [
+          "ALL SYSTEMS NOMINAL",
+          "BRIDGE LINK · NO LINK · 0 SESSIONS",
+          "No active sessions. Open Island is watching the bridge — the moment an agent needs approval, asks a question, or finishes, a lamp lights here."
+        ]
+      },
+      "frame" : {
+        "height" : 168,
+        "width" : 556,
+        "x" : 682,
+        "y" : 912
+      },
+      "imagePath" : "overlay.png",
+      "kind" : "overlay",
+      "title" : ""
+    }
+  ]
+}

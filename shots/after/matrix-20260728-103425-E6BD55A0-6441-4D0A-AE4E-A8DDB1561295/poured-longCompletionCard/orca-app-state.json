@@ -1,0 +1,57 @@
+{
+  "id": "9386b1db-1388-432e-bfdd-88f3055eb777",
+  "ok": true,
+  "result": {
+    "snapshot": {
+      "window": {
+        "width": 620,
+        "isMinimized": false,
+        "platform": {
+          "layer": 25
+        },
+        "isOffscreen": false,
+        "screenIndex": 0,
+        "x": 446,
+        "y": 0,
+        "title": "",
+        "id": 20050,
+        "height": 430
+      },
+      "elementCount": 15,
+      "focusedElementId": null,
+      "app": {
+        "bundleId": null,
+        "pid": 11230,
+        "name": "OpenIslandApp"
+      },
+      "id": "7A0889EC-9DDD-491D-AB02-1BB501CB5353",
+      "truncation": {
+        "truncated": false,
+        "maxNodes": 1200,
+        "maxDepth": 64,
+        "maxDepthReached": false
+      },
+      "coordinateSpace": "window",
+      "treeText": "App=OpenIslandApp (pid 11230)\nWindow: \"\", App: OpenIslandApp.\n\n0 system dialog\n\t1 button\n\t2 button\n\t3 button\n\t4 button, Secondary Actions: name: collapse session detail\n target:0x0\n selector:(null)\n\t5 text Success\n\t6 text finished <1m ago\n\t7 scroll area, Secondary Actions: scroll up, scroll down\n\t\t8 text README.md 的现有改动已经单独提交了，commit 是 f196316，message 是 docs: update readme tagline。\n\t\t9 text 这轮没有跑测试，因为只是文案改动。当前工作树是干净的，main 相对 origin/main 现在是 ahead 6。\n\t\t10 text 如果你要我继续做下一轮，我建议把工作切到独立 worktree 里，这样不会和共享 main 上的并行改动互相打架。\n\t\t11 text 下一步我会先检查当前仓库状态，然后从 origin/main 新建一个 worktree 和分支，在新工作区里继续处理这个样式问题并做完验证。\n\t12 button\n\t13 button\n\t14 button\n\nNo UI element is currently focused."
+    },
+    "screenshot": {
+      "format": "png",
+      "height": 860,
+      "scale": 2,
+      "width": 1240,
+      "path": "/var/folders/52/7304w2xn42qbtvqcxmxz4tlm0000gn/T/orca-computer-use/9386b1db-1388-432e-bfdd-88f3055eb777-screenshot.png",
+      "dataOmitted": true,
+      "expiresAt": "2026-07-29T05:04:53.520Z"
+    },
+    "screenshotStatus": {
+      "metadata": {
+        "windowId": 20050,
+        "engine": "screenCaptureKit"
+      },
+      "state": "captured"
+    }
+  },
+  "_meta": {
+    "runtimeId": "b88107f1-4fc2-4d0d-b8b5-1ecd9d71ef30"
+  }
+}

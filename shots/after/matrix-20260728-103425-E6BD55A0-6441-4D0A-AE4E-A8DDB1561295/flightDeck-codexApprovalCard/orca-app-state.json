@@ -1,0 +1,57 @@
+{
+  "id": "2cd57bed-e9b3-4c7c-ba22-3bac0139201f",
+  "ok": true,
+  "result": {
+    "screenshotStatus": {
+      "state": "captured",
+      "metadata": {
+        "windowId": 20126,
+        "engine": "screenCaptureKit"
+      }
+    },
+    "screenshot": {
+      "format": "png",
+      "height": 754,
+      "scale": 2,
+      "width": 1152,
+      "path": "/var/folders/52/7304w2xn42qbtvqcxmxz4tlm0000gn/T/orca-computer-use/2cd57bed-e9b3-4c7c-ba22-3bac0139201f-screenshot.png",
+      "dataOmitted": true,
+      "expiresAt": "2026-07-29T05:05:52.105Z"
+    },
+    "snapshot": {
+      "window": {
+        "width": 576,
+        "isMinimized": false,
+        "platform": {
+          "layer": 25
+        },
+        "isOffscreen": false,
+        "screenIndex": 0,
+        "x": 468,
+        "y": 0,
+        "title": "",
+        "id": 20126,
+        "height": 377
+      },
+      "elementCount": 12,
+      "focusedElementId": null,
+      "app": {
+        "bundleId": null,
+        "name": "OpenIslandApp",
+        "pid": 26095
+      },
+      "id": "BF9FE313-1E38-4D3E-B67E-D905392A8F84",
+      "truncation": {
+        "truncated": false,
+        "maxNodes": 1200,
+        "maxDepth": 64,
+        "maxDepthReached": false
+      },
+      "coordinateSpace": "window",
+      "treeText": "App=OpenIslandApp (pid 26095)\nWindow: \"\", App: OpenIslandApp.\n\n0 system dialog\n\t1 button\n\t2 button\n\t3 button\n\t4 button\n\t5 text PERMISSION REQUIRED\n\t6 text HELD, 0m 17s\n\t7 text $ git push origin main\n\t8 text ~/Developer/open-vibe-island\n\t9 text Codex approves in-app. Open the pane to allow or deny there.\n\t10 button\n\t11 button\n\nNo UI element is currently focused."
+    }
+  },
+  "_meta": {
+    "runtimeId": "b88107f1-4fc2-4d0d-b8b5-1ecd9d71ef30"
+  }
+}

@@ -1,0 +1,69 @@
+[
+  {
+    "category" : "milestone",
+    "name" : "applicationDidFinishLaunching",
+    "offsetSeconds" : 0.2808459997177124
+  },
+  {
+    "category" : "milestone",
+    "name" : "bootstrapStarted",
+    "offsetSeconds" : 0.3267279863357544
+  },
+  {
+    "category" : "log",
+    "message" : "Waiting for agent hook events...",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.3267359733581543
+  },
+  {
+    "category" : "log",
+    "message" : "Deterministic harness mode active. Runtime discovery and bridge startup skipped.",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.3403829336166382
+  },
+  {
+    "category" : "milestone",
+    "message" : "Deterministic harness mode active. Runtime discovery and bridge startup skipped.",
+    "name" : "bridgeSkipped",
+    "offsetSeconds" : 0.34038496017456055
+  },
+  {
+    "category" : "milestone",
+    "name" : "modelStarted",
+    "offsetSeconds" : 0.34038591384887695
+  },
+  {
+    "category" : "log",
+    "message" : "Loaded debug scenario: Approval Card.",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.34068799018859863
+  },
+  {
+    "category" : "milestone",
+    "message" : "Approval Card",
+    "name" : "scenarioLoaded",
+    "offsetSeconds" : 0.34068799018859863
+  },
+  {
+    "category" : "milestone",
+    "name" : "bootstrapCompleted",
+    "offsetSeconds" : 0.3593289852142334
+  },
+  {
+    "category" : "milestone",
+    "message" : "1.000s",
+    "name" : "captureScheduled",
+    "offsetSeconds" : 0.3593689203262329
+  },
+  {
+    "category" : "milestone",
+    "message" : "Approval Card",
+    "name" : "overlayPresented",
+    "offsetSeconds" : 0.4428110122680664
+  },
+  {
+    "category" : "milestone",
+    "name" : "captureStarted",
+    "offsetSeconds" : 1.366603970527649
+  }
+]

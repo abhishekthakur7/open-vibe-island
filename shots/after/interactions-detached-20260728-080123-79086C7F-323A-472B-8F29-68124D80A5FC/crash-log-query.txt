@@ -1,0 +1,4 @@
+checked_utc=2026-07-28T08:02:36Z
+DiagnosticReports files modified after launch window:
+Unified log query (OpenIslandApp, last 10m):
+zsh:log:20: too many arguments

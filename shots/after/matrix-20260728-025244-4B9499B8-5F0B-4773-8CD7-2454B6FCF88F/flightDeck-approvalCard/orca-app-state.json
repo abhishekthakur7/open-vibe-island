@@ -1,0 +1,57 @@
+{
+  "id": "a8641f29-8e1c-428d-b8b7-bea6da575e04",
+  "ok": true,
+  "result": {
+    "screenshotStatus": {
+      "metadata": {
+        "engine": "screenCaptureKit",
+        "windowId": 19079
+      },
+      "state": "captured"
+    },
+    "snapshot": {
+      "window": {
+        "width": 576,
+        "isMinimized": false,
+        "platform": {
+          "layer": 25
+        },
+        "isOffscreen": false,
+        "screenIndex": 0,
+        "x": 468,
+        "y": 0,
+        "title": "",
+        "id": 19079,
+        "height": 403
+      },
+      "elementCount": 13,
+      "focusedElementId": null,
+      "app": {
+        "name": "OpenIslandApp",
+        "bundleId": null,
+        "pid": 40526
+      },
+      "id": "16DBAD54-2244-4DDC-A9C7-40EC6CA61C37",
+      "truncation": {
+        "truncated": false,
+        "maxNodes": 1200,
+        "maxDepth": 64,
+        "maxDepthReached": false
+      },
+      "coordinateSpace": "window",
+      "treeText": "App=OpenIslandApp (pid 40526)\nWindow: \"\", App: OpenIslandApp.\n\n0 system dialog\n\t1 button\n\t2 button\n\t3 button\n\t4 button\n\t5 text PERMISSION REQUIRED\n\t6 text HELD, 0m 21s\n\t7 text Opus 4.8 · feat/approval-flow\n\t8 text $ head -5000 /Users/wangruobing/Personal/claude-research/extracts/claude-bun-2.1.81-v3/islands/000_cli.js.txt\n\t9 text Sources/OpenIslandApp/Views/SettingsView.swift\n\t10 button\n\t11 button\n\t12 button\n\nNo UI element is currently focused."
+    },
+    "screenshot": {
+      "format": "png",
+      "height": 806,
+      "scale": 2,
+      "width": 1152,
+      "path": "/var/folders/52/7304w2xn42qbtvqcxmxz4tlm0000gn/T/orca-computer-use/a8641f29-8e1c-428d-b8b7-bea6da575e04-screenshot.png",
+      "dataOmitted": true,
+      "expiresAt": "2026-07-28T21:23:53.331Z"
+    }
+  },
+  "_meta": {
+    "runtimeId": "b88107f1-4fc2-4d0d-b8b5-1ecd9d71ef30"
+  }
+}

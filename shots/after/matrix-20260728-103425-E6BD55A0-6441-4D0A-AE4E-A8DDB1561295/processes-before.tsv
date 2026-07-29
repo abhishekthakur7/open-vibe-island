@@ -1,0 +1,767 @@
+    1     0 Sat Jul 25 19:40:41 2026     /sbin/launchd
+  550     1 Sat Jul 25 19:43:10 2026     /usr/libexec/logd
+  553     1 Sat Jul 25 19:43:11 2026     /usr/libexec/UserEventAgent
+  555     1 Sat Jul 25 19:43:11 2026     /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/Support/fseventsd
+  556     1 Sat Jul 25 19:43:11 2026     /System/Library/PrivateFrameworks/MediaRemote.framework/Support/mediaremoted
+  559     1 Sat Jul 25 19:43:11 2026     /usr/sbin/systemstats
+  563     1 Sat Jul 25 19:43:11 2026     /usr/libexec/configd
+  565     1 Sat Jul 25 19:43:11 2026     /System/Library/CoreServices/powerd.bundle/powerd
+  566     1 Sat Jul 25 19:43:11 2026     /usr/libexec/IOMFB_bics_daemon
+  570     1 Sat Jul 25 19:43:11 2026     /usr/libexec/remoted
+  574     1 Sat Jul 25 19:43:11 2026     /System/Library/PrivateFrameworks/CoreSpeech.framework/corespeechd_system
+  576     1 Sat Jul 25 19:43:11 2026     /usr/libexec/watchdogd
+  579     1 Sat Jul 25 19:43:11 2026     /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mds
+  581     1 Sat Jul 25 19:43:11 2026     /usr/libexec/kernelmanagerd
+  582     1 Sat Jul 25 19:43:11 2026     /usr/libexec/diskarbitrationd
+  586     1 Sat Jul 25 19:43:11 2026     /usr/sbin/syslogd
+  588     1 Sat Jul 25 19:43:11 2026     /usr/libexec/thermalmonitord
+  589     1 Sat Jul 25 19:43:11 2026     /System/Library/PrivateFrameworks/CoreDuetContext.framework/Resources/contextstored
+  590     1 Sat Jul 25 19:43:11 2026     /usr/libexec/xprotectd
+  591     1 Sat Jul 25 19:43:11 2026     /usr/libexec/opendirectoryd
+  592     1 Sat Jul 25 19:43:11 2026     /System/Library/PrivateFrameworks/ApplePushService.framework/apsd
+  593     1 Sat Jul 25 19:43:11 2026     /System/Library/CoreServices/launchservicesd
+  594     1 Sat Jul 25 19:43:11 2026     /usr/libexec/timed
+  595     1 Sat Jul 25 19:43:11 2026     /System/Library/PrivateFrameworks/MobileDevice.framework/Versions/A/Resources/usbmuxd
+  596     1 Sat Jul 25 19:43:11 2026     /usr/sbin/securityd
+  598     1 Sat Jul 25 19:43:11 2026     /usr/libexec/locationd
+  601     1 Sat Jul 25 19:43:11 2026     autofsd
+  602     1 Sat Jul 25 19:43:11 2026     /usr/libexec/dasd
+  605     1 Sat Jul 25 19:43:11 2026     /usr/sbin/distnoted
+  609     1 Sat Jul 25 19:43:11 2026     /System/Library/CoreServices/logind
+  610     1 Sat Jul 25 19:43:11 2026     /System/Library/PrivateFrameworks/GenerationalStorage.framework/Versions/A/Support/revisiond
+  611     1 Sat Jul 25 19:43:11 2026     /usr/sbin/KernelEventAgent
+  615     1 Sat Jul 25 19:43:11 2026     /usr/sbin/bluetoothd
+  616     1 Sat Jul 25 19:43:11 2026     /usr/sbin/notifyd
+  618     1 Sat Jul 25 19:43:11 2026     /usr/libexec/corebrightnessd
+  619     1 Sat Jul 25 19:43:11 2026     /System/Library/Frameworks/CoreMediaIO.framework/Versions/A/Resources/com.apple.cmio.registerassistantservice
+  663     1 Sat Jul 25 19:43:11 2026     /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+  665     1 Sat Jul 25 19:43:11 2026     /usr/sbin/cfprefsd
+  666     1 Sat Jul 25 19:43:11 2026     /System/Library/CoreServices/loginwindow.app/Contents/MacOS/loginwindow
+  667     1 Sat Jul 25 19:43:11 2026     /usr/libexec/runningboardd
+  698     1 Sat Jul 25 19:43:11 2026     /System/Library/CoreServices/coreservicesd
+  701     1 Sat Jul 25 19:43:11 2026     /usr/libexec/trustd
+  713     1 Sat Jul 25 19:43:11 2026     /usr/libexec/lsd
+  715     1 Sat Jul 25 19:43:11 2026     /System/Library/PrivateFrameworks/CoreAnalytics.framework/Support/analyticsd
+  721     1 Sat Jul 25 19:43:11 2026     /usr/libexec/apfsd
+  728     1 Sat Jul 25 19:43:11 2026     /usr/libexec/airportd
+  732     1 Sat Jul 25 19:43:11 2026     /usr/libexec/containermanagerd_system
+  734     1 Sat Jul 25 19:43:11 2026     /usr/sbin/mDNSResponder
+  737     1 Sat Jul 25 19:43:11 2026     /System/Library/Frameworks/Security.framework/Versions/A/XPCServices/authd.xpc/Contents/MacOS/authd
+  740     1 Sat Jul 25 19:43:11 2026     /usr/sbin/distnoted
+  749     1 Sat Jul 25 19:43:11 2026     /usr/libexec/syspolicyd
+  754     1 Sat Jul 25 19:43:12 2026     /usr/libexec/eligibilityd
+  756     1 Sat Jul 25 19:43:12 2026     /usr/sbin/distnoted
+  758     1 Sat Jul 25 19:43:12 2026     /usr/sbin/mDNSResponderHelper
+  760     1 Sat Jul 25 19:43:12 2026     /usr/libexec/symptomsd
+  762     1 Sat Jul 25 19:43:12 2026     /usr/libexec/ApplicationFirewall/socketfilterfw
+  765     1 Sat Jul 25 19:43:12 2026     /usr/libexec/storagekitd
+  767     1 Sat Jul 25 19:43:12 2026     /usr/sbin/WirelessRadioManagerd
+  772     1 Sat Jul 25 19:43:12 2026     /System/Library/PrivateFrameworks/BackgroundTaskManagement.framework/Resources/backgroundtaskmanagementd
+  776     1 Sat Jul 25 19:43:12 2026     /System/Library/CoreServices/Software Update.app/Contents/Resources/suhelperd
+  784     1 Sat Jul 25 19:43:12 2026     /System/Library/CoreServices/TimeMachine/backupd
+  785     1 Sat Jul 25 19:43:12 2026     /System/Library/DriverExtensions/com.apple.DriverKit-IOUserDockChannelSerial.dext/com.apple.DriverKit-IOUserDockChannelSerial
+  786     1 Sat Jul 25 19:43:12 2026     /System/Library/DriverExtensions/com.apple.DriverKit-AppleBCMWLAN.dext/com.apple.DriverKit-AppleBCMWLAN
+  787     1 Sat Jul 25 19:43:12 2026     /System/Library/DriverExtensions/com.apple.AppleUserHIDDrivers.dext/com.apple.AppleUserHIDDrivers
+  800     1 Sat Jul 25 19:43:13 2026     /usr/libexec/gamepolicyd
+  803     1 Sat Jul 25 19:43:13 2026     /usr/sbin/distnoted
+  809     1 Sat Jul 25 19:43:13 2026     /usr/sbin/coreaudiod
+  810     1 Sat Jul 25 19:43:13 2026     /usr/sbin/distnoted
+  817     1 Sat Jul 25 19:43:13 2026     /usr/sbin/distnoted
+  819     1 Sat Jul 25 19:43:13 2026     /usr/libexec/com.apple.cmio.videodriverkithostextension.systemextension/Contents/MacOS/com.apple.cmio.videodriverkithostextension
+  821     1 Sat Jul 25 19:43:13 2026     /usr/sbin/appleh13camerad
+  825     1 Sat Jul 25 19:43:13 2026     Core Audio Driver (MSTeamsAudioDevice.driver)
+  827     1 Sat Jul 25 19:43:13 2026     /usr/libexec/clocksyncd
+  829     1 Sat Jul 25 19:43:13 2026     Core Audio Driver (PickleVirtualMic.driver)
+  833     1 Sat Jul 25 19:43:13 2026     /usr/libexec/modelmanagerd
+  837     1 Sat Jul 25 19:43:14 2026     /usr/sbin/BTLEServer
+  845     1 Sat Jul 25 19:43:14 2026     /usr/sbin/distnoted
+  848   559 Sat Jul 25 19:43:14 2026     /usr/sbin/systemstats
+  849     1 Sat Jul 25 19:43:14 2026     /usr/libexec/searchpartyd
+  857     1 Sat Jul 25 19:43:15 2026     /usr/libexec/wifip2pd
+  869     1 Sat Jul 25 19:43:21 2026     /usr/sbin/netbiosd
+  872     1 Sat Jul 25 19:43:27 2026     /usr/sbin/distnoted
+  874     1 Sat Jul 25 19:43:27 2026     /Library/PrivilegedHelperTools/com.muse.authservice
+  875     1 Sat Jul 25 19:43:27 2026     /Library/Application Support/Logitech.localized/LogiOptionsPlus/logioptionsplus_agent.app/Contents/Frameworks/logioptionsplus_updater.app/Contents/MacOS/logioptionsplus_updater
+  877     1 Sat Jul 25 19:43:27 2026     /usr/libexec/cameracaptured
+  878     1 Sat Jul 25 19:43:27 2026     /System/Library/Frameworks/CoreMediaIO.framework/Versions/A/Resources/UVCAssistant.systemextension/Contents/MacOS/UVCAssistant
+  880     1 Sat Jul 25 19:43:27 2026     /System/Library/CoreServices/appleeventsd
+  897     1 Sat Jul 25 19:43:28 2026     /System/Library/DriverExtensions/IOUserBluetoothSerialDriver.dext/IOUserBluetoothSerialDriver
+  898     1 Sat Jul 25 19:43:28 2026     /System/Library/DriverExtensions/IOUserBluetoothSerialDriver.dext/IOUserBluetoothSerialDriver
+  899     1 Sat Jul 25 19:43:28 2026     /System/Library/DriverExtensions/IOUserBluetoothSerialDriver.dext/IOUserBluetoothSerialDriver
+  905     1 Sat Jul 25 19:43:28 2026     /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mds_stores
+  926     1 Sat Jul 25 19:43:28 2026     /usr/libexec/audiomxd
+  935     1 Sat Jul 25 19:43:28 2026     /usr/sbin/distnoted
+  947     1 Sat Jul 25 19:43:28 2026     /usr/sbin/distnoted
+  959     1 Sat Jul 25 19:43:28 2026     /usr/libexec/rosetta/oahd
+  963     1 Sat Jul 25 19:43:28 2026     /usr/sbin/distnoted
+  980     1 Sat Jul 25 19:43:28 2026     /usr/sbin/distnoted
+  985     1 Sat Jul 25 19:43:29 2026     /System/Library/Frameworks/LocalAuthentication.framework/Support/coreauthd
+  987     1 Sat Jul 25 19:43:29 2026     /usr/sbin/cfprefsd
+  989     1 Sat Jul 25 19:43:29 2026     /usr/sbin/distnoted
+  996     1 Sat Jul 25 19:43:30 2026     /usr/libexec/secd
+  998     1 Sat Jul 25 19:43:30 2026     /usr/libexec/UserEventAgent
+ 1002     1 Sat Jul 25 19:43:30 2026     /System/Library/CoreServices/WindowManager.app/Contents/MacOS/WindowManager
+ 1007     1 Sat Jul 25 19:43:30 2026     /usr/sbin/universalaccessd
+ 1010     1 Sat Jul 25 19:43:30 2026     /usr/libexec/pboard
+ 1012     1 Sat Jul 25 19:43:30 2026     /usr/libexec/containermanagerd
+ 1013     1 Sat Jul 25 19:43:30 2026     /usr/libexec/lsd
+ 1014     1 Sat Jul 25 19:43:30 2026     /System/Library/PrivateFrameworks/BiomeStreams.framework/Support/BiomeAgent
+ 1015     1 Sat Jul 25 19:43:30 2026     /System/Library/PrivateFrameworks/TCC.framework/Support/tccd
+ 1021     1 Sat Jul 25 19:43:30 2026     /usr/libexec/rapportd
+ 1022     1 Sat Jul 25 19:43:30 2026     /System/Library/PrivateFrameworks/MobileDevice.framework/Resources/MobileDeviceUpdater.app/Contents/MacOS/MobileDeviceUpdater
+ 1024     1 Sat Jul 25 19:43:30 2026     /System/Library/PrivateFrameworks/UserNotificationsCore.framework/Support/usernotificationsd
+ 1026     1 Sat Jul 25 19:43:30 2026     /System/Library/CoreServices/WallpaperAgent.app/Contents/MacOS/WallpaperAgent
+ 1027     1 Sat Jul 25 19:43:30 2026     /usr/sbin/usernoted
+ 1028     1 Sat Jul 25 19:43:30 2026     /usr/libexec/trustd
+ 1032     1 Sat Jul 25 19:43:30 2026     /System/Library/PrivateFrameworks/SystemMigrationNetwork.framework/Resources/migrationhelper
+ 1037     1 Sat Jul 25 19:43:30 2026     /usr/libexec/languageassetd
+ 1040     1 Sat Jul 25 19:43:30 2026     /System/Library/CoreServices/WiFiAgent.app/Contents/MacOS/WiFiAgent
+ 1041     1 Sat Jul 25 19:43:31 2026     /usr/libexec/linkd
+ 1044     1 Sat Jul 25 19:43:31 2026     /System/Library/PrivateFrameworks/IDS.framework/identityservicesd.app/Contents/MacOS/identityservicesd
+ 1046     1 Sat Jul 25 19:43:31 2026     /System/Library/PrivateFrameworks/HomeKitDaemon.framework/Support/homed
+ 1047     1 Sat Jul 25 19:43:31 2026     /usr/libexec/sharingd
+ 1049     1 Sat Jul 25 19:43:31 2026     /usr/libexec/ContinuityCaptureAgent
+ 1056     1 Sat Jul 25 19:43:31 2026     /System/Library/CoreServices/diagnostics_agent
+ 1064     1 Sat Jul 25 19:43:31 2026     /usr/libexec/nearbyd
+ 1068     1 Sat Jul 25 19:43:31 2026     /usr/sbin/filecoordinationd
+ 1075     1 Sat Jul 25 19:43:31 2026     /System/Library/CoreServices/sharedfilelistd
+ 1076     1 Sat Jul 25 19:43:31 2026     /System/Library/PrivateFrameworks/IMCore.framework/imagent.app/Contents/MacOS/imagent
+ 1096     1 Sat Jul 25 19:43:32 2026     /System/Library/PrivateFrameworks/FileProvider.framework/Support/fileproviderd
+ 1097     1 Sat Jul 25 19:43:32 2026     /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/corespotlightd
+ 1117     1 Sat Jul 25 19:43:34 2026     /usr/sbin/distnoted
+ 1118     1 Sat Jul 25 19:43:34 2026     /System/Library/PrivateFrameworks/PassKitCore.framework/passd
+ 1120     1 Sat Jul 25 19:43:34 2026     /System/Library/Frameworks/CryptoTokenKit.framework/ctkd
+ 1123     1 Sat Jul 25 19:43:34 2026     /usr/sbin/distnoted
+ 1125     1 Sat Jul 25 19:43:35 2026     /System/Library/CoreServices/AccessibilityUIServer.app/Contents/MacOS/AccessibilityUIServer
+ 1128     1 Sat Jul 25 19:43:35 2026     /usr/sbin/distnoted
+ 1130     1 Sat Jul 25 19:43:36 2026     /System/Library/Frameworks/ApplicationServices.framework/Frameworks/ATS.framework/Support/fontd
+ 1136     1 Sat Jul 25 19:43:36 2026     /System/Library/PrivateFrameworks/ChronoCore.framework/Support/chronod
+ 1138     1 Sat Jul 25 19:43:36 2026     /System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/ATS.framework/Versions/A/Support/fontworker
+ 1140     1 Sat Jul 25 19:43:37 2026     /System/Library/CoreServices/NotificationCenter.app/Contents/MacOS/NotificationCenter
+ 1144     1 Sat Jul 25 19:43:37 2026     /System/Library/CoreServices/MenuBarAgent.app/Contents/MacOS/MenuBarAgent
+ 1145     1 Sat Jul 25 19:43:37 2026     /System/Library/PrivateFrameworks/ViewBridge.framework/Versions/A/XPCServices/ViewBridgeAuxiliary.xpc/Contents/MacOS/ViewBridgeAuxiliary
+ 1156     1 Sat Jul 25 19:43:38 2026     /System/Library/CoreServices/UIKitSystem.app/Contents/MacOS/UIKitSystem
+ 1161     1 Sat Jul 25 19:43:38 2026     /usr/libexec/avconferenced
+ 1162     1 Sat Jul 25 19:43:38 2026     /System/Library/PrivateFrameworks/MediaRemote.framework/Support/mediaremoteagent
+ 1163     1 Sat Jul 25 19:43:38 2026     /System/Library/PrivateFrameworks/UserActivity.framework/Agents/useractivityd
+ 1170     1 Sat Jul 25 19:43:38 2026     /System/Library/PrivateFrameworks/EmailDaemon.framework/Versions/A/maild
+ 1172     1 Sat Jul 25 19:43:38 2026     /System/Library/PrivateFrameworks/CommunicationsFilter.framework/CMFSyncAgent
+ 1180     1 Sat Jul 25 19:43:40 2026     /usr/sbin/distnoted
+ 1186     1 Sat Jul 25 19:43:41 2026     /usr/sbin/distnoted
+ 1199     1 Sat Jul 25 19:43:43 2026     /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mdbulkimport
+ 1205     1 Sat Jul 25 19:43:44 2026     /System/Library/ExtensionKit/Extensions/WallpaperImageExtension.appex/Contents/MacOS/WallpaperImageExtension
+ 1207     1 Sat Jul 25 19:43:44 2026     /System/Library/ExtensionKit/Extensions/WallpaperAerialsExtension.appex/Contents/MacOS/WallpaperAerialsExtension
+ 1222     1 Sat Jul 25 19:43:44 2026     /System/Applications/Reminders.app/Contents/PlugIns/RemindersWidgetExtension.appex/Contents/MacOS/RemindersWidgetExtension
+ 1225     1 Sat Jul 25 19:43:45 2026     /System/Library/CoreServices/WindowManager.app/Contents/PlugIns/WindowManagerControlsExtension.appex/Contents/MacOS/WindowManagerControlsExtension
+ 1226     1 Sat Jul 25 19:43:45 2026     /System/Applications/Journal.app/Contents/PlugIns/JournalWidgetsSecure.appex/Contents/MacOS/JournalWidgetsSecure
+ 1227     1 Sat Jul 25 19:43:45 2026     /System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app/Contents/Extensions/SafariWidgetExtension.appex/Contents/MacOS/SafariWidgetExtension
+ 1229     1 Sat Jul 25 19:43:45 2026     /System/Library/CoreServices/Screen Time.app/Contents/PlugIns/ScreenTimeWidgetExtension.appex/Contents/MacOS/ScreenTimeWidgetExtension
+ 1239     1 Sat Jul 25 19:43:45 2026     /System/Library/PrivateFrameworks/InstallCoordination.framework/Support/installcoordinationd
+ 1241     1 Sat Jul 25 19:43:45 2026     /usr/sbin/distnoted
+ 1244     1 Sat Jul 25 19:43:46 2026     /System/Library/PrivateFrameworks/CoreFP.framework/Versions/A/fairplayd
+ 1250     1 Sat Jul 25 19:43:46 2026     /System/Library/CoreServices/Batteries.app/Contents/PlugIns/BatteriesAvocadoWidgetExtension.appex/Contents/MacOS/BatteriesAvocadoWidgetExtension
+ 1251     1 Sat Jul 25 19:43:46 2026     /System/Applications/Reminders.app/Contents/PlugIns/RemindersIntentsExtension.appex/Contents/MacOS/RemindersIntentsExtension
+ 1257     1 Sat Jul 25 19:43:46 2026     /System/Applications/Calendar.app/Contents/PlugIns/CalendarWidgetExtension.appex/Contents/MacOS/CalendarWidgetExtension
+ 1261     1 Sat Jul 25 19:43:47 2026     /System/Library/ExtensionKit/Extensions/AssistantSettingsControlsExtension.appex/Contents/MacOS/AssistantSettingsControlsExtension
+ 1262     1 Sat Jul 25 19:43:47 2026     /System/Library/CoreServices/Screen Time.app/Contents/PlugIns/ScreenTimeWidgetIntentsExtension.appex/Contents/MacOS/ScreenTimeWidgetIntentsExtension
+ 1265     1 Sat Jul 25 19:43:47 2026     /System/Applications/Shortcuts.app/Contents/PlugIns/ShortcutsWidgetExtension.appex/Contents/MacOS/ShortcutsWidgetExtension
+ 1266     1 Sat Jul 25 19:43:47 2026     /System/Applications/FindMy.app/Contents/PlugIns/FindMyWidgetItems.appex/Contents/MacOS/FindMyWidgetItems
+ 1268     1 Sat Jul 25 19:43:47 2026     /System/Library/ExtensionKit/Extensions/NotificationsSettingsIntents.appex/Contents/MacOS/NotificationsSettingsIntents
+ 1269     1 Sat Jul 25 19:43:47 2026     /System/Library/PrivateFrameworks/CloudDocs.framework/PlugIns/com.apple.CloudDocs.iCloudDriveFileProvider.appex/Contents/MacOS/com.apple.CloudDocs.iCloudDriveFileProvider
+ 1270     1 Sat Jul 25 19:43:47 2026     /System/Applications/Notes.app/Contents/PlugIns/com.apple.Notes.WidgetExtension.appex/Contents/MacOS/com.apple.Notes.WidgetExtension
+ 1271     1 Sat Jul 25 19:43:47 2026     /System/Applications/VoiceMemos.app/Contents/PlugIns/VoiceMemosSettingsWidgetExtension.appex/Contents/MacOS/VoiceMemosSettingsWidgetExtension
+ 1272     1 Sat Jul 25 19:43:47 2026     /System/Library/CoreServices/Dock.app/Contents/PlugIns/DockControls.appex/Contents/MacOS/DockControls
+ 1273     1 Sat Jul 25 19:43:48 2026     /System/Applications/Home.app/Contents/PlugIns/HomeWidget.appex/Contents/MacOS/HomeWidget
+ 1274     1 Sat Jul 25 19:43:48 2026     /System/Applications/Shortcuts.app/Contents/PlugIns/ShortcutLiveActivityWidgetExtension.appex/Contents/MacOS/ShortcutLiveActivityWidgetExtension
+ 1275     1 Sat Jul 25 19:43:48 2026     /System/Applications/Stocks.app/Contents/PlugIns/StocksWidget.appex/Contents/MacOS/StocksWidget
+ 1276     1 Sat Jul 25 19:43:48 2026     /System/Library/ExtensionKit/Extensions/BluetoothSettingsAppIntentsWidgetExtension.appex/Contents/MacOS/BluetoothSettingsAppIntentsWidgetExtension
+ 1277     1 Sat Jul 25 19:43:48 2026     /System/Library/ExtensionKit/Extensions/AppearanceIntentsExtension.appex/Contents/MacOS/AppearanceIntentsExtension
+ 1278     1 Sat Jul 25 19:43:48 2026     /System/Applications/FindMy.app/Contents/PlugIns/FindMyWidgetPeople.appex/Contents/MacOS/FindMyWidgetPeople
+ 1282     1 Sat Jul 25 19:43:48 2026     /System/Applications/Weather.app/Contents/PlugIns/WeatherWidget.appex/Contents/MacOS/WeatherWidget
+ 1284     1 Sat Jul 25 19:43:48 2026     /System/Library/ExtensionKit/Extensions/DateTimeIntentsExtension.appex/Contents/MacOS/DateTimeIntentsExtension
+ 1285     1 Sat Jul 25 19:43:48 2026     /System/Applications/Photos.app/Contents/PlugIns/PhotosReliveWidget.appex/Contents/MacOS/PhotosReliveWidget
+ 1286     1 Sat Jul 25 19:43:48 2026     /System/Applications/Home.app/Contents/PlugIns/HomeEnergyWidgetsExtension.appex/Contents/MacOS/HomeEnergyWidgetsExtension
+ 1289     1 Sat Jul 25 19:43:48 2026     /System/Library/PrivateFrameworks/CoreSpeech.framework/corespeechd
+ 1290     1 Sat Jul 25 19:43:48 2026     /System/Library/ExtensionKit/Extensions/ControlCenterSettingsIntents.appex/Contents/MacOS/ControlCenterSettingsIntents
+ 1291     1 Sat Jul 25 19:43:48 2026     /System/Library/ExtensionKit/Extensions/AccessibilitySettingsWidgetExtension.appex/Contents/MacOS/AccessibilitySettingsWidgetExtension
+ 1292     1 Sat Jul 25 19:43:48 2026     /System/Library/ExtensionKit/Extensions/DisplaysSettingsIntentsExtension.appex/Contents/MacOS/DisplaysSettingsIntentsExtension
+ 1294     1 Sat Jul 25 19:43:48 2026     /System/Applications/Utilities/Print Center.app/Contents/PlugIns/PrintCenterWidgetExtension.macOS.appex/Contents/MacOS/PrintCenterWidgetExtension.macOS
+ 1295     1 Sat Jul 25 19:43:48 2026     /System/Library/ExtensionKit/Extensions/WallpaperSettingsIntents.appex/Contents/MacOS/WallpaperSettingsIntents
+ 1296     1 Sat Jul 25 19:43:48 2026     /System/Applications/Journal.app/Contents/PlugIns/JournalWidgets.appex/Contents/MacOS/JournalWidgets
+ 1298     1 Sat Jul 25 19:43:48 2026     /System/Applications/Podcasts.app/Contents/PlugIns/PodcastsWidget.appex/Contents/MacOS/PodcastsWidget
+ 1301     1 Sat Jul 25 19:43:49 2026     /System/Applications/VoiceMemos.app/Contents/PlugIns/RecordWidgetExtension.appex/Contents/MacOS/RecordWidgetExtension
+ 1302     1 Sat Jul 25 19:43:49 2026     /System/Applications/Tips.app/Contents/PlugIns/TipsWidgetExtension.appex/Contents/MacOS/TipsWidgetExtension
+ 1303     1 Sat Jul 25 19:43:49 2026     /System/Library/ExtensionKit/Extensions/SoundIntentsExtension.appex/Contents/MacOS/SoundIntentsExtension
+ 1304     1 Sat Jul 25 19:43:49 2026     /System/Library/ExtensionKit/Extensions/DesktopSettingsIntents.appex/Contents/MacOS/DesktopSettingsIntents
+ 1306     1 Sat Jul 25 19:43:49 2026     /System/Applications/Clock.app/Contents/PlugIns/WorldClockWidget.appex/Contents/MacOS/WorldClockWidget
+ 1308     1 Sat Jul 25 19:43:49 2026     /Applications/Session.app/Contents/PlugIns/MacOSWidgetExtension.appex/Contents/MacOS/MacOSWidgetExtension
+ 1310     1 Sat Jul 25 19:43:51 2026     /usr/sbin/distnoted
+ 1311     1 Sat Jul 25 19:43:51 2026     /System/Library/ExtensionKit/Extensions/TGOnDeviceInferenceProviderService.appex/Contents/MacOS/TGOnDeviceInferenceProviderService
+ 1315     1 Sat Jul 25 19:43:52 2026     /System/Library/CoreServices/PeopleViewService.app/Contents/PlugIns/PeopleWidget_macOSExtension.appex/Contents/MacOS/PeopleWidget_macOSExtension
+ 1316     1 Sat Jul 25 19:43:52 2026     /System/Library/PrivateFrameworks/CalendarWidget.framework/PlugIns/IntentsExtension.appex/Contents/MacOS/IntentsExtension
+ 1317     1 Sat Jul 25 19:43:52 2026     /System/iOSSupport/System/Library/ExtensionKit/Extensions/HomeWidgetIntentsExtension.appex/Contents/MacOS/HomeWidgetIntentsExtension
+ 1319     1 Sat Jul 25 19:43:52 2026     /System/Applications/Notes.app/Contents/PlugIns/com.apple.Notes.IntentsExtension.appex/Contents/MacOS/com.apple.Notes.IntentsExtension
+ 1322     1 Sat Jul 25 19:43:52 2026     /System/Applications/Weather.app/Contents/PlugIns/WeatherIntents.appex/Contents/MacOS/WeatherIntents
+ 1325     1 Sat Jul 25 19:43:58 2026     /usr/sbin/distnoted
+ 1326     1 Sat Jul 25 19:43:59 2026     /System/Library/ExtensionKit/Extensions/GenerativeExperiencesSafetyInferenceProvider.appex/Contents/MacOS/GenerativeExperiencesSafetyInferenceProvider
+ 1331     1 Sat Jul 25 19:44:00 2026     /System/Library/PrivateFrameworks/AmbientDisplay.framework/Versions/A/XPCServices/com.apple.AmbientDisplayAgent.xpc/Contents/MacOS/com.apple.AmbientDisplayAgent
+ 1338     1 Sat Jul 25 19:44:01 2026     /System/Library/CoreServices/Dock.app/Contents/MacOS/Dock
+ 1340     1 Sat Jul 25 19:44:01 2026     /System/Library/CoreServices/ControlCenter.app/Contents/MacOS/ControlCenter
+ 1341     1 Sat Jul 25 19:44:01 2026     /System/Library/CoreServices/SystemUIServer.app/Contents/MacOS/SystemUIServer
+ 1342     1 Sat Jul 25 19:44:01 2026     /System/Library/CoreServices/Finder.app/Contents/MacOS/Finder
+ 1349     1 Sat Jul 25 19:44:01 2026     /System/Library/CoreServices/ControlCenter.app/Contents/PlugIns/DisplayControls.appex/Contents/MacOS/DisplayControls
+ 1352     1 Sat Jul 25 19:44:01 2026     automountd
+ 1353     1 Sat Jul 25 19:44:01 2026     /System/Applications/Siri AI.app/Contents/MacOS/Siri AI
+ 1354     1 Sat Jul 25 19:44:01 2026     /System/Library/PrivateFrameworks/AMPDevices.framework/Versions/A/Support/AMPDeviceDiscoveryAgent
+ 1359     1 Sat Jul 25 19:44:01 2026     /System/Library/Frameworks/CryptoTokenKit.framework/ctkahp.bundle/Contents/MacOS/ctkahp
+ 1362     1 Sat Jul 25 19:44:01 2026     /System/Library/Frameworks/InputMethodKit.framework/Resources/imklaunchagent
+ 1365     1 Sat Jul 25 19:44:01 2026     /System/Library/PrivateFrameworks/TextInputUIMacHelper.framework/Versions/A/XPCServices/CursorUIViewService.xpc/Contents/MacOS/CursorUIViewService
+ 1367     1 Sat Jul 25 19:44:01 2026     /System/Library/Input Methods/PressAndHold.app/Contents/PlugIns/PAH_Extension.appex/Contents/MacOS/PAH_Extension
+ 1375     1 Sat Jul 25 19:44:02 2026     /System/Library/PrivateFrameworks/AgentSessionKitRuntime.framework/Versions/A/agentstored
+ 1380     1 Sat Jul 25 19:44:03 2026     /System/Library/CoreServices/Dock.app/Contents/XPCServices/com.apple.dock.extra.xpc/Contents/MacOS/com.apple.dock.extra
+ 1381     1 Sat Jul 25 19:44:03 2026     /System/Library/CoreServices/Dock.app/Contents/XPCServices/com.apple.dock.external.extra.arm64.xpc/Contents/MacOS/com.apple.dock.external.extra.arm64
+ 1414     1 Tue Jul 28 03:19:10 2026     /usr/libexec/logd_helper
+ 1502     1 Sat Jul 25 19:44:05 2026     /System/Library/Image Capture/Support/icdd
+ 1503     1 Sat Jul 25 19:44:05 2026     /Library/Application Support/Logitech.localized/LogiRightSightForWebcams/LogiRightSight.app/Contents/MacOS/LogiRightSight
+ 1507     1 Sat Jul 25 19:44:05 2026     /opt/homebrew/bin/watchman
+ 1510     1 Sat Jul 25 19:44:05 2026     /Library/Application Support/Logitech.localized/LogiOptionsPlus/logioptionsplus_agent.app/Contents/MacOS/logioptionsplus_agent
+ 1511     1 Sat Jul 25 19:44:05 2026     /System/Library/CoreServices/AirPlayUIAgent.app/Contents/MacOS/AirPlayUIAgent
+ 1514     1 Sat Jul 25 19:44:05 2026     /System/Library/CoreServices/TextInputMenuAgent.app/Contents/MacOS/TextInputMenuAgent
+ 1521     1 Sat Jul 25 19:44:05 2026     /Applications/Google Drive.app/Contents/MacOS/Google Drive
+ 1537     1 Sun Jul 26 01:43:15 2026     /System/Library/PrivateFrameworks/CoreAnalytics.framework/Support/analyticsagent
+ 1541     1 Sat Jul 25 19:44:05 2026     /Applications/Dropzone 4.app/Contents/MacOS/Dropzone 4
+ 1639     1 Sat Jul 25 19:44:08 2026     /System/Library/CoreServices/SubmitDiagInfo
+ 1641     1 Sat Jul 25 19:44:08 2026     /Applications/Google Drive.app/Contents/MacOS/crashpad_handler
+ 1642  1521 Sat Jul 25 19:44:08 2026     /Applications/Google Drive.app/Contents/MacOS/Google Drive
+ 1657     1 Sat Jul 25 23:37:43 2026     /usr/libexec/nfcd
+ 1708  1642 Sat Jul 25 19:44:08 2026     /Applications/Google Drive.app/Contents/Helpers/Google Drive Helper (GPU).app/Contents/MacOS/Google Drive Helper (GPU)
+ 1713  1642 Sat Jul 25 19:44:08 2026     /Applications/Google Drive.app/Contents/Helpers/Google Drive Helper.app/Contents/MacOS/Google Drive Helper
+ 1715  1642 Sat Jul 25 19:44:08 2026     /Applications/Google Drive.app/Contents/Helpers/Google Drive Helper.app/Contents/MacOS/Google Drive Helper
+ 1716  1642 Sat Jul 25 19:44:08 2026     /Applications/Google Drive.app/Contents/Helpers/Google Drive Helper (Renderer).app/Contents/MacOS/Google Drive Helper (Renderer)
+ 1717  1642 Sat Jul 25 19:44:08 2026     /Applications/Google Drive.app/Contents/Helpers/Google Drive Helper (Renderer).app/Contents/MacOS/Google Drive Helper (Renderer)
+ 1718     1 Sat Jul 25 19:44:08 2026     /System/Library/Frameworks/ImageCaptureCore.framework/Versions/A/XPCServices/mscamerad-xpc.xpc/Contents/MacOS/mscamerad-xpc
+ 1719     1 Sat Jul 25 19:44:08 2026     /usr/libexec/ptpcamerad
+ 1720     1 Sat Jul 25 19:44:08 2026     /System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries/CVMServer
+ 1728     1 Sat Jul 25 19:44:09 2026     /Applications/Google Drive.app/Contents/Applications/FinderHelper.app/Contents/PlugIns/FinderSyncExtension.appex/Contents/MacOS/FinderSyncExtension
+ 1793     1 Sat Jul 25 19:44:10 2026     /Applications/Google Drive.app/Contents/PlugIns/DFSFileProviderExtension.appex/Contents/MacOS/DFSFileProviderExtension
+ 1828     1 Tue Jul 28 03:19:27 2026     /System/Library/PrivateFrameworks/XprotectFramework.framework/Versions/A/XPCServices/XprotectService.xpc/Contents/MacOS/XprotectService
+ 1845     1 Tue Jul 28 10:29:47 2026     /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+ 1857     1 Sat Jul 25 19:44:11 2026     /System/Library/PrivateFrameworks/UniversalAccess.framework/Versions/A/Resources/universalAccessAuthWarn.app/Contents/MacOS/universalAccessAuthWarn
+ 1909     1 Sat Jul 25 19:44:12 2026     /Applications/Google Drive.app/Contents/PlugIns/DFSFileProviderExtension.appex/Contents/MacOS/DFSFileProviderExtension
+ 1981     1 Sat Jul 25 19:44:13 2026     PM2 v6.0.14: God Daemon (/Users/abhishekthakur/.pm2)
+ 2004     1 Sat Jul 25 19:44:15 2026     /Applications/Utilities/LogiPluginService.app/Contents/MacOS/LogiPluginService
+ 2014  2004 Sat Jul 25 19:44:18 2026     /Applications/Utilities/LogiPluginService.app/Contents/MonoBundle/./LogiPluginServiceNative
+ 2015     1 Sat Jul 25 19:44:18 2026     /System/Library/Frameworks/CoreMIDI.framework/MIDIServer
+ 2024  2004 Sat Jul 25 19:44:19 2026     /Applications/Utilities/LogiPluginService.app/Contents/MonoBundle/LogiPluginServiceExt
+ 2052     1 Tue Jul 28 03:19:36 2026     /usr/libexec/bluetoothuserd
+ 2067     1 Sat Jul 25 19:44:21 2026     /System/Library/ExtensionKit/Extensions/BatterySettingsIntentsExtension.appex/Contents/MacOS/BatterySettingsIntentsExtension
+ 2119     1 Sat Jul 25 19:44:26 2026     /System/Library/ExtensionKit/Extensions/TGOnDeviceInferenceProviderService.appex/Contents/MacOS/TGOnDeviceInferenceProviderService
+ 2120     1 Sat Jul 25 19:44:27 2026     /System/Applications/Notes.app/Contents/PlugIns/com.apple.Notes.SpotlightIndexExtension.appex/Contents/MacOS/com.apple.Notes.SpotlightIndexExtension
+ 2158     1 Sat Jul 25 19:44:43 2026     /System/Applications/Calendar.app/Contents/Extensions/CalendarIntentsExtension.appex/Contents/MacOS/CalendarIntentsExtension
+ 2165     1 Sat Jul 25 19:44:43 2026     /System/Volumes/Preboot/Cryptexes/App/System/Applications/Safari.app/Contents/Extensions/SafariLinkExtension.appex/Contents/MacOS/SafariLinkExtension
+ 2175     1 Sat Jul 25 19:44:44 2026     /System/Applications/Messages.app/Contents/Extensions/MessagesActionExtension.appex/Contents/MacOS/MessagesActionExtension
+ 2183     1 Sat Jul 25 19:44:45 2026     /System/Library/CoreServices/CrashReporterSupportHelper
+ 2185     1 Sat Jul 25 19:44:46 2026     /System/Library/ExtensionKit/Extensions/WallpaperLegacyExtension.appex/Contents/MacOS/WallpaperLegacyExtension
+ 2186     1 Sat Jul 25 19:44:46 2026     /System/Library/ExtensionKit/Extensions/NeptuneOneWallpaper.appex/Contents/MacOS/NeptuneOneWallpaper
+ 2187     1 Sat Jul 25 19:44:46 2026     /System/Library/ExtensionKit/Extensions/WallpaperMacintoshExtension.appex/Contents/MacOS/WallpaperMacintoshExtension
+ 2188     1 Sat Jul 25 19:44:46 2026     /System/Library/ExtensionKit/Extensions/WallpaperDynamicExtension.appex/Contents/MacOS/WallpaperDynamicExtension
+ 2189     1 Sat Jul 25 19:44:46 2026     /System/Library/ExtensionKit/Extensions/WallpaperSequoiaExtension.appex/Contents/MacOS/WallpaperSequoiaExtension
+ 2190     1 Sat Jul 25 19:44:46 2026     /System/Library/ExtensionKit/Extensions/WallpaperSonomaExtension.appex/Contents/MacOS/WallpaperSonomaExtension
+ 2191     1 Sat Jul 25 19:44:46 2026     /System/Library/ExtensionKit/Extensions/WallpaperGradientExtension.appex/Contents/MacOS/WallpaperGradientExtension
+ 2197     1 Sat Jul 25 19:44:54 2026     /System/Library/ExtensionKit/Extensions/PlaceholderSettingsSearchTermsIntents.appex/Contents/MacOS/PlaceholderSettingsSearchTermsIntents
+ 2198     1 Sat Jul 25 19:44:55 2026     /System/Library/ExtensionKit/Extensions/AccessibilitySettingsSearchExtension.appex/Contents/MacOS/AccessibilitySettingsSearchExtension
+ 2201     1 Sat Jul 25 19:44:57 2026     /System/Library/ExtensionKit/Extensions/StorageSettingsIntentsExtension.appex/Contents/MacOS/StorageSettingsIntentsExtension
+ 2203     1 Sat Jul 25 19:44:57 2026     /System/Library/ExtensionKit/Extensions/StartupDiskWidgetExtension.appex/Contents/MacOS/StartupDiskWidgetExtension
+ 2204     1 Sat Jul 25 19:44:58 2026     /System/Library/ExtensionKit/Extensions/ClassKitAppIntents.appex/Contents/MacOS/ClassKitAppIntents
+ 2205     1 Sat Jul 25 19:44:58 2026     /System/Library/ExtensionKit/Extensions/DoNotDisturbAppIntents.appex/Contents/MacOS/DoNotDisturbAppIntents
+ 2206     1 Sat Jul 25 19:44:59 2026     /System/Library/ExtensionKit/Extensions/ScreenTimeAppIntentsExtension.appex/Contents/MacOS/ScreenTimeAppIntentsExtension
+ 2207     1 Sat Jul 25 19:44:59 2026     /System/Library/ExtensionKit/Extensions/BiometricsAndPasswordSettingsAppIntentsExtension.appex/Contents/MacOS/BiometricsAndPasswordSettingsAppIntentsExtension
+ 2208     1 Sat Jul 25 19:45:00 2026     /System/Library/ExtensionKit/Extensions/GameControllerSettingsIntents.appex/Contents/MacOS/GameControllerSettingsIntents
+ 2209     1 Sat Jul 25 19:45:01 2026     /System/Library/ExtensionKit/Extensions/PasswordSettingsAppIntentsExtension.appex/Contents/MacOS/PasswordSettingsAppIntentsExtension
+ 2210     1 Sat Jul 25 19:45:01 2026     /System/Library/ExtensionKit/Extensions/CDsAndDvDsSettingsIntents.appex/Contents/MacOS/CDsAndDvDsSettingsIntents
+ 2215     1 Sat Jul 25 19:45:03 2026     /System/Library/ExtensionKit/Extensions/AccountsUISettingsAppIntents.appex/Contents/MacOS/AccountsUISettingsAppIntents
+ 2494     1 Sat Jul 25 19:45:03 2026     /System/Library/ExtensionKit/Extensions/PrefPaneSearchIntent.appex/Contents/MacOS/PrefPaneSearchIntent
+ 2565     1 Sat Jul 25 19:45:04 2026     /System/Library/ExtensionKit/Extensions/SpotlightSettingsIntentsExtension.appex/Contents/MacOS/SpotlightSettingsIntentsExtension
+ 2567     1 Sat Jul 25 19:45:05 2026     /System/Library/ExtensionKit/Extensions/KeyboardSettingsIntents.appex/Contents/MacOS/KeyboardSettingsIntents
+ 2568     1 Sat Jul 25 19:45:05 2026     /System/Library/ExtensionKit/Extensions/ClassroomDeviceExpert.appex/Contents/MacOS/ClassroomDeviceExpert
+ 2569     1 Sat Jul 25 19:45:06 2026     /System/Library/ExtensionKit/Extensions/SoftwareUpdateSettingsExtensionIntents.appex/Contents/MacOS/SoftwareUpdateSettingsExtensionIntents
+ 2570     1 Sat Jul 25 19:45:06 2026     /System/Library/ExtensionKit/Extensions/InternationalSettingsExtension.appex/Contents/MacOS/InternationalSettingsExtension
+ 2571     1 Sat Jul 25 19:45:07 2026     /System/Library/ExtensionKit/Extensions/TimeMachineSettingsIntents.appex/Contents/MacOS/TimeMachineSettingsIntents
+ 2572     1 Sat Jul 25 19:45:08 2026     /System/Library/ExtensionKit/Extensions/WiFiMacSettingsIntents.appex/Contents/MacOS/WiFiMacSettingsIntents
+ 2638     1 Sat Jul 25 19:45:27 2026     /usr/sbin/distnoted
+ 2753     1 Tue Jul 28 03:20:36 2026     /System/Library/PrivateFrameworks/PowerLog.framework/Versions/A/XPCServices/PerfPowerTelemetryClientRegistrationService.xpc/Contents/MacOS/PerfPowerTelemetryClientRegistrationService
+ 2829     1 Sat Jul 25 19:47:11 2026     /usr/libexec/spotlightknowledged.importer
+ 2844     1 Sat Jul 25 19:47:15 2026     /usr/sbin/distnoted
+ 2851     1 Sat Jul 25 19:47:15 2026     /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mdbulkimport
+ 2862     1 Sat Jul 25 19:47:16 2026     /usr/libexec/lsd
+ 3275     1 Tue Jul 28 03:21:00 2026     /System/Library/PrivateFrameworks/XprotectFramework.framework/Versions/A/XPCServices/XProtectBridgeService.xpc/Contents/MacOS/XProtectBridgeService
+ 3428     1 Tue Jul 28 03:21:05 2026     /System/Library/Frameworks/Metal.framework/Versions/A/XPCServices/MTLCompilerService.xpc/Contents/MacOS/MTLCompilerService
+ 3713     1 Sat Jul 25 19:53:07 2026     /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mdwrite
+ 3775     1 Tue Jul 28 03:21:36 2026     /System/Library/Services/AppleSpell.service/Contents/MacOS/AppleSpell
+ 3843     1 Tue Jul 28 03:21:43 2026     /usr/libexec/naturallanguaged
+ 4598     1 Tue Jul 28 10:32:40 2026     /System/Library/PrivateFrameworks/HelpData.framework/Versions/A/Resources/helpd
+ 4602     1 Tue Jul 28 10:32:40 2026     /System/Cryptexes/App/usr/libexec/SafariLaunchAgent
+ 4622     1 Tue Jul 28 10:32:42 2026     /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService
+ 4650     1 Tue Jul 28 10:32:44 2026     /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+ 5241     1 Tue Jul 28 03:22:50 2026     /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService
+ 5243     1 Tue Jul 28 03:22:50 2026     /System/Library/CoreServices/talagentd
+ 5244     1 Tue Jul 28 03:22:50 2026     /usr/libexec/proactived
+ 5245     1 Tue Jul 28 03:22:50 2026     /System/Library/CoreServices/iconservicesagent
+ 5246     1 Tue Jul 28 03:22:50 2026     /System/Library/PrivateFrameworks/IntelligencePlatformCompute.framework/Versions/A/XPCServices/IntelligencePlatformComputeService.xpc/Contents/MacOS/IntelligencePlatformComputeService
+ 5247     1 Tue Jul 28 03:22:50 2026     /System/Library/CoreServices/iconservicesd
+ 5248     1 Tue Jul 28 03:22:50 2026     /System/Library/PrivateFrameworks/CalendarDaemon.framework/Support/calaccessd
+ 5254     1 Tue Jul 28 03:22:51 2026     /System/Library/PrivateFrameworks/CommunicationTrust.framework/Support/communicationtrustd
+ 5259     1 Tue Jul 28 03:22:51 2026     /usr/libexec/appleaccountd
+ 5260     1 Tue Jul 28 03:22:51 2026     /usr/libexec/studentd
+ 5262     1 Tue Jul 28 03:22:51 2026     /System/Library/PrivateFrameworks/CloudPhotoServices.framework/Versions/A/XPCServices/com.apple.CloudPhotosConfiguration.xpc/Contents/MacOS/com.apple.CloudPhotosConfiguration
+ 5263     1 Tue Jul 28 03:22:51 2026     /System/Library/PrivateFrameworks/CoreCDP.framework/Versions/A/Resources/cdpd
+ 5265     1 Tue Jul 28 03:22:51 2026     /System/Library/CoreServices/ScopedBookmarkAgent
+ 5272     1 Tue Jul 28 03:22:51 2026     /System/Library/Frameworks/Security.framework/Versions/A/XPCServices/TrustedPeersHelper.xpc/Contents/MacOS/TrustedPeersHelper
+ 5286     1 Tue Jul 28 03:22:52 2026     /System/Cryptexes/App/usr/libexec/guidedbrowsingd
+ 5287     1 Tue Jul 28 03:22:52 2026     /usr/libexec/inputanalyticsd
+ 5288     1 Tue Jul 28 03:22:53 2026     /System/Library/PrivateFrameworks/DataAccess.framework/Support/dataaccessd
+ 5289     1 Tue Jul 28 03:22:53 2026     /System/Library/PrivateFrameworks/iCloudNotification.framework/iCloudNotificationAgent
+ 5290     1 Tue Jul 28 03:22:53 2026     /usr/libexec/transparencyd
+ 5291     1 Tue Jul 28 03:22:53 2026     /System/Library/Frameworks/ClassKit.framework/Versions/A/progressd
+ 5323     1 Tue Jul 28 03:22:53 2026     /System/Library/PrivateFrameworks/ProtectedCloudStorage.framework/Helpers/ProtectedCloudKeySyncing
+ 5331     1 Tue Jul 28 03:22:53 2026     /System/Library/CoreServices/pbs
+ 5332     1 Tue Jul 28 03:22:54 2026     /usr/libexec/dmd
+ 5333     1 Tue Jul 28 03:22:54 2026     /System/Library/Frameworks/ManagedSettings.framework/Versions/A/ManagedSettingsAgent
+ 5335     1 Tue Jul 28 03:22:56 2026     /System/Library/PrivateFrameworks/AppPredictionFoundation.framework/Versions/A/XPCServices/AppPredictionIntentsHelperService.xpc/Contents/MacOS/AppPredictionIntentsHelperService
+ 5338     1 Tue Jul 28 03:22:56 2026     /System/Library/Frameworks/Intents.framework/XPCServices/intents_helper.xpc/Contents/MacOS/intents_helper
+ 5404     1 Tue Jul 28 03:23:02 2026     /System/Library/PrivateFrameworks/iCloudDriveService.framework/XPCServices/ContainerMetadataExtractor.xpc/Contents/MacOS/ContainerMetadataExtractor
+ 5405     1 Tue Jul 28 03:23:02 2026     /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService
+ 5406     1 Tue Jul 28 03:23:02 2026     /System/Library/Frameworks/LocalAuthentication.framework/Support/coreautha.bundle/Contents/MacOS/coreautha
+ 5407     1 Tue Jul 28 03:23:03 2026     /System/Library/PrivateFrameworks/SessionCore.framework/Support/liveactivitiesd
+ 5408     1 Tue Jul 28 03:23:03 2026     /System/Library/PrivateFrameworks/ReplicatorCore.framework/Support/replicatord
+ 5420     1 Tue Jul 28 03:23:05 2026     /System/Library/PrivateFrameworks/SystemAdministration.framework/XPCServices/writeconfig.xpc/Contents/MacOS/writeconfig
+ 5423     1 Tue Jul 28 03:23:10 2026     /usr/libexec/textunderstandingd
+ 5626     1 Tue Jul 28 10:33:45 2026     /usr/libexec/taskgated-helper
+ 5630     1 Tue Jul 28 10:33:46 2026     /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+ 5643     1 Tue Jul 28 10:33:53 2026     /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Support/mdworker_shared
+ 5849     1 Tue Jul 28 03:23:25 2026     /Library/Apple/System/Library/CoreServices/XProtect.app/Contents/MacOS/XProtect
+ 5851     1 Tue Jul 28 03:23:25 2026     /Library/Apple/System/Library/CoreServices/XProtect.app/Contents/XPCServices/XProtectPluginService.xpc/Contents/MacOS/XProtectPluginService
+ 6210 43426 Tue Jul 28 10:34:24 2026     /Users/abhishekthakur/.codegraph/versions/v1.5.0/node
+ 6262 83950 Tue Jul 28 10:34:24 2026     zsh
+ 6330  6262 Tue Jul 28 10:34:25 2026     /bin/ps
+ 6383     1 Tue Jul 28 03:23:45 2026     /System/Library/Frameworks/MediaAccessibility.framework/Versions/A/XPCServices/com.apple.accessibility.mediaaccessibilityd.xpc/Contents/MacOS/com.apple.accessibility.mediaaccessibilityd
+ 6384     1 Tue Jul 28 03:23:45 2026     /System/Library/Frameworks/AudioToolbox.framework/AudioComponentRegistrar
+ 6386     1 Tue Jul 28 03:23:45 2026     /System/Library/PrivateFrameworks/EcosystemAnalytics.framework/Support/ecosystemanalyticsd
+ 6387     1 Tue Jul 28 03:23:45 2026     /System/Library/PrivateFrameworks/SafariSafeBrowsing.framework/com.apple.Safari.SafeBrowsing.Service
+ 6388     1 Tue Jul 28 03:23:45 2026     /System/Library/PrivateFrameworks/Ecosystem.framework/Support/ecosystemd
+ 6389     1 Tue Jul 28 03:23:45 2026     /usr/libexec/aneuserd
+ 6392     1 Tue Jul 28 03:23:45 2026     /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService
+ 6505     1 Tue Jul 28 03:23:56 2026     /System/Library/Frameworks/Metal.framework/Versions/A/XPCServices/MTLCompilerService.xpc/Contents/MacOS/MTLCompilerService
+ 7198     1 Tue Jul 28 03:24:27 2026     /System/Library/Frameworks/VideoToolbox.framework/Versions/A/XPCServices/VTDecoderXPCService.xpc/Contents/MacOS/VTDecoderXPCService
+ 7632     1 Tue Jul 28 03:25:05 2026     /System/Library/CoreServices/osanalyticshelper
+ 9679     1 Tue Jul 28 03:26:34 2026     /System/Library/CoreServices/Dock.app/Contents/XPCServices/DockHelper.xpc/Contents/MacOS/DockHelper
+ 9683     1 Tue Jul 28 03:26:34 2026     /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService
+ 9714     1 Tue Jul 28 03:26:35 2026     /System/Library/PrivateFrameworks/AppIntentsLiveEntitySupport.framework/XPCServices/AppIntentsLiveEntityService.xpc/Contents/MacOS/AppIntentsLiveEntityService
+ 9833     1 Tue Jul 28 03:26:57 2026     /System/Library/PrivateFrameworks/AppleNeuralEngine.framework/XPCServices/ANECompilerService.xpc/Contents/MacOS/ANECompilerService
+10201     1 Tue Jul 28 00:07:29 2026     /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService
+11848     1 Tue Jul 28 03:29:14 2026     /usr/libexec/online-auth-agent
+11849     1 Tue Jul 28 03:29:14 2026     /usr/libexec/seputil
+13767     1 Tue Jul 28 00:13:04 2026     /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+13769     1 Tue Jul 28 00:13:04 2026     /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/150.0.7871.184/Helpers/chrome_crashpad_handler
+13797 13767 Tue Jul 28 00:13:05 2026     /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/150.0.7871.184/Helpers/Google Chrome Helper.app/Contents/MacOS/Google Chrome Helper
+13798 13767 Tue Jul 28 00:13:05 2026     /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/150.0.7871.184/Helpers/Google Chrome Helper.app/Contents/MacOS/Google Chrome Helper
+13799 13767 Tue Jul 28 00:13:05 2026     /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/150.0.7871.184/Helpers/Google Chrome Helper.app/Contents/MacOS/Google Chrome Helper
+13822 13767 Tue Jul 28 00:13:06 2026     /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/150.0.7871.184/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)
+13833     1 Tue Jul 28 00:13:07 2026     /System/Library/PrivateFrameworks/SafariPlatformSupport.framework/Versions/A/XPCServices/com.apple.SafariPlatformSupport.Helper.xpc/Contents/MacOS/com.apple.SafariPlatformSupport.Helper
+13846 13767 Tue Jul 28 00:13:10 2026     /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/150.0.7871.184/Helpers/Google Chrome Helper.app/Contents/MacOS/Google Chrome Helper
+14662     1 Sun Jul 26 01:52:53 2026     /System/Library/CoreServices/CoreLocationAgent.app/Contents/MacOS/CoreLocationAgent
+16925 47701 Tue Jul 28 00:17:17 2026     /Applications/Orca.app/Contents/Frameworks/Orca Helper (Renderer).app/Contents/MacOS/Orca Helper (Renderer)
+17055     1 Tue Jul 28 00:17:18 2026     /Applications/Orca.app/Contents/Resources/agent-browser-darwin-arm64
+17262     1 Sun Jul 26 15:11:38 2026     /usr/sbin/distnoted
+17325 13767 Tue Jul 28 02:44:31 2026     /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/150.0.7871.184/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)
+17333 13767 Tue Jul 28 02:44:34 2026     /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/150.0.7871.184/Helpers/Google Chrome Helper.app/Contents/MacOS/Google Chrome Helper
+17428 13767 Tue Jul 28 02:44:36 2026     /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/150.0.7871.184/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)
+18930     1 Sat Jul 25 20:19:28 2026     /usr/libexec/taskgated
+19923     1 Sun Jul 26 13:35:21 2026     /System/Library/Frameworks/LocalAuthentication.framework/Support/coreauthd
+21912     1 Sun Jul 26 18:29:44 2026     /System/Library/CoreServices/audioaccessoryd
+21964     1 Sun Jul 26 18:29:45 2026     /usr/libexec/securityd_system
+24123     1 Tue Jul 28 02:51:45 2026     /usr/libexec/knowledge-agent
+25629     1 Tue Jul 28 02:52:48 2026     /usr/libexec/sysmond
+25640     1 Tue Jul 28 02:52:48 2026     /usr/libexec/smd
+25991 13767 Tue Jul 28 02:52:49 2026     /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/150.0.7871.184/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)
+26853     1 Mon Jul 27 12:57:01 2026     /usr/libexec/networkserviceproxy
+27508     1 Tue Jul 28 02:52:56 2026     /System/Library/PrivateFrameworks/MediaAnalysis.framework/Versions/A/mediaanalysisd
+31241     1 Sun Jul 26 03:07:42 2026     /usr/libexec/nehelper
+33820     1 Mon Jul 27 14:40:31 2026     /usr/libexec/duetexpertd
+33986     1 Mon Jul 27 14:41:04 2026     /usr/libexec/coreduetd
+34557     1 Sun Jul 26 00:05:07 2026     /Users/abhishekthakur/Documents/Softwares/Sublime Text.app/Contents/MacOS/sublime_text
+34562     1 Sun Jul 26 00:05:08 2026     /Users/abhishekthakur/Documents/Softwares/Sublime Text.app/Contents/MacOS/crash_handler
+34588 34557 Sun Jul 26 00:05:09 2026     /Users/abhishekthakur/Documents/Softwares/Sublime Text.app/Contents/MacOS/plugin_host-3.3
+34589 34557 Sun Jul 26 00:05:09 2026     /Users/abhishekthakur/Documents/Softwares/Sublime Text.app/Contents/MacOS/plugin_host-3.8
+34590     1 Sun Jul 26 00:05:09 2026     /System/Library/PrivateFrameworks/SafariPlatformSupport.framework/Versions/A/XPCServices/com.apple.SafariPlatformSupport.Helper.xpc/Contents/MacOS/com.apple.SafariPlatformSupport.Helper
+35584 13767 Tue Jul 28 02:53:31 2026     /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/150.0.7871.184/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)
+35659     1 Sun Jul 26 03:11:25 2026     /Library/Developer/PrivateFrameworks/CoreDevice.framework/Resources/bin/CoreDeviceDDIUpdaterService
+35741     1 Sun Jul 26 03:11:28 2026     /Library/Developer/PrivateFrameworks/CoreSimulator.framework/Resources/bin/simdiskimaged
+35743     1 Sun Jul 26 03:11:28 2026     /Library/Developer/PrivateFrameworks/CoreSimulator.framework/Versions/A/XPCServices/SimLaunchHost.arm64.xpc/Contents/MacOS/SimLaunchHost.arm64
+36683     1 Mon Jul 27 23:06:37 2026     /System/Library/CoreServices/CoreServicesUIAgent.app/Contents/MacOS/CoreServicesUIAgent
+37466     1 Mon Jul 27 23:07:12 2026     /usr/libexec/routined
+37483     1 Mon Jul 27 23:07:13 2026     /System/Library/PrivateFrameworks/GeoServices.framework/Versions/A/XPCServices/com.apple.geod.xpc/Contents/MacOS/com.apple.geod
+37484     1 Mon Jul 27 23:07:13 2026     /System/Library/PrivateFrameworks/SystemStatusServer.framework/Support/systemstatusd
+37487     1 Mon Jul 27 23:07:13 2026     /System/Library/PrivateFrameworks/GeoServices.framework/Versions/A/XPCServices/com.apple.geod.xpc/Contents/MacOS/com.apple.geod
+37488     1 Mon Jul 27 23:07:13 2026     /System/Library/PrivateFrameworks/GeoServices.framework/Versions/A/XPCServices/com.apple.geod.xpc/Contents/MacOS/com.apple.geod
+37489     1 Mon Jul 27 23:07:13 2026     /System/Library/PrivateFrameworks/GeoServices.framework/Versions/A/XPCServices/com.apple.geod.xpc/Contents/MacOS/com.apple.geod
+37778     1 Sat Jul 25 20:31:36 2026     /usr/libexec/diskimagesiod
+37784     1 Sat Jul 25 20:31:37 2026     /usr/libexec/diskimagesiod
+37792     1 Sat Jul 25 20:31:37 2026     /usr/libexec/diskimagesiod
+38012     1 Mon Jul 27 23:07:47 2026     /System/Library/PrivateFrameworks/DoNotDisturbServer.framework/Support/donotdisturbd
+38026     1 Mon Jul 27 23:07:47 2026     /usr/libexec/findmylocateagent
+38258     1 Mon Jul 27 14:49:19 2026     /System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/HIServices.framework/Versions/A/XPCServices/com.apple.hiservices-xpcservice.xpc/Contents/MacOS/com.apple.hiservices-xpcservice
+38545     1 Sat Jul 25 20:32:14 2026     /System/Library/PrivateFrameworks/SiriInference.framework/Versions/A/siriinferenced
+38546     1 Sat Jul 25 20:32:14 2026     /System/Library/Frameworks/CoreTelephony.framework/Support/CommCenter
+38547     1 Sat Jul 25 20:32:14 2026     /System/Library/PrivateFrameworks/CommerceKit.framework/Versions/A/Resources/commerce
+38548     1 Sat Jul 25 20:32:14 2026     /System/Library/CoreServices/Keychain Circle Notification.app/Contents/MacOS/Keychain Circle Notification
+38549     1 Sat Jul 25 20:32:14 2026     /usr/libexec/ospredictiond
+38550     1 Sat Jul 25 20:32:14 2026     /usr/libexec/assessmentagent
+38551     1 Sat Jul 25 20:32:14 2026     /usr/libexec/feedbackd
+38552     1 Sat Jul 25 20:32:15 2026     /System/Library/PrivateFrameworks/SyncedDefaults.framework/Support/syncdefaultsd
+38553     1 Sat Jul 25 20:32:15 2026     /System/Library/Frameworks/Accounts.framework/Versions/A/Support/accountsd
+38554     1 Sat Jul 25 20:32:15 2026     /System/Library/CoreServices/ReportCrash
+38557     1 Sat Jul 25 20:32:15 2026     /System/Library/PrivateFrameworks/AuthKit.framework/Versions/A/Support/akd
+38558     1 Sat Jul 25 20:32:16 2026     /System/Library/PrivateFrameworks/CoreADI.framework/adid
+38559     1 Sat Jul 25 20:32:16 2026     /System/Library/PrivateFrameworks/CoreSymbolication.framework/coresymbolicationd
+38560     1 Sat Jul 25 20:32:16 2026     /System/Library/PrivateFrameworks/AssetCacheServices.framework/Versions/A/XPCServices/AssetCacheLocatorService.xpc/Contents/MacOS/AssetCacheLocatorService
+38561     1 Sat Jul 25 20:32:16 2026     /System/Library/CoreServices/ReportCrash
+38734     1 Mon Jul 27 23:08:07 2026     /usr/libexec/diskimagesiod
+38772     1 Mon Jul 27 23:08:08 2026     /usr/libexec/siriknowledged
+38774     1 Mon Jul 27 23:08:08 2026     /System/Library/PrivateFrameworks/GenerativeExperiencesRuntime.framework/Versions/A/generativeexperiencesd
+38812     1 Mon Jul 27 23:08:08 2026     /System/Library/PrivateFrameworks/ModelCatalogRuntime.framework/Versions/A/modelcatalogd
+38815     1 Tue Jul 28 03:32:14 2026     /System/Library/PrivateFrameworks/MediaAnalysisAccess.framework/Versions/A/XPCServices/mediaanalysisd-access.xpc/Contents/MacOS/mediaanalysisd-access
+38851     1 Sun Jul 26 12:40:02 2026     /usr/libexec/nsurlsessiond
+38883     1 Mon Jul 27 23:08:10 2026     /System/Library/PrivateFrameworks/CoreEmbeddedSpeechRecognition.framework/speechmaintenanced
+38946     1 Tue Jul 28 03:32:14 2026     /System/Library/Frameworks/AudioToolbox.framework/XPCServices/com.apple.audio.SandboxHelper.xpc/Contents/MacOS/com.apple.audio.SandboxHelper
+38949     1 Tue Jul 28 03:32:14 2026     /System/Library/Frameworks/VideoToolbox.framework/Versions/A/XPCServices/VTDecoderXPCService.xpc/Contents/MacOS/VTDecoderXPCService
+39320     1 Sat Jul 25 20:32:32 2026     /usr/libexec/AirPlayXPCHelper
+39419     1 Sat Jul 25 20:32:35 2026     /System/Library/PrivateFrameworks/KerberosHelper/Helpers/DiskUnmountWatcher
+39607     1 Sat Jul 25 20:32:46 2026     /System/Library/PrivateFrameworks/WorkflowKit.framework/XPCServices/ShortcutsViewService.xpc/Contents/MacOS/ShortcutsViewService
+39822     1 Tue Jul 28 03:33:52 2026     /System/Library/Frameworks/VideoToolbox.framework/Versions/A/XPCServices/VTEncoderXPCService.xpc/Contents/MacOS/VTEncoderXPCService
+40634     1 Tue Jul 28 02:53:51 2026     /usr/libexec/neagent
+40644     1 Tue Jul 28 03:35:02 2026     /usr/libexec/dirhelper
+40771     1 Mon Jul 27 23:10:32 2026     /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService
+40868     1 Tue Jul 28 02:53:52 2026     /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/DictionaryServices.framework/Versions/A/XPCServices/com.apple.DictionaryServiceHelper.xpc/Contents/MacOS/com.apple.DictionaryServiceHelper
+40869     1 Tue Jul 28 02:53:52 2026     /usr/libexec/keyboardservicesd
+41644     1 Mon Jul 27 14:56:54 2026     /usr/libexec/hybridsearchd
+41996     1 Tue Jul 28 03:36:37 2026     /usr/libexec/triald_system
+41997     1 Tue Jul 28 03:36:37 2026     /usr/libexec/keybagd
+41998     1 Tue Jul 28 03:36:37 2026     /System/Library/PrivateFrameworks/TrialServer.framework/Versions/A/XPCServices/TrialArchivingService.xpc/Contents/MacOS/TrialArchivingService
+42348     1 Mon Jul 27 23:13:40 2026     Contents/Library/LaunchAgents/Traycer Host.app/Contents/MacOS/traycer
+42350 42348 Mon Jul 27 23:13:41 2026     /Users/abhishekthakur/.traycer/host/install/host-runtime/traycer-host
+42540     1 Mon Jul 27 14:58:57 2026     /System/Library/PrivateFrameworks/IntelligenceFlowContextRuntime.framework/Versions/A/intelligencecontextd
+42950     1 Tue Jul 28 03:37:40 2026     /System/Library/PrivateFrameworks/MapsSync.framework/mapssyncd
+42983 47701 Tue Jul 28 03:37:50 2026     /Applications/Orca.app/Contents/Frameworks/Orca Helper.app/Contents/MacOS/Orca Helper
+43892     1 Tue Jul 28 02:55:28 2026     /System/Library/PrivateFrameworks/VoiceShortcuts.framework/Versions/A/Support/siriactionsd
+43942     1 Tue Jul 28 02:55:30 2026     /System/Library/PrivateFrameworks/StatusKit.framework/StatusKitAgent
+44035 43992 Tue Jul 28 03:37:54 2026     /Users/abhishekthakur/.codegraph/versions/v1.5.0/node
+44056 44035 Tue Jul 28 03:37:54 2026     /Users/abhishekthakur/.codegraph/versions/v1.5.0/node
+44191 44179 Tue Jul 28 03:37:57 2026     node
+44192 44191 Tue Jul 28 03:37:57 2026     /usr/local/bin/node
+44193 44191 Tue Jul 28 03:37:57 2026     /usr/local/bin/node
+44194 44193 Tue Jul 28 03:37:57 2026     /usr/local/bin/node
+45645     1 Tue Jul 28 03:39:13 2026     /usr/libexec/countryd
+45728     1 Tue Jul 28 02:58:09 2026     /usr/libexec/nsurlsessiond
+45843     1 Tue Jul 28 03:39:35 2026     /System/Library/CoreServices/liquiddetectiond.app/liquiddetectiond
+45848     1 Tue Jul 28 03:39:36 2026     /System/Library/PrivateFrameworks/MobileTimer.framework/Executables/mobiletimerd
+45849     1 Tue Jul 28 03:39:36 2026     /System/Library/CoreServices/TimeMachine/backupd-helper
+45850     1 Tue Jul 28 03:39:36 2026     /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService
+45852     1 Tue Jul 28 03:39:37 2026     /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService
+46574     1 Tue Jul 28 03:40:59 2026     /System/Library/Frameworks/Metal.framework/Versions/A/XPCServices/MTLCompilerService.xpc/Contents/MacOS/MTLCompilerService
+46853     1 Sun Jul 26 03:20:29 2026     /System/Library/CoreServices/PowerChime.app/Contents/MacOS/PowerChime
+46858     1 Sun Jul 26 03:20:51 2026     /System/Library/CoreServices/WidgetRenderer_Activities.app/Contents/MacOS/WidgetRenderer_Activities
+47045     1 Tue Jul 28 02:59:06 2026     /usr/sbin/systemsoundserverd
+47431     1 Tue Jul 28 02:59:57 2026     /System/Library/PrivateFrameworks/GeoServices.framework/Versions/A/XPCServices/com.apple.geod.xpc/Contents/MacOS/com.apple.geod
+47522     1 Tue Jul 28 03:00:00 2026     /usr/libexec/findmydevice-user-agent
+47701     1 Mon Jul 27 15:02:41 2026     /Applications/Orca.app/Contents/MacOS/Orca
+47704     1 Tue Jul 28 03:00:23 2026     /System/Library/PrivateFrameworks/TelephonyUtilities.framework/callservicesd
+47757 47701 Mon Jul 27 15:02:43 2026     /Applications/Orca.app/Contents/Frameworks/Orca Helper.app/Contents/MacOS/Orca Helper
+47759 47701 Mon Jul 27 15:02:43 2026     /Applications/Orca.app/Contents/Frameworks/Orca Helper.app/Contents/MacOS/Orca Helper
+47785 47701 Mon Jul 27 15:02:44 2026     /Applications/Orca.app/Contents/Frameworks/Orca Helper (Renderer).app/Contents/MacOS/Orca Helper (Renderer)
+47795 47701 Mon Jul 27 15:02:44 2026     /Applications/Orca.app/Contents/Frameworks/Orca Helper.app/Contents/MacOS/Orca Helper
+48178     1 Tue Jul 28 03:00:35 2026     /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService
+48515     1 Sun Jul 26 09:33:48 2026     /usr/libexec/audioanalyticsd
+48780     1 Mon Jul 27 15:02:46 2026     /System/Library/PrivateFrameworks/SafariPlatformSupport.framework/Versions/A/XPCServices/com.apple.SafariPlatformSupport.Helper.xpc/Contents/MacOS/com.apple.SafariPlatformSupport.Helper
+48831     1 Tue Jul 28 03:45:29 2026     /System/iOSSupport/System/Library/PrivateFrameworks/HomeEnergyDaemon.framework/Support/homeenergyd
+49730     1 Mon Jul 27 23:16:13 2026     /usr/libexec/PowerUIAgent
+50192     1 Mon Jul 27 15:04:48 2026     /System/Library/Frameworks/AppKit.framework/Versions/C/XPCServices/ThemeWidgetControlViewService.xpc/Contents/MacOS/ThemeWidgetControlViewService
+50489 47701 Mon Jul 27 15:05:10 2026     /Applications/Orca.app/Contents/Frameworks/Orca Helper.app/Contents/MacOS/Orca Helper
+50686     1 Sun Jul 26 15:53:44 2026     /Applications/Kero.app/Contents/MacOS/Kero
+50758     1 Sun Jul 26 15:53:46 2026     /System/Library/PrivateFrameworks/SafariPlatformSupport.framework/Versions/A/XPCServices/com.apple.SafariPlatformSupport.Helper.xpc/Contents/MacOS/com.apple.SafariPlatformSupport.Helper
+50840     1 Tue Jul 28 03:49:46 2026     /System/Library/PrivateFrameworks/UsageTracking.framework/Versions/A/UsageTrackingAgent
+53245     1 Mon Jul 27 23:18:55 2026     /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService
+53923     1 Sun Jul 26 03:27:35 2026     /Applications/FluidVoice.app/Contents/MacOS/FluidVoice
+53938     1 Tue Jul 28 03:56:53 2026     /usr/sbin/spindump
+57780     1 Sun Jul 26 03:32:17 2026     /System/Library/PrivateFrameworks/SafariPlatformSupport.framework/Versions/A/XPCServices/com.apple.SafariPlatformSupport.Helper.xpc/Contents/MacOS/com.apple.SafariPlatformSupport.Helper
+59330     1 Tue Jul 28 04:12:29 2026     /usr/libexec/milod
+59331     1 Tue Jul 28 04:12:29 2026     /System/Library/PrivateFrameworks/IntlPreferences.framework/Support/localizationswitcherd
+59332     1 Tue Jul 28 04:12:29 2026     /System/Library/PrivateFrameworks/AppleCredentialManager.framework/AppleCredentialManagerDaemon
+59333     1 Tue Jul 28 04:12:29 2026     /System/Library/CoreServices/Software Update.app/Contents/Resources/softwareupdated
+59337     1 Tue Jul 28 04:12:29 2026     /System/Library/Frameworks/VideoToolbox.framework/Versions/A/XPCServices/VTDecoderXPCService.xpc/Contents/MacOS/VTDecoderXPCService
+59338     1 Tue Jul 28 04:12:29 2026     /System/Cryptexes/App/usr/libexec/AuthenticationServicesAgent
+59339     1 Tue Jul 28 04:12:29 2026     /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService
+59340     1 Tue Jul 28 04:12:30 2026     /System/Library/PrivateFrameworks/MobileAssetDaemon.framework/Versions/A/XPCServices/com.apple.MobileAsset.DownloadService.Builtin.xpc/Contents/MacOS/com.apple.MobileAsset.DownloadService.Builtin
+59341     1 Tue Jul 28 04:12:30 2026     /usr/libexec/keychainsharingmessagingd
+59342     1 Tue Jul 28 04:12:31 2026     /System/Library/PrivateFrameworks/MobileSoftwareUpdate.framework/Support/softwareupdated
+59344     1 Tue Jul 28 04:12:31 2026     /System/Library/PrivateFrameworks/MobileSoftwareUpdate.framework/Versions/A/XPCServices/com.apple.MobileSoftwareUpdate.CleanupPreparePathService.xpc/Contents/MacOS/com.apple.MobileSoftwareUpdate.CleanupPreparePathService
+59348     1 Tue Jul 28 04:12:32 2026     /usr/libexec/nesessionmanager
+59349     1 Tue Jul 28 04:12:32 2026     /System/Library/PrivateFrameworks/CacheDelete.framework/deleted_helper
+59350     1 Tue Jul 28 04:12:32 2026     /System/Library/Frameworks/SystemExtensions.framework/Versions/A/Helpers/sysextd
+59353     1 Tue Jul 28 04:12:32 2026     /usr/libexec/AssetCache/AssetCache
+59354     1 Tue Jul 28 04:12:32 2026     /System/Library/PrivateFrameworks/PackageKit.framework/Resources/system_installd
+59355     1 Tue Jul 28 04:12:32 2026     /System/Library/Frameworks/QuickLookThumbnailing.framework/Support/com.apple.quicklook.ThumbnailsAgent
+59356     1 Tue Jul 28 04:12:32 2026     /System/Library/PrivateFrameworks/PackageKit.framework/Resources/installd
+59357     1 Tue Jul 28 04:12:32 2026     /System/Library/PrivateFrameworks/GeoServices.framework/geodMachServiceBridge
+59373     1 Tue Jul 28 04:12:32 2026     /System/Library/PrivateFrameworks/AssetCacheServicesExtensions.framework/XPCServices/AssetCacheTetheratorService.xpc/Contents/MacOS/AssetCacheTetheratorService
+59497     1 Sun Jul 26 02:42:04 2026     /usr/libexec/gamecontrollerd
+59522     1 Sun Jul 26 02:42:05 2026     /System/Library/PrivateFrameworks/TCC.framework/Support/tccd
+60280     1 Tue Jul 28 04:29:16 2026     /System/Library/PrivateFrameworks/GeoAnalytics.framework/geoanalyticsd
+60813     1 Mon Jul 27 23:23:02 2026     /usr/libexec/PerfPowerServices
+60889     1 Tue Jul 28 04:41:31 2026     /System/Library/PrivateFrameworks/IntelligencePlatformCore.framework/Versions/A/intelligenceplatformd
+61501 47701 Mon Jul 27 15:19:22 2026     /Applications/Orca.app/Contents/Frameworks/Orca Helper.app/Contents/MacOS/Orca Helper
+61502 61501 Mon Jul 27 15:19:22 2026     /Applications/Orca.app/Contents/Resources/Orca Computer Use.app/Contents/MacOS/orca-computer-use-macos
+61758     1 Tue Jul 28 04:57:18 2026     /usr/libexec/amfid
+61776     1 Tue Jul 28 04:57:19 2026     /System/Library/PrivateFrameworks/MobileInstallation.framework/XPCServices/com.apple.MobileInstallationHelperService.xpc/Contents/MacOS/com.apple.MobileInstallationHelperService
+61777     1 Tue Jul 28 04:57:19 2026     /usr/libexec/tipsd
+61780     1 Tue Jul 28 04:57:20 2026     /usr/libexec/MTLAssetUpgraderD
+61781     1 Tue Jul 28 04:57:20 2026     /usr/libexec/swcd
+61782     1 Tue Jul 28 04:57:20 2026     /System/Library/Frameworks/MediaExtension.framework/Versions/A/Helpers/MENotificationAgent
+61783     1 Tue Jul 28 04:57:20 2026     /Applications/Willow Voice.app/Contents/MacOS/Willow Voice
+61784     1 Tue Jul 28 04:57:20 2026     /System/Library/PrivateFrameworks/SiriSuggestionsSupport.framework/Versions/A/XPCServices/SiriSuggestionsBookkeepingService.xpc/Contents/MacOS/SiriSuggestionsBookkeepingService
+61786     1 Tue Jul 28 04:57:21 2026     /usr/libexec/metrickitd
+61787     1 Tue Jul 28 04:57:21 2026     /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService
+61788     1 Tue Jul 28 04:57:21 2026     /System/Library/PrivateFrameworks/SafariPlatformSupport.framework/Versions/A/XPCServices/com.apple.SafariPlatformSupport.Helper.xpc/Contents/MacOS/com.apple.SafariPlatformSupport.Helper
+61789     1 Tue Jul 28 04:57:22 2026     /System/Library/Frameworks/ColorSync.framework/Support/colorsync.useragent
+61790     1 Tue Jul 28 04:57:22 2026     /System/Library/Frameworks/ColorSync.framework/Versions/A/XPCServices/com.apple.ColorSyncXPCAgent.xpc/Contents/MacOS/com.apple.ColorSyncXPCAgent
+61791     1 Tue Jul 28 04:57:22 2026     /usr/libexec/colorsyncd
+61792     1 Tue Jul 28 04:57:22 2026     /System/Library/PrivateFrameworks/SafariFoundation.framework/Versions/A/XPCServices/CredentialProviderExtensionHelper.xpc/Contents/MacOS/CredentialProviderExtensionHelper
+61801     1 Tue Jul 28 04:57:28 2026     /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService
+61806     1 Tue Jul 28 04:57:34 2026     /usr/libexec/remindd
+61973     1 Tue Jul 28 04:59:58 2026     /usr/sbin/cfprefsd
+62274     1 Tue Jul 28 05:06:01 2026     /System/Library/PrivateFrameworks/Categories.framework/Versions/A/XPCServices/CategoriesService.xpc/Contents/MacOS/CategoriesService
+62281     1 Tue Jul 28 05:06:08 2026     /System/Library/PrivateFrameworks/ContextKit.framework/Versions/A/XPCServices/ContextService.xpc/Contents/MacOS/ContextService
+62282     1 Tue Jul 28 05:06:08 2026     /System/Library/PrivateFrameworks/ContextKit.framework/Versions/A/XPCServices/ContextService.xpc/Contents/MacOS/ContextService
+62328     1 Tue Jul 28 05:07:14 2026     /usr/libexec/trustd
+62330     1 Tue Jul 28 05:07:14 2026     /usr/libexec/trustd
+62435     1 Sun Jul 26 02:51:07 2026     /System/Library/PrivateFrameworks/IntelligenceFlowRuntime.framework/Versions/A/intelligenceflowd
+62479     1 Sun Jul 26 02:51:07 2026     /usr/libexec/gamecontrolleragentd
+62564     1 Tue Jul 28 05:11:40 2026     /usr/libexec/promotedcontentd
+62565     1 Tue Jul 28 05:11:40 2026     /System/Library/PrivateFrameworks/AppStoreDaemon.framework/Support/appstoreagent
+62567     1 Tue Jul 28 05:11:40 2026     /System/Library/PrivateFrameworks/IMDPersistence.framework/IMAutomaticHistoryDeletionAgent.app/Contents/MacOS/IMAutomaticHistoryDeletionAgent
+62568     1 Tue Jul 28 05:11:40 2026     /usr/libexec/adprivacyd
+62569     1 Tue Jul 28 05:11:41 2026     /usr/libexec/fairplaydeviceidentityd
+62570     1 Tue Jul 28 05:11:41 2026     /System/Library/PrivateFrameworks/AppStoreDaemon.framework/Versions/A/XPCServices/com.apple.AppStoreDaemon.StorePrivilegedODRService.xpc/Contents/MacOS/com.apple.AppStoreDaemon.StorePrivilegedODRService
+62571     1 Tue Jul 28 05:11:41 2026     /System/Library/PrivateFrameworks/ManagedBackgroundAssets.framework/Versions/A/XPCServices/Managed Background Assets Helper Service.xpc/Contents/MacOS/Managed Background Assets Helper Service
+62572     1 Tue Jul 28 05:11:41 2026     /System/Library/Frameworks/Speech.framework/Versions/A/XPCServices/localspeechrecognition.xpc/Contents/MacOS/localspeechrecognition
+62579     1 Tue Jul 28 05:11:44 2026     /usr/libexec/misagent
+62620     1 Tue Jul 28 05:11:57 2026     cloudphotod
+62621     1 Tue Jul 28 05:11:57 2026     /System/Library/Frameworks/ManagedAppDistribution.framework/Support/managedappdistributiond
+62622     1 Tue Jul 28 05:11:57 2026     /System/Library/Frameworks/ManagedAppDistribution.framework/Support/managedappdistributionagent
+62623     1 Tue Jul 28 05:11:57 2026     /System/Library/PrivateFrameworks/HomeKitEvents.framework/Support/homeeventsd
+62624     1 Tue Jul 28 05:11:57 2026     /usr/libexec/uarpassetmanagerd
+62625     1 Tue Jul 28 05:11:57 2026     /Library/Apple/System/Library/CoreServices/XProtect.app/Contents/MacOS/XProtect
+62626     1 Tue Jul 28 05:11:57 2026     /Library/Apple/System/Library/CoreServices/XProtect.app/Contents/XPCServices/XProtectPluginService.xpc/Contents/MacOS/XProtectPluginService
+62627     1 Tue Jul 28 05:11:57 2026     /System/Library/PrivateFrameworks/UARPAssetManager.framework/XPCServices/UARPAssetManagerServiceMobileAsset.xpc/Contents/MacOS/UARPAssetManagerServiceMobileAsset
+62628     1 Tue Jul 28 05:11:57 2026     /System/Library/PrivateFrameworks/UARPAssetManager.framework/XPCServices/UARPAssetManagerServiceiCloud.xpc/Contents/MacOS/UARPAssetManagerServiceiCloud
+62632     1 Tue Jul 28 05:11:59 2026     /usr/libexec/uarpd
+63013     1 Tue Jul 28 05:19:15 2026     /System/Library/Frameworks/ExtensionFoundation.framework/Versions/A/XPCServices/extensionkitservice.xpc/Contents/MacOS/extensionkitservice
+63043     1 Sun Jul 26 02:51:09 2026     /usr/libexec/aned
+63129     1 Mon Jul 27 15:21:42 2026     /System/Library/PrivateFrameworks/BackgroundTaskManagement.framework/Support/BackgroundTaskManagementAgent.app/Contents/MacOS/BackgroundTaskManagementAgent
+63216     1 Sun Jul 26 02:51:09 2026     /System/Library/PrivateFrameworks/SiriAppIntentsRuntime.framework/siriappintentsd
+63437     1 Tue Jul 28 05:27:16 2026     /usr/libexec/wifianalyticsd
+63438     1 Tue Jul 28 05:27:16 2026     /usr/libexec/wifivelocityd
+64467     1 Mon Jul 27 15:23:23 2026     /Users/abhishekthakur/Developer/ordo/dist/Ordo.app/Contents/MacOS/OrdoApp
+67550     1 Tue Jul 28 06:44:08 2026     /usr/libexec/mmaintenanced
+67970     1 Sun Jul 26 05:19:11 2026     /Applications/OneDrive.app/Contents/MacOS/OneDrive
+67971     1 Sun Jul 26 05:19:11 2026     /Applications/OneDrive.app/Contents/OneDrive Sync Service.app/Contents/MacOS/OneDrive Sync Service
+70576     1 Tue Jul 28 07:43:31 2026     /System/Library/PrivateFrameworks/CoreLSKD.framework/Versions/A/lskdd
+70577     1 Tue Jul 28 07:43:31 2026     /usr/libexec/tzd
+70579     1 Tue Jul 28 07:43:31 2026     /System/Library/PrivateFrameworks/XprotectFramework.framework/Versions/A/XPCServices/XProtectUpdateService.xpc/Contents/MacOS/XProtectUpdateService
+70580     1 Tue Jul 28 07:43:31 2026     /usr/libexec/fpassetmanagerd
+70583     1 Tue Jul 28 07:43:33 2026     /System/Library/PrivateFrameworks/AssetCacheServices.framework/Versions/A/XPCServices/AssetCacheLocatorService.xpc/Contents/MacOS/AssetCacheLocatorService
+72184     1 Tue Jul 28 08:15:33 2026     /usr/libexec/memoryanalyticsd
+72712     1 Tue Jul 28 08:25:48 2026     /System/Library/PrivateFrameworks/DeviceCheckInternal.framework/devicecheckd
+73020     1 Tue Jul 28 03:10:13 2026     /usr/libexec/powerdatad
+73031     1 Tue Jul 28 03:10:19 2026     /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService
+73437     1 Tue Jul 28 03:11:45 2026     /System/Library/Frameworks/CryptoTokenKit.framework/ctkd
+73438     1 Tue Jul 28 03:11:45 2026     /usr/libexec/pkd
+73451     1 Tue Jul 28 03:11:46 2026     /usr/libexec/GamePolicyAgent
+73471     1 Tue Jul 28 03:11:50 2026     /System/Library/PrivateFrameworks/ScreenTimeCore.framework/Versions/A/ScreenTimeAgent
+73472     1 Tue Jul 28 03:11:50 2026     /System/Library/PrivateFrameworks/ScreenTimeSettingsFoundation.framework/Versions/A/ScreenTimeSettingsAgent
+73473     1 Tue Jul 28 03:11:50 2026     /usr/libexec/secinitd
+73475     1 Tue Jul 28 03:11:50 2026     /System/Library/PrivateFrameworks/FamilyCircle.framework/Versions/A/Resources/familycircled
+73477     1 Tue Jul 28 03:11:50 2026     /System/Library/PrivateFrameworks/CoreFollowUp.framework/Versions/A/Support/followupd
+73829     1 Tue Jul 28 03:12:39 2026     /System/Library/PrivateFrameworks/JetCore.framework/Support/jetpackassetd
+73830     1 Tue Jul 28 03:12:39 2026     /System/Library/PrivateFrameworks/AppleMediaServices.framework/Resources/amsaccountsd
+73831     1 Tue Jul 28 03:12:39 2026     /System/Library/PrivateFrameworks/AppleMediaServicesUI.framework/amsengagementd
+74336     1 Sun Jul 26 03:45:58 2026     /usr/libexec/mobileassetd
+74337     1 Sun Jul 26 03:45:59 2026     /System/Library/Frameworks/AccessoryAccess.framework/Resources/accessoryaccessd
+74338     1 Sun Jul 26 03:45:59 2026     /usr/libexec/SidecarRelay
+74347     1 Tue Jul 28 03:13:07 2026     /System/Library/PrivateFrameworks/AXAssetLoader.framework/Support/axassetsd
+74470     1 Tue Jul 28 03:13:40 2026     /System/Library/PrivateFrameworks/SiriTTSService.framework/sirittsd
+74471     1 Tue Jul 28 03:13:41 2026     /System/Library/Frameworks/Contacts.framework/Support/contactsd
+74486     1 Mon Jul 27 02:01:26 2026     /usr/libexec/diskimagesiod
+74487     1 Tue Jul 28 03:13:41 2026     /System/Library/PrivateFrameworks/CoreRecents.framework/Versions/A/Support/recentsd
+74528     1 Tue Jul 28 08:59:58 2026     /usr/libexec/trustd
+74714     1 Mon Jul 27 02:01:41 2026     /Users/abhishekthakur/Library/Application Support/app.glaze.macos.main/cross-app-broker/CrossAppBroker
+74767     1 Tue Jul 28 03:13:53 2026     /System/Library/PrivateFrameworks/AssistantServices.framework/Versions/A/Support/assistantd
+74773     1 Tue Jul 28 03:13:53 2026     /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService
+74779     1 Tue Jul 28 03:13:54 2026     /System/Library/PrivateFrameworks/ContinuousDialogManagerService.framework/assistant_cdmd
+74782     1 Tue Jul 28 03:13:54 2026     /System/Library/PrivateFrameworks/IMDPersistence.framework/XPCServices/IMDPersistenceAgent.xpc/Contents/MacOS/IMDPersistenceAgent
+74787     1 Tue Jul 28 03:13:54 2026     /usr/libexec/triald
+74791     1 Tue Jul 28 03:13:54 2026     /System/Library/PrivateFrameworks/CoreParsec.framework/parsecd
+74794     1 Tue Jul 28 03:13:54 2026     /System/Library/PrivateFrameworks/iTunesCloud.framework/Support/itunescloudd
+74799     1 Tue Jul 28 03:13:54 2026     /usr/libexec/pkd
+74800     1 Tue Jul 28 03:13:54 2026     /System/Library/PrivateFrameworks/TrialServer.framework/Versions/A/XPCServices/TrialArchivingService.xpc/Contents/MacOS/TrialArchivingService
+74802     1 Tue Jul 28 03:13:54 2026     /System/Library/PrivateFrameworks/CloudSubscriptionFeatures.framework/FeatureAccessAgent
+74803     1 Tue Jul 28 03:13:54 2026     /usr/sbin/cfprefsd
+74805     1 Tue Jul 28 03:13:54 2026     /usr/libexec/containermanagerd
+74808     1 Tue Jul 28 03:13:54 2026     /usr/libexec/trustd
+75178     1 Tue Jul 28 03:14:21 2026     /usr/libexec/trustd
+75192     1 Tue Jul 28 03:14:24 2026     /System/Library/PrivateFrameworks/SiriAnalytics.framework/Versions/A/XPCServices/SAExtensionOrchestrator.xpc/Contents/MacOS/SAExtensionOrchestrator
+75193     1 Tue Jul 28 03:14:24 2026     /System/Library/ExtensionKit/Extensions/AppleIntelligenceReportingSELFIngestor.appex/Contents/MacOS/AppleIntelligenceReportingSELFIngestor
+75256     1 Tue Jul 28 03:14:27 2026     /System/Library/ExtensionKit/Extensions/GMSSELFIngestor.appex/Contents/MacOS/GMSSELFIngestor
+75286     1 Tue Jul 28 03:14:27 2026     /System/Library/ExtensionKit/Extensions/IFTranscriptSELFIngestor.appex/Contents/MacOS/IFTranscriptSELFIngestor
+75287     1 Tue Jul 28 03:14:27 2026     /System/Library/ExtensionKit/Extensions/BiomeSELFIngestor.appex/Contents/MacOS/BiomeSELFIngestor
+75288     1 Tue Jul 28 03:14:27 2026     /System/Library/ExtensionKit/Extensions/IFTelemetrySELFIngestor.appex/Contents/MacOS/IFTelemetrySELFIngestor
+75289     1 Tue Jul 28 03:14:28 2026     /usr/libexec/symptomsd-diag
+75290     1 Tue Jul 28 03:14:28 2026     /System/Library/PrivateFrameworks/CloudKitDaemon.framework/Support/cloudd
+75291     1 Tue Jul 28 03:14:28 2026     /System/Library/PrivateFrameworks/CacheDelete.framework/deleted
+75539     1 Tue Jul 28 03:14:46 2026     /usr/libexec/searchpartyuseragent
+75540     1 Tue Jul 28 03:14:47 2026     /usr/libexec/findmydeviced
+75541     1 Tue Jul 28 03:14:47 2026     /usr/libexec/mobileactivationd
+75542     1 Tue Jul 28 03:14:47 2026     /usr/libexec/findmybeaconingd
+75603     1 Sun Jul 26 19:29:46 2026     /System/Library/PrivateFrameworks/CloudTelemetry.framework/Support/cloudtelemetryd
+76155     1 Sun Jul 26 11:33:48 2026     /System/Library/PrivateFrameworks/CoreDuetContext.framework/Resources/ContextStoreAgent
+76480     1 Tue Jul 28 03:15:47 2026     /usr/libexec/mlhostd
+76969     1 Tue Jul 28 09:45:16 2026     /System/Library/PrivateFrameworks/ModelCatalogRuntime.framework/Versions/A/ModelCatalogAgent
+76970     1 Tue Jul 28 09:45:16 2026     /System/Library/PrivateFrameworks/OnDeviceStorage.framework/Support/amsondevicestoraged
+76971     1 Tue Jul 28 09:45:16 2026     /usr/libexec/swtransparencyd
+76972     1 Tue Jul 28 09:45:16 2026     /System/Library/PrivateFrameworks/TextToSpeechVoiceBankingSupport.framework/Support/voicebankingd
+77670     1 Mon Jul 27 08:30:01 2026     /usr/libexec/biometrickitd
+77895     1 Tue Jul 28 10:02:59 2026     /System/Library/PrivateFrameworks/AppSSO.framework/Support/AppSSODaemon
+77896     1 Tue Jul 28 10:02:59 2026     /System/Library/Frameworks/Metal.framework/Versions/A/XPCServices/MTLCompilerService.xpc/Contents/MacOS/MTLCompilerService
+77897     1 Tue Jul 28 10:02:59 2026     /System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/HIServices.framework/Versions/A/XPCServices/com.apple.hiservices-xpcservice.xpc/Contents/MacOS/com.apple.hiservices-xpcservice
+77930     1 Mon Jul 27 13:38:35 2026     /System/Library/Frameworks/Security.framework/Versions/A/XPCServices/com.apple.CodeSigningHelper.xpc/Contents/MacOS/com.apple.CodeSigningHelper
+78090     1 Mon Jul 27 13:39:25 2026     /System/Library/PrivateFrameworks/BiomeStreams.framework/Support/biomed
+78161     1 Sun Jul 26 13:07:36 2026     /usr/libexec/dhcp6d
+78327     1 Tue Jul 28 10:03:00 2026     /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService
+78353     1 Tue Jul 28 10:03:01 2026     /System/Library/Frameworks/Metal.framework/Versions/A/XPCServices/MTLCompilerService.xpc/Contents/MacOS/MTLCompilerService
+78576     1 Tue Jul 28 10:03:33 2026     /usr/libexec/filevaultd
+78725     1 Tue Jul 28 10:04:19 2026     /System/Library/PrivateFrameworks/IntelligenceTasksEngine.framework/Support/intelligencetasksd
+78728     1 Tue Jul 28 10:04:20 2026     /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService
+78747     1 Tue Jul 28 10:04:20 2026     /System/Library/ExtensionKit/Extensions/TextThumbnailExtension.appex/Contents/MacOS/TextThumbnailExtension
+78766     1 Tue Jul 28 10:04:20 2026     /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService
+78769     1 Tue Jul 28 10:04:22 2026     /System/Library/ExtensionKit/Extensions/WebThumbnailExtension.appex/Contents/MacOS/WebThumbnailExtension
+78770     1 Tue Jul 28 10:04:22 2026     /System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU
+78772     1 Tue Jul 28 10:04:22 2026     /System/Library/Frameworks/AudioToolbox.framework/XPCServices/com.apple.audio.SandboxHelper.xpc/Contents/MacOS/com.apple.audio.SandboxHelper
+78778     1 Tue Jul 28 10:04:23 2026     /System/Library/Frameworks/AudioToolbox.framework/XPCServices/com.apple.audio.SandboxHelper.xpc/Contents/MacOS/com.apple.audio.SandboxHelper
+78779     1 Tue Jul 28 10:04:23 2026     /System/Library/Frameworks/Metal.framework/Versions/A/XPCServices/MTLCompilerService.xpc/Contents/MacOS/MTLCompilerService
+78907     1 Tue Jul 28 10:04:40 2026     /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService
+78915     1 Tue Jul 28 10:04:50 2026     /System/Library/Frameworks/Metal.framework/Versions/A/XPCServices/MTLCompilerService.xpc/Contents/MacOS/MTLCompilerService
+80057     1 Tue Jul 28 10:07:53 2026     /System/Library/PrivateFrameworks/Synapse.framework/Support/contentlinkingd
+83859     1 Sun Jul 26 14:36:42 2026     /System/Library/PrivateFrameworks/People.framework/peopled
+85502 53923 Sun Jul 26 08:43:51 2026     /Applications/FluidVoice.app/Contents/Helpers/fluid-intelligence-mlx
+86024     1 Mon Jul 27 19:11:44 2026     /System/Library/PrivateFrameworks/GeoServices.framework/Versions/A/XPCServices/com.apple.geod.xpc/Contents/MacOS/com.apple.geod
+86283     1 Tue Jul 28 10:12:52 2026     /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService
+86900 47701 Tue Jul 28 10:13:19 2026     /usr/bin/caffeinate
+88595     1 Sun Jul 26 01:31:39 2026     /Applications/CodexBar.app/Contents/MacOS/CodexBar
+89149     1 Sun Jul 26 19:44:18 2026     /Applications/OneDrive.app/Contents/StandaloneUpdaterDaemon.xpc/Contents/MacOS/StandaloneUpdaterDaemon
+90193     1 Sun Jul 26 01:32:52 2026     /System/Library/CoreServices/UserNotificationCenter.app/Contents/MacOS/UserNotificationCenter
+90209     1 Tue Jul 28 10:15:56 2026     /Applications/CapCut.app/Contents/MacOS/CapCut
+90332 90209 Tue Jul 28 10:15:58 2026     /Applications/CapCut.app/Contents/Frameworks/CapCut Helper (GPU).app/Contents/MacOS/CapCut Helper (GPU)
+90336 90209 Tue Jul 28 10:15:58 2026     /Applications/CapCut.app/Contents/Frameworks/CapCut Helper.app/Contents/MacOS/CapCut Helper
+90338     1 Tue Jul 28 10:15:58 2026     /Applications/CapCut.app/Contents/Frameworks/Parfait.framework/Versions/A/Resources/parfait_crash_handler
+90339     1 Tue Jul 28 10:15:59 2026     /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService
+90344     1 Tue Jul 28 10:15:59 2026     /System/Library/Frameworks/Metal.framework/Versions/A/XPCServices/MTLCompilerService.xpc/Contents/MacOS/MTLCompilerService
+90394 90209 Tue Jul 28 10:16:00 2026     /Applications/CapCut.app/Contents/Frameworks/CapCut Helper.app/Contents/MacOS/CapCut Helper
+90395 90209 Tue Jul 28 10:16:00 2026     /Applications/CapCut.app/Contents/Frameworks/CapCut Helper (Renderer).app/Contents/MacOS/CapCut Helper (Renderer)
+90396 90209 Tue Jul 28 10:16:00 2026     /Applications/CapCut.app/Contents/Frameworks/CapCut Helper (Renderer).app/Contents/MacOS/CapCut Helper (Renderer)
+90397     1 Tue Jul 28 10:16:00 2026     /System/Library/Frameworks/Metal.framework/Versions/A/XPCServices/MTLCompilerService.xpc/Contents/MacOS/MTLCompilerService
+90409     1 Tue Jul 28 10:16:02 2026     /System/Library/PrivateFrameworks/SafariPlatformSupport.framework/Versions/A/XPCServices/com.apple.SafariPlatformSupport.Helper.xpc/Contents/MacOS/com.apple.SafariPlatformSupport.Helper
+90413     1 Tue Jul 28 10:16:04 2026     /System/Library/Frameworks/AudioToolbox.framework/XPCServices/com.apple.audio.SandboxHelper.xpc/Contents/MacOS/com.apple.audio.SandboxHelper
+90416     1 Tue Jul 28 10:16:15 2026     /System/Library/Frameworks/AppKit.framework/Versions/C/XPCServices/com.apple.appkit.xpc.openAndSavePanelService.xpc/Contents/MacOS/com.apple.appkit.xpc.openAndSavePanelService
+90417     1 Tue Jul 28 10:16:15 2026     /System/Library/Frameworks/QuickLookUI.framework/Versions/A/XPCServices/QuickLookUIService.xpc/Contents/MacOS/QuickLookUIService
+90419     1 Tue Jul 28 10:16:16 2026     /System/Library/Frameworks/CoreMedia.framework/Versions/A/XPCServices/com.apple.CMExtensionBroker.xpc/Contents/MacOS/com.apple.CMExtensionBroker
+90420     1 Tue Jul 28 10:16:16 2026     /System/Library/PrivateFrameworks/CascadeSets.framework/Versions/A/XPCServices/SetStoreUpdateService.xpc/Contents/MacOS/SetStoreUpdateService
+90617     1 Tue Jul 28 10:16:24 2026     /System/Library/Frameworks/VideoToolbox.framework/Versions/A/XPCServices/VTDecoderXPCService.xpc/Contents/MacOS/VTDecoderXPCService
+90630     1 Tue Jul 28 10:16:26 2026     /System/Library/Frameworks/AudioToolbox.framework/AudioComponentRegistrar
+90646     1 Tue Jul 28 10:16:29 2026     /usr/libexec/spindump_agent
+91574     1 Sun Jul 26 01:33:41 2026     /System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking
+91717     1 Tue Jul 28 10:18:21 2026     /System/Library/PrivateFrameworks/VisualIntelligenceServices.framework/visualintelligenced
+91718     1 Tue Jul 28 10:18:22 2026     /System/Library/Frameworks/Translation.framework/translationd
+92018     1 Tue Jul 28 10:18:37 2026     /System/Library/PrivateFrameworks/AppleNeuralEngine.framework/XPCServices/ANECompilerService.xpc/Contents/MacOS/ANECompilerService
+92254     1 Sat Jul 25 20:35:13 2026     /System/Library/PrivateFrameworks/PhotoLibraryServices.framework/Versions/A/Support/photolibraryd
+92556     1 Mon Jul 27 22:01:30 2026     /usr/libexec/spotlightknowledged.updater
+93672     1 Mon Jul 27 14:13:50 2026     /usr/libexec/rtcreportingd
+93691     1 Mon Jul 27 14:13:55 2026     /System/Library/PrivateFrameworks/CoreSuggestions.framework/Versions/A/Support/suggestd
+94664 13767 Tue Jul 28 10:21:37 2026     /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/150.0.7871.184/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)
+95151     1 Tue Jul 28 03:17:53 2026     /usr/libexec/powerexperienced
+95291     1 Sat Jul 25 23:30:05 2026     /System/Library/PrivateFrameworks/HearingCore.framework/heard
+95292     1 Sat Jul 25 23:30:05 2026     /usr/libexec/replayd
+95294     1 Sat Jul 25 23:30:05 2026     /System/Library/PrivateFrameworks/iCloudDriveCore.framework/Versions/A/Support/bird
+95295     1 Sat Jul 25 23:30:05 2026     /usr/libexec/usermanagerd
+95298     1 Sat Jul 25 23:30:06 2026     /System/Library/PrivateFrameworks/CloudKitDaemon.framework/Support/cloudd
+95304     1 Sat Jul 25 23:30:11 2026     /usr/libexec/sandboxd
+95538     1 Sat Jul 25 23:30:33 2026     /System/Library/CoreServices/UniversalControl.app/Contents/MacOS/UniversalControl
+95582 13767 Tue Jul 28 10:22:37 2026     /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/150.0.7871.184/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)
+95621 13767 Tue Jul 28 10:22:39 2026     /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/150.0.7871.184/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer)
+96662     1 Tue Jul 28 10:23:47 2026     /System/Library/Frameworks/VideoToolbox.framework/Versions/A/XPCServices/VTDecoderXPCService.xpc/Contents/MacOS/VTDecoderXPCService
+98173     1 Sat Jul 25 20:49:42 2026     /System/Library/ExtensionKit/Extensions/PCCAgentClientExtension.appex/Contents/MacOS/PCCAgentClientExtension
+33624 50728 Sun Jul 26 17:29:21 2026     /opt/homebrew/bin/uv
+33653 33624 Sun Jul 26 17:29:22 2026     /Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python
+50727 50686 Sun Jul 26 15:53:46 2026     /usr/bin/login
+50728 50727 Sun Jul 26 15:53:46 2026     /bin/zsh
+50869     1 Sun Jul 26 15:53:47 2026     /bin/zsh
+50871     1 Sun Jul 26 15:53:47 2026     /bin/zsh
+50873     1 Sun Jul 26 15:53:47 2026     /bin/zsh
+50878 50873 Sun Jul 26 15:53:47 2026     /Users/abhishekthakur/.cache/gitstatus/gitstatusd-darwin-arm64
+38042 50686 Sun Jul 26 17:35:33 2026     /usr/bin/login
+38043 38042 Sun Jul 26 17:35:33 2026     /bin/zsh
+38183     1 Sun Jul 26 17:35:34 2026     /bin/zsh
+38184     1 Sun Jul 26 17:35:34 2026     /bin/zsh
+38186     1 Sun Jul 26 17:35:34 2026     /bin/zsh
+38191 38186 Sun Jul 26 17:35:34 2026     /Users/abhishekthakur/.cache/gitstatus/gitstatusd-darwin-arm64
+93817 50686 Mon Jul 27 00:26:52 2026     /usr/bin/login
+93818 93817 Mon Jul 27 00:26:52 2026     /bin/zsh
+93918     1 Mon Jul 27 00:26:53 2026     /bin/zsh
+93919     1 Mon Jul 27 00:26:53 2026     /bin/zsh
+93921     1 Mon Jul 27 00:26:53 2026     /bin/zsh
+93926 93921 Mon Jul 27 00:26:53 2026     /Users/abhishekthakur/.cache/gitstatus/gitstatusd-darwin-arm64
+ 6143 43426 Tue Jul 28 10:34:16 2026     caffeinate
+42986 42983 Tue Jul 28 03:37:51 2026     /usr/bin/login
+42989 42986 Tue Jul 28 03:37:51 2026     /bin/zsh
+43075     1 Tue Jul 28 03:37:51 2026     /bin/zsh
+43396     1 Tue Jul 28 03:37:51 2026     /bin/zsh
+43397     1 Tue Jul 28 03:37:51 2026     /bin/zsh
+43399 43075 Tue Jul 28 03:37:51 2026     /Users/abhishekthakur/.cache/gitstatus/gitstatusd-darwin-arm64
+43426 42989 Tue Jul 28 03:37:52 2026     claude
+43991 43426 Tue Jul 28 03:37:54 2026     /opt/homebrew/bin/uv
+43992 43426 Tue Jul 28 03:37:54 2026     /Users/abhishekthakur/.codegraph/versions/v1.5.0/node
+43993 43426 Tue Jul 28 03:37:54 2026     npm exec @playwright/mcp@latest
+44178 43993 Tue Jul 28 03:37:55 2026     node
+44179 43991 Tue Jul 28 03:37:55 2026     /Users/abhishekthakur/.cache/uv/archive-v0/LSwzt457KaCiAH2J/bin/python
+42987 42983 Tue Jul 28 03:37:51 2026     /usr/bin/login
+42990 42987 Tue Jul 28 03:37:51 2026     /bin/zsh
+43074     1 Tue Jul 28 03:37:51 2026     /bin/zsh
+43372     1 Tue Jul 28 03:37:51 2026     /bin/zsh
+43374     1 Tue Jul 28 03:37:51 2026     /bin/zsh
+43375 43074 Tue Jul 28 03:37:51 2026     /Users/abhishekthakur/.cache/gitstatus/gitstatusd-darwin-arm64
+ 2609 83950 Tue Jul 28 10:30:38 2026     /Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl
+ 5992 83950 Tue Jul 28 10:34:11 2026     /Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl
+83790 42983 Tue Jul 28 10:11:31 2026     /usr/bin/login
+83791 83790 Tue Jul 28 10:11:31 2026     /bin/zsh
+83813     1 Tue Jul 28 10:11:31 2026     /bin/zsh
+83944     1 Tue Jul 28 10:11:32 2026     /bin/zsh
+83945     1 Tue Jul 28 10:11:32 2026     /bin/zsh
+83947 83813 Tue Jul 28 10:11:32 2026     /Users/abhishekthakur/.cache/gitstatus/gitstatusd-darwin-arm64
+83950 83791 Tue Jul 28 10:11:32 2026     codex
+86814 83950 Tue Jul 28 10:13:18 2026     /Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl
+98306 83950 Tue Jul 28 10:26:16 2026     /Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node_repl
+98754 42983 Tue Jul 28 10:26:34 2026     /usr/bin/login
+98755 98754 Tue Jul 28 10:26:34 2026     /bin/zsh
+98777     1 Tue Jul 28 10:26:34 2026     /bin/zsh
+98853     1 Tue Jul 28 10:26:34 2026     /bin/zsh
+98854     1 Tue Jul 28 10:26:34 2026     /bin/zsh
+98856 98777 Tue Jul 28 10:26:34 2026     /Users/abhishekthakur/.cache/gitstatus/gitstatusd-darwin-arm64

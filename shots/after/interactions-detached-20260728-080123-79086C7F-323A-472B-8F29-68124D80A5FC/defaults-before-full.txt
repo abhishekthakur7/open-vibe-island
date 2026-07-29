@@ -1,0 +1,49 @@
+{
+    "NSSplitView Subview Frames settings, SidebarNavigationSplitView" =     (
+        "0.000000, 0.000000, 200.000000, 532.000000, NO, NO",
+        "0.000000, 0.000000, 900.000000, 532.000000, NO, NO"
+    );
+    "NSWindow Frame settings" = "612 112 900 532 0 0 1512 949 ";
+    SUAutomaticallyUpdate = 0;
+    SUEnableAutomaticChecks = 1;
+    SUHasLaunchedBefore = 1;
+    SULastCheckTime = "2026-07-28 07:37:47 +0000";
+    SUScheduledCheckInterval = 3600;
+    SUUpdateGroupIdentifier = 909893556;
+    "agentIntent.claudeCode" = installed;
+    "agentIntent.claudeUsageBridge" = installed;
+    "agentIntent.codebuddy" = untouched;
+    "agentIntent.codex" = installed;
+    "agentIntent.cursor" = installed;
+    "agentIntent.factory" = untouched;
+    "agentIntent.gemini" = untouched;
+    "agentIntent.kimi" = untouched;
+    "agentIntent.openCode" = installed;
+    "agentIntent.qoder" = untouched;
+    "agentIntent.qwenCode" = untouched;
+    agentIntentMigrationVersion = 1;
+    "app.autoCollapseOnMouseLeave" = 1;
+    "app.hapticFeedbackEnabled" = 1;
+    "appearance.island.v8.notch.centerLabel" = agentAction;
+    "appearance.island.v8.notch.completedStaleThreshold" = tenMinutes;
+    "appearance.island.v8.notch.rightSlot" = count;
+    "appearance.island.v8.notch.sessionGroup" = none;
+    "appearance.island.v8.notch.sessionSort" = attention;
+    "appearance.island.v8.notch.stateIndicator" = glyph;
+    "appearance.island.v8.notch.usageDisplay" = compact;
+    "appearance.island.v8.settingsProfile" = topBar;
+    "appearance.island.v8.theme" = halo;
+    "appearance.island.v8.topBar.centerLabel" = agentAction;
+    "appearance.island.v8.topBar.completedStaleThreshold" = fiveMinutes;
+    "appearance.island.v8.topBar.rightSlot" = agents;
+    "appearance.island.v8.topBar.sessionGroup" = none;
+    "appearance.island.v8.topBar.sessionSort" = attention;
+    "appearance.island.v8.topBar.stateIndicator" = animatedDot;
+    "appearance.island.v8.topBar.usageDisplay" = compact;
+    firstLaunchCompleted = 1;
+    "notification.sound.name" = Blow;
+    "notification.sound.name.completion" = Blow;
+    "notification.sound.name.permission" = Blow;
+    "notification.sound.name.question" = Blow;
+    "watch.notification.enabled" = 0;
+}

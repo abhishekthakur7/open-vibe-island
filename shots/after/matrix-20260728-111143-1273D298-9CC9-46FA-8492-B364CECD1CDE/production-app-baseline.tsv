@@ -1,0 +1,4 @@
+production_app_executable	/Applications/Open Island.app/Contents/MacOS/OpenIslandApp
+observation	before-run
+production_app_baseline	NONE
+production_app_baseline_count	0

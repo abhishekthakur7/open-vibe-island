@@ -1,0 +1,133 @@
+{
+  "attentionCount" : 0,
+  "capturedAt" : "2026-07-26T21:41:06Z",
+  "islandSurface" : "sessionList",
+  "launchToCaptureSeconds" : 1.8092670440673828,
+  "liveSessionCount" : 0,
+  "notchStatus" : "opened",
+  "overlay" : {
+    "mode" : "Top bar fallback",
+    "overlayFrame" : {
+      "height" : 190,
+      "width" : 600,
+      "x" : 660,
+      "y" : 842
+    },
+    "safeAreaInsets" : {
+      "bottom" : 0,
+      "left" : 0,
+      "right" : 0,
+      "top" : 0
+    },
+    "screenFrame" : {
+      "height" : 1080,
+      "width" : 1920,
+      "x" : 0,
+      "y" : 0
+    },
+    "screenID" : "F3BDCAC0-1700-415E-817D-AC4E69D405BC",
+    "screenName" : "DELL U3223QE",
+    "selectionSummary" : "manual",
+    "visibleFrame" : {
+      "height" : 1050,
+      "width" : 1920,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  "performedBootAnimation" : false,
+  "presentOverlay" : true,
+  "runtime" : {
+    "eventCount" : 13,
+    "latestMessage" : "Loaded debug scenario: Empty State.",
+    "launchCompleted" : true,
+    "logPath" : "runtime.log",
+    "milestones" : [
+      {
+        "name" : "applicationDidFinishLaunching",
+        "offsetSeconds" : 0.07181406021118164
+      },
+      {
+        "name" : "bootstrapStarted",
+        "offsetSeconds" : 0.07283997535705566
+      },
+      {
+        "name" : "bridgeSkipped",
+        "offsetSeconds" : 0.14280200004577637
+      },
+      {
+        "name" : "modelStarted",
+        "offsetSeconds" : 0.14280498027801514
+      },
+      {
+        "name" : "scenarioLoaded",
+        "offsetSeconds" : 0.14308106899261475
+      },
+      {
+        "name" : "bootstrapCompleted",
+        "offsetSeconds" : 0.14821195602416992
+      },
+      {
+        "name" : "captureScheduled",
+        "offsetSeconds" : 0.14835798740386963
+      },
+      {
+        "name" : "autoExitScheduled",
+        "offsetSeconds" : 0.14836597442626953
+      },
+      {
+        "name" : "overlayPresented",
+        "offsetSeconds" : 0.19005906581878662
+      },
+      {
+        "name" : "captureStarted",
+        "offsetSeconds" : 1.7226200103759766
+      }
+    ],
+    "timelinePath" : "timeline.json",
+    "timings" : {
+      "bootstrapSeconds" : 0.14821195602416992,
+      "captureScheduledSeconds" : 0.14835798740386963,
+      "captureStartedSeconds" : 1.7226200103759766,
+      "launchToCaptureSeconds" : 1.8092670440673828,
+      "overlayPresentedSeconds" : 0.19005906581878662,
+      "scenarioLoadSeconds" : 0.14308106899261475
+    }
+  },
+  "scenario" : "emptyState",
+  "sessionCount" : 0,
+  "sessions" : [
+
+  ],
+  "startedBridge" : false,
+  "windows" : [
+    {
+      "accessibilityPath" : "overlay.ax.json",
+      "accessibilitySummary" : {
+        "buttonLabels" : [
+          "Mute sound",
+          "Open Island Settings",
+          "Quit Open Island"
+        ],
+        "labels" : [
+          "Mute sound",
+          "Open Island Settings",
+          "Quit Open Island"
+        ],
+        "textValues" : [
+          "No open terminal sessions",
+          "Start a coding agent in your terminal"
+        ]
+      },
+      "frame" : {
+        "height" : 190,
+        "width" : 600,
+        "x" : 660,
+        "y" : 890
+      },
+      "imagePath" : "overlay.png",
+      "kind" : "overlay",
+      "title" : ""
+    }
+  ]
+}

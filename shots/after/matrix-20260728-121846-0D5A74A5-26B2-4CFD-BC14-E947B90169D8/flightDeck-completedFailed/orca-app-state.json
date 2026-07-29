@@ -1,0 +1,57 @@
+{
+  "id": "dcfc233d-35e2-4778-9168-2d6ef8b5ab90",
+  "ok": true,
+  "result": {
+    "snapshot": {
+      "window": {
+        "width": 576,
+        "isMinimized": false,
+        "platform": {
+          "layer": 25
+        },
+        "isOffscreen": false,
+        "screenIndex": 0,
+        "x": 468,
+        "y": 0,
+        "title": "",
+        "id": 21101,
+        "height": 319
+      },
+      "elementCount": 10,
+      "focusedElementId": null,
+      "app": {
+        "pid": 18526,
+        "name": "OpenIslandApp",
+        "bundleId": null
+      },
+      "id": "07C37C03-D076-4B09-B591-C596F7DF3AD2",
+      "truncation": {
+        "truncated": false,
+        "maxNodes": 1200,
+        "maxDepth": 64,
+        "maxDepthReached": false
+      },
+      "coordinateSpace": "window",
+      "treeText": "App=OpenIslandApp (pid 18526)\nWindow: \"\", App: OpenIslandApp.\n\n0 system dialog\n\t1 button\n\t2 button\n\t3 button\n\t4 button\n\t5 text FAILED\n\t6 scroll area, Secondary Actions: scroll up, scroll down\n\t\t7 text swift build exited non-zero — BridgeServer.swift has two type errors I could not resolve.\n\t8 button\n\t9 button\n\nNo UI element is currently focused."
+    },
+    "screenshotStatus": {
+      "metadata": {
+        "engine": "screenCaptureKit",
+        "windowId": 21101
+      },
+      "state": "captured"
+    },
+    "screenshot": {
+      "format": "png",
+      "height": 638,
+      "scale": 2,
+      "width": 1152,
+      "path": "/var/folders/52/7304w2xn42qbtvqcxmxz4tlm0000gn/T/orca-computer-use/dcfc233d-35e2-4778-9168-2d6ef8b5ab90-screenshot.png",
+      "dataOmitted": true,
+      "expiresAt": "2026-07-29T06:50:23.569Z"
+    }
+  },
+  "_meta": {
+    "runtimeId": "b88107f1-4fc2-4d0d-b8b5-1ecd9d71ef30"
+  }
+}

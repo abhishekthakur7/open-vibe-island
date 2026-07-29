@@ -1,0 +1,75 @@
+[
+  {
+    "category" : "milestone",
+    "name" : "applicationDidFinishLaunching",
+    "offsetSeconds" : 0.23860394954681396
+  },
+  {
+    "category" : "milestone",
+    "name" : "bootstrapStarted",
+    "offsetSeconds" : 0.27548396587371826
+  },
+  {
+    "category" : "log",
+    "message" : "Waiting for agent hook events...",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.27549099922180176
+  },
+  {
+    "category" : "log",
+    "message" : "Deterministic harness mode active. Runtime discovery and bridge startup skipped.",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.2912449836730957
+  },
+  {
+    "category" : "milestone",
+    "message" : "Deterministic harness mode active. Runtime discovery and bridge startup skipped.",
+    "name" : "bridgeSkipped",
+    "offsetSeconds" : 0.29124701023101807
+  },
+  {
+    "category" : "milestone",
+    "name" : "modelStarted",
+    "offsetSeconds" : 0.2912479639053345
+  },
+  {
+    "category" : "log",
+    "message" : "Loaded debug scenario: Subagents & Tasks — Expanded.",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.29150593280792236
+  },
+  {
+    "category" : "milestone",
+    "message" : "Subagents & Tasks — Expanded",
+    "name" : "scenarioLoaded",
+    "offsetSeconds" : 0.29150593280792236
+  },
+  {
+    "category" : "milestone",
+    "name" : "bootstrapCompleted",
+    "offsetSeconds" : 0.31935596466064453
+  },
+  {
+    "category" : "milestone",
+    "message" : "2.000s",
+    "name" : "captureScheduled",
+    "offsetSeconds" : 0.31943392753601074
+  },
+  {
+    "category" : "milestone",
+    "message" : "5.000s",
+    "name" : "autoExitScheduled",
+    "offsetSeconds" : 0.3194469213485718
+  },
+  {
+    "category" : "milestone",
+    "message" : "Subagents & Tasks — Expanded",
+    "name" : "overlayPresented",
+    "offsetSeconds" : 0.5162090063095093
+  },
+  {
+    "category" : "milestone",
+    "name" : "captureStarted",
+    "offsetSeconds" : 2.3677719831466675
+  }
+]

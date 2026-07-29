@@ -1,0 +1,57 @@
+{
+  "id": "e0a9967b-32e0-4f30-a855-e4d646cd4a5b",
+  "ok": true,
+  "result": {
+    "snapshot": {
+      "window": {
+        "width": 576,
+        "isMinimized": false,
+        "platform": {
+          "layer": 25
+        },
+        "isOffscreen": false,
+        "screenIndex": 0,
+        "x": 468,
+        "y": 0,
+        "title": "",
+        "id": 19424,
+        "height": 319
+      },
+      "elementCount": 11,
+      "focusedElementId": null,
+      "app": {
+        "bundleId": null,
+        "name": "OpenIslandApp",
+        "pid": 99862
+      },
+      "id": "DE59484D-A36B-41E4-8BD2-650DD5E94687",
+      "truncation": {
+        "truncated": false,
+        "maxNodes": 1200,
+        "maxDepth": 64,
+        "maxDepthReached": false
+      },
+      "coordinateSpace": "window",
+      "treeText": "App=OpenIslandApp (pid 99862)\nWindow: \"\", App: OpenIslandApp.\n\n0 system dialog\n\t1 button\n\t2 button\n\t3 button\n\t4 button\n\t5 text INTERRUPTED\n\t6 scroll area, Secondary Actions: scroll up, scroll down\n\t\t7 text Interrupted while moving the scorer — no files were left half-written.\n\t8 button\n\t9 button\n\t10 button\n\nNo UI element is currently focused."
+    },
+    "screenshot": {
+      "format": "png",
+      "height": 638,
+      "scale": 2,
+      "width": 1152,
+      "path": "/var/folders/52/7304w2xn42qbtvqcxmxz4tlm0000gn/T/orca-computer-use/e0a9967b-32e0-4f30-a855-e4d646cd4a5b-screenshot.png",
+      "dataOmitted": true,
+      "expiresAt": "2026-07-28T21:48:15.382Z"
+    },
+    "screenshotStatus": {
+      "metadata": {
+        "engine": "screenCaptureKit",
+        "windowId": 19424
+      },
+      "state": "captured"
+    }
+  },
+  "_meta": {
+    "runtimeId": "b88107f1-4fc2-4d0d-b8b5-1ecd9d71ef30"
+  }
+}

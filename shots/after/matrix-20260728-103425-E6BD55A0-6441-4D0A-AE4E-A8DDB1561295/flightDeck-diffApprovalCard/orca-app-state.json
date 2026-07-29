@@ -1,0 +1,57 @@
+{
+  "id": "9343d5b4-50ae-4cff-98f2-f3970e255901",
+  "ok": true,
+  "result": {
+    "snapshot": {
+      "window": {
+        "width": 576,
+        "isMinimized": false,
+        "platform": {
+          "layer": 25
+        },
+        "isOffscreen": false,
+        "screenIndex": 0,
+        "x": 468,
+        "y": 0,
+        "title": "",
+        "id": 20122,
+        "height": 631
+      },
+      "elementCount": 39,
+      "focusedElementId": null,
+      "app": {
+        "bundleId": null,
+        "name": "OpenIslandApp",
+        "pid": 25293
+      },
+      "id": "D795FA27-CA7A-4740-83C9-693BA04E432D",
+      "truncation": {
+        "truncated": false,
+        "maxNodes": 1200,
+        "maxDepth": 64,
+        "maxDepthReached": false
+      },
+      "coordinateSpace": "window",
+      "treeText": "App=OpenIslandApp (pid 25293)\nWindow: \"\", App: OpenIslandApp.\n\n0 system dialog\n\t1 button\n\t2 button\n\t3 button\n\t4 button\n\t5 text PERMISSION REQUIRED\n\t6 text HELD, 0m 12s\n\t7 text Opus 4.8 · main\n\t8 text Claude wants to edit AGENTS.md.\n\t9 text AGENTS.md\n\t10 text UPDATED\n\t11 text +3\n\t12 text −2\n\t13 scroll area, Secondary Actions: scroll up, scroll down\n\t\t14 text 1\n\t\t15 text ## Verification\n\t\t16 text 2\n\t\t17 text\n\t\t18 text 3\n\t\t19 text −\n\t\t20 text After making changes, run swift build and confirm it succeeds before moving on.\n\t\t21 text 4\n\t\t22 text −\n\t\t23 text Summarize what changed once the round is done.\n\t\t24 text 3\n\t\t25 text +\n\t\t26 text After making changes, run swift build and swift test and confirm both succeed before moving on.\n\t\t27 text 4\n\t\t28 text +\n\t\t29 text Capture a harness smoke run whenever the change affects rendered UI.\n\t\t30 text 5\n\t\t31 text +\n\t\t32 text Summarize what changed once the round is done, calling out any verification gaps.\n\t\t33 text 6\n\t\t34 text Commit the round on the feature branch before stopping.\n\t35 button\n\t36 button\n\t37 button\n\t38 button\n\nNo UI element is currently focused."
+    },
+    "screenshotStatus": {
+      "metadata": {
+        "engine": "screenCaptureKit",
+        "windowId": 20122
+      },
+      "state": "captured"
+    },
+    "screenshot": {
+      "format": "png",
+      "height": 1262,
+      "scale": 2,
+      "width": 1152,
+      "path": "/var/folders/52/7304w2xn42qbtvqcxmxz4tlm0000gn/T/orca-computer-use/9343d5b4-50ae-4cff-98f2-f3970e255901-screenshot.png",
+      "dataOmitted": true,
+      "expiresAt": "2026-07-29T05:05:49.059Z"
+    }
+  },
+  "_meta": {
+    "runtimeId": "b88107f1-4fc2-4d0d-b8b5-1ecd9d71ef30"
+  }
+}

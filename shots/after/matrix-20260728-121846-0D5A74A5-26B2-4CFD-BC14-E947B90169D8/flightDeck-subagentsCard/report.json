@@ -1,0 +1,220 @@
+{
+  "attentionCount" : 0,
+  "capturedAt" : "2026-07-28T06:50:13Z",
+  "islandSurface" : "sessionList",
+  "launchToCaptureSeconds" : 1.8145599365234375,
+  "liveSessionCount" : 9,
+  "notchStatus" : "opened",
+  "overlay" : {
+    "mode" : "Notch area",
+    "overlayFrame" : {
+      "height" : 701,
+      "width" : 576,
+      "x" : 468,
+      "y" : 281
+    },
+    "safeAreaInsets" : {
+      "bottom" : 0,
+      "left" : 0,
+      "right" : 0,
+      "top" : 32
+    },
+    "screenFrame" : {
+      "height" : 982,
+      "width" : 1512,
+      "x" : 0,
+      "y" : 0
+    },
+    "screenID" : "37D8832A-2D66-02CA-B9F7-8F30A301B230",
+    "screenName" : "Built-in Retina Display",
+    "selectionSummary" : "automatic",
+    "visibleFrame" : {
+      "height" : 949,
+      "width" : 1512,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  "performedBootAnimation" : false,
+  "presentOverlay" : true,
+  "runtime" : {
+    "eventCount" : 12,
+    "latestMessage" : "Loaded debug scenario: Subagents & Tasks.",
+    "launchCompleted" : true,
+    "logPath" : "runtime.log",
+    "milestones" : [
+      {
+        "name" : "applicationDidFinishLaunching",
+        "offsetSeconds" : 0.26466798782348633
+      },
+      {
+        "name" : "bootstrapStarted",
+        "offsetSeconds" : 0.3046269416809082
+      },
+      {
+        "name" : "bridgeSkipped",
+        "offsetSeconds" : 0.32343900203704834
+      },
+      {
+        "name" : "modelStarted",
+        "offsetSeconds" : 0.32344090938568115
+      },
+      {
+        "name" : "scenarioLoaded",
+        "offsetSeconds" : 0.32366394996643066
+      },
+      {
+        "name" : "bootstrapCompleted",
+        "offsetSeconds" : 0.3548089265823364
+      },
+      {
+        "name" : "captureScheduled",
+        "offsetSeconds" : 0.3548460006713867
+      },
+      {
+        "name" : "overlayPresented",
+        "offsetSeconds" : 0.459244966506958
+      },
+      {
+        "name" : "captureStarted",
+        "offsetSeconds" : 1.4046529531478882
+      }
+    ],
+    "timelinePath" : "timeline.json",
+    "timings" : {
+      "bootstrapSeconds" : 0.3548089265823364,
+      "captureScheduledSeconds" : 0.3548460006713867,
+      "captureStartedSeconds" : 1.4046529531478882,
+      "launchToCaptureSeconds" : 1.8145599365234375,
+      "overlayPresentedSeconds" : 0.459244966506958,
+      "scenarioLoadSeconds" : 0.32366394996643066
+    }
+  },
+  "scenario" : "subagentsCard",
+  "selectedSessionID" : "fixture-subagents-tasks",
+  "sessionCount" : 9,
+  "sessions" : [
+    {
+      "attachmentState" : "attached",
+      "id" : "fixture-subagents-tasks",
+      "phase" : "running",
+      "summary" : "Coordinating the overlay redesign rollout.",
+      "title" : "Claude · open-vibe-island",
+      "tool" : "claudeCode"
+    },
+    {
+      "attachmentState" : "attached",
+      "id" : "session-recent",
+      "phase" : "completed",
+      "summary" : "The session list now matches the original island more closely.",
+      "title" : "Codex · open-agent-sdk",
+      "tool" : "codex"
+    },
+    {
+      "attachmentState" : "attached",
+      "id" : "session-claude-research",
+      "phase" : "completed",
+      "summary" : "不建议按“最古老”来选。最古老不等于最轻量且最适合这个任务。",
+      "title" : "Codex · claude-research",
+      "tool" : "codex"
+    },
+    {
+      "attachmentState" : "attached",
+      "id" : "session-personal",
+      "phase" : "completed",
+      "summary" : "这张图里的模型，严格说不是这个 `voice-input` App 应该选的模…",
+      "title" : "Codex · Personal",
+      "tool" : "codex"
+    },
+    {
+      "attachmentState" : "attached",
+      "id" : "session-open-agent-sdk",
+      "phase" : "completed",
+      "summary" : "PR 已经提好了：",
+      "title" : "Codex · open-agent-sdk",
+      "tool" : "codex"
+    },
+    {
+      "attachmentState" : "attached",
+      "id" : "session-voice-input",
+      "phase" : "completed",
+      "summary" : "如果目标是轻量实时，不建议直接按 Cursor 现成套餐来映射。",
+      "title" : "Codex · voice-input",
+      "tool" : "codex"
+    },
+    {
+      "attachmentState" : "attached",
+      "id" : "session-agents",
+      "phase" : "completed",
+      "summary" : "已经重启了。现在跑的是新的 dev 进程。",
+      "title" : "Codex · agents",
+      "tool" : "codex"
+    },
+    {
+      "attachmentState" : "attached",
+      "id" : "session-claude",
+      "phase" : "completed",
+      "summary" : "展开态高度已经改成按内容自适应。",
+      "title" : "Codex · claude-code",
+      "tool" : "codex"
+    },
+    {
+      "attachmentState" : "attached",
+      "id" : "session-hooks",
+      "phase" : "completed",
+      "summary" : "代码里已经有几条更直接的路可以走。",
+      "title" : "Codex · hooks",
+      "tool" : "codex"
+    }
+  ],
+  "startedBridge" : false,
+  "windows" : [
+    {
+      "accessibilityPath" : "overlay.ax.json",
+      "accessibilitySummary" : {
+        "buttonLabels" : [
+          "Claude Code, open-vibe-island, running, 6 seconds ago",
+          "Codex, Personal, completed, 32 minutes ago",
+          "Codex, agents, completed, 1 hour ago",
+          "Codex, claude-code, completed, 1 hour ago",
+          "Codex, claude-research, completed, 27 minutes ago",
+          "Codex, hooks, completed, 2 hours ago",
+          "Codex, open-agent-sdk, completed, 1 hour ago",
+          "Codex, open-agent-sdk, completed, 3 minutes ago",
+          "Codex, voice-input, completed, 1 hour ago",
+          "Mute sound",
+          "Open Island Settings",
+          "Quit Open Island"
+        ],
+        "labels" : [
+          "Claude Code, open-vibe-island, running, 6 seconds ago",
+          "Codex, Personal, completed, 32 minutes ago",
+          "Codex, agents, completed, 1 hour ago",
+          "Codex, claude-code, completed, 1 hour ago",
+          "Codex, claude-research, completed, 27 minutes ago",
+          "Codex, hooks, completed, 2 hours ago",
+          "Codex, open-agent-sdk, completed, 1 hour ago",
+          "Codex, open-agent-sdk, completed, 3 minutes ago",
+          "Codex, voice-input, completed, 1 hour ago",
+          "Mute sound",
+          "Open Island Settings",
+          "Quit Open Island"
+        ],
+        "textValues" : [
+          "3 subagents, 2 of 5 tasks completed",
+          "BRIDGE LINK, NO LINK, 9 SESSIONS",
+          "Sessions 0 Attn, 1 Run, 1 Done, 7 Idle"
+        ]
+      },
+      "frame" : {
+        "height" : 701,
+        "width" : 576,
+        "x" : 468,
+        "y" : 281
+      },
+      "imagePath" : "overlay.png",
+      "kind" : "overlay",
+      "title" : ""
+    }
+  ]
+}

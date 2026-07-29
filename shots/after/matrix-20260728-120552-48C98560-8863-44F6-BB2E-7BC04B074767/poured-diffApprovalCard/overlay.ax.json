@@ -1,0 +1,368 @@
+{
+  "children" : [
+    {
+      "children" : [
+        {
+          "accessibleName" : "Mute sound",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Mute sound",
+          "enabled" : true,
+          "identifier" : "speaker.wave.2.fill",
+          "label" : "Mute sound",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "Open Island Settings",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Open Island Settings",
+          "enabled" : true,
+          "identifier" : "gearshape.fill",
+          "label" : "Open Island Settings",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "Quit Open Island",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Quit Open Island",
+          "enabled" : true,
+          "identifier" : "power",
+          "label" : "Quit Open Island",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "Claude Code, open-vibe-island, waiting for permission, 11 seconds ago",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Claude Code, open-vibe-island, waiting for permission, 11 seconds ago",
+          "enabled" : true,
+          "label" : "Claude Code, open-vibe-island, waiting for permission, 11 seconds ago",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Tool permission requested"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Claude wants to edit AGENTS.md."
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Updated"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "+3"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "−2"
+            },
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "1"
+                },
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "## Verification"
+                },
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "2"
+                },
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement"
+                },
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "3"
+                },
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "−"
+                },
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "After making changes, run swift build and confirm it succeeds before moving on."
+                },
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "4"
+                },
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "−"
+                },
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "Summarize what changed once the round is done."
+                },
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "3"
+                },
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "+"
+                },
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "After making changes, run swift build and swift test and confirm both succeed before moving on."
+                },
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "4"
+                },
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "+"
+                },
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "Capture a harness smoke run whenever the change affects rendered UI."
+                },
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "5"
+                },
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "+"
+                },
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "Summarize what changed once the round is done, calling out any verification gaps."
+                },
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "6"
+                },
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "Commit the round on the feature branch before stopping."
+                }
+              ],
+              "role" : "AXScrollArea",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Allow",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Allow",
+              "enabled" : true,
+              "label" : "Allow",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Deny",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Deny",
+              "enabled" : true,
+              "label" : "Deny",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Yes, allow writing to AGENTS.md\/ from this project",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Yes, allow writing to AGENTS.md\/ from this project",
+              "enabled" : true,
+              "label" : "Yes, allow writing to AGENTS.md\/ from this project",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Auto-collapses in 10s · hover pauses"
+            }
+          ],
+          "enabled" : true,
+          "role" : "AXGroup",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "Show all 9 sessions",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Show all 9 sessions",
+          "enabled" : true,
+          "label" : "Show all 9 sessions",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        }
+      ],
+      "role" : "AXGroup",
+      "subrole" : "AXHostingView",
+      "typeName" : "AXUIElement"
+    }
+  ],
+  "role" : "AXWindow",
+  "subrole" : "AXSystemDialog",
+  "typeName" : "AXUIElement"
+}

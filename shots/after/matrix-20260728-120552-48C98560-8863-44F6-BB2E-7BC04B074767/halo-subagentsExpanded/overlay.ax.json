@@ -1,0 +1,1105 @@
+{
+  "children" : [
+    {
+      "children" : [
+        {
+          "accessibleName" : "Mute sound",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Mute sound",
+          "enabled" : true,
+          "identifier" : "speaker.wave.2",
+          "label" : "Mute sound",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "Open Island Settings",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Open Island Settings",
+          "enabled" : true,
+          "identifier" : "gearshape",
+          "label" : "Open Island Settings",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "Quit Open Island",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Quit Open Island",
+          "enabled" : true,
+          "identifier" : "power",
+          "label" : "Quit Open Island",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "enabled" : true,
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "9 total, 1 running, 1 done, 7 idle"
+        },
+        {
+          "children" : [
+            {
+              "accessibleName" : "Claude Code, open-vibe-island, running, 6 seconds ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Claude Code, open-vibe-island, running, 6 seconds ago",
+              "enabled" : true,
+              "label" : "Claude Code, open-vibe-island, running, 6 seconds ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "SUBAGENTS"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "3 active"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Running"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Running"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Running"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "2 of 5"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Palette + material tokens"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Closed-pill ambient states"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Header + meters + scaffold, in progress"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Session rows"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Permission hero + conformance"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "AGENT"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "DURATION"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "TERMINAL"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "C"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Claude Code"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "<1m"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Ghostty · attached"
+            },
+            {
+              "accessibleName" : "Jump · Ghostty",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Jump · Ghostty",
+              "enabled" : true,
+              "label" : "Jump · Ghostty",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Codex, open-agent-sdk, completed, 3 minutes ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, open-agent-sdk, completed, 3 minutes ago",
+              "enabled" : true,
+              "label" : "Codex, open-agent-sdk, completed, 3 minutes ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "RESULT"
+            },
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "整理完了，已经提炼出和 autoreserach 相关的几段关键差异。"
+                }
+              ],
+              "role" : "AXScrollArea",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "OUTCOME"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "DURATION"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "FINISHED"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Success"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "0m 00s"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "3m ago"
+            },
+            {
+              "accessibleName" : "Jump · Ghostty",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Jump · Ghostty",
+              "enabled" : true,
+              "label" : "Jump · Ghostty",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Dismiss session",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Dismiss session",
+              "enabled" : true,
+              "label" : "Dismiss session",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Codex, claude-research, completed, 27 minutes ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, claude-research, completed, 27 minutes ago",
+              "enabled" : true,
+              "label" : "Codex, claude-research, completed, 27 minutes ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "AGENT"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "TERMINAL"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "C"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Codex"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Ghostty · attached"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "LAST MESSAGE · CODEX"
+            },
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "不建议按“最古老”来选。最古老不等于最轻量且最适合这个任务。"
+                }
+              ],
+              "role" : "AXScrollArea",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Jump · Ghostty",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Jump · Ghostty",
+              "enabled" : true,
+              "label" : "Jump · Ghostty",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "help" : "\/Users\/wangruobing\/Personal\/claude-research",
+              "label" : "\/Users\/wangruobing\/Personal\/claude-research",
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "\/Users\/wangruobing\/Personal\/claude-research"
+            },
+            {
+              "accessibleName" : "Codex, Personal, completed, 32 minutes ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, Personal, completed, 32 minutes ago",
+              "enabled" : true,
+              "label" : "Codex, Personal, completed, 32 minutes ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "AGENT"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "TERMINAL"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "C"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Codex"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Ghostty · attached"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "LAST MESSAGE · CODEX"
+            },
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "这张图里的模型，严格说不是这个 voice-input App 应该选的模…"
+                }
+              ],
+              "role" : "AXScrollArea",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Jump · Ghostty",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Jump · Ghostty",
+              "enabled" : true,
+              "label" : "Jump · Ghostty",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "help" : "\/Users\/wangruobing\/Personal\/Personal",
+              "label" : "\/Users\/wangruobing\/Personal\/Personal",
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "\/Users\/wangruobing\/Personal\/Personal"
+            },
+            {
+              "accessibleName" : "Codex, open-agent-sdk, completed, 1 hour ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, open-agent-sdk, completed, 1 hour ago",
+              "enabled" : true,
+              "label" : "Codex, open-agent-sdk, completed, 1 hour ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "AGENT"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "TERMINAL"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "C"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Codex"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Ghostty · attached"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "LAST MESSAGE · CODEX"
+            },
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "PR 已经提好了："
+                }
+              ],
+              "role" : "AXScrollArea",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Jump · Ghostty",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Jump · Ghostty",
+              "enabled" : true,
+              "label" : "Jump · Ghostty",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "help" : "\/Users\/wangruobing\/Personal\/open-agent-sdk",
+              "label" : "\/Users\/wangruobing\/Personal\/open-agent-sdk",
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "\/Users\/wangruobing\/Personal\/open-agent-sdk"
+            },
+            {
+              "accessibleName" : "Codex, voice-input, completed, 1 hour ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, voice-input, completed, 1 hour ago",
+              "enabled" : true,
+              "label" : "Codex, voice-input, completed, 1 hour ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "AGENT"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "TERMINAL"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "C"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Codex"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Ghostty · attached"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "LAST MESSAGE · CODEX"
+            },
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "如果目标是轻量实时，不建议直接按 Cursor 现成套餐来映射。"
+                }
+              ],
+              "role" : "AXScrollArea",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Jump · Ghostty",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Jump · Ghostty",
+              "enabled" : true,
+              "label" : "Jump · Ghostty",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "help" : "\/Users\/wangruobing\/Personal\/voice-input",
+              "label" : "\/Users\/wangruobing\/Personal\/voice-input",
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "\/Users\/wangruobing\/Personal\/voice-input"
+            },
+            {
+              "accessibleName" : "Codex, agents, completed, 1 hour ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, agents, completed, 1 hour ago",
+              "enabled" : true,
+              "label" : "Codex, agents, completed, 1 hour ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "AGENT"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "TERMINAL"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "C"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Codex"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Ghostty · attached"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "LAST MESSAGE · CODEX"
+            },
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "已经重启了。现在跑的是新的 dev 进程。"
+                }
+              ],
+              "role" : "AXScrollArea",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Jump · Ghostty",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Jump · Ghostty",
+              "enabled" : true,
+              "label" : "Jump · Ghostty",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "help" : "\/Users\/wangruobing\/Personal\/agents",
+              "label" : "\/Users\/wangruobing\/Personal\/agents",
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "\/Users\/wangruobing\/Personal\/agents"
+            },
+            {
+              "accessibleName" : "Codex, claude-code, completed, 1 hour ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, claude-code, completed, 1 hour ago",
+              "enabled" : true,
+              "label" : "Codex, claude-code, completed, 1 hour ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "AGENT"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "TERMINAL"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "C"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Codex"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Ghostty · attached"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "LAST MESSAGE · CODEX"
+            },
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "展开态高度已经改成按内容自适应。"
+                }
+              ],
+              "role" : "AXScrollArea",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Jump · Ghostty",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Jump · Ghostty",
+              "enabled" : true,
+              "label" : "Jump · Ghostty",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "help" : "\/Users\/wangruobing\/Personal\/claude-code",
+              "label" : "\/Users\/wangruobing\/Personal\/claude-code",
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "\/Users\/wangruobing\/Personal\/claude-code"
+            },
+            {
+              "accessibleName" : "Codex, hooks, completed, 2 hours ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, hooks, completed, 2 hours ago",
+              "enabled" : true,
+              "label" : "Codex, hooks, completed, 2 hours ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "AGENT"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "TERMINAL"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "C"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Codex"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Ghostty · attached"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "LAST MESSAGE · CODEX"
+            },
+            {
+              "children" : [
+                {
+                  "children" : [
+
+                  ],
+                  "enabled" : true,
+                  "role" : "AXStaticText",
+                  "typeName" : "AXUIElement",
+                  "value" : "代码里已经有几条更直接的路可以走。"
+                }
+              ],
+              "role" : "AXScrollArea",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Jump · Ghostty",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Jump · Ghostty",
+              "enabled" : true,
+              "label" : "Jump · Ghostty",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "help" : "\/Users\/wangruobing\/Personal\/hooks",
+              "label" : "\/Users\/wangruobing\/Personal\/hooks",
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "\/Users\/wangruobing\/Personal\/hooks"
+            }
+          ],
+          "role" : "AXScrollArea",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "enabled" : true,
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "9 sessions · 0 need you"
+        }
+      ],
+      "role" : "AXGroup",
+      "subrole" : "AXHostingView",
+      "typeName" : "AXUIElement"
+    }
+  ],
+  "role" : "AXWindow",
+  "subrole" : "AXSystemDialog",
+  "typeName" : "AXUIElement"
+}

@@ -1,0 +1,75 @@
+[
+  {
+    "category" : "milestone",
+    "name" : "applicationDidFinishLaunching",
+    "offsetSeconds" : 1.2637580633163452
+  },
+  {
+    "category" : "milestone",
+    "name" : "bootstrapStarted",
+    "offsetSeconds" : 1.5466099977493286
+  },
+  {
+    "category" : "log",
+    "message" : "Waiting for agent hook events...",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 1.5466639995574951
+  },
+  {
+    "category" : "log",
+    "message" : "Deterministic harness mode active. Runtime discovery and bridge startup skipped.",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 1.6338210105895996
+  },
+  {
+    "category" : "milestone",
+    "message" : "Deterministic harness mode active. Runtime discovery and bridge startup skipped.",
+    "name" : "bridgeSkipped",
+    "offsetSeconds" : 1.6338250637054443
+  },
+  {
+    "category" : "milestone",
+    "name" : "modelStarted",
+    "offsetSeconds" : 1.6338300704956055
+  },
+  {
+    "category" : "log",
+    "message" : "Loaded debug scenario: Usage Meters.",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 1.6355080604553223
+  },
+  {
+    "category" : "milestone",
+    "message" : "Usage Meters",
+    "name" : "scenarioLoaded",
+    "offsetSeconds" : 1.635509967803955
+  },
+  {
+    "category" : "milestone",
+    "name" : "bootstrapCompleted",
+    "offsetSeconds" : 1.7372640371322632
+  },
+  {
+    "category" : "milestone",
+    "message" : "2.000s",
+    "name" : "captureScheduled",
+    "offsetSeconds" : 1.7373980283737183
+  },
+  {
+    "category" : "milestone",
+    "message" : "5.000s",
+    "name" : "autoExitScheduled",
+    "offsetSeconds" : 1.7374370098114014
+  },
+  {
+    "category" : "milestone",
+    "message" : "Usage Meters",
+    "name" : "overlayPresented",
+    "offsetSeconds" : 2.238111972808838
+  },
+  {
+    "category" : "milestone",
+    "name" : "captureStarted",
+    "offsetSeconds" : 3.7391719818115234
+  }
+]

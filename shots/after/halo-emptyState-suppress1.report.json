@@ -1,0 +1,134 @@
+{
+  "attentionCount" : 0,
+  "capturedAt" : "2026-07-26T21:43:01Z",
+  "islandSurface" : "sessionList",
+  "launchToCaptureSeconds" : 2.037687063217163,
+  "liveSessionCount" : 0,
+  "notchStatus" : "opened",
+  "overlay" : {
+    "mode" : "Top bar fallback",
+    "overlayFrame" : {
+      "height" : 194,
+      "width" : 600,
+      "x" : 660,
+      "y" : 838
+    },
+    "safeAreaInsets" : {
+      "bottom" : 0,
+      "left" : 0,
+      "right" : 0,
+      "top" : 0
+    },
+    "screenFrame" : {
+      "height" : 1080,
+      "width" : 1920,
+      "x" : 0,
+      "y" : 0
+    },
+    "screenID" : "F3BDCAC0-1700-415E-817D-AC4E69D405BC",
+    "screenName" : "DELL U3223QE",
+    "selectionSummary" : "manual",
+    "visibleFrame" : {
+      "height" : 1050,
+      "width" : 1920,
+      "x" : 0,
+      "y" : 0
+    }
+  },
+  "performedBootAnimation" : false,
+  "presentOverlay" : true,
+  "runtime" : {
+    "eventCount" : 13,
+    "latestMessage" : "Loaded debug scenario: Empty State.",
+    "launchCompleted" : true,
+    "logPath" : "runtime.log",
+    "milestones" : [
+      {
+        "name" : "applicationDidFinishLaunching",
+        "offsetSeconds" : 0.32496607303619385
+      },
+      {
+        "name" : "bootstrapStarted",
+        "offsetSeconds" : 0.37998008728027344
+      },
+      {
+        "name" : "bridgeSkipped",
+        "offsetSeconds" : 0.3983670473098755
+      },
+      {
+        "name" : "modelStarted",
+        "offsetSeconds" : 0.39836907386779785
+      },
+      {
+        "name" : "scenarioLoaded",
+        "offsetSeconds" : 0.39844703674316406
+      },
+      {
+        "name" : "bootstrapCompleted",
+        "offsetSeconds" : 0.4240100383758545
+      },
+      {
+        "name" : "captureScheduled",
+        "offsetSeconds" : 0.4240680932998657
+      },
+      {
+        "name" : "autoExitScheduled",
+        "offsetSeconds" : 0.4240840673446655
+      },
+      {
+        "name" : "overlayPresented",
+        "offsetSeconds" : 0.4585510492324829
+      },
+      {
+        "name" : "captureStarted",
+        "offsetSeconds" : 1.998331069946289
+      }
+    ],
+    "timelinePath" : "timeline.json",
+    "timings" : {
+      "bootstrapSeconds" : 0.4240100383758545,
+      "captureScheduledSeconds" : 0.4240680932998657,
+      "captureStartedSeconds" : 1.998331069946289,
+      "launchToCaptureSeconds" : 2.037687063217163,
+      "overlayPresentedSeconds" : 0.4585510492324829,
+      "scenarioLoadSeconds" : 0.39844703674316406
+    }
+  },
+  "scenario" : "emptyState",
+  "sessionCount" : 0,
+  "sessions" : [
+
+  ],
+  "startedBridge" : false,
+  "windows" : [
+    {
+      "accessibilityPath" : "overlay.ax.json",
+      "accessibilitySummary" : {
+        "buttonLabels" : [
+          "Mute sound",
+          "Open Island Settings",
+          "Quit Open Island"
+        ],
+        "labels" : [
+          "Mute sound",
+          "Open Island Settings",
+          "Quit Open Island"
+        ],
+        "textValues" : [
+          "All quiet",
+          "Monitoring",
+          "No active agent sessions. Open Island is watching your terminals and IDEs — it'll light up the moment one needs you."
+        ]
+      },
+      "frame" : {
+        "height" : 194,
+        "width" : 600,
+        "x" : 660,
+        "y" : 886
+      },
+      "imagePath" : "overlay.png",
+      "kind" : "overlay",
+      "title" : ""
+    }
+  ]
+}

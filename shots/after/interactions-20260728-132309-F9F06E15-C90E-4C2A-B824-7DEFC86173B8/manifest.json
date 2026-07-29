@@ -1,0 +1,73 @@
+{
+  "run_root": "/Users/abhishekthakur/Developer/open-vibe-island/.claude/worktrees/overlay-remediation/shots/after/interactions-20260728-132309-F9F06E15-C90E-4C2A-B824-7DEFC86173B8",
+  "worktree": "/Users/abhishekthakur/Developer/open-vibe-island/.claude/worktrees/overlay-remediation",
+  "repository_executable": "/Users/abhishekthakur/Developer/open-vibe-island/.claude/worktrees/overlay-remediation/.build/arm64-apple-macosx/debug/OpenIslandApp",
+  "repository_executable_regular": true,
+  "repository_executable_executable": true,
+  "production_executable": "/Applications/Open Island.app/Contents/MacOS/OpenIslandApp",
+  "production_baseline": [],
+  "defaults_before": {
+    "theme": {
+      "exit": 0,
+      "stdout": "halo",
+      "stderr": ""
+    },
+    "display": {
+      "exit": 0,
+      "stdout": "F3BDCAC0-1700-415E-817D-AC4E69D405BC",
+      "stderr": ""
+    }
+  },
+  "production_baseline_observed_exact": [
+    {
+      "pid": "75647",
+      "start": "Tue Jul 28 13:14:26 2026",
+      "path": "/Applications/Open Island.app/Contents/MacOS/OpenIslandApp"
+    }
+  ],
+  "production_after_exact": [
+    {
+      "pid": "75647",
+      "start": "Tue Jul 28 13:14:26 2026",
+      "path": "/Applications/Open Island.app/Contents/MacOS/OpenIslandApp"
+    }
+  ],
+  "production_baseline_identity_unchanged_alive_after": true,
+  "direct_launch": {
+    "theme": "poured",
+    "scenario": "subagentsCard",
+    "launcher_pid": 88109,
+    "app_pid": 88109,
+    "start_identity": "Tue Jul 28 13:24:06 2026",
+    "executable": "/Users/abhishekthakur/Developer/open-vibe-island/.claude/worktrees/overlay-remediation/.build/arm64-apple-macosx/debug/OpenIslandApp",
+    "environment": {
+      "OPEN_ISLAND_HARNESS_SCENARIO": "subagentsCard",
+      "OPEN_ISLAND_HARNESS_PRESENT_OVERLAY": "1",
+      "OPEN_ISLAND_HARNESS_BOOT_ANIMATION": "0",
+      "OPEN_ISLAND_HARNESS_START_BRIDGE": "0",
+      "OPEN_ISLAND_HARNESS_SUPPRESS_INSTALL_HINT": "1",
+      "OPEN_ISLAND_HARNESS_ENABLE_KEY_MONITOR": "1",
+      "OPEN_ISLAND_HARNESS_CAPTURE_DELAY_SECONDS": "1"
+    },
+    "result": "exited before Orca PID-targeted window discovery; no action sent"
+  },
+  "verdicts": {
+    "motion_section_K": "UNMEASURED: Orca capabilities expose still screenshot observation only; no temporal recording capability, and direct harness executable was not PID-targetable.",
+    "hover_peek_section_B": "UNMEASURED: Orca capabilities do not expose hover/pointer-move; direct harness executable was not PID-targetable.",
+    "expand_collapse_action": "UNMEASURED: collapsed nested-work fixture launch PID exited before an Orca PID-targetable window existed; no click action attempted.",
+    "expand_collapse_morph": "UNMEASURED: no temporal capture capability; no app window available.",
+    "keyboard_focus_rings": "UNMEASURED: direct harness executable was not PID-targetable, so no safe key action/fresh state could be obtained.",
+    "pressed_states": "UNMEASURED: no mouse-down/up or hold-duration capability (only click/drag); direct harness executable was not PID-targetable."
+  },
+  "tooling_limitations": [
+    "Orca supports screenshot but no temporal video/frame-series observation.",
+    "Orca supports click and drag but advertises no hover, pointer-move, mouse-down, mouse-up, or hold-duration action.",
+    "Orca window focus capability is false.",
+    "Launching the repository-built executable directly, with source-backed harness environment, did not create a PID-targetable Orca app/window before exit."
+  ],
+  "defaults_after": {
+    "theme": "halo",
+    "display": "F3BDCAC0-1700-415E-817D-AC4E69D405BC"
+  },
+  "machine_profile": "notched-only; no live top-bar 520pt criterion assessed"
+}

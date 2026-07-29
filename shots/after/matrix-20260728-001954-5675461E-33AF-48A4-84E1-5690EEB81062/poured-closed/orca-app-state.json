@@ -1,0 +1,57 @@
+{
+  "id": "d3b7b268-bca4-4fdd-ab2e-7eda028f0a29",
+  "ok": true,
+  "result": {
+    "screenshotStatus": {
+      "metadata": {
+        "engine": "screenCaptureKit",
+        "windowId": 17951
+      },
+      "state": "captured"
+    },
+    "snapshot": {
+      "window": {
+        "width": 620,
+        "isMinimized": false,
+        "platform": {
+          "layer": 25
+        },
+        "isOffscreen": false,
+        "screenIndex": 0,
+        "x": 446,
+        "y": 0,
+        "title": "",
+        "id": 17951,
+        "height": 184
+      },
+      "elementCount": 2,
+      "focusedElementId": null,
+      "app": {
+        "name": "OpenIslandApp",
+        "bundleId": null,
+        "pid": 18847
+      },
+      "id": "FFBCF785-AD84-4783-8599-5E0646C8E2B8",
+      "truncation": {
+        "truncated": false,
+        "maxNodes": 1200,
+        "maxDepth": 64,
+        "maxDepthReached": false
+      },
+      "coordinateSpace": "window",
+      "treeText": "App=OpenIslandApp (pid 18847)\nWindow: \"\", App: OpenIslandApp.\n\n0 system dialog\n\t1 text 9 sessions\n\nNo UI element is currently focused."
+    },
+    "screenshot": {
+      "format": "png",
+      "height": 368,
+      "scale": 2,
+      "width": 1240,
+      "path": "/var/folders/52/7304w2xn42qbtvqcxmxz4tlm0000gn/T/orca-computer-use/d3b7b268-bca4-4fdd-ab2e-7eda028f0a29-screenshot.png",
+      "dataOmitted": true,
+      "expiresAt": "2026-07-28T18:49:59.712Z"
+    }
+  },
+  "_meta": {
+    "runtimeId": "b88107f1-4fc2-4d0d-b8b5-1ecd9d71ef30"
+  }
+}

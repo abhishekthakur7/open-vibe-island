@@ -1,0 +1,57 @@
+{
+  "id": "53eddcd0-f829-4244-a1d4-ffa1ba8462b1",
+  "ok": true,
+  "result": {
+    "snapshot": {
+      "window": {
+        "width": 620,
+        "isMinimized": false,
+        "platform": {
+          "layer": 25
+        },
+        "isOffscreen": false,
+        "screenIndex": 0,
+        "x": 446,
+        "y": 0,
+        "title": "",
+        "id": 20074,
+        "height": 716
+      },
+      "elementCount": 98,
+      "focusedElementId": 0,
+      "app": {
+        "name": "OpenIslandApp",
+        "bundleId": null,
+        "pid": 16257
+      },
+      "id": "2747515A-2493-494A-ADD1-6C51218BC7FC",
+      "truncation": {
+        "truncated": false,
+        "maxNodes": 1200,
+        "maxDepth": 64,
+        "maxDepthReached": false
+      },
+      "coordinateSpace": "window",
+      "treeText": "App=OpenIslandApp (pid 16257)\nWindow: \"\", App: OpenIslandApp.\n\n0 system dialog\n\t1 button\n\t2 button\n\t3 button\n\t4 text SESSIONS, 9, 1, run, 1, done, 7, idle\n\t5 scroll area, Secondary Actions: scroll up, scroll down\n\t\t6 button, Secondary Actions: name: dismiss session\n target:0x0\n selector:(null), name: collapse session detail\n target:0x0\n selector:(null)\n\t\t7 text 3 SUBAGENTS\n\t\t8 text TASKS · 2 OF 5 DONE\n\t\t9 text (selected) Completed, Palette + material tokens\n\t\t10 text (selected) Completed, Closed-pill ambient states\n\t\t11 text AGENT\n\t\t12 text LIVE\n\t\t13 text Claude Code\n\t\t14 text <1m\n\t\t15 button\n\t\t16 text Pane attached\n\t\t17 button, Secondary Actions: name: dismiss session\n target:0x0\n selector:(null), name: collapse session detail\n target:0x0\n selector:(null)\n\t\t18 text AGENT\n\t\t19 text DIRECTORY\n\t\t20 text Codex\n\t\t21 text Users/…/Personal/open-agent-sdk\n\t\t22 text LAST MESSAGE · CODEX\n\t\t23 scroll area, Secondary Actions: scroll up, scroll down\n\t\t\t24 text 整理完了，已经提炼出和 autoreserach 相关的几段关键差异。\n\t\t25 button\n\t\t26 text Pane attached\n\t\t27 button, Secondary Actions: name: dismiss session\n target:0x0\n selector:(null), name: collapse session detail\n target:0x0\n selector:(null)\n\t\t28 text AGENT\n\t\t29 text DIRECTORY\n\t\t30 text Codex\n\t\t31 text Users/…/Personal/claude-research\n\t\t32 text LAST MESSAGE · CODEX\n\t\t33 scroll area, Secondary Actions: scroll up, scroll down\n\t\t\t34 text 不建议按“最古老”来选。最古老不等于最轻量且最适合这个任务。\n\t\t35 button\n\t\t36 text Pane attached\n\t\t37 button, Secondary Actions: name: dismiss session\n target:0x0\n selector:(null), name: collapse session detail\n target:0x0\n selector:(null)\n\t\t38 text AGENT\n\t\t39 text DIRECTORY\n\t\t40 text Codex\n\t\t41 text Users/…/Personal/Personal\n\t\t42 text LAST MESSAGE · CODEX\n\t\t43 scroll area, Secondary Actions: scroll up, scroll down\n\t\t\t44 text 这张图里的模型，严格说不是这个 voice-input App 应该选的模…\n\t\t45 button\n\t\t46 text Pane attached\n\t\t47 button, Secondary Actions: name: dismiss session\n target:0x0\n selector:(null), name: collapse session detail\n target:0x0\n selector:(null)\n\t\t48 text AGENT\n\t\t49 text DIRECTORY\n\t\t50 text Codex\n\t\t51 text Users/…/Personal/open-agent-sdk\n\t\t52 text LAST MESSAGE · CODEX\n\t\t53 scroll area, Secondary Actions: scroll up, scroll down\n\t\t\t54 text PR 已经提好了：\n\t\t55 button\n\t\t56 text Pane attached\n\t\t57 button, Secondary Actions: name: dismiss session\n target:0x0\n selector:(null), name: collapse session detail\n target:0x0\n selector:(null)\n\t\t58 text AGENT\n\t\t59 text DIRECTORY\n\t\t60 text Codex\n\t\t61 text Users/…/Personal/voice-input\n\t\t62 text LAST MESSAGE · CODEX\n\t\t63 scroll area, Secondary Actions: scroll up, scroll down\n\t\t\t64 text 如果目标是轻量实时，不建议直接按 Cursor 现成套餐来映射。\n\t\t65 button\n\t\t66 text Pane attached\n\t\t67 button, Secondary Actions: name: dismiss session\n target:0x0\n selector:(null), name: collapse session detail\n target:0x0\n selector:(null)\n\t\t68 text AGENT\n\t\t69 text DIRECTORY\n\t\t70 text Codex\n\t\t71 text /Users/wangruobing/Personal/agents\n\t\t72 text LAST MESSAGE · CODEX\n\t\t73 scroll area, Secondary Actions: scroll up, scroll down\n\t\t\t74 text 已经重启了。现在跑的是新的 dev 进程。\n\t\t75 button\n\t\t76 text Pane attached\n\t\t77 button, Secondary Actions: name: dismiss session\n target:0x0\n selector:(null), name: collapse session detail\n target:0x0\n selector:(null)\n\t\t78 text AGENT\n\t\t79 text DIRECTORY\n\t\t80 text Codex\n\t\t81 text Users/…/Personal/claude-code\n\t\t82 text LAST MESSAGE · CODEX\n\t\t83 scroll area, Secondary Actions: scroll up, scroll down\n\t\t\t84 text 展开态高度已经改成按内容自适应。\n\t\t85 button\n\t\t86 text Pane attached\n\t\t87 button, Secondary Actions: name: dismiss session\n target:0x0\n selector:(null), name: collapse session detail\n target:0x0\n selector:(null)\n\t\t88 text AGENT\n\t\t89 text DIRECTORY\n\t\t90 text Codex\n\t\t91 text /Users/wangruobing/Personal/hooks\n\t\t92 text LAST MESSAGE · CODEX\n\t\t93 scroll area, Secondary Actions: scroll up, scroll down\n\t\t\t94 text 代码里已经有几条更直接的路可以走。\n\t\t95 button\n\t\t96 text Pane attached\n\t97 text All quiet elsewhere · 7 idle\n\nThe focused UI element is 0 system dialog."
+    },
+    "screenshotStatus": {
+      "metadata": {
+        "engine": "screenCaptureKit",
+        "windowId": 20074
+      },
+      "state": "captured"
+    },
+    "screenshot": {
+      "format": "png",
+      "height": 1432,
+      "scale": 2,
+      "width": 1240,
+      "path": "/var/folders/52/7304w2xn42qbtvqcxmxz4tlm0000gn/T/orca-computer-use/53eddcd0-f829-4244-a1d4-ffa1ba8462b1-screenshot.png",
+      "dataOmitted": true,
+      "expiresAt": "2026-07-29T05:05:14.518Z"
+    }
+  },
+  "_meta": {
+    "runtimeId": "b88107f1-4fc2-4d0d-b8b5-1ecd9d71ef30"
+  }
+}

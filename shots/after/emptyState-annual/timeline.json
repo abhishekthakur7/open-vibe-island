@@ -1,0 +1,75 @@
+[
+  {
+    "category" : "milestone",
+    "name" : "applicationDidFinishLaunching",
+    "offsetSeconds" : 0.251552939414978
+  },
+  {
+    "category" : "milestone",
+    "name" : "bootstrapStarted",
+    "offsetSeconds" : 0.287742018699646
+  },
+  {
+    "category" : "log",
+    "message" : "Waiting for agent hook events...",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.2877500057220459
+  },
+  {
+    "category" : "log",
+    "message" : "Deterministic harness mode active. Runtime discovery and bridge startup skipped.",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.30724990367889404
+  },
+  {
+    "category" : "milestone",
+    "message" : "Deterministic harness mode active. Runtime discovery and bridge startup skipped.",
+    "name" : "bridgeSkipped",
+    "offsetSeconds" : 0.3072509765625
+  },
+  {
+    "category" : "milestone",
+    "name" : "modelStarted",
+    "offsetSeconds" : 0.3072519302368164
+  },
+  {
+    "category" : "log",
+    "message" : "Loaded debug scenario: Empty State.",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.30729496479034424
+  },
+  {
+    "category" : "milestone",
+    "message" : "Empty State",
+    "name" : "scenarioLoaded",
+    "offsetSeconds" : 0.30729496479034424
+  },
+  {
+    "category" : "milestone",
+    "name" : "bootstrapCompleted",
+    "offsetSeconds" : 0.3378729820251465
+  },
+  {
+    "category" : "milestone",
+    "message" : "2.000s",
+    "name" : "captureScheduled",
+    "offsetSeconds" : 0.33790600299835205
+  },
+  {
+    "category" : "milestone",
+    "message" : "5.000s",
+    "name" : "autoExitScheduled",
+    "offsetSeconds" : 0.33791399002075195
+  },
+  {
+    "category" : "milestone",
+    "message" : "Empty State",
+    "name" : "overlayPresented",
+    "offsetSeconds" : 0.3718109130859375
+  },
+  {
+    "category" : "milestone",
+    "name" : "captureStarted",
+    "offsetSeconds" : 2.3775659799575806
+  }
+]

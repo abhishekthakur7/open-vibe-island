@@ -1,0 +1,118 @@
+{
+  "children" : [
+    {
+      "children" : [
+        {
+          "children" : [
+
+          ],
+          "description" : "Mute sound",
+          "enabled" : true,
+          "label" : "Mute sound",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "description" : "Open Island Settings",
+          "enabled" : true,
+          "label" : "Open Island Settings",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "description" : "Quit Open Island",
+          "enabled" : true,
+          "label" : "Quit Open Island",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "description" : "Codex, open-island, completed, 15 seconds ago",
+          "enabled" : true,
+          "label" : "Codex, open-island, completed, 15 seconds ago",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "enabled" : true,
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "Success"
+        },
+        {
+          "children" : [
+
+          ],
+          "enabled" : true,
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "finished <1m ago"
+        },
+        {
+          "children" : [
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Plan 文件已写好。你的 hooks 触发情况如何？"
+            }
+          ],
+          "role" : "AXScrollArea",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "description" : "Jump to terminal",
+          "enabled" : true,
+          "label" : "Jump to terminal",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "description" : "Transcript, open-island",
+          "enabled" : true,
+          "help" : "\/tmp\/open-island-debug-completion.jsonl",
+          "label" : "Transcript, open-island",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "description" : "Show all 9 sessions",
+          "enabled" : true,
+          "label" : "Show all 9 sessions",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        }
+      ],
+      "role" : "AXGroup",
+      "subrole" : "AXHostingView",
+      "typeName" : "AXUIElement"
+    }
+  ],
+  "role" : "AXWindow",
+  "subrole" : "AXSystemDialog",
+  "typeName" : "AXUIElement"
+}

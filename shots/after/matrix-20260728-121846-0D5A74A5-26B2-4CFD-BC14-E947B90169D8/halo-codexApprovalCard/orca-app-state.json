@@ -1,0 +1,57 @@
+{
+  "id": "0e6863de-e90c-44fa-a597-c6a4152dba35",
+  "ok": true,
+  "result": {
+    "screenshotStatus": {
+      "state": "captured",
+      "metadata": {
+        "engine": "screenCaptureKit",
+        "windowId": 21147
+      }
+    },
+    "snapshot": {
+      "window": {
+        "width": 620,
+        "isMinimized": false,
+        "platform": {
+          "layer": 25
+        },
+        "isOffscreen": false,
+        "screenIndex": 0,
+        "x": 446,
+        "y": 0,
+        "title": "",
+        "id": 21147,
+        "height": 408
+      },
+      "elementCount": 12,
+      "focusedElementId": null,
+      "app": {
+        "pid": 26509,
+        "bundleId": null,
+        "name": "OpenIslandApp"
+      },
+      "id": "56B53D0B-4C2D-4BAF-97A2-73CA049D7C56",
+      "truncation": {
+        "truncated": false,
+        "maxNodes": 1200,
+        "maxDepth": 64,
+        "maxDepthReached": false
+      },
+      "coordinateSpace": "window",
+      "treeText": "App=OpenIslandApp (pid 26509)\nWindow: \"\", App: OpenIslandApp.\n\n0 system dialog\n\t1 button\n\t2 button\n\t3 button\n\t4 button, Secondary Actions: name: collapse session detail\n target:0x0\n selector:(null)\n\t5 text Approval waiting\n\t6 text Codex wants to run: git push origin main\n\t7 text C\n\t8 text git push origin main\n\t9 text Codex approvals happen inside the app. Jump to Codex to review this request.\n\t10 button\n\t11 button\n\nNo UI element is currently focused."
+    },
+    "screenshot": {
+      "format": "png",
+      "height": 816,
+      "scale": 2,
+      "width": 1240,
+      "path": "/var/folders/52/7304w2xn42qbtvqcxmxz4tlm0000gn/T/orca-computer-use/0e6863de-e90c-44fa-a597-c6a4152dba35-screenshot.png",
+      "dataOmitted": true,
+      "expiresAt": "2026-07-29T06:50:53.755Z"
+    }
+  },
+  "_meta": {
+    "runtimeId": "b88107f1-4fc2-4d0d-b8b5-1ecd9d71ef30"
+  }
+}

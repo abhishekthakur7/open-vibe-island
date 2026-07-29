@@ -1,0 +1,1 @@
+{"screenshot":"UNMEASURED","reason":"Orca returned app_not_found for the only permitted pid target and no PID-targetable window existed; no screenshot could be captured without violating target scope."}

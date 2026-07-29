@@ -1,0 +1,57 @@
+{
+  "id": "eba4eb7c-d962-49e5-9b25-d4f98453540e",
+  "ok": true,
+  "result": {
+    "snapshot": {
+      "app": {
+        "pid": 89880,
+        "name": "OpenIslandApp",
+        "bundleId": null
+      },
+      "id": "5C886DC5-7A70-4C59-BAC8-0D8C16F6AEC4",
+      "treeText": "App=OpenIslandApp (pid 89880)\nWindow: \"\", App: OpenIslandApp.\n\n0 system dialog\n\t1 button\n\t2 button\n\t3 button\n\t4 button, Secondary Actions: name: collapse session detail\n target:0x0\n selector:(null)\n\t5 text Approve file edit\n\t6 text Claude wants to edit AGENTS.md.\n\t7 text C\n\t8 text Opus 4.8\n\t9 text AGENTS.md · 5 changed\n\t10 scroll area, Secondary Actions: scroll up, scroll down\n\t\t11 text 1\n\t\t12 text ## Verification\n\t\t13 text 2\n\t\t14 text\n\t\t15 text 3\n\t\t16 text −\n\t\t17 text After making changes, run swift build and confirm it succeeds before moving on.\n\t\t18 text 4\n\t\t19 text −\n\t\t20 text Summarize what changed once the round is done.\n\t\t21 text 3\n\t\t22 text +\n\t\t23 text After making changes, run swift build and swift test and confirm both succeed before moving on.\n\t\t24 text 4\n\t\t25 text +\n\t\t26 text Capture a harness smoke run whenever the change affects rendered UI.\n\t\t27 text 5\n\t\t28 text +\n\t\t29 text Summarize what changed once the round is done, calling out any verification gaps.\n\t\t30 text 6\n\t\t31 text Commit the round on the feature branch before stopping.\n\t32 button\n\t33 button\n\t34 button\n\t35 button\n\nNo UI element is currently focused.",
+      "window": {
+        "width": 620,
+        "platform": {
+          "layer": 25
+        },
+        "title": "",
+        "height": 562,
+        "id": 20376,
+        "y": 0,
+        "isMinimized": false,
+        "isOffscreen": false,
+        "screenIndex": 0,
+        "x": 446
+      },
+      "elementCount": 36,
+      "truncation": {
+        "truncated": false,
+        "maxNodes": 1200,
+        "maxDepth": 64,
+        "maxDepthReached": false
+      },
+      "focusedElementId": null,
+      "coordinateSpace": "window"
+    },
+    "screenshot": {
+      "format": "png",
+      "height": 1124,
+      "scale": 2,
+      "width": 1240,
+      "path": "/var/folders/52/7304w2xn42qbtvqcxmxz4tlm0000gn/T/orca-computer-use/eba4eb7c-d962-49e5-9b25-d4f98453540e-screenshot.png",
+      "dataOmitted": true,
+      "expiresAt": "2026-07-29T05:43:59.620Z"
+    },
+    "screenshotStatus": {
+      "state": "captured",
+      "metadata": {
+        "engine": "screenCaptureKit",
+        "windowId": 20376
+      }
+    }
+  },
+  "_meta": {
+    "runtimeId": "b88107f1-4fc2-4d0d-b8b5-1ecd9d71ef30"
+  }
+}

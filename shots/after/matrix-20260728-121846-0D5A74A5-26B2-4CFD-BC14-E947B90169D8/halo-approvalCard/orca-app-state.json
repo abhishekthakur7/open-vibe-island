@@ -1,0 +1,57 @@
+{
+  "id": "15899757-aa59-4e95-8841-5e89e85ca352",
+  "ok": true,
+  "result": {
+    "snapshot": {
+      "window": {
+        "width": 620,
+        "isMinimized": false,
+        "platform": {
+          "layer": 25
+        },
+        "isOffscreen": false,
+        "screenIndex": 0,
+        "x": 446,
+        "y": 0,
+        "title": "",
+        "id": 21125,
+        "height": 399
+      },
+      "elementCount": 13,
+      "focusedElementId": null,
+      "app": {
+        "name": "OpenIslandApp",
+        "pid": 22459,
+        "bundleId": null
+      },
+      "id": "F0311360-E521-47FD-8D3E-48323476C364",
+      "truncation": {
+        "truncated": false,
+        "maxNodes": 1200,
+        "maxDepth": 64,
+        "maxDepthReached": false
+      },
+      "coordinateSpace": "window",
+      "treeText": "App=OpenIslandApp (pid 22459)\nWindow: \"\", App: OpenIslandApp.\n\n0 system dialog\n\t1 button\n\t2 button\n\t3 button\n\t4 button, Secondary Actions: name: collapse session detail\n target:0x0\n selector:(null)\n\t5 text Permission needed\n\t6 text Allow exec_command to rewrite SettingsView.swift?\n\t7 text C\n\t8 text Opus 4.8\n\t9 text head -5000 /Users/wangruobing/Personal/claude-research/extracts/claude-bun-2.1.81-v3/islands/000_cli.js.txt\n\t10 button\n\t11 button\n\t12 button\n\nNo UI element is currently focused."
+    },
+    "screenshot": {
+      "format": "png",
+      "height": 798,
+      "scale": 2,
+      "width": 1240,
+      "path": "/var/folders/52/7304w2xn42qbtvqcxmxz4tlm0000gn/T/orca-computer-use/15899757-aa59-4e95-8841-5e89e85ca352-screenshot.png",
+      "dataOmitted": true,
+      "expiresAt": "2026-07-29T06:50:38.947Z"
+    },
+    "screenshotStatus": {
+      "state": "captured",
+      "metadata": {
+        "windowId": 21125,
+        "engine": "screenCaptureKit"
+      }
+    }
+  },
+  "_meta": {
+    "runtimeId": "b88107f1-4fc2-4d0d-b8b5-1ecd9d71ef30"
+  }
+}

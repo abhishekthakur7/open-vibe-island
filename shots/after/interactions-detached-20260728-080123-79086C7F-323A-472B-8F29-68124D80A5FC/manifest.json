@@ -1,0 +1,34 @@
+{
+  "run_root": "/Users/abhishekthakur/Developer/open-vibe-island/.claude/worktrees/overlay-remediation/shots/after/interactions-detached-20260728-080123-79086C7F-323A-472B-8F29-68124D80A5FC",
+  "worktree": "/Users/abhishekthakur/Developer/open-vibe-island/.claude/worktrees/overlay-remediation",
+  "repository_executable": "/Users/abhishekthakur/Developer/open-vibe-island/.claude/worktrees/overlay-remediation/.build/arm64-apple-macosx/debug/OpenIslandApp",
+  "owned_pid": "94535",
+  "scenario": "subagentsCard",
+  "direct_launch": {
+    "detached": true,
+    "env": {
+      "OPEN_ISLAND_HARNESS_SCENARIO": "subagentsCard",
+      "OPEN_ISLAND_HARNESS_PRESENT_OVERLAY": "1",
+      "OPEN_ISLAND_HARNESS_BOOT_ANIMATION": "0",
+      "OPEN_ISLAND_HARNESS_START_BRIDGE": "0",
+      "OPEN_ISLAND_HARNESS_SUPPRESS_INSTALL_HINT": "1",
+      "OPEN_ISLAND_HARNESS_ENABLE_KEY_MONITOR": "1"
+    },
+    "forbidden_env_not_set": ["OPEN_ISLAND_HARNESS_AUTO_EXIT_SECONDS", "OPEN_ISLAND_HARNESS_ARTIFACT_DIR", "OPEN_ISLAND_HARNESS_CAPTURE_DELAY_SECONDS"],
+    "initial_liveness": "PASS: exact PID and worktree path live at +2s",
+    "orca_pid_resolution": "UNMEASURED: app_not_found for pid:94535 while PID had been demonstrated live; it exited before a PID-targetable Orca window/state existed",
+    "ui_actions_sent": []
+  },
+  "criteria": {
+    "motion_section_K": "UNMEASURED: no temporal capture capability and no PID-targetable live window",
+    "hover_peek_section_B": "UNMEASURED: no hover/pointer-move capability and no PID-targetable live window",
+    "expand_collapse_settled": "UNMEASURED: no PID-targetable live window; no click sent",
+    "expand_collapse_morph": "UNMEASURED: no temporal capture capability",
+    "keyboard_focus_rings": "UNMEASURED: no PID-targetable live window; no key sent",
+    "pressed_states": "UNMEASURED: no mouse-down/up/hold capability and no PID-targetable live window",
+    "topbar_520": "UNMEASURED: notched-only machine; no live topbar claim"
+  },
+  "cleanup": "No TERM/KILL: exact owned PID identity was absent on revalidation.",
+  "final_defaults": {"theme": "halo", "display_uuid": "F3BDCAC0-1700-415E-817D-AC4E69D405BC"},
+  "production": "Captured before and after; see baseline.txt and production-after.txt"
+}

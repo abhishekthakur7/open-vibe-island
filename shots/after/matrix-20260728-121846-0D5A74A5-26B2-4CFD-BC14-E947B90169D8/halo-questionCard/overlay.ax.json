@@ -1,0 +1,190 @@
+{
+  "children" : [
+    {
+      "children" : [
+        {
+          "accessibleName" : "Mute sound",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Mute sound",
+          "enabled" : true,
+          "identifier" : "speaker.wave.2",
+          "label" : "Mute sound",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "Open Island Settings",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Open Island Settings",
+          "enabled" : true,
+          "identifier" : "gearshape",
+          "label" : "Open Island Settings",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "Quit Open Island",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Quit Open Island",
+          "enabled" : true,
+          "identifier" : "power",
+          "label" : "Quit Open Island",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "Claude Code, open-island, waiting for an answer, 18 seconds ago",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Claude Code, open-island, waiting for an answer, 18 seconds ago",
+          "enabled" : true,
+          "label" : "Claude Code, open-island, waiting for an answer, 18 seconds ago",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "A question for you"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "C"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Sonnet 5"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Which authentication method should we use?"
+            },
+            {
+              "accessibleName" : "1, JWT tokens, Stateless, scalable",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "1, JWT tokens, Stateless, scalable",
+              "enabled" : true,
+              "label" : "1, JWT tokens, Stateless, scalable",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "2, Session cookies, Traditional approach",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "2, Session cookies, Traditional approach",
+              "enabled" : true,
+              "label" : "2, Session cookies, Traditional approach",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "3, OAuth 2.0, Third-party auth",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "3, OAuth 2.0, Third-party auth",
+              "enabled" : true,
+              "label" : "3, OAuth 2.0, Third-party auth",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "4, Other",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "4, Other",
+              "enabled" : true,
+              "label" : "4, Other",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "enabled" : true,
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "1–4 select · Enter submits · Esc closes"
+            },
+            {
+              "accessibleName" : "Submit Answers",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Submit Answers",
+              "enabled" : false,
+              "identifier" : "open-island.question.primary-action",
+              "label" : "Submit Answers",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            }
+          ],
+          "enabled" : true,
+          "role" : "AXGroup",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "Show all 9 sessions",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Show all 9 sessions",
+          "enabled" : true,
+          "label" : "Show all 9 sessions",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        }
+      ],
+      "role" : "AXGroup",
+      "subrole" : "AXHostingView",
+      "typeName" : "AXUIElement"
+    }
+  ],
+  "role" : "AXWindow",
+  "subrole" : "AXSystemDialog",
+  "typeName" : "AXUIElement"
+}

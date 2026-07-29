@@ -1,0 +1,24 @@
+{
+  "id": "9ea97431-d912-45f8-93e8-df49bcb6297e",
+  "ok": true,
+  "result": {
+    "platform": "darwin",
+    "helperAppPath": "/Applications/Orca.app/Contents/Resources/Orca Computer Use.app",
+    "openedSettings": false,
+    "launchedHelper": false,
+    "permissions": [
+      {
+        "id": "accessibility",
+        "status": "granted"
+      },
+      {
+        "id": "screenshots",
+        "status": "granted"
+      }
+    ],
+    "nextStep": null
+  },
+  "_meta": {
+    "runtimeId": "b88107f1-4fc2-4d0d-b8b5-1ecd9d71ef30"
+  }
+}

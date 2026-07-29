@@ -1,0 +1,69 @@
+[
+  {
+    "category" : "milestone",
+    "name" : "applicationDidFinishLaunching",
+    "offsetSeconds" : 0.3872649669647217
+  },
+  {
+    "category" : "milestone",
+    "name" : "bootstrapStarted",
+    "offsetSeconds" : 0.4415649175643921
+  },
+  {
+    "category" : "log",
+    "message" : "Waiting for agent hook events...",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.44157493114471436
+  },
+  {
+    "category" : "log",
+    "message" : "Deterministic harness mode active. Runtime discovery and bridge startup skipped.",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.4723789691925049
+  },
+  {
+    "category" : "milestone",
+    "message" : "Deterministic harness mode active. Runtime discovery and bridge startup skipped.",
+    "name" : "bridgeSkipped",
+    "offsetSeconds" : 0.47238099575042725
+  },
+  {
+    "category" : "milestone",
+    "name" : "modelStarted",
+    "offsetSeconds" : 0.4723830223083496
+  },
+  {
+    "category" : "log",
+    "message" : "Loaded debug scenario: Closed Notch.",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.47437798976898193
+  },
+  {
+    "category" : "milestone",
+    "message" : "Closed Notch",
+    "name" : "scenarioLoaded",
+    "offsetSeconds" : 0.47437894344329834
+  },
+  {
+    "category" : "milestone",
+    "name" : "bootstrapCompleted",
+    "offsetSeconds" : 0.4972829818725586
+  },
+  {
+    "category" : "milestone",
+    "message" : "1.000s",
+    "name" : "captureScheduled",
+    "offsetSeconds" : 0.4973260164260864
+  },
+  {
+    "category" : "milestone",
+    "message" : "Closed Notch",
+    "name" : "overlayPresented",
+    "offsetSeconds" : 0.5259779691696167
+  },
+  {
+    "category" : "milestone",
+    "name" : "captureStarted",
+    "offsetSeconds" : 1.5470409393310547
+  }
+]

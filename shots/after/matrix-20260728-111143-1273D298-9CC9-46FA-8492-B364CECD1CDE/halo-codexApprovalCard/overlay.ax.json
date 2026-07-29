@@ -1,0 +1,108 @@
+{
+  "children" : [
+    {
+      "children" : [
+        {
+          "children" : [
+
+          ],
+          "label" : "Mute sound",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "Open Island Settings",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "Quit Open Island",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "Codex, open-vibe-island, waiting for permission, 16 seconds ago",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+            {
+              "children" : [
+
+              ],
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Approval waiting"
+            },
+            {
+              "children" : [
+
+              ],
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Codex wants to run: git push origin main"
+            },
+            {
+              "children" : [
+
+              ],
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "C"
+            },
+            {
+              "children" : [
+
+              ],
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "git push origin main"
+            },
+            {
+              "children" : [
+
+              ],
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Codex approvals happen inside the app. Jump to Codex to review this request."
+            },
+            {
+              "children" : [
+
+              ],
+              "label" : "Jump to Codex",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            }
+          ],
+          "role" : "AXGroup",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "Show all 9 sessions",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        }
+      ],
+      "role" : "AXGroup",
+      "subrole" : "AXHostingView",
+      "typeName" : "AXUIElement"
+    }
+  ],
+  "role" : "AXWindow",
+  "subrole" : "AXSystemDialog",
+  "typeName" : "AXUIElement"
+}

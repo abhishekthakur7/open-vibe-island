@@ -1,0 +1,116 @@
+{
+  "children" : [
+    {
+      "children" : [
+        {
+          "children" : [
+
+          ],
+          "label" : "Mute sound",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "Open Island Settings",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "Quit Open Island",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "Claude Code, open-island, waiting for permission, 20 seconds ago",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+            {
+              "children" : [
+
+              ],
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Permission needed"
+            },
+            {
+              "children" : [
+
+              ],
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Allow exec_command to rewrite SettingsView.swift?"
+            },
+            {
+              "children" : [
+
+              ],
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "C"
+            },
+            {
+              "children" : [
+
+              ],
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "Opus 4.8"
+            },
+            {
+              "children" : [
+
+              ],
+              "role" : "AXStaticText",
+              "typeName" : "AXUIElement",
+              "value" : "head -5000 \/Users\/wangruobing\/Personal\/claude-research\/extracts\/claude-bun-2.1.81-v3\/islands\/000_cli.js.txt"
+            },
+            {
+              "children" : [
+
+              ],
+              "label" : "Allow",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "label" : "Deny",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            }
+          ],
+          "role" : "AXGroup",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "Show all 9 sessions",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        }
+      ],
+      "role" : "AXGroup",
+      "subrole" : "AXHostingView",
+      "typeName" : "AXUIElement"
+    }
+  ],
+  "role" : "AXWindow",
+  "subrole" : "AXSystemDialog",
+  "typeName" : "AXUIElement"
+}

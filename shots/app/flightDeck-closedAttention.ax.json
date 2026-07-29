@@ -1,0 +1,46 @@
+{
+  "children" : [
+    {
+      "children" : [
+        {
+          "children" : [
+
+          ],
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "Approve head?"
+        },
+        {
+          "children" : [
+
+          ],
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "1 waiting for approval"
+        },
+        {
+          "children" : [
+
+          ],
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "1 waiting for approval"
+        },
+        {
+          "children" : [
+
+          ],
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "1 waiting for approval"
+        }
+      ],
+      "role" : "AXGroup",
+      "subrole" : "AXHostingView",
+      "typeName" : "AXUIElement"
+    }
+  ],
+  "role" : "AXWindow",
+  "subrole" : "AXSystemDialog",
+  "typeName" : "AXUIElement"
+}

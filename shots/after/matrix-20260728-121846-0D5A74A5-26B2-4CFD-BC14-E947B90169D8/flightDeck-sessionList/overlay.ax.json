@@ -1,0 +1,185 @@
+{
+  "children" : [
+    {
+      "children" : [
+        {
+          "accessibleName" : "Mute sound",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Mute sound",
+          "enabled" : true,
+          "identifier" : "speaker.wave.2.fill",
+          "label" : "Mute sound",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "Open Island Settings",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Open Island Settings",
+          "enabled" : true,
+          "identifier" : "gearshape.fill",
+          "label" : "Open Island Settings",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "accessibleName" : "Quit Open Island",
+          "accessibleNameSource" : "AXDescription",
+          "children" : [
+
+          ],
+          "description" : "Quit Open Island",
+          "enabled" : true,
+          "identifier" : "power",
+          "label" : "Quit Open Island",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "enabled" : true,
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "Sessions 0 Attn, 1 Run, 1 Done, 7 Idle"
+        },
+        {
+          "children" : [
+            {
+              "accessibleName" : "Codex, open-island, running, 45 seconds ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, open-island, running, 45 seconds ago",
+              "enabled" : true,
+              "label" : "Codex, open-island, running, 45 seconds ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Codex, open-agent-sdk, completed, 3 minutes ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, open-agent-sdk, completed, 3 minutes ago",
+              "enabled" : true,
+              "label" : "Codex, open-agent-sdk, completed, 3 minutes ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Codex, claude-research, completed, 27 minutes ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, claude-research, completed, 27 minutes ago",
+              "enabled" : true,
+              "label" : "Codex, claude-research, completed, 27 minutes ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Codex, Personal, completed, 32 minutes ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, Personal, completed, 32 minutes ago",
+              "enabled" : true,
+              "label" : "Codex, Personal, completed, 32 minutes ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Codex, open-agent-sdk, completed, 1 hour ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, open-agent-sdk, completed, 1 hour ago",
+              "enabled" : true,
+              "label" : "Codex, open-agent-sdk, completed, 1 hour ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Codex, voice-input, completed, 1 hour ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, voice-input, completed, 1 hour ago",
+              "enabled" : true,
+              "label" : "Codex, voice-input, completed, 1 hour ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Codex, agents, completed, 1 hour ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, agents, completed, 1 hour ago",
+              "enabled" : true,
+              "label" : "Codex, agents, completed, 1 hour ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Codex, claude-code, completed, 1 hour ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, claude-code, completed, 1 hour ago",
+              "enabled" : true,
+              "label" : "Codex, claude-code, completed, 1 hour ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "accessibleName" : "Codex, hooks, completed, 2 hours ago",
+              "accessibleNameSource" : "AXDescription",
+              "children" : [
+
+              ],
+              "description" : "Codex, hooks, completed, 2 hours ago",
+              "enabled" : true,
+              "label" : "Codex, hooks, completed, 2 hours ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            }
+          ],
+          "role" : "AXScrollArea",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "enabled" : true,
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "BRIDGE LINK, NO LINK, 9 SESSIONS"
+        }
+      ],
+      "role" : "AXGroup",
+      "subrole" : "AXHostingView",
+      "typeName" : "AXUIElement"
+    }
+  ],
+  "role" : "AXWindow",
+  "subrole" : "AXSystemDialog",
+  "typeName" : "AXUIElement"
+}

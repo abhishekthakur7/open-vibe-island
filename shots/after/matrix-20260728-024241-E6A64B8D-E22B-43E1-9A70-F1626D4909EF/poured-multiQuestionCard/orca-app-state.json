@@ -1,0 +1,57 @@
+{
+  "id": "8a5abb18-2a43-4e2e-ad85-32eaa3c5966c",
+  "ok": true,
+  "result": {
+    "snapshot": {
+      "window": {
+        "width": 620,
+        "isMinimized": false,
+        "platform": {
+          "layer": 25
+        },
+        "isOffscreen": false,
+        "screenIndex": 0,
+        "x": 446,
+        "y": 0,
+        "title": "",
+        "id": 18891,
+        "height": 482
+      },
+      "elementCount": 15,
+      "focusedElementId": null,
+      "app": {
+        "pid": 8031,
+        "name": "OpenIslandApp",
+        "bundleId": null
+      },
+      "id": "1403DA74-A056-417A-BC98-59FB47E04C40",
+      "truncation": {
+        "truncated": false,
+        "maxNodes": 1200,
+        "maxDepth": 64,
+        "maxDepthReached": false
+      },
+      "coordinateSpace": "window",
+      "treeText": "App=OpenIslandApp (pid 8031)\nWindow: \"\", App: OpenIslandApp.\n\n0 system dialog\n\t1 button\n\t2 button\n\t3 button\n\t4 button, Secondary Actions: name: collapse session detail\n target:0x0\n selector:(null)\n\t5 text Bridge configuration\n\t6 text Question 1 of 2\n\t7 text Auth\n\t8 text Which auth method should the bridge use?\n\t9 button\n\t10 button\n\t11 button\n\t12 text 1–3 select · Enter submits · Esc closes\n\t13 button (disabled)\n\t14 button\n\nNo UI element is currently focused."
+    },
+    "screenshot": {
+      "format": "png",
+      "height": 964,
+      "scale": 2,
+      "width": 1240,
+      "path": "/var/folders/52/7304w2xn42qbtvqcxmxz4tlm0000gn/T/orca-computer-use/8a5abb18-2a43-4e2e-ad85-32eaa3c5966c-screenshot.png",
+      "dataOmitted": true,
+      "expiresAt": "2026-07-28T21:13:17.993Z"
+    },
+    "screenshotStatus": {
+      "metadata": {
+        "windowId": 18891,
+        "engine": "screenCaptureKit"
+      },
+      "state": "captured"
+    }
+  },
+  "_meta": {
+    "runtimeId": "b88107f1-4fc2-4d0d-b8b5-1ecd9d71ef30"
+  }
+}

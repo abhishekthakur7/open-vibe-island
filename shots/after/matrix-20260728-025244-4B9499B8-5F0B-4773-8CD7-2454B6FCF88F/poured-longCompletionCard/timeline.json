@@ -1,0 +1,69 @@
+[
+  {
+    "category" : "milestone",
+    "name" : "applicationDidFinishLaunching",
+    "offsetSeconds" : 0.2407299280166626
+  },
+  {
+    "category" : "milestone",
+    "name" : "bootstrapStarted",
+    "offsetSeconds" : 0.2808239459991455
+  },
+  {
+    "category" : "log",
+    "message" : "Waiting for agent hook events...",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.28083300590515137
+  },
+  {
+    "category" : "log",
+    "message" : "Deterministic harness mode active. Runtime discovery and bridge startup skipped.",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.29668891429901123
+  },
+  {
+    "category" : "milestone",
+    "message" : "Deterministic harness mode active. Runtime discovery and bridge startup skipped.",
+    "name" : "bridgeSkipped",
+    "offsetSeconds" : 0.2966899871826172
+  },
+  {
+    "category" : "milestone",
+    "name" : "modelStarted",
+    "offsetSeconds" : 0.29669189453125
+  },
+  {
+    "category" : "log",
+    "message" : "Loaded debug scenario: Long Completion Card.",
+    "name" : "lastActionMessage",
+    "offsetSeconds" : 0.29689598083496094
+  },
+  {
+    "category" : "milestone",
+    "message" : "Long Completion Card",
+    "name" : "scenarioLoaded",
+    "offsetSeconds" : 0.29689693450927734
+  },
+  {
+    "category" : "milestone",
+    "name" : "bootstrapCompleted",
+    "offsetSeconds" : 0.31491589546203613
+  },
+  {
+    "category" : "milestone",
+    "message" : "1.000s",
+    "name" : "captureScheduled",
+    "offsetSeconds" : 0.3149479627609253
+  },
+  {
+    "category" : "milestone",
+    "message" : "Long Completion Card",
+    "name" : "overlayPresented",
+    "offsetSeconds" : 0.4356309175491333
+  },
+  {
+    "category" : "milestone",
+    "name" : "captureStarted",
+    "offsetSeconds" : 1.3238599300384521
+  }
+]

@@ -1,0 +1,58 @@
+App=OpenIslandApp (pid 89166)
+Window: "", App: OpenIslandApp.
+
+0 system dialog
+	1 button
+	2 button
+	3 button
+	4 button
+	5 text SESSIONS, 9, total, 1, running, 8, idle
+	6 scroll area, Secondary Actions: scroll up, scroll down
+		7 button, Secondary Actions: name: dismiss session
+ target:0x0
+ selector:(null), name: collapse session detail
+ target:0x0
+ selector:(null)
+		8 button, Secondary Actions: name: dismiss session
+ target:0x0
+ selector:(null), name: expand session detail
+ target:0x0
+ selector:(null)
+		9 button, Secondary Actions: name: dismiss session
+ target:0x0
+ selector:(null), name: expand session detail
+ target:0x0
+ selector:(null)
+		10 button, Secondary Actions: name: dismiss session
+ target:0x0
+ selector:(null), name: expand session detail
+ target:0x0
+ selector:(null)
+		11 button, Secondary Actions: name: dismiss session
+ target:0x0
+ selector:(null), name: expand session detail
+ target:0x0
+ selector:(null)
+		12 button, Secondary Actions: name: dismiss session
+ target:0x0
+ selector:(null), name: expand session detail
+ target:0x0
+ selector:(null)
+		13 button, Secondary Actions: name: dismiss session
+ target:0x0
+ selector:(null), name: expand session detail
+ target:0x0
+ selector:(null)
+		14 button, Secondary Actions: name: dismiss session
+ target:0x0
+ selector:(null), name: expand session detail
+ target:0x0
+ selector:(null)
+		15 button, Secondary Actions: name: dismiss session
+ target:0x0
+ selector:(null), name: expand session detail
+ target:0x0
+ selector:(null)
+	16 text All quiet elsewhere · 8 idle
+
+The focused UI element is 0 system dialog.

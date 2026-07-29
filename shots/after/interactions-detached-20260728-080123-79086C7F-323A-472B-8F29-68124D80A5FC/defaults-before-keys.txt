@@ -1,0 +1,6 @@
+key=appearance.island.v8.theme
+halo
+exit=0
+key=overlay.display.preference
+Error: Could not find key 'overlay.display.preference' in domain 'app.openisland.dev'.
+exit=1

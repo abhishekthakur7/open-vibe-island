@@ -1,0 +1,132 @@
+{
+  "children" : [
+    {
+      "children" : [
+        {
+          "children" : [
+
+          ],
+          "label" : "Mute sound",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "Open Island Settings",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "label" : "Quit Open Island",
+          "role" : "AXButton",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "9 total, 1 running, 1 done, 7 idle"
+        },
+        {
+          "children" : [
+            {
+              "children" : [
+
+              ],
+              "label" : "Codex, open-island, running, 45 seconds ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "label" : "Codex, open-agent-sdk, completed, 3 minutes ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "label" : "Codex, claude-research, completed, 27 minutes ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "label" : "Codex, Personal, completed, 32 minutes ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "label" : "Codex, open-agent-sdk, completed, 1 hour ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "label" : "Codex, voice-input, completed, 1 hour ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "label" : "Codex, agents, completed, 1 hour ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "label" : "Codex, claude-code, completed, 1 hour ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            },
+            {
+              "children" : [
+
+              ],
+              "label" : "Codex, hooks, completed, 2 hours ago",
+              "role" : "AXButton",
+              "typeName" : "AXUIElement"
+            }
+          ],
+          "role" : "AXScrollArea",
+          "typeName" : "AXUIElement"
+        },
+        {
+          "children" : [
+
+          ],
+          "role" : "AXStaticText",
+          "typeName" : "AXUIElement",
+          "value" : "9 sessions · 0 need you"
+        }
+      ],
+      "role" : "AXGroup",
+      "subrole" : "AXHostingView",
+      "typeName" : "AXUIElement"
+    }
+  ],
+  "role" : "AXWindow",
+  "subrole" : "AXSystemDialog",
+  "typeName" : "AXUIElement"
+}
