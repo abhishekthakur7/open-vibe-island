@@ -15,12 +15,21 @@ items, source-agent files, or hook backups.
 | Cache: Claude rate limits | `~/Library/Application Support/OpenIsland/rate-limits.json` holds only rate-limit window percentages and reset times, written by the opted-in Claude status-line integration. | UI usage display; no prompt, command, environment, transcript, or token-count history. | A cache is valid for at most 7 days; expired cache is ignored/deleted. Clear History deletes it. | Legacy `/tmp` caches are read only for migration and never rewritten there. Owner: `ClaudeUsageLoader`. |
 | Preferences | UserDefaults feature settings: display, theme, language, notification/sound, hotkey, launch-at-login, and managed-hook intent/migration keys. | Feature configuration only; no session content or IPC secret. | Kept until changed. Clear History excludes them. Reset Integrations removes managed-hook intent/migration keys only. | Defaults tolerate missing values. Owner: `AppModel`, `LanguageManager`, and `AgentIntentStore`. |
 | Hook backups | Source-tool configuration siblings named `<managed-target>.backup.open-island` (for example under `~/.claude`, `~/.codex`, `~/.cursor`, `~/.gemini`, `~/.kimi`, or `~/.config/opencode`). Legacy `<managed-target>.backup.<timestamp>` siblings made by earlier Open Island versions are pruned during managed status/mutation checks. | Reversible managed-hook mutation; may contain source-tool configuration. They are not application history. | Exactly one regular, non-symlink backup per managed target, mode `0600`; a status/mutation check removes expired backups strictly older than 30 days, and successful uninstall/restore removes them immediately. Clear History excludes them. | Managed by hook installers; no content is copied into application storage. Owner: `ManagedHookBackupLifecycle`. |
+| Shared hook helper | `~/Library/Application Support/OpenIsland/bin/OpenIslandHooks` and adjacent `.OpenIslandHooks.open-island-provenance.json` | Manifest-verified helper shared by managed agent integrations; the helper has the manifest mode and its provenance is `0600`. The sidecar contains only canonical path, artifact identity/version/digest/mode/marker/template version, installed/prior digests, backup identity, and generation. | Individual integration uninstall retains this shared helper. Reset Integrations removes helper and sidecar only after all manager uninstalls and bridge credential revocation, and only with exact verified provenance. Clear History excludes it. | No migration: missing or invalid evidence is ambiguity and remains untouched. Owner: `ManagedHooksBinary`. |
 
 ## User controls
 
 - **Clear History** deletes Open Island session metadata and eligible local
   caches/logs. It preserves preferences, source-agent transcripts, hook backups,
   installed integrations, and Keychain credentials.
-- **Reset Integrations** uninstalls managed integrations, removes their intent
-  state, and revokes their bridge credential. It does not delete session history
-  or hook backups.
+- **Reset Integrations** first presents one aggregate, one-shot consent record
+  covering every manager target, backup, journal, provenance sidecar, current
+  ownership outcome, intent key, credential role, and the shared helper. Any
+  unsafe, ambiguous, or unresolved member blocks the whole reset before its
+  first mutation. Immediately before execution every member is re-observed;
+  a changed target, sidecar, artifact identity, or outcome aborts the whole
+  reset. Exact manager uninstall/restore runs in the displayed order, then
+  managed intent is cleared, all non-observer bridge roles are revoked, and the
+  exact verified shared helper is removed last. Runtime interruption leaves the
+  existing manager journal/verified backup recovery path intact. It does not
+  delete session history or unrelated configuration.

@@ -99,6 +99,13 @@ public final class AgentIntentStore: @unchecked Sendable {
         defaults.removeObject(forKey: Self.migrationVersionKey)
     }
 
+    /// Stable inventory shown by Reset Integrations before it clears setup
+    /// intent.  These are preferences keys only; session history and general
+    /// app preferences are deliberately excluded.
+    public static var managedIntegrationResetKeys: [String] {
+        AgentIdentifier.allCases.map(intentKey(for:)) + [firstLaunchCompletedKey, migrationVersionKey]
+    }
+
     // MARK: - Keys
 
     private static func intentKey(for agent: AgentIdentifier) -> String {

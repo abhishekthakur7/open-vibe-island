@@ -3,6 +3,8 @@ import Foundation
 public enum ManagedHooksBinary {
     public static let binaryName = "OpenIslandHooks"
     public static let legacyBinaryName = "VibeIslandHooks"
+    private static let provenanceManagerID = "open-island-hooks-binary"
+    private static let provenanceFormatVersion = "1"
 
     public static func defaultURL(fileManager: FileManager = .default) -> URL {
         installDirectory(fileManager: fileManager)
@@ -21,51 +23,159 @@ public enum ManagedHooksBinary {
 
     @discardableResult
     public static func install(
-        from sourceURL: URL,
+        from artifact: VerifiedBundledHookArtifact,
         to destinationURL: URL? = nil,
         fileManager: FileManager = .default
     ) throws -> URL {
-        let resolvedSourceURL = sourceURL.standardizedFileURL
+        // Re-verify here: callers cannot turn a previously checked, mutable
+        // URL or a caller-computed digest into installation authority.
+        let verifiedArtifact = try VerifiedBundledHookArtifact.verify(bundleURL: artifact.bundleURL, fileManager: fileManager)
+        guard verifiedArtifact == artifact else {
+            throw ManagedHookFileSystemError.digestMismatch(artifact.helperURL.path)
+        }
+        let resolvedSourceURL = verifiedArtifact.helperURL
         let resolvedDestinationURL = (destinationURL ?? defaultURL(fileManager: fileManager)).standardizedFileURL
-
-        try fileManager.createDirectory(
-            at: resolvedDestinationURL.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
-
-        if resolvedSourceURL != resolvedDestinationURL {
-            if fileManager.fileExists(atPath: resolvedDestinationURL.path) {
-                try fileManager.removeItem(at: resolvedDestinationURL)
-            }
-            try fileManager.copyItem(at: resolvedSourceURL, to: resolvedDestinationURL)
+        let sourceData = try Data(contentsOf: resolvedSourceURL, options: [.mappedIfSafe])
+        let digest = ManagedHookFileSystem.digest(of: sourceData)
+        guard verifiedArtifact.entry.sha256 == digest else {
+            throw ManagedHookFileSystemError.digestMismatch(resolvedSourceURL.path)
         }
 
-        try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: resolvedDestinationURL.path)
+        // Source verification is complete before creating any destination
+        // directory. A recovery journal is evidence of an interrupted write,
+        // not authorization to repair or replace a helper during install.
+        try ManagedHookFileSystem.createDirectory(resolvedDestinationURL.deletingLastPathComponent(), fileManager: fileManager)
+        let journal = ManagedHookFileSystem.journalURL(for: resolvedDestinationURL)
+        guard !(try ManagedHookFileSystem.existsNoFollow(journal)) else {
+            throw ManagedHookFileSystemError.recoveryRequired(journal.path)
+        }
+
+        let targetExists = try ManagedHookFileSystem.existsNoFollow(resolvedDestinationURL)
+        let sidecar = ManagedHookProvenance.sidecarURL(for: resolvedDestinationURL)
+        let sidecarExists = try ManagedHookFileSystem.existsNoFollow(sidecar)
+        let priorRecord: ManagedHookProvenance?
+        if !targetExists {
+            guard !sidecarExists else { throw ManagedHookFileSystemError.ambiguous(sidecar.path) }
+            priorRecord = nil
+        } else {
+            guard sidecarExists,
+                  let existing = try ManagedHookProvenance.loadVerified(
+                    for: resolvedDestinationURL,
+                    managerID: provenanceManagerID,
+                    fileManager: fileManager
+                  ),
+                  isExactHelperProvenance(existing, destinationURL: resolvedDestinationURL, fileManager: fileManager)
+            else { throw ManagedHookFileSystemError.ambiguous(resolvedDestinationURL.path) }
+
+            let installedMode = try mode(of: resolvedDestinationURL, fileManager: fileManager)
+            if existing.postMutationDigest == digest,
+               installedMode == verifiedArtifact.entry.expectedMode,
+               provenance(existing, matches: verifiedArtifact.entry, digest: digest) {
+                return resolvedDestinationURL
+            }
+            priorRecord = existing
+        }
+
+        try ManagedHookFileSystem.replace(
+            sourceData,
+            at: resolvedDestinationURL,
+            mode: mode_t(verifiedArtifact.entry.expectedMode),
+            expectedDigest: digest,
+            fileManager: fileManager
+        )
+        let record = ManagedHookProvenance(
+            targetURL: resolvedDestinationURL,
+            managerID: provenanceManagerID,
+            formatVersion: provenanceFormatVersion,
+            managedEntryDigest: digest,
+            preMutationDigest: priorRecord?.postMutationDigest,
+            postMutationDigest: digest,
+            backupDigest: nil,
+            artifact: verifiedArtifact.entry
+        )
+        try ManagedHookProvenance.record(record, for: resolvedDestinationURL, fileManager: fileManager)
+        try ManagedHookFileSystem.validateTarget(resolvedDestinationURL, allowMissing: false)
         return resolvedDestinationURL
     }
 
-    /// Overwrites the installed hooks binary if the bundle source differs.
-    /// Returns `true` if the binary was updated.
+    /// Read-only provenance classification for health and status surfaces.
+    public static func managementOutcome(
+        at destinationURL: URL? = nil,
+        fileManager: FileManager = .default
+    ) -> HookManagementOutcome {
+        let destination = (destinationURL ?? defaultURL(fileManager: fileManager)).standardizedFileURL
+        do {
+            let targetExists = try ManagedHookFileSystem.existsNoFollow(destination)
+            let sidecar = ManagedHookProvenance.sidecarURL(for: destination)
+            let sidecarExists = try ManagedHookFileSystem.existsNoFollow(sidecar)
+            guard targetExists || sidecarExists else { return .unowned }
+            if targetExists { try ManagedHookFileSystem.validateTarget(destination, allowMissing: false) }
+            if sidecarExists { try ManagedHookFileSystem.validateTarget(sidecar, allowMissing: false) }
+            guard targetExists, sidecarExists,
+                  let record = try ManagedHookProvenance.loadVerified(for: destination, managerID: provenanceManagerID, fileManager: fileManager),
+                  isExactHelperProvenance(record, destinationURL: destination, fileManager: fileManager)
+            else { return .ambiguousUnmanaged }
+            return .exactManaged
+        } catch {
+            return HookManagementOutcome.from(error: error)
+        }
+    }
+
+    /// The shared helper is retained while individual integrations are
+    /// removed. Reset Integrations calls this only after every manager has
+    /// uninstalled and bridge credentials have been revoked.
     @discardableResult
-    public static func updateIfNeeded(
-        from sourceURL: URL,
+    public static func removeVerified(
+        at destinationURL: URL? = nil,
         fileManager: FileManager = .default
     ) throws -> Bool {
-        let installedURL = defaultURL(fileManager: fileManager)
-        guard fileManager.fileExists(atPath: installedURL.path) else {
-            return false
-        }
-
-        let sourceData = try Data(contentsOf: sourceURL)
-        let installedData = try Data(contentsOf: installedURL)
-        guard sourceData != installedData else {
-            return false
-        }
-
-        try fileManager.removeItem(at: installedURL)
-        try fileManager.copyItem(at: sourceURL, to: installedURL)
-        try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: installedURL.path)
+        let destination = (destinationURL ?? defaultURL(fileManager: fileManager)).standardizedFileURL
+        let targetExists = try ManagedHookFileSystem.existsNoFollow(destination)
+        let sidecar = ManagedHookProvenance.sidecarURL(for: destination)
+        let sidecarExists = try ManagedHookFileSystem.existsNoFollow(sidecar)
+        guard targetExists || sidecarExists else { return false }
+        guard targetExists, sidecarExists,
+              let record = try ManagedHookProvenance.loadVerified(for: destination, managerID: provenanceManagerID, fileManager: fileManager),
+              isExactHelperProvenance(record, destinationURL: destination, fileManager: fileManager)
+        else { throw ManagedHookFileSystemError.ambiguous(destination.path) }
+        let sidecarDigest = try ManagedHookFileSystem.digest(ofFile: sidecar)
+        try ManagedHookFileSystem.remove(destination, expectedDigest: record.postMutationDigest)
+        try ManagedHookFileSystem.remove(sidecar, expectedDigest: sidecarDigest)
         return true
+    }
+
+    private static func mode(of url: URL, fileManager: FileManager) throws -> UInt16 {
+        guard let permissions = try fileManager.attributesOfItem(atPath: url.path)[.posixPermissions] as? NSNumber else {
+            throw ManagedHookFileSystemError.ambiguous(url.path)
+        }
+        return permissions.uint16Value
+    }
+
+    private static func isExactHelperProvenance(
+        _ record: ManagedHookProvenance,
+        destinationURL: URL,
+        fileManager: FileManager
+    ) -> Bool {
+        record.formatVersion == provenanceFormatVersion &&
+        record.targetPath == destinationURL.standardizedFileURL.path &&
+        record.managedEntryDigest == record.postMutationDigest &&
+        record.artifactID == VerifiedBundledHookArtifact.helperID &&
+        record.artifactVersion != nil &&
+        record.artifactSHA256 == record.postMutationDigest &&
+        record.artifactExpectedMode != nil &&
+        record.artifactManagedMarker == "OpenIslandHooks" &&
+        !(record.artifactTemplateVersion ?? "").isEmpty &&
+        (try? mode(of: destinationURL, fileManager: fileManager)) == record.artifactExpectedMode
+    }
+
+    private static func provenance(_ record: ManagedHookProvenance, matches entry: BundledArtifactManifest.Entry, digest: String) -> Bool {
+        record.artifactID == entry.artifactID &&
+        record.artifactVersion == entry.version &&
+        record.artifactSHA256 == entry.sha256 &&
+        record.artifactExpectedMode == entry.expectedMode &&
+        record.artifactManagedMarker == entry.managedMarker &&
+        record.artifactTemplateVersion == entry.templateVersion &&
+        record.managedEntryDigest == digest && record.postMutationDigest == digest
     }
 
     private static func installDirectory(fileManager: FileManager) -> URL {
@@ -86,48 +196,23 @@ public enum ManagedHooksBinary {
 }
 
 public enum HooksBinaryLocator {
+    public static func locateArtifact(
+        fileManager: FileManager = .default,
+        executableDirectory: URL? = nil
+    ) -> VerifiedBundledHookArtifact? {
+        guard let executableDirectory else { return nil }
+        let bundleURL = executableDirectory.deletingLastPathComponent().deletingLastPathComponent()
+        return try? VerifiedBundledHookArtifact.verify(bundleURL: bundleURL, fileManager: fileManager)
+    }
+
     public static func locate(
         fileManager: FileManager = .default,
         currentDirectory: URL? = nil,
         executableDirectory: URL? = nil,
         environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> URL? {
-        if let explicitPath = environment["OPEN_ISLAND_HOOKS_BINARY"] ?? environment["VIBE_ISLAND_HOOKS_BINARY"],
-           fileManager.isExecutableFile(atPath: explicitPath) {
-            return URL(fileURLWithPath: explicitPath).standardizedFileURL
-        }
-
-        let currentDirectory = currentDirectory
-            ?? URL(fileURLWithPath: fileManager.currentDirectoryPath, isDirectory: true)
-        let candidates = [
-            executableDirectory?.appendingPathComponent("OpenIslandHooks"),
-            executableDirectory?.deletingLastPathComponent().appendingPathComponent("OpenIslandHooks"),
-            executableDirectory?.deletingLastPathComponent().appendingPathComponent("Helpers/OpenIslandHooks"),
-            executableDirectory?.appendingPathComponent("VibeIslandHooks"),
-            executableDirectory?.deletingLastPathComponent().appendingPathComponent("VibeIslandHooks"),
-            executableDirectory?.deletingLastPathComponent().appendingPathComponent("Helpers/VibeIslandHooks"),
-        ].compactMap { $0 } + ManagedHooksBinary.candidateURLs(fileManager: fileManager) + {
-            #if arch(arm64)
-            let archTriple = "arm64-apple-macosx"
-            #elseif arch(x86_64)
-            let archTriple = "x86_64-apple-macosx"
-            #endif
-            return [
-                currentDirectory.appendingPathComponent(".build/\(archTriple)/release/OpenIslandHooks"),
-                currentDirectory.appendingPathComponent(".build/release/OpenIslandHooks"),
-                currentDirectory.appendingPathComponent(".build/\(archTriple)/release/VibeIslandHooks"),
-                currentDirectory.appendingPathComponent(".build/release/VibeIslandHooks"),
-                currentDirectory.appendingPathComponent(".build/\(archTriple)/debug/OpenIslandHooks"),
-                currentDirectory.appendingPathComponent(".build/debug/OpenIslandHooks"),
-                currentDirectory.appendingPathComponent(".build/\(archTriple)/debug/VibeIslandHooks"),
-                currentDirectory.appendingPathComponent(".build/debug/VibeIslandHooks"),
-            ]
-        }()
-
-        for candidate in candidates where fileManager.isExecutableFile(atPath: candidate.path) {
-            return candidate.standardizedFileURL
-        }
-
-        return nil
+        _ = currentDirectory
+        _ = environment
+        return locateArtifact(fileManager: fileManager, executableDirectory: executableDirectory)?.helperURL
     }
 }

@@ -149,17 +149,12 @@ struct CursorHooksTests {
             cursorDirectory: cursorDirectory,
             managedHooksBinaryURL: managedHooksBinaryURL
         )
-        let hooksBinaryURL = rootURL
-            .appendingPathComponent("build", isDirectory: true)
-            .appendingPathComponent("OpenIslandHooks")
 
         defer {
             try? FileManager.default.removeItem(at: rootURL)
         }
 
-        try FileManager.default.createDirectory(at: hooksBinaryURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try Data("cursor-hook".utf8).write(to: hooksBinaryURL)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: hooksBinaryURL.path)
+        let hooksBinaryURL = try makeVerifiedHooksApp(at: rootURL, contents: "cursor-hook")
 
         let installStatus = try manager.install(hooksBinaryURL: hooksBinaryURL)
         #expect(installStatus.managedHooksPresent == true)

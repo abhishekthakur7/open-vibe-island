@@ -24,6 +24,15 @@ public struct CursorHookFileMutation: Equatable, Sendable {
     }
 }
 
+/// Classification of Cursor's six exact managed entries. A command-shaped
+/// entry is only collision evidence; the installation manager still requires
+/// verified manifest and provenance records before it treats a file as owned.
+public enum CursorManagedHookState: Equatable, Sendable {
+    case none
+    case exact(entryDigest: String)
+    case managedLooking
+}
+
 public enum CursorHookInstallerError: Error, LocalizedError {
     case invalidHooksJSON
 
@@ -47,6 +56,43 @@ public enum CursorHookInstaller {
 
     public static func hookCommand(for binaryPath: String) -> String {
         "\(shellQuote(binaryPath)) --source cursor"
+    }
+
+    /// Detect the canonical six-entry shape without using a marker or command
+    /// substring as ownership. A stale helper path, duplicate, or partial set
+    /// deliberately remains a collision that an automatic install must not
+    /// merge into.
+    public static func managedHookState(
+        existingData: Data?,
+        hookCommand: String
+    ) throws -> CursorManagedHookState {
+        guard let existingData else { return .none }
+        let root = try loadRootObject(from: existingData)
+        guard let hooksValue = root["hooks"] else { return .none }
+        guard let hooks = hooksValue as? [String: Any] else { return .managedLooking }
+
+        var candidateCount = 0
+        var exactCount = 0
+        for event in hookEvents {
+            guard let eventValue = hooks[event] else { continue }
+            guard let entries = eventValue as? [Any] else { return .managedLooking }
+            for item in entries {
+                guard let entry = item as? [String: Any],
+                      let command = entry["command"] as? String,
+                      canonicalManagedCommand(command) else { continue }
+                candidateCount += 1
+                if entry.count == 1, command == hookCommand { exactCount += 1 }
+            }
+        }
+        guard candidateCount > 0 else { return .none }
+        guard candidateCount == hookEvents.count, exactCount == hookEvents.count else { return .managedLooking }
+        return .exact(entryDigest: managedEntriesDigest(hookCommand: hookCommand))
+    }
+
+    public static func managedEntriesDigest(hookCommand: String) -> String {
+        let entries = Dictionary(uniqueKeysWithValues: hookEvents.map { ($0, ["command": hookCommand]) })
+        let data = (try? JSONSerialization.data(withJSONObject: entries, options: [.sortedKeys])) ?? Data()
+        return ManagedHookFileSystem.digest(of: data)
     }
 
     public static func installHooksJSON(
@@ -124,7 +170,9 @@ public enum CursorHookInstaller {
     private static func loadRootObject(from data: Data?) throws -> [String: Any] {
         guard let data else { return [:] }
 
-        let object = try JSONSerialization.jsonObject(with: data)
+        let object: Any
+        do { object = try JSONSerialization.jsonObject(with: data) }
+        catch { throw CursorHookInstallerError.invalidHooksJSON }
         guard let rootObject = object as? [String: Any] else {
             throw CursorHookInstallerError.invalidHooksJSON
         }
@@ -139,17 +187,18 @@ public enum CursorHookInstaller {
     private static func isManagedHook(_ hook: [String: Any], managedCommand: String?) -> Bool {
         guard let command = hook["command"] as? String else { return false }
 
-        if let managedCommand, command == managedCommand {
-            return true
-        }
-
-        return isOpenIslandCursorHookCommand(command)
+        return managedCommand.map { command == $0 } ?? false
     }
 
-    private static func isOpenIslandCursorHookCommand(_ command: String) -> Bool {
-        let normalized = command.lowercased()
-        return (normalized.contains("openislandhooks") || normalized.contains("vibeislandhooks"))
-            && normalized.contains("cursor")
+    /// Conservative collision parsing, never ownership. It accepts only the
+    /// quoted command syntax produced by `hookCommand` and the real helper
+    /// filename, leaving lookalike names and arbitrary user commands alone.
+    private static func canonicalManagedCommand(_ command: String) -> Bool {
+        let suffix = "' --source cursor"
+        guard command.hasPrefix("'"), command.hasSuffix(suffix) else { return false }
+        let path = String(command.dropFirst().dropLast(suffix.count))
+        guard !path.contains("'\\\\''") else { return false }
+        return URL(fileURLWithPath: path).lastPathComponent == ManagedHooksBinary.binaryName
     }
 
     private static func shellQuote(_ string: String) -> String {

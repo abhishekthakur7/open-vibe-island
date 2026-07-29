@@ -49,6 +49,8 @@ resource_bundle="$build_root/OpenIsland_OpenIslandApp.bundle"
 if [ -d "$resource_bundle" ]; then
     rm -rf "$bundle_dir/OpenIsland_OpenIslandApp.bundle"
     command cp -R "$resource_bundle" "$bundle_dir/"
+    rm -rf "$bundle_dir/Contents/Resources/ClaudeStatusLineTemplates"
+    command cp -R "$resource_bundle/ClaudeStatusLineTemplates" "$bundle_dir/Contents/Resources/"
 fi
 
 cat > "$plist_path" <<EOF
@@ -100,6 +102,10 @@ if [ -d "$root_bundle" ] && [ ! -L "$root_bundle" ]; then
 fi
 # Remove stale symlinks from previous runs.
 [ -L "$root_bundle" ] && rm -f "$root_bundle"
+
+# Keep the inventory inside the signed development bundle. It covers the fixed
+# helper and every static resource copied above; a hashing error stops refresh.
+python3 "$repo_root/scripts/generate-artifact-manifest.py" "$bundle_dir"
 
 # Detect a local stable signing identity so the dev bundle's cdhash
 # stays stable across rebuilds and macOS TCC grants (Accessibility,

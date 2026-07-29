@@ -57,6 +57,7 @@ cp "$hooks_binary" "$bundle_dir/Contents/Helpers/OpenIslandHooks"
 cp "$setup_binary" "$bundle_dir/Contents/Helpers/OpenIslandSetup"
 cp "$brand_icon" "$bundle_dir/Contents/Resources/OpenIsland.icns"
 cp -R "$resource_bundle" "$bundle_dir/Contents/Resources/"
+cp -R "$resource_bundle/ClaudeStatusLineTemplates" "$bundle_dir/Contents/Resources/"
 chmod +x "$bundle_dir/Contents/MacOS/OpenIslandApp" \
     "$bundle_dir/Contents/Helpers/OpenIslandHooks" \
     "$bundle_dir/Contents/Helpers/OpenIslandSetup"
@@ -99,6 +100,10 @@ cat > "$bundle_dir/Contents/Info.plist" <<EOF
 EOF
 
 plutil -lint "$bundle_dir/Contents/Info.plist" >/dev/null
+
+# The inventory is generated only after all helper/template bytes are final
+# and is placed under Contents/Resources before the enclosing app is signed.
+python3 "$repo_root/scripts/generate-artifact-manifest.py" "$bundle_dir"
 
 sign_identity="-"
 if security find-identity -p codesigning -v "$HOME/Library/Keychains/login.keychain-db" 2>/dev/null \

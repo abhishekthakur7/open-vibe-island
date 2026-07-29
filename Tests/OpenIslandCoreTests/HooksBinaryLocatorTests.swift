@@ -10,17 +10,11 @@ struct HooksBinaryLocatorTests {
             .appendingPathComponent("Open Island.app", isDirectory: true)
             .appendingPathComponent("Contents", isDirectory: true)
             .appendingPathComponent("MacOS", isDirectory: true)
-        let helperBinaryURL = rootURL
-            .appendingPathComponent("Open Island.app", isDirectory: true)
-            .appendingPathComponent("Contents", isDirectory: true)
-            .appendingPathComponent("Helpers", isDirectory: true)
-            .appendingPathComponent("OpenIslandHooks")
+        let helperBinaryURL = try makeVerifiedHooksApp(at: rootURL)
 
         defer {
             try? FileManager.default.removeItem(at: rootURL)
         }
-
-        try makeExecutable(at: helperBinaryURL, contents: "bundled-helper")
 
         let locatedURL = HooksBinaryLocator.locate(
             currentDirectory: rootURL,
@@ -32,7 +26,7 @@ struct HooksBinaryLocatorTests {
     }
 
     @Test
-    func locateFindsLegacyBundledHelperBinaryInsideAppBundle() throws {
+    func rejectsLegacyOrUnmanifestedHelper() throws {
         let rootURL = temporaryRootURL(named: "hooks-binary-locator-legacy")
         let executableDirectory = rootURL
             .appendingPathComponent("Open Island.app", isDirectory: true)
@@ -56,7 +50,7 @@ struct HooksBinaryLocatorTests {
             environment: [:]
         )
 
-        #expect(locatedURL?.path == helperBinaryURL.standardizedFileURL.path)
+        #expect(locatedURL == nil)
     }
 }
 

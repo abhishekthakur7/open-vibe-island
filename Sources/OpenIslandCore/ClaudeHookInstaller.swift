@@ -32,6 +32,16 @@ public struct ClaudeHookFileMutation: Equatable, Sendable {
     }
 }
 
+/// Classification used by the installation manager.  A matching command is
+/// never ownership on its own: `.exact` only describes the settings bytes;
+/// the manager also requires the source-specific manifest and both private
+/// provenance records before it may mutate anything.
+public enum ClaudeManagedSettingsState: Equatable, Sendable {
+    case none
+    case exact(entryDigest: String)
+    case managedLooking
+}
+
 public enum ClaudeHookInstallerError: Error, LocalizedError {
     case invalidSettingsJSON
 
@@ -148,12 +158,32 @@ public enum ClaudeHookInstaller {
         )
     }
 
+    /// Returns exact only for the canonical settings representation produced
+    /// by `installSettingsJSON`. Duplicate, partial, stale-path, and otherwise
+    /// conflicting managed entries deliberately remain ambiguous.
+    public static func managedSettingsState(
+        existingData: Data?,
+        hookCommand: String,
+        source: String
+    ) throws -> ClaudeManagedSettingsState {
+        guard let existingData else { return .none }
+        let root = try loadRootObject(from: existingData)
+        let hooks = root["hooks"] as? [String: Any] ?? [:]
+        let canonical = try installSettingsJSON(existingData: existingData, hookCommand: hookCommand).contents
+        if canonical == existingData {
+            return .exact(entryDigest: ManagedHookFileSystem.digest(of: existingData))
+        }
+        return containsManagedLookingHook(in: hooks, source: source) ? .managedLooking : .none
+    }
+
     private static func loadRootObject(from data: Data?) throws -> [String: Any] {
         guard let data else {
             return [:]
         }
 
-        let object = try JSONSerialization.jsonObject(with: data)
+        let object: Any
+        do { object = try JSONSerialization.jsonObject(with: data) }
+        catch { throw ClaudeHookInstallerError.invalidSettingsJSON }
         guard let rootObject = object as? [String: Any] else {
             throw ClaudeHookInstallerError.invalidSettingsJSON
         }
@@ -251,6 +281,32 @@ public enum ClaudeHookInstaller {
         }
     }
 
+    /// This is intentionally a parser, not a substring check. It is only a
+    /// conservative collision detector (never ownership): a stale canonical
+    /// OpenIslandHooks command for the same source blocks automatic merging.
+    private static func containsManagedLookingHook(in hooksObject: [String: Any], source: String) -> Bool {
+        hooksObject.values.contains { value in
+            let groups = value as? [Any] ?? []
+            return groups.contains { item in
+                guard let group = item as? [String: Any], let hooks = group["hooks"] as? [Any] else { return false }
+                return hooks.contains { item in
+                    guard let hook = item as? [String: Any], let command = hook["command"] as? String else { return false }
+                    return canonicalManagedCommand(command, source: source)
+                }
+            }
+        }
+    }
+
+    private static func canonicalManagedCommand(_ command: String, source: String) -> Bool {
+        let suffix = "' --source \(source)"
+        guard command.hasPrefix("'"), command.hasSuffix(suffix) else { return false }
+        let path = String(command.dropFirst().dropLast(suffix.count))
+        // `shellQuote` escapes embedded quotes, which cannot occur in the
+        // installed helper path. Treat such strings as unrelated user input.
+        guard !path.contains("'\\\\''") else { return false }
+        return URL(fileURLWithPath: path).lastPathComponent == ManagedHooksBinary.binaryName
+    }
+
     private static func managedGroup(
         matcher: String?,
         timeout: Int?,
@@ -280,33 +336,14 @@ public enum ClaudeHookInstaller {
             return false
         }
 
-        if let managedCommand, command == managedCommand {
-            return true
-        }
-
-        return isLegacyOpenIslandHookCommand(command)
+        // A marker-like command is not ownership.  Callers must supply the
+        // exact command recorded in verified provenance before a hook can be
+        // removed or replaced.
+        return managedCommand.map { command == $0 } ?? false
     }
 
     private static func isManagedHookForInstall(_ hook: [String: Any], replacingCommand: String) -> Bool {
-        if isManagedHook(hook, managedCommand: replacingCommand) {
-            return true
-        }
-
-        guard let command = hook["command"] as? String else {
-            return false
-        }
-
-        return isLegacyOpenIslandHookCommand(command)
-    }
-
-    private static func isLegacyOpenIslandHookCommand(_ command: String) -> Bool {
-        let normalized = command.lowercased()
-        if (normalized.contains("openislandhooks") || normalized.contains("vibeislandhooks")) && normalized.contains("--source claude") {
-            return true
-        }
-
-        return (normalized.contains("open-island-bridge") || normalized.contains("vibe-island-bridge"))
-            && normalized.contains("claude")
+        isManagedHook(hook, managedCommand: replacingCommand)
     }
 
     private static func shellQuote(_ string: String) -> String {

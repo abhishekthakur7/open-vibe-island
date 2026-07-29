@@ -22,6 +22,8 @@ public struct HookHealthReport: Equatable, Sendable {
         case otherHooksDetected(names: [String])
         /// The manifest file is missing even though hooks appear installed.
         case manifestMissing(expectedPath: String)
+        /// Hook-looking configuration exists without exact sidecar-backed ownership.
+        case ownershipUnverified(outcome: HookManagementOutcome)
         /// The OpenCode plugin file is missing even though it should be installed.
         case pluginMissing(expectedPath: String)
 
@@ -39,6 +41,8 @@ public struct HookHealthReport: Equatable, Sendable {
                 "Other hooks coexist: \(names.joined(separator: ", "))"
             case .manifestMissing(let expectedPath):
                 "Installation manifest missing: \(expectedPath)"
+            case .ownershipUnverified(let outcome):
+                "Hook ownership is not verified [\(outcome.rawValue)]: \(outcome.remediation)"
             case .pluginMissing(let expectedPath):
                 "OpenCode plugin file is missing: \(expectedPath)"
             }
@@ -61,12 +65,31 @@ public struct HookHealthReport: Equatable, Sendable {
                 false
             }
         }
+
+        /// Preserve the same machine-readable status used by Settings and the
+        /// setup CLI instead of reducing an ownership failure to UI text.
+        public func managementStatus(for family: HookIntegrationFamily) -> HookManagementStatus? {
+            guard case let .ownershipUnverified(outcome) = self else { return nil }
+            return outcome.status(for: family)
+        }
     }
 
     public var agent: String  // "claude" or "codex"
     public var issues: [Issue]
     public var binaryPath: String?
     public var configPath: String?
+
+    /// Health reports retain their source-specific mapping for callers that
+    /// need to show a remediation or serialize diagnostic state.
+    public var integrationFamily: HookIntegrationFamily {
+        switch agent {
+        case "claude": .claude
+        case "codex": .codexCLI
+        case "gemini": .gemini
+        case "opencode": .openCodePlugin
+        default: .sharedHelper
+        }
+    }
 
     /// True when there are no errors (info-level notices are fine).
     public var isHealthy: Bool { errors.isEmpty }
@@ -105,7 +128,6 @@ public enum HookHealthCheck {
     ) -> HookHealthReport {
         var issues: [HookHealthReport.Issue] = []
         let settingsURL = claudeDirectory.appendingPathComponent("settings.json")
-        let manifestURL = claudeDirectory.appendingPathComponent(ClaudeHookInstallerManifest.fileName)
 
         // 1. Check binary
         let resolvedBinaryPath = resolveBinaryPath(
@@ -118,6 +140,7 @@ public enum HookHealthCheck {
             if !fileManager.isExecutableFile(atPath: path) {
                 issues.append(.binaryNotExecutable(path: path))
             }
+            appendManagedHelperOwnershipIssue(path: path, managedHooksBinaryURL: managedHooksBinaryURL, issues: &issues, fileManager: fileManager)
         } else {
             issues.append(.binaryNotFound)
         }
@@ -151,13 +174,15 @@ public enum HookHealthCheck {
             }
         }
 
-        // 3. Check manifest
-        if fileManager.fileExists(atPath: settingsPath),
-           hasOpenIslandHooks(in: settingsURL, fileManager: fileManager) {
-            let legacyManifestURL = claudeDirectory.appendingPathComponent(ClaudeHookInstallerManifest.legacyFileName)
-            if !fileManager.fileExists(atPath: manifestURL.path) && !fileManager.fileExists(atPath: legacyManifestURL.path) {
-                issues.append(.manifestMissing(expectedPath: manifestURL.path))
-            }
+        // 3. Delegate ownership to the same source-specific manager used by
+        // Settings and the CLI. Command text and manifest names are not proof.
+        let management = try? ClaudeHookInstallationManager(
+            claudeDirectory: claudeDirectory,
+            managedHooksBinaryURL: managedHooksBinaryURL,
+            fileManager: fileManager
+        ).status(hooksBinaryURL: hooksBinaryURL)
+        if let management, management.managementOutcome != .exactManaged, management.managementOutcome != .unowned {
+            issues.append(.ownershipUnverified(outcome: management.managementOutcome))
         }
 
         return HookHealthReport(
@@ -177,7 +202,6 @@ public enum HookHealthCheck {
     ) -> HookHealthReport {
         var issues: [HookHealthReport.Issue] = []
         let hooksURL = codexDirectory.appendingPathComponent("hooks.json")
-        let manifestURL = codexDirectory.appendingPathComponent(CodexHookInstallerManifest.fileName)
 
         // 1. Check binary
         let resolvedBinaryPath = resolveBinaryPath(
@@ -190,6 +214,7 @@ public enum HookHealthCheck {
             if !fileManager.isExecutableFile(atPath: path) {
                 issues.append(.binaryNotExecutable(path: path))
             }
+            appendManagedHelperOwnershipIssue(path: path, managedHooksBinaryURL: managedHooksBinaryURL, issues: &issues, fileManager: fileManager)
         } else {
             issues.append(.binaryNotFound)
         }
@@ -214,13 +239,17 @@ public enum HookHealthCheck {
             }
         }
 
-        // 3. Check manifest
-        if fileManager.fileExists(atPath: hooksPath),
-           hasOpenIslandHooks(in: hooksURL, fileManager: fileManager) {
-            let legacyManifestURL = codexDirectory.appendingPathComponent(CodexHookInstallerManifest.legacyFileName)
-            if !fileManager.fileExists(atPath: manifestURL.path) && !fileManager.fileExists(atPath: legacyManifestURL.path) {
-                issues.append(.manifestMissing(expectedPath: manifestURL.path))
-            }
+        // 3. Provenance.  This is diagnostic only, but it deliberately uses
+        // the same exact ownership result as the mutating manager rather than
+        // a command substring or a manifest filename heuristic.
+        let manager = CodexHookInstallationManager(
+            codexDirectory: codexDirectory,
+            managedHooksBinaryURL: managedHooksBinaryURL,
+            fileManager: fileManager
+        )
+        let management = try? manager.status(hooksBinaryURL: hooksBinaryURL)
+        if let management, management.managementOutcome != .exactManaged, management.managementOutcome != .unowned {
+            issues.append(.ownershipUnverified(outcome: management.managementOutcome))
         }
 
         return HookHealthReport(
@@ -229,6 +258,48 @@ public enum HookHealthCheck {
             binaryPath: resolvedBinaryPath,
             configPath: hooksPath
         )
+    }
+
+    /// Check Gemini CLI hook health using the same exact ownership inspection
+    /// as Settings. Diagnostics remain read-only and Gemini hooks remain
+    /// fire-and-forget at runtime.
+    public static func checkGemini(
+        geminiDirectory: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".gemini", isDirectory: true),
+        hooksBinaryURL: URL? = nil,
+        managedHooksBinaryURL: URL = ManagedHooksBinary.defaultURL(),
+        fileManager: FileManager = .default
+    ) -> HookHealthReport {
+        var issues: [HookHealthReport.Issue] = []
+        let settingsURL = geminiDirectory.appendingPathComponent("settings.json")
+        let resolvedBinaryPath = resolveBinaryPath(explicit: hooksBinaryURL, managed: managedHooksBinaryURL, fileManager: fileManager)
+        if let path = resolvedBinaryPath {
+            if !fileManager.isExecutableFile(atPath: path) { issues.append(.binaryNotExecutable(path: path)) }
+            appendManagedHelperOwnershipIssue(path: path, managedHooksBinaryURL: managedHooksBinaryURL, issues: &issues, fileManager: fileManager)
+        } else {
+            issues.append(.binaryNotFound)
+        }
+
+        if fileManager.fileExists(atPath: settingsURL.path), let data = try? Data(contentsOf: settingsURL) {
+            if (try? JSONSerialization.jsonObject(with: data)) == nil {
+                issues.append(.configMalformedJSON(path: settingsURL.path))
+            } else {
+                for command in findStaleCommandPaths(in: data, fileManager: fileManager) {
+                    issues.append(.staleCommandPath(recorded: command, configPath: settingsURL.path))
+                }
+                let otherNames = findThirdPartyHookNames(in: data, agent: "gemini")
+                if !otherNames.isEmpty { issues.append(.otherHooksDetected(names: otherNames.sorted())) }
+            }
+        }
+
+        let management = try? GeminiHookInstallationManager(
+            geminiDirectory: geminiDirectory,
+            managedHooksBinaryURL: managedHooksBinaryURL,
+            fileManager: fileManager
+        ).status(hooksBinaryURL: hooksBinaryURL)
+        if let management, management.managementOutcome != .exactManaged, management.managementOutcome != .unowned {
+            issues.append(.ownershipUnverified(outcome: management.managementOutcome))
+        }
+        return HookHealthReport(agent: "gemini", issues: issues, binaryPath: resolvedBinaryPath, configPath: settingsURL.path)
     }
 
     /// Check OpenCode plugin health.
@@ -240,7 +311,13 @@ public enum HookHealthCheck {
         let pluginsDir = opencodeDirectory.appendingPathComponent("plugins", isDirectory: true)
         let pluginFileURL = pluginsDir.appendingPathComponent("open-island.js")
 
-        if !fileManager.fileExists(atPath: pluginFileURL.path) {
+        let management = try? OpenCodePluginInstallationManager(
+            openCodeConfigDirectory: opencodeDirectory,
+            fileManager: fileManager
+        ).status()
+        if let management, management.managementOutcome != .exactManaged, management.managementOutcome != .unowned {
+            issues.append(.ownershipUnverified(outcome: management.managementOutcome))
+        } else if !fileManager.fileExists(atPath: pluginFileURL.path) {
             // Only report as an issue if the plugins directory itself exists,
             // implying OpenCode is likely installed and intended to be used.
             if fileManager.fileExists(atPath: opencodeDirectory.path) {
@@ -257,6 +334,18 @@ public enum HookHealthCheck {
     }
 
     // MARK: - Private helpers
+
+    private static func appendManagedHelperOwnershipIssue(
+        path: String,
+        managedHooksBinaryURL: URL,
+        issues: inout [HookHealthReport.Issue],
+        fileManager: FileManager
+    ) {
+        guard URL(fileURLWithPath: path).standardizedFileURL == managedHooksBinaryURL.standardizedFileURL else { return }
+        let outcome = ManagedHooksBinary.managementOutcome(at: managedHooksBinaryURL, fileManager: fileManager)
+        guard outcome != .exactManaged, outcome != .unowned else { return }
+        issues.append(.ownershipUnverified(outcome: outcome))
+    }
 
     private static func resolveBinaryPath(
         explicit: URL?,

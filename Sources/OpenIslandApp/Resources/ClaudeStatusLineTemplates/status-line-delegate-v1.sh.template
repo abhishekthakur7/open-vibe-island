@@ -1,0 +1,5 @@
+#!/bin/bash
+# Original Claude Code statusLine.command preserved by Open Island.
+# Open Island status-line template version: 1
+original_command={{OPEN_ISLAND_ORIGINAL_COMMAND_SHELL_QUOTED}}
+exec /bin/bash -c "$original_command"

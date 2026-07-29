@@ -24,6 +24,15 @@ public struct KimiHookFileMutation: Equatable, Sendable, Codable {
     }
 }
 
+/// Ownership classification for the Kimi-specific TOML entries. A marker or
+/// command mention is only evidence of a collision; management requires the
+/// complete, unique set of blocks rendered by this installer.
+public enum KimiManagedConfigState: Equatable, Sendable {
+    case none
+    case exact(entryDigest: String)
+    case ambiguous
+}
+
 /// Installs/uninstalls Open Island's managed `[[hooks]]` entries in
 /// `~/.kimi/config.toml`.
 ///
@@ -57,9 +66,17 @@ public enum KimiHookInstaller {
         hookCommand: String
     ) -> KimiHookFileMutation {
         let original = existingContents ?? ""
-        let cleaned = stripEmptyTopLevelHooksArray(
-            from: stripManagedBlocks(from: original, managedCommand: hookCommand)
-        )
+        switch managedConfigState(existingContents: existingContents, hookCommand: hookCommand) {
+        case .exact:
+            return KimiHookFileMutation(contents: original, changed: false, managedHooksPresent: true)
+        case .ambiguous:
+            // The manager rejects this state. Keep this legacy public helper
+            // non-destructive for callers that only inspect a mutation.
+            return KimiHookFileMutation(contents: original, changed: false, managedHooksPresent: false)
+        case .none:
+            break
+        }
+        let cleaned = stripEmptyTopLevelHooksArray(from: original)
 
         var output = cleaned
         if !output.isEmpty, !output.hasSuffix("\n") {
@@ -96,6 +113,81 @@ public enum KimiHookInstaller {
         }
 
         return KimiHookFileMutation(contents: cleaned, changed: changed, managedHooksPresent: false)
+    }
+
+    /// Strict removal used by the installation manager. It never accepts
+    /// markerless commands or a partial/duplicated managed block.
+    public static func uninstallExactConfigTOML(
+        existingContents: String?,
+        hookCommand: String
+    ) -> KimiHookFileMutation {
+        guard let existingContents,
+              case .exact = managedConfigState(existingContents: existingContents, hookCommand: hookCommand) else {
+            return KimiHookFileMutation(contents: existingContents, changed: false, managedHooksPresent: false)
+        }
+        let cleaned = stripExactManagedBlocks(from: existingContents)
+        if cleaned.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return KimiHookFileMutation(contents: nil, changed: true, managedHooksPresent: true)
+        }
+        return KimiHookFileMutation(contents: cleaned, changed: cleaned != existingContents, managedHooksPresent: true)
+    }
+
+    public static func managedConfigState(
+        existingContents: String?,
+        hookCommand: String
+    ) -> KimiManagedConfigState {
+        guard let existingContents, !existingContents.isEmpty else { return .none }
+        let lines = existingContents.components(separatedBy: "\n")
+        var found: [String: String] = [:]
+        var sawMarker = false
+        var index = 0
+        while index < lines.count {
+            guard lines[index].trimmingCharacters(in: .whitespaces) == markerComment else {
+                index += 1
+                continue
+            }
+            sawMarker = true
+            let start = index
+            var hookStart = index + 1
+            while hookStart < lines.count, lines[hookStart].trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { hookStart += 1 }
+            guard hookStart < lines.count, isHooksHeader(lines[hookStart]) else { return .ambiguous }
+            let end = endOfManagedBlock(startingAt: hookStart, in: lines)
+            let candidate = normalizedBlock(Array(lines[start..<end]))
+            guard let spec = eventSpecs.first(where: { normalizedBlock(renderManagedBlock(event: $0.name, matcher: $0.matcher, command: hookCommand).components(separatedBy: "\n")) == candidate }),
+                  found[spec.name] == nil else { return .ambiguous }
+            found[spec.name] = candidate
+            index = end
+        }
+        guard sawMarker else { return .none }
+        guard found.count == eventSpecs.count else { return .ambiguous }
+        let digestInput = eventSpecs.compactMap { found[$0.name] }.joined(separator: "\n")
+        return .exact(entryDigest: ManagedHookFileSystem.digest(of: Data(digestInput.utf8)))
+    }
+
+    private static func stripExactManagedBlocks(from contents: String) -> String {
+        let lines = contents.components(separatedBy: "\n")
+        var result: [String] = []
+        var index = 0
+        while index < lines.count {
+            if lines[index].trimmingCharacters(in: .whitespaces) == markerComment {
+                var hookStart = index + 1
+                while hookStart < lines.count, lines[hookStart].trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { hookStart += 1 }
+                if hookStart < lines.count, isHooksHeader(lines[hookStart]) {
+                    index = endOfManagedBlock(startingAt: hookStart, in: lines)
+                    while index < lines.count, lines[index].trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { index += 1 }
+                    continue
+                }
+            }
+            result.append(lines[index])
+            index += 1
+        }
+        return result.joined(separator: "\n")
+    }
+
+    private static func normalizedBlock(_ lines: [String]) -> String {
+        var lines = lines
+        while lines.last?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == true { lines.removeLast() }
+        return lines.joined(separator: "\n")
     }
 
     /// Removes every managed `[[hooks]]` block. Identification prefers the
@@ -309,6 +401,18 @@ public enum KimiHookInstaller {
         return lines.count
     }
 
+    private static func endOfManagedBlock(startingAt start: Int, in lines: [String]) -> Int {
+        var cursor = start + 1
+        while cursor < lines.count {
+            let trimmed = lines[cursor].trimmingCharacters(in: .whitespaces)
+            if trimmed == markerComment || (trimmed.hasPrefix("[") && trimmed.hasSuffix("]")) {
+                return cursor
+            }
+            cursor += 1
+        }
+        return lines.count
+    }
+
     private static func blockMatchesManagedCommand(_ block: [String], managedCommand: String?) -> Bool {
         for line in block {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -323,9 +427,6 @@ public enum KimiHookInstaller {
                 return true
             }
 
-            if isLegacyOpenIslandHookCommand(value) {
-                return true
-            }
         }
         return false
     }
@@ -346,18 +447,6 @@ public enum KimiHookInstaller {
             return String(value.dropFirst().dropLast())
         }
         return value
-    }
-
-    private static func isLegacyOpenIslandHookCommand(_ command: String) -> Bool {
-        let normalized = command.lowercased()
-        guard normalized.contains("--source kimi") else {
-            return false
-        }
-
-        return normalized.contains("openislandhooks")
-            || normalized.contains("vibeislandhooks")
-            || normalized.contains("open-island-bridge")
-            || normalized.contains("vibe-island-bridge")
     }
 
     private static func renderManagedBlock(event: String, matcher: String?, command: String) -> String {

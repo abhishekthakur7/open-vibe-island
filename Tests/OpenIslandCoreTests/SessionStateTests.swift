@@ -1016,7 +1016,7 @@ struct SessionStateTests {
     }
 
     @Test
-    func codexHookInstallerInstallReplacesLegacyOpenIslandCommands() throws {
+    func codexHookInstallerInstallLeavesLegacyLookingCommandsUntouched() throws {
         let existing = """
         {
           "hooks": {
@@ -1082,13 +1082,16 @@ struct SessionStateTests {
             .flatMap { $0 }
             .compactMap { $0["command"] as? String } ?? []
 
-        #expect(preToolCommands == ["/usr/bin/printf"])
+        #expect(preToolCommands == [
+            "'/Users/test/.open-island/bin/open-island-bridge' --source codex",
+            "/usr/bin/printf",
+        ])
         #expect(permissionCommands == ["'/tmp/new-release/OpenIslandHooks'"])
         #expect(hooks?["PostToolUse"] == nil)
         #expect(stopCommands.contains("/usr/bin/true"))
         #expect(stopCommands.contains("'/tmp/new-release/OpenIslandHooks'"))
-        #expect(!stopCommands.contains("'/Users/test/.open-island/bin/open-island-bridge' --source codex"))
-        #expect(!stopCommands.contains("'/tmp/old-debug/OpenIslandHooks'"))
+        #expect(stopCommands.contains("'/Users/test/.open-island/bin/open-island-bridge' --source codex"))
+        #expect(stopCommands.contains("'/tmp/old-debug/OpenIslandHooks'"))
     }
 
     @Test
@@ -1344,17 +1347,9 @@ struct SessionStateTests {
             codexDirectory: codexDirectory,
             managedHooksBinaryURL: managedHooksBinaryURL
         )
-        let hooksBinaryURL = rootURL
-            .appendingPathComponent("build", isDirectory: true)
-            .appendingPathComponent("VibeIslandHooks")
 
         try FileManager.default.createDirectory(at: codexDirectory, withIntermediateDirectories: true)
-        try FileManager.default.createDirectory(
-            at: hooksBinaryURL.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
-        try Data("codex-hook".utf8).write(to: hooksBinaryURL)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: hooksBinaryURL.path)
+        let hooksBinaryURL = try makeVerifiedHooksApp(at: rootURL, contents: "codex-hook")
 
         defer {
             try? FileManager.default.removeItem(at: rootURL)

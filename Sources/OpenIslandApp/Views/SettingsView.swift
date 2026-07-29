@@ -164,6 +164,8 @@ struct SettingsView: View {
 struct GeneralSettingsPane: View {
     var model: AppModel
 
+    @State private var pendingIntegrationReset: HookAggregateConsentPreview?
+
     private var lang: LanguageManager { model.lang }
 
     var body: some View {
@@ -256,9 +258,9 @@ struct GeneralSettingsPane: View {
                     .foregroundStyle(.secondary)
 
                 Button("Reset Integrations", role: .destructive) {
-                    model.resetIntegrations()
+                    pendingIntegrationReset = model.prepareResetIntegrations()
                 }
-                Text("Removes managed hooks and plugins, clears their setup state, and revokes the local bridge credential. It does not delete history or hook backups.")
+                Text("Shows every managed target, backup, provenance record, intent key, and bridge credential role before reset. Unsafe or unresolved members block the whole reset. It does not delete history.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -266,6 +268,27 @@ struct GeneralSettingsPane: View {
         }
         .formStyle(.grouped)
         .navigationTitle(lang.t("settings.tab.general"))
+        .alert(item: $pendingIntegrationReset) { preview in
+            Alert(
+                title: Text(preview.isSafeToExecute ? "Review integration reset" : "Integration reset is blocked"),
+                message: Text(resetConsentMessage(preview)),
+                primaryButton: preview.isSafeToExecute
+                    ? .destructive(Text("Confirm reset"), action: { model.confirmResetIntegrations(preview) })
+                    : .default(Text("OK")),
+                secondaryButton: .cancel()
+            )
+        }
+    }
+
+    private func resetConsentMessage(_ preview: HookAggregateConsentPreview) -> String {
+        let members = preview.members.map { member in
+            let snapshots = member.targetSnapshots.map { snapshot in
+                "\(snapshot.canonicalPath): \(snapshot.exists ? snapshot.fileType : "absent"), SHA \(snapshot.sha256 ?? "absent"), provenance \(snapshot.provenanceGeneration ?? "absent"), artifact \(snapshot.provenanceArtifactID ?? "absent")@\(snapshot.provenanceArtifactVersion.map(String.init) ?? "—")"
+            }.joined(separator: "\n")
+            return "\(member.integrationID) [\(member.target.managementOutcome.rawValue)]\nTargets: \(member.targetPaths.joined(separator: ", "))\nSnapshots:\n\(snapshots)\nChanges: \(member.managedRemovals.joined(separator: "; "))\nBackups: \(member.backupPaths.joined(separator: ", "))"
+        }.joined(separator: "\n\n")
+        let blocked = preview.blockingMembers.map { "\($0.integrationID): \($0.target.managementOutcome.rawValue)" }.joined(separator: ", ")
+        return "Order: \(preview.executionOrder.joined(separator: " → "))\n\n\(members)\n\nIntent keys cleared: \(preview.intentKeys.joined(separator: ", "))\nCredentials revoked: \(preview.credentialRoles.joined(separator: ", "))\n\n\(blocked.isEmpty ? "All members are exact-managed or unowned. History is preserved." : "Blocked members: \(blocked). No mutation will run.")"
     }
 }
 
@@ -523,8 +546,17 @@ struct AboutSettingsPane: View {
 
 // MARK: - Setup
 
+private struct HookInstallConfirmation: Identifiable {
+    let preview: HookConsentPreview
+    let request: HookConsentRequest
+    let isUninstall: Bool
+    var id: String { preview.id }
+}
+
 struct SetupSettingsPane: View {
     var model: AppModel
+
+    @State private var pendingHookInstall: HookInstallConfirmation?
 
     @State private var confirmingUninstallClaude = false
     @State private var confirmingUninstallCodex = false
@@ -554,8 +586,8 @@ struct SetupSettingsPane: View {
                     installed: model.claudeHooksInstalled,
                     busy: model.isClaudeHookSetupBusy,
                     configLocationURL: model.claudeHookStatus?.settingsURL,
-                    installAction: { model.installClaudeHooks() },
-                    uninstallAction: { confirmingUninstallClaude = true }
+                    installAction: { requestHookInstall(.claude) },
+                    uninstallAction: { requestHookUninstall(.claude) }
                 )
                 .alert(lang.t("settings.general.uninstallConfirmTitle"), isPresented: $confirmingUninstallClaude) {
                     Button(lang.t("settings.general.uninstallConfirmAction"), role: .destructive) {
@@ -571,8 +603,8 @@ struct SetupSettingsPane: View {
                     installed: model.codexHooksInstalled,
                     busy: model.isCodexSetupBusy,
                     configLocationURL: codexHookConfigURL,
-                    installAction: { model.installCodexHooks() },
-                    uninstallAction: { confirmingUninstallCodex = true }
+                    installAction: { requestHookInstall(.codex) },
+                    uninstallAction: { requestHookUninstall(.codex) }
                 )
                 .alert(lang.t("settings.general.uninstallConfirmTitle"), isPresented: $confirmingUninstallCodex) {
                     Button(lang.t("settings.general.uninstallConfirmAction"), role: .destructive) {
@@ -589,8 +621,8 @@ struct SetupSettingsPane: View {
                     busy: model.isOpenCodeSetupBusy,
                     requiresBinary: false,
                     configLocationURL: model.openCodePluginStatus?.configURL,
-                    installAction: { model.installOpenCodePlugin() },
-                    uninstallAction: { confirmingUninstallOpenCode = true }
+                    installAction: { requestHookInstall(.openCode) },
+                    uninstallAction: { requestHookUninstall(.openCode) }
                 )
                 .alert(lang.t("settings.general.uninstallConfirmTitle"), isPresented: $confirmingUninstallOpenCode) {
                     Button(lang.t("settings.general.uninstallConfirmAction"), role: .destructive) {
@@ -606,8 +638,8 @@ struct SetupSettingsPane: View {
                     installed: model.qoderHooksInstalled,
                     busy: model.isQoderHookSetupBusy,
                     configLocationURL: model.qoderHookStatus?.settingsURL,
-                    installAction: { model.installQoderHooks() },
-                    uninstallAction: { confirmingUninstallQoder = true }
+                    installAction: { requestHookInstall(.qoder) },
+                    uninstallAction: { requestHookUninstall(.qoder) }
                 )
                 .alert(lang.t("settings.general.uninstallConfirmTitle"), isPresented: $confirmingUninstallQoder) {
                     Button(lang.t("settings.general.uninstallConfirmAction"), role: .destructive) {
@@ -623,8 +655,8 @@ struct SetupSettingsPane: View {
                     installed: model.qwenCodeHooksInstalled,
                     busy: model.isQwenCodeHookSetupBusy,
                     configLocationURL: model.qwenCodeHookStatus?.settingsURL,
-                    installAction: { model.installQwenCodeHooks() },
-                    uninstallAction: { confirmingUninstallQwenCode = true }
+                    installAction: { requestHookInstall(.qwenCode) },
+                    uninstallAction: { requestHookUninstall(.qwenCode) }
                 )
                 .alert(lang.t("settings.general.uninstallConfirmTitle"), isPresented: $confirmingUninstallQwenCode) {
                     Button(lang.t("settings.general.uninstallConfirmAction"), role: .destructive) {
@@ -640,8 +672,8 @@ struct SetupSettingsPane: View {
                     installed: model.factoryHooksInstalled,
                     busy: model.isFactoryHookSetupBusy,
                     configLocationURL: model.factoryHookStatus?.settingsURL,
-                    installAction: { model.installFactoryHooks() },
-                    uninstallAction: { confirmingUninstallFactory = true }
+                    installAction: { requestHookInstall(.factory) },
+                    uninstallAction: { requestHookUninstall(.factory) }
                 )
                 .alert(lang.t("settings.general.uninstallConfirmTitle"), isPresented: $confirmingUninstallFactory) {
                     Button(lang.t("settings.general.uninstallConfirmAction"), role: .destructive) {
@@ -657,8 +689,8 @@ struct SetupSettingsPane: View {
                     installed: model.codebuddyHooksInstalled,
                     busy: model.isCodebuddyHookSetupBusy,
                     configLocationURL: model.codebuddyHookStatus?.settingsURL,
-                    installAction: { model.installCodebuddyHooks() },
-                    uninstallAction: { confirmingUninstallCodebuddy = true }
+                    installAction: { requestHookInstall(.codebuddy) },
+                    uninstallAction: { requestHookUninstall(.codebuddy) }
                 )
                 .alert(lang.t("settings.general.uninstallConfirmTitle"), isPresented: $confirmingUninstallCodebuddy) {
                     Button(lang.t("settings.general.uninstallConfirmAction"), role: .destructive) {
@@ -675,8 +707,8 @@ struct SetupSettingsPane: View {
                     busy: model.isCursorHookSetupBusy,
                     requiresBinary: true,
                     configLocationURL: model.cursorHookStatus?.hooksURL,
-                    installAction: { model.installCursorHooks() },
-                    uninstallAction: { confirmingUninstallCursor = true }
+                    installAction: { requestHookInstall(.cursor) },
+                    uninstallAction: { requestHookUninstall(.cursor) }
                 )
                 .alert(lang.t("settings.general.uninstallConfirmTitle"), isPresented: $confirmingUninstallCursor) {
                     Button(lang.t("settings.general.uninstallConfirmAction"), role: .destructive) {
@@ -692,8 +724,8 @@ struct SetupSettingsPane: View {
                     installed: model.geminiHooksInstalled,
                     busy: model.isGeminiHookSetupBusy,
                     configLocationURL: geminiHookConfigURL,
-                    installAction: { model.installGeminiHooks() },
-                    uninstallAction: { confirmingUninstallGemini = true }
+                    installAction: { requestHookInstall(.gemini) },
+                    uninstallAction: { requestHookUninstall(.gemini) }
                 )
                 .alert(lang.t("settings.general.uninstallConfirmTitle"), isPresented: $confirmingUninstallGemini) {
                     Button(lang.t("settings.general.uninstallConfirmAction"), role: .destructive) {
@@ -709,8 +741,8 @@ struct SetupSettingsPane: View {
                     installed: model.kimiHooksInstalled,
                     busy: model.isKimiHookSetupBusy,
                     configLocationURL: model.kimiHookStatus?.configURL,
-                    installAction: { model.installKimiHooks() },
-                    uninstallAction: { confirmingUninstallKimi = true }
+                    installAction: { requestHookInstall(.kimi) },
+                    uninstallAction: { requestHookUninstall(.kimi) }
                 )
                 .alert(lang.t("settings.general.uninstallConfirmTitle"), isPresented: $confirmingUninstallKimi) {
                     Button(lang.t("settings.general.uninstallConfirmAction"), role: .destructive) {
@@ -734,13 +766,13 @@ struct SetupSettingsPane: View {
                                 .foregroundStyle(.secondary)
                         }
                         Button(lang.t("settings.general.uninstall")) {
-                            confirmingUninstallClaudeUsage = true
+                            requestHookUninstall(.claudeUsage)
                         }
                     } else if model.isClaudeUsageSetupBusy {
                         ProgressView().controlSize(.small)
                     } else {
                         Button(lang.t("settings.general.install")) {
-                            model.installClaudeUsageBridge()
+                            requestHookInstall(.claudeUsage)
                         }
                     }
                 }
@@ -785,17 +817,7 @@ struct SetupSettingsPane: View {
 
             Section {
                 Button(lang.t("setup.installAll")) {
-                    if !model.claudeHooksInstalled { model.installClaudeHooks() }
-                    if !model.codexHooksInstalled { model.installCodexHooks() }
-                    if !model.openCodePluginInstalled { model.installOpenCodePlugin() }
-                    if !model.qoderHooksInstalled { model.installQoderHooks() }
-                    if !model.qwenCodeHooksInstalled { model.installQwenCodeHooks() }
-                    if !model.factoryHooksInstalled { model.installFactoryHooks() }
-                    if !model.codebuddyHooksInstalled { model.installCodebuddyHooks() }
-                    if !model.cursorHooksInstalled { model.installCursorHooks() }
-                    if !model.geminiHooksInstalled { model.installGeminiHooks() }
-                    if !model.kimiHooksInstalled { model.installKimiHooks() }
-                    if !model.claudeUsageInstalled { model.installClaudeUsageBridge() }
+                    model.lastActionMessage = "Review each integration's target and managed changes before installing. Bulk installation is intentionally disabled."
                 }
                 .disabled(model.hooksBinaryURL == nil || allReady)
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -803,6 +825,35 @@ struct SetupSettingsPane: View {
         }
         .formStyle(.grouped)
         .navigationTitle(lang.t("settings.tab.setup"))
+        .alert(item: $pendingHookInstall) { request in
+            Alert(
+                title: Text("Review Open Island changes"),
+                message: Text(consentMessage(request.preview)),
+                primaryButton: .default(Text(request.isUninstall ? "Confirm removal" : "Confirm install"), action: {
+                    if request.isUninstall { model.confirmHookUninstall(request.request, preview: request.preview) }
+                    else { model.confirmHookInstall(request.request, preview: request.preview) }
+                }),
+                secondaryButton: .cancel()
+            )
+        }
+    }
+
+    private func requestHookInstall(_ request: HookConsentRequest) {
+        guard let preview = model.prepareHookInstall(request) else { return }
+        pendingHookInstall = HookInstallConfirmation(preview: preview, request: request, isUninstall: false)
+    }
+
+    private func requestHookUninstall(_ request: HookConsentRequest) {
+        guard let preview = model.prepareHookUninstall(request) else { return }
+        pendingHookInstall = HookInstallConfirmation(preview: preview, request: request, isUninstall: true)
+    }
+
+    private func consentMessage(_ preview: HookConsentPreview) -> String {
+        let changes = (preview.managedAdditions.map { "+ \($0)" } + preview.managedRemovals.map { "− \($0)" }).joined(separator: "\n")
+        let snapshots = preview.targetSnapshots.map { snapshot in
+            "\(snapshot.canonicalPath): \(snapshot.exists ? snapshot.fileType : "absent"), mode \(snapshot.mode.map { String($0, radix: 8) } ?? "—"), owner \(snapshot.ownerID.map(String.init) ?? "—"), links \(snapshot.linkCount.map(String.init) ?? "—"), SHA \(snapshot.sha256 ?? "absent"), provenance \(snapshot.provenanceGeneration ?? "absent"), outcome \(snapshot.managementOutcome.rawValue)"
+        }.joined(separator: "\n")
+        return "Integration: \(preview.integrationID)\nSource: \(preview.sourceBundlePath)\nVersion: \(preview.artifactVersion)\nSHA-256: \(preview.sha256)\nTargets:\n\(preview.targetPaths.joined(separator: "\n"))\nTarget snapshots:\n\(snapshots)\nModes: \(preview.requestedModes.joined(separator: ", "))\nChanges:\n\(changes)\nBackups (\(preview.target.backupRetentionDays)d):\n\(preview.backupPaths.joined(separator: "\n"))\nJournals:\n\(preview.journalPaths.joined(separator: "\n"))\nProvenance:\n\(preview.provenancePaths.joined(separator: "\n"))\nWrapping: \(preview.involvesWrapping ? "yes" : "no") · restoration: \(preview.involvesRestoration ? "yes" : "no")"
     }
 
     @ViewBuilder

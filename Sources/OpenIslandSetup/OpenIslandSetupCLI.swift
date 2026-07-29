@@ -6,14 +6,33 @@ struct OpenIslandSetupCLI {
     static func main() {
         do {
             let command = try SetupCommand(arguments: Array(CommandLine.arguments.dropFirst()))
-            try command.run()
+            if let status = try command.run() {
+                writeStatus(status)
+                exit(status.exitCode)
+            }
         } catch let error as SetupError {
+            if error == .consentRequired {
+                let outcome = HookManagementOutcome.consentRequired
+                writeStatus(outcome.status(for: .sharedHelper), to: stderr)
+                exit(outcome.exitStatus)
+            }
             fputs("error: \(error.localizedDescription)\n", stderr)
             exit(1)
         } catch {
-            fputs("error: \(error.localizedDescription)\n", stderr)
-            exit(1)
+            let outcome = HookManagementOutcome.from(error: error)
+            writeStatus(outcome.status(for: .sharedHelper), to: stderr)
+            exit(outcome.exitStatus)
         }
+    }
+
+    private static func writeStatus(_ status: HookManagementStatus, to stream: UnsafeMutablePointer<FILE> = stdout) {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+        guard let data = try? encoder.encode(status) else { return }
+        data.withUnsafeBytes { bytes in
+            _ = fwrite(bytes.baseAddress, 1, bytes.count, stream)
+        }
+        _ = fputc(10, stream)
     }
 }
 
@@ -35,6 +54,7 @@ private struct SetupCommand {
     let claudeDirectory: URL
     let kimiDirectory: URL
     let hooksBinary: URL?
+    let statusFamily: HookIntegrationFamily
 
     init(arguments: [String]) throws {
         guard let rawAction = arguments.first,
@@ -48,6 +68,11 @@ private struct SetupCommand {
         var codexDirectory = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex", isDirectory: true)
         var claudeDirectory = ClaudeConfigDirectory.resolved()
         var kimiDirectory = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".kimi", isDirectory: true)
+        var statusFamily: HookIntegrationFamily = switch action {
+        case .statusClaude: .claude
+        case .statusKimi: .kimi
+        default: .codexCLI
+        }
 
         var index = 1
         while index < arguments.count {
@@ -80,6 +105,13 @@ private struct SetupCommand {
                 }
                 kimiDirectory = URL(fileURLWithPath: arguments[index]).standardizedFileURL
 
+            case "--family":
+                index += 1
+                guard index < arguments.count, let family = HookIntegrationFamily(rawValue: arguments[index]) else {
+                    throw SetupError.missingValue("--family <known family>")
+                }
+                statusFamily = family
+
             default:
                 throw SetupError.unexpectedArgument(arguments[index])
             }
@@ -95,178 +127,120 @@ private struct SetupCommand {
         self.claudeDirectory = claudeDirectory
         self.kimiDirectory = kimiDirectory
         self.hooksBinary = hooksBinary
+        self.statusFamily = statusFamily
     }
 
-    func run() throws {
+    func run() throws -> HookManagementStatus? {
         switch action {
         case .install:
             try install()
         case .uninstall:
             try uninstall()
         case .status:
-            try status()
+            return try status(for: statusFamily)
         case .installClaude:
             try installClaude()
         case .uninstallClaude:
             try uninstallClaude()
         case .statusClaude:
-            try statusClaude()
+            return try statusClaude()
         case .installKimi:
             try installKimi()
         case .uninstallKimi:
             try uninstallKimi()
         case .statusKimi:
-            try statusKimi()
+            return try statusKimi()
         }
+        return nil
     }
 
     private func install() throws {
-        guard let hooksBinary else {
-            throw SetupError.usage
-        }
-
-        let manager = CodexHookInstallationManager(codexDirectory: codexDirectory)
-        let status = try manager.install(hooksBinaryURL: hooksBinary)
-
-        print("Installed Open Island Codex hooks.")
-        print("Codex dir: \(status.codexDirectory.path)")
-        print("Hooks binary: \(hooksBinary.path)")
-        if status.manifest?.enabledCodexHooksFeature == true {
-            print("Updated config.toml to enable Codex hooks")
-        } else {
-            print("config.toml already had Codex hooks enabled")
-        }
+        throw SetupError.consentRequired
     }
 
     private func uninstall() throws {
-        let manager = CodexHookInstallationManager(codexDirectory: codexDirectory)
-        let status = try manager.uninstall()
-
-        print("Removed Open Island Codex hooks.")
-        print("Codex dir: \(status.codexDirectory.path)")
-        if FileManager.default.fileExists(atPath: status.hooksURL.path) {
-            print("Preserved unrelated hooks.json entries.")
-        }
+        throw SetupError.consentRequired
     }
 
-    private func status() throws {
-        let manager = CodexHookInstallationManager(codexDirectory: codexDirectory)
-        let status = try manager.status(hooksBinaryURL: hooksBinary)
+    private func status() throws -> HookManagementStatus {
+        try status(for: .codexCLI)
+    }
 
-        print("Codex dir: \(status.codexDirectory.path)")
-        print("Feature flag enabled: \(status.featureFlagEnabled ? "yes" : "no")")
-        print("Managed hooks present: \(status.managedHooksPresent ? "yes" : "no")")
-        if let hooksBinary {
-            print("Hooks binary: \(hooksBinary.path)")
+    /// This is intentionally a read-only dispatch. Each branch delegates to
+    /// the same manager that Settings uses; none may create a helper, sidecar,
+    /// backup, journal, or recovery state.
+    private func status(for family: HookIntegrationFamily) throws -> HookManagementStatus {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let outcome: HookManagementOutcome = switch family {
+        case .claude:
+            try ClaudeHookInstallationManager(claudeDirectory: claudeDirectory).status(hooksBinaryURL: hooksBinary).managementOutcome
+        case .qoder:
+            try ClaudeHookInstallationManager(claudeDirectory: home.appendingPathComponent(".qoder"), hookSource: "qoder").status(hooksBinaryURL: hooksBinary).managementOutcome
+        case .qwenCode:
+            try ClaudeHookInstallationManager(claudeDirectory: home.appendingPathComponent(".qwen"), hookSource: "qwen").status(hooksBinaryURL: hooksBinary).managementOutcome
+        case .factoryDroid:
+            try ClaudeHookInstallationManager(claudeDirectory: home.appendingPathComponent(".factory"), hookSource: "factory").status(hooksBinaryURL: hooksBinary).managementOutcome
+        case .codebuddy:
+            try ClaudeHookInstallationManager(claudeDirectory: home.appendingPathComponent(".codebuddy"), hookSource: "codebuddy").status(hooksBinaryURL: hooksBinary).managementOutcome
+        case .codexCLI:
+            try CodexHookInstallationManager(codexDirectory: codexDirectory).status(hooksBinaryURL: hooksBinary).managementOutcome
+        case .cursor:
+            try CursorHookInstallationManager().status(hooksBinaryURL: hooksBinary).managementOutcome
+        case .gemini:
+            try GeminiHookInstallationManager().status(hooksBinaryURL: hooksBinary).managementOutcome
+        case .kimi:
+            try KimiHookInstallationManager(kimiDirectory: kimiDirectory).status(hooksBinaryURL: hooksBinary).managementOutcome
+        case .openCodeConfig, .openCodePlugin:
+            try OpenCodePluginInstallationManager().status().managementOutcome
+        case .claudeStatusLine:
+            try ClaudeStatusLineInstallationManager(claudeDirectory: claudeDirectory).status().managementOutcome
+        case .sharedHelper:
+            ManagedHooksBinary.managementOutcome(at: hooksBinary ?? ManagedHooksBinary.defaultURL())
         }
-        if let manifest = status.manifest {
-            print("Manifest: present")
-            print("Feature enabled by installer: \(manifest.enabledCodexHooksFeature ? "yes" : "no")")
-        } else {
-            print("Manifest: missing")
-        }
+        return outcome.status(for: family)
     }
 
     private func installClaude() throws {
-        guard let hooksBinary else {
-            throw SetupError.usage
-        }
-
-        let manager = ClaudeHookInstallationManager(claudeDirectory: claudeDirectory)
-        let status = try manager.install(hooksBinaryURL: hooksBinary)
-
-        print("Installed Open Island Claude hooks.")
-        print("Claude dir: \(status.claudeDirectory.path)")
-        print("Hooks binary: \(hooksBinary.path)")
-        if status.hasClaudeIslandHooks {
-            print("Note: claude-island hooks are still present alongside Open Island hooks.")
-        }
+        throw SetupError.consentRequired
     }
 
     private func uninstallClaude() throws {
-        let manager = ClaudeHookInstallationManager(claudeDirectory: claudeDirectory)
-        let status = try manager.uninstall()
-
-        print("Removed Open Island Claude hooks.")
-        print("Claude dir: \(status.claudeDirectory.path)")
-        if status.hasClaudeIslandHooks {
-            print("Preserved claude-island hooks.")
-        }
+        throw SetupError.consentRequired
     }
 
-    private func statusClaude() throws {
-        let manager = ClaudeHookInstallationManager(claudeDirectory: claudeDirectory)
-        let status = try manager.status(hooksBinaryURL: hooksBinary)
-
-        print("Claude dir: \(status.claudeDirectory.path)")
-        print("Managed hooks present: \(status.managedHooksPresent ? "yes" : "no")")
-        print("claude-island hooks present: \(status.hasClaudeIslandHooks ? "yes" : "no")")
-        if let hooksBinary {
-            print("Hooks binary: \(hooksBinary.path)")
-        }
-        if let manifest = status.manifest {
-            print("Manifest: present")
-            print("Hook command: \(manifest.hookCommand)")
-        } else {
-            print("Manifest: missing")
-        }
+    private func statusClaude() throws -> HookManagementStatus {
+        try status(for: .claude)
     }
 
     private func installKimi() throws {
-        guard let hooksBinary else {
-            throw SetupError.usage
-        }
-
-        let manager = KimiHookInstallationManager(kimiDirectory: kimiDirectory)
-        let status = try manager.install(hooksBinaryURL: hooksBinary)
-
-        print("Installed Open Island Kimi hooks.")
-        print("Kimi dir: \(status.kimiDirectory.path)")
-        print("Hooks binary: \(hooksBinary.path)")
+        throw SetupError.consentRequired
     }
 
     private func uninstallKimi() throws {
-        let manager = KimiHookInstallationManager(kimiDirectory: kimiDirectory)
-        let status = try manager.uninstall()
-
-        print("Removed Open Island Kimi hooks.")
-        print("Kimi dir: \(status.kimiDirectory.path)")
-        if FileManager.default.fileExists(atPath: status.configURL.path) {
-            print("Preserved unrelated [[hooks]] entries in config.toml.")
-        }
+        throw SetupError.consentRequired
     }
 
-    private func statusKimi() throws {
-        let manager = KimiHookInstallationManager(kimiDirectory: kimiDirectory)
-        let status = try manager.status(hooksBinaryURL: hooksBinary)
-
-        print("Kimi dir: \(status.kimiDirectory.path)")
-        print("Managed hooks present: \(status.managedHooksPresent ? "yes" : "no")")
-        if let hooksBinary {
-            print("Hooks binary: \(hooksBinary.path)")
-        }
-        if let manifest = status.manifest {
-            print("Manifest: present")
-            print("Hook command: \(manifest.hookCommand)")
-        } else {
-            print("Manifest: missing")
-        }
+    private func statusKimi() throws -> HookManagementStatus {
+        try status(for: .kimi)
     }
 }
 
-private enum SetupError: Error, LocalizedError {
+private enum SetupError: Error, LocalizedError, Equatable {
     case usage
+    case consentRequired
     case missingValue(String)
     case unexpectedArgument(String)
 
     var errorDescription: String? {
         switch self {
+        case .consentRequired:
+            "OpenIslandSetup does not mutate hook configuration noninteractively."
         case .usage:
             """
             Usage:
               swift run OpenIslandSetup install [--hooks-binary /abs/path/to/OpenIslandHooks] [--codex-dir /abs/path/to/.codex]
               swift run OpenIslandSetup uninstall [--codex-dir /abs/path/to/.codex]
-              swift run OpenIslandSetup status [--hooks-binary /abs/path/to/OpenIslandHooks] [--codex-dir /abs/path/to/.codex]
+              swift run OpenIslandSetup status [--family codex-cli] [--hooks-binary /abs/path/to/OpenIslandHooks] [--codex-dir /abs/path/to/.codex]
               swift run OpenIslandSetup installClaude [--hooks-binary /abs/path/to/OpenIslandHooks] [--claude-dir /abs/path/to/.claude]
               swift run OpenIslandSetup uninstallClaude [--claude-dir /abs/path/to/.claude]
               swift run OpenIslandSetup statusClaude [--hooks-binary /abs/path/to/OpenIslandHooks] [--claude-dir /abs/path/to/.claude]

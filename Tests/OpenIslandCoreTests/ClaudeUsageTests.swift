@@ -149,7 +149,8 @@ struct ClaudeUsageTests {
             .appendingPathComponent("bin", isDirectory: true)
         let manager = ClaudeStatusLineInstallationManager(
             claudeDirectory: claudeDirectory,
-            scriptDirectoryURL: scriptDirectory
+            scriptDirectoryURL: scriptDirectory,
+            templateResources: try makeVerifiedClaudeStatusLineTemplateResources(at: rootURL)
         )
 
         defer {
@@ -177,7 +178,56 @@ struct ClaudeUsageTests {
     }
 
     @Test
-    func claudeStatusLineInstallationManagerRepairsMissingLegacyManagedScript() throws {
+    func claudeStatusLineInstallationRequiresExactProvenanceForIdempotenceAndUninstall() throws {
+        let rootURL = FileManager.default.temporaryDirectory.appendingPathComponent("open-island-claude-provenance-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: rootURL) }
+        let manager = ClaudeStatusLineInstallationManager(
+            claudeDirectory: rootURL.appendingPathComponent(".claude", isDirectory: true),
+            scriptDirectoryURL: rootURL.appendingPathComponent(".open-island", isDirectory: true).appendingPathComponent("bin", isDirectory: true),
+            templateResources: try makeVerifiedClaudeStatusLineTemplateResources(at: rootURL)
+        )
+        let installed = try manager.install()
+        let settingsSidecar = ManagedHookProvenance.sidecarURL(for: installed.settingsURL)
+        let scriptSidecar = ManagedHookProvenance.sidecarURL(for: installed.scriptURL)
+        let settingsBefore = try Data(contentsOf: installed.settingsURL)
+        let scriptBefore = try Data(contentsOf: installed.scriptURL)
+        let settingsSidecarBefore = try Data(contentsOf: settingsSidecar)
+        #expect(try manager.status().managementOutcome == .exactManaged)
+        #expect(try manager.install().managementOutcome == .exactManaged)
+        #expect(try Data(contentsOf: installed.settingsURL) == settingsBefore)
+        #expect(try Data(contentsOf: installed.scriptURL) == scriptBefore)
+        #expect(try Data(contentsOf: settingsSidecar) == settingsSidecarBefore)
+        #expect((try FileManager.default.attributesOfItem(atPath: settingsSidecar.path)[.posixPermissions] as? NSNumber)?.intValue == 0o600)
+        #expect((try FileManager.default.attributesOfItem(atPath: scriptSidecar.path)[.posixPermissions] as? NSNumber)?.intValue == 0o600)
+
+        try "copied marker Open Island status-line template version: 1".write(to: installed.scriptURL, atomically: true, encoding: .utf8)
+        #expect(try manager.status().managementOutcome == .ambiguousUnmanaged)
+        #expect(throws: ManagedHookFileSystemError.self) { try manager.uninstall() }
+        #expect(try String(contentsOf: installed.scriptURL, encoding: .utf8) == "copied marker Open Island status-line template version: 1")
+    }
+
+    @Test
+    func claudeStatusLineStatusLeavesRecoveryJournalUntouched() throws {
+        let rootURL = FileManager.default.temporaryDirectory.appendingPathComponent("open-island-claude-journal-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: rootURL) }
+        let manager = ClaudeStatusLineInstallationManager(
+            claudeDirectory: rootURL.appendingPathComponent(".claude", isDirectory: true),
+            scriptDirectoryURL: rootURL.appendingPathComponent(".open-island", isDirectory: true).appendingPathComponent("bin", isDirectory: true),
+            templateResources: try makeVerifiedClaudeStatusLineTemplateResources(at: rootURL)
+        )
+        let installed = try manager.install()
+        let journal = ManagedHookFileSystem.journalURL(for: installed.settingsURL)
+        let settingsBefore = try Data(contentsOf: installed.settingsURL)
+        try "unresolved".write(to: journal, atomically: true, encoding: .utf8)
+
+        #expect(try manager.status().managementOutcome == .unresolvedRecovery)
+        #expect(throws: ManagedHookFileSystemError.self) { try manager.install() }
+        #expect(try Data(contentsOf: installed.settingsURL) == settingsBefore)
+        #expect(FileManager.default.fileExists(atPath: journal.path))
+    }
+
+    @Test
+    func claudeStatusLineInstallationManagerLeavesLegacyMarkerLookalikeUntouched() throws {
         let rootURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("open-island-claude-repair-\(UUID().uuidString)", isDirectory: true)
         let claudeDirectory = rootURL.appendingPathComponent(".claude", isDirectory: true)
@@ -190,7 +240,8 @@ struct ClaudeUsageTests {
         let manager = ClaudeStatusLineInstallationManager(
             claudeDirectory: claudeDirectory,
             scriptDirectoryURL: scriptDirectory,
-            legacyScriptDirectoryURL: legacyScriptDirectory
+            legacyScriptDirectoryURL: legacyScriptDirectory,
+            templateResources: try makeVerifiedClaudeStatusLineTemplateResources(at: rootURL)
         )
         let settingsURL = claudeDirectory.appendingPathComponent("settings.json")
         let legacyScriptURL = legacyScriptDirectory.appendingPathComponent(ClaudeStatusLineInstallationManager.legacyManagedScriptName)
@@ -212,21 +263,19 @@ struct ClaudeUsageTests {
         try settingsData.write(to: settingsURL, options: .atomic)
 
         let brokenStatus = try manager.status()
-        #expect(brokenStatus.managedStatusLineConfigured)
+        #expect(!brokenStatus.managedStatusLineConfigured)
         #expect(!brokenStatus.managedStatusLineInstalled)
-        #expect(brokenStatus.managedStatusLineNeedsRepair)
-        #expect(!brokenStatus.hasConflictingStatusLine)
+        #expect(!brokenStatus.managedStatusLineNeedsRepair)
+        #expect(brokenStatus.managementOutcome == .ambiguousUnmanaged)
 
-        let repairedStatus = try manager.install()
-        #expect(repairedStatus.managedStatusLineConfigured)
-        #expect(repairedStatus.managedStatusLineInstalled)
-        #expect(!repairedStatus.managedStatusLineNeedsRepair)
-        #expect(repairedStatus.statusLineCommand == repairedStatus.scriptURL.path)
-        #expect(FileManager.default.fileExists(atPath: repairedStatus.scriptURL.path))
+        let before = try Data(contentsOf: settingsURL)
+        #expect(throws: ManagedHookFileSystemError.self) { try manager.install() }
+        #expect(try Data(contentsOf: settingsURL) == before)
+        #expect(!FileManager.default.fileExists(atPath: scriptDirectory.appendingPathComponent(ClaudeStatusLineInstallationManager.managedScriptName).path))
     }
 
     @Test
-    func claudeStatusLineInstallationManagerUninstallsBrokenManagedConfiguration() throws {
+    func claudeStatusLineInstallationManagerLeavesBrokenManagedLookingConfigurationUntouched() throws {
         let rootURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("open-island-claude-uninstall-broken-\(UUID().uuidString)", isDirectory: true)
         let claudeDirectory = rootURL.appendingPathComponent(".claude", isDirectory: true)
@@ -239,7 +288,8 @@ struct ClaudeUsageTests {
         let manager = ClaudeStatusLineInstallationManager(
             claudeDirectory: claudeDirectory,
             scriptDirectoryURL: scriptDirectory,
-            legacyScriptDirectoryURL: legacyScriptDirectory
+            legacyScriptDirectoryURL: legacyScriptDirectory,
+            templateResources: try makeVerifiedClaudeStatusLineTemplateResources(at: rootURL)
         )
         let settingsURL = claudeDirectory.appendingPathComponent("settings.json")
         let legacyScriptURL = legacyScriptDirectory.appendingPathComponent(ClaudeStatusLineInstallationManager.legacyManagedScriptName)
@@ -260,11 +310,9 @@ struct ClaudeUsageTests {
         )
         try settingsData.write(to: settingsURL, options: .atomic)
 
-        let uninstalledStatus = try manager.uninstall()
-        #expect(!uninstalledStatus.managedStatusLineConfigured)
-        #expect(!uninstalledStatus.managedStatusLineInstalled)
-        #expect(!uninstalledStatus.managedStatusLineNeedsRepair)
-        #expect(!uninstalledStatus.hasStatusLine)
+        let before = try Data(contentsOf: settingsURL)
+        #expect(throws: ManagedHookFileSystemError.self) { try manager.uninstall() }
+        #expect(try Data(contentsOf: settingsURL) == before)
     }
 
     @Test
@@ -277,7 +325,8 @@ struct ClaudeUsageTests {
             .appendingPathComponent("bin", isDirectory: true)
         let manager = ClaudeStatusLineInstallationManager(
             claudeDirectory: claudeDirectory,
-            scriptDirectoryURL: scriptDirectory
+            scriptDirectoryURL: scriptDirectory,
+            templateResources: try makeVerifiedClaudeStatusLineTemplateResources(at: rootURL)
         )
         let settingsURL = claudeDirectory.appendingPathComponent("settings.json")
 
@@ -325,7 +374,8 @@ struct ClaudeUsageTests {
             .appendingPathComponent("bin", isDirectory: true)
         let manager = ClaudeStatusLineInstallationManager(
             claudeDirectory: claudeDirectory,
-            scriptDirectoryURL: scriptDirectory
+            scriptDirectoryURL: scriptDirectory,
+            templateResources: try makeVerifiedClaudeStatusLineTemplateResources(at: rootURL)
         )
         let settingsURL = claudeDirectory.appendingPathComponent("settings.json")
 
@@ -396,7 +446,8 @@ struct ClaudeUsageTests {
             .appendingPathComponent("bin", isDirectory: true)
         let manager = ClaudeStatusLineInstallationManager(
             claudeDirectory: claudeDirectory,
-            scriptDirectoryURL: scriptDirectory
+            scriptDirectoryURL: scriptDirectory,
+            templateResources: try makeVerifiedClaudeStatusLineTemplateResources(at: rootURL)
         )
         let settingsURL = claudeDirectory.appendingPathComponent("settings.json")
 

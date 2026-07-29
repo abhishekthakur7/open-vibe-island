@@ -158,6 +158,12 @@ final class AppModel {
     var codexHookStatusTitle: String { hooks.codexHookStatusTitle }
     var codexHookStatusSummary: String { hooks.codexHookStatusSummary }
 
+    /// Family-aware, machine-readable hook status for Settings and any future
+    /// UI surface. It is a projection of the coordinator's read-only status.
+    func hookManagementStatus(for family: HookIntegrationFamily) -> HookManagementStatus? {
+        hooks.managementStatus(for: family)
+    }
+
     /// Mirrors `AgentIntentStore.firstLaunchCompleted`. Onboarding sets this
     /// to true after the user completes (or explicitly skips) the flow;
     /// legacy migration also flips it for users upgrading with existing
@@ -236,6 +242,12 @@ final class AppModel {
     func uninstallKimiHooks() { hooks.uninstallKimiHooks() }
     func installClaudeUsageBridge() { hooks.installClaudeUsageBridge() }
     func uninstallClaudeUsageBridge() { hooks.uninstallClaudeUsageBridge() }
+    func prepareHookInstall(_ request: HookConsentRequest) -> HookConsentPreview? { hooks.prepareInstallConsent(request) }
+    func confirmHookInstall(_ request: HookConsentRequest, preview: HookConsentPreview) { hooks.confirmInstallConsent(request, preview: preview) }
+    func prepareHookUninstall(_ request: HookConsentRequest) -> HookConsentPreview? { hooks.prepareUninstallConsent(request) }
+    func confirmHookUninstall(_ request: HookConsentRequest, preview: HookConsentPreview) { hooks.confirmUninstallConsent(request, preview: preview) }
+    func prepareResetIntegrations() -> HookAggregateConsentPreview { hooks.prepareResetIntegrationsConsent() }
+    func confirmResetIntegrations(_ preview: HookAggregateConsentPreview) { hooks.confirmResetIntegrationsConsent(preview) }
     func updateClaudeConfigDirectory(to newDirectory: URL?) { hooks.updateClaudeConfigDirectory(to: newDirectory) }
     func runHealthChecks() { hooks.runHealthChecks() }
     func repairHooks() {
@@ -1989,7 +2001,8 @@ final class AppModel {
         hooks.hooksBinaryURL = payload.hooksBinaryURL
         hooks.updateHooksBinaryIfNeeded()
 
-        // Auto-install missing hooks and usage bridge, then run health checks.
+        // Startup is read-only. Settings presents a fresh, verified preview
+        // for every install or repair action.
         if payload.hooksBinaryURL != nil {
             Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -2004,25 +2017,7 @@ final class AppModel {
                 // install decision.
                 self.hooks.migrateIntentStoreIfNeeded()
 
-                // Install only hooks the user has not explicitly opted out of.
-                // `shouldAutoInstall` skips `.uninstalled` agents and agents
-                // whose hooks are already present — it is the single checkpoint
-                // that fixes #324.
-                if self.hooks.shouldAutoInstall(.claudeCode) { self.installClaudeHooks() }
-                if self.hooks.shouldAutoInstall(.codex) { self.installCodexHooks() }
-                if self.hooks.shouldAutoInstall(.qoder) { self.installQoderHooks() }
-                if self.hooks.shouldAutoInstall(.qwenCode) { self.installQwenCodeHooks() }
-                if self.hooks.shouldAutoInstall(.factory) { self.installFactoryHooks() }
-                if self.hooks.shouldAutoInstall(.codebuddy) { self.installCodebuddyHooks() }
-                if self.hooks.shouldAutoInstall(.openCode) { self.installOpenCodePlugin() }
-                if self.hooks.shouldAutoInstall(.cursor) { self.installCursorHooks() }
-                if self.hooks.shouldAutoInstall(.gemini) { self.installGeminiHooks() }
-                if self.hooks.shouldAutoInstall(.kimi) { self.installKimiHooks() }
-                if self.hooks.shouldAutoInstall(.claudeUsageBridge) { self.installClaudeUsageBridge() }
-
-                // Run health checks after install to detect stale paths, conflicts, etc.
-                try? await Task.sleep(for: .milliseconds(500))
-                await self.hooks.repairHooksIfNeeded()
+                self.hooks.runHealthChecks()
             }
         }
 

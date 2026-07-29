@@ -224,17 +224,12 @@ struct ClaudeHooksTests {
             claudeDirectory: claudeDirectory,
             managedHooksBinaryURL: managedHooksBinaryURL
         )
-        let hooksBinaryURL = rootURL
-            .appendingPathComponent("build", isDirectory: true)
-            .appendingPathComponent("VibeIslandHooks")
 
         defer {
             try? FileManager.default.removeItem(at: rootURL)
         }
 
-        try FileManager.default.createDirectory(at: hooksBinaryURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try Data("claude-hook".utf8).write(to: hooksBinaryURL)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: hooksBinaryURL.path)
+        let hooksBinaryURL = try makeVerifiedHooksApp(at: rootURL, contents: "claude-hook")
 
         let installed = try manager.install(hooksBinaryURL: hooksBinaryURL)
         #expect(installed.managedHooksPresent)
@@ -268,11 +263,8 @@ struct ClaudeHooksTests {
         defer { try? FileManager.default.removeItem(at: rootURL) }
         let claudeDirectory = rootURL.appendingPathComponent(".claude", isDirectory: true)
         let managedHooksBinaryURL = rootURL.appendingPathComponent("managed/OpenIslandHooks")
-        let hooksBinaryURL = rootURL.appendingPathComponent("build/OpenIslandHooks")
+        let hooksBinaryURL = try makeVerifiedHooksApp(at: rootURL, contents: "hook")
         try FileManager.default.createDirectory(at: claudeDirectory, withIntermediateDirectories: true)
-        try FileManager.default.createDirectory(at: hooksBinaryURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try Data("hook".utf8).write(to: hooksBinaryURL)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: hooksBinaryURL.path)
         let settingsURL = claudeDirectory.appendingPathComponent("settings.json")
         try Data("{}".utf8).write(to: settingsURL)
         let manager = ClaudeHookInstallationManager(

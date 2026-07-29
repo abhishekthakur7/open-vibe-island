@@ -24,6 +24,16 @@ public struct GeminiHookFileMutation: Equatable, Sendable {
     }
 }
 
+/// Classification of Gemini's canonical five event groups. A command-shaped
+/// group is only collision evidence: the installation manager additionally
+/// requires an exact manifest, sidecars, backup identity, and helper artifact
+/// before it will regard a settings file as ours.
+public enum GeminiManagedSettingsState: Equatable, Sendable {
+    case none
+    case exact(entryDigest: String)
+    case managedLooking
+}
+
 public enum GeminiHookInstallerError: Error, LocalizedError {
     case invalidSettingsJSON
 
@@ -111,10 +121,29 @@ public enum GeminiHookInstaller {
         )
     }
 
+    /// Returns exact only for the complete canonical settings document emitted
+    /// by `installSettingsJSON`. Partial, duplicate, stale-path and altered
+    /// groups are deliberately collisions rather than repair candidates.
+    public static func managedSettingsState(
+        existingData: Data?,
+        hookCommand: String
+    ) throws -> GeminiManagedSettingsState {
+        guard let existingData else { return .none }
+        let root = try loadRootObject(from: existingData)
+        let canonical = try installSettingsJSON(existingData: existingData, hookCommand: hookCommand).contents
+        if canonical == existingData {
+            return .exact(entryDigest: ManagedHookFileSystem.digest(of: existingData))
+        }
+        let hooks = root["hooks"] as? [String: Any] ?? [:]
+        return containsManagedLookingHook(in: hooks) ? .managedLooking : .none
+    }
+
     private static func loadRootObject(from data: Data?) throws -> [String: Any] {
         guard let data else { return [:] }
 
-        let object = try JSONSerialization.jsonObject(with: data)
+        let object: Any
+        do { object = try JSONSerialization.jsonObject(with: data) }
+        catch { throw GeminiHookInstallerError.invalidSettingsJSON }
         guard let rootObject = object as? [String: Any] else {
             throw GeminiHookInstallerError.invalidSettingsJSON
         }
@@ -151,17 +180,34 @@ public enum GeminiHookInstaller {
 
         return hooks.contains { hook in
             guard let command = hook["command"] as? String else { return false }
-            if let managedCommand, command == managedCommand {
-                return true
-            }
-            return isOpenIslandGeminiHookCommand(command)
+            return managedCommand.map { command == $0 } ?? false
         }
     }
 
-    private static func isOpenIslandGeminiHookCommand(_ command: String) -> Bool {
-        let normalized = command.lowercased()
-        return (normalized.contains("openislandhooks") || normalized.contains("vibeislandhooks"))
-            && normalized.contains("gemini")
+    /// This recognises only the quoting syntax we emit and the actual helper
+    /// filename. It deliberately does not use a marker, a substring, or a
+    /// caller-selected path as ownership evidence.
+    private static func containsManagedLookingHook(in hooksObject: [String: Any]) -> Bool {
+        hooksObject.values.contains { value in
+            guard let groups = value as? [Any] else { return false }
+            return groups.contains { item in
+                guard let group = item as? [String: Any],
+                      let hooks = group["hooks"] as? [Any] else { return false }
+                return hooks.contains { hook in
+                    guard let hook = hook as? [String: Any],
+                          let command = hook["command"] as? String else { return false }
+                    return canonicalManagedCommand(command)
+                }
+            }
+        }
+    }
+
+    private static func canonicalManagedCommand(_ command: String) -> Bool {
+        let suffix = "' --source gemini"
+        guard command.hasPrefix("'"), command.hasSuffix(suffix) else { return false }
+        let path = String(command.dropFirst().dropLast(suffix.count))
+        guard !path.contains("'\\\\''") else { return false }
+        return URL(fileURLWithPath: path).lastPathComponent == ManagedHooksBinary.binaryName
     }
 
     private static func shellQuote(_ string: String) -> String {

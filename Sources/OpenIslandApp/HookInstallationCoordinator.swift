@@ -2,6 +2,12 @@ import Foundation
 import Observation
 import OpenIslandCore
 
+enum HookConsentRequest: String, Sendable {
+    case claude, codex, openCode, qoder, qwenCode, factory, codebuddy, cursor, gemini, kimi, claudeUsage
+}
+
+private enum HookConsentOperation { case install, uninstall }
+
 @MainActor
 @Observable
 final class HookInstallationCoordinator {
@@ -37,6 +43,15 @@ final class HookInstallationCoordinator {
     var isGeminiHookSetupBusy = false
     var isKimiHookSetupBusy = false
     var isClaudeUsageSetupBusy = false
+
+    @ObservationIgnored
+    private let consentGate = HookConsentGate()
+
+    @ObservationIgnored
+    private var confirmedRequests: [HookConsentRequest: (preview: HookConsentPreview, token: HookConsentGate.Token, operation: HookConsentOperation)] = [:]
+
+    @ObservationIgnored
+    private var confirmedReset: (preview: HookAggregateConsentPreview, token: HookConsentGate.Token)?
 
     @ObservationIgnored
     var onStatusMessage: ((String) -> Void)?
@@ -149,6 +164,34 @@ final class HookInstallationCoordinator {
         claudeStatusLineStatus?.managedStatusLineInstalled == true
     }
 
+    /// The sole family-aware presentation boundary for Settings and AppModel.
+    /// Status inspection has already occurred before this is called; this
+    /// accessor never repairs, prunes, creates, or updates anything.
+    func managementStatus(for family: HookIntegrationFamily) -> HookManagementStatus? {
+        let outcome: HookManagementOutcome? = switch family {
+        case .claude: claudeHookStatus?.managementOutcome
+        case .qoder: qoderHookStatus?.managementOutcome
+        case .qwenCode: qwenCodeHookStatus?.managementOutcome
+        case .factoryDroid: factoryHookStatus?.managementOutcome
+        case .codebuddy: codebuddyHookStatus?.managementOutcome
+        case .codexCLI: codexHookStatus?.managementOutcome
+        case .cursor: cursorHookStatus?.managementOutcome
+        case .gemini: geminiHookStatus?.managementOutcome
+        case .kimi: kimiHookStatus?.managementOutcome
+        case .openCodeConfig, .openCodePlugin: openCodePluginStatus?.managementOutcome
+        case .claudeStatusLine: claudeStatusLineStatus?.managementOutcome
+        case .sharedHelper: hooksBinaryURL.map { ManagedHooksBinary.managementOutcome(at: $0) }
+        }
+        return outcome?.status(for: family)
+    }
+
+    private func remediation(for outcome: HookManagementOutcome, family: HookIntegrationFamily) -> String? {
+        switch outcome {
+        case .success, .noChange, .exactManaged, .unowned: nil
+        default: outcome.status(for: family).remediation
+        }
+    }
+
     var claudeHookStatusTitle: String {
         if claudeHooksInstalled {
             return "Claude hooks installed"
@@ -174,8 +217,10 @@ final class HookInstallationCoordinator {
         }
 
         if hooksBinaryURL == nil {
-            return "Build OpenIslandHooks before installing."
+            return "Refresh Open Island Dev with zsh scripts/launch-dev-app.sh before installing."
         }
+
+        if let remediation = remediation(for: status.managementOutcome, family: .claude) { return remediation }
 
         if status.hasClaudeIslandHooks {
             return "claude-island hooks detected · managed hooks absent"
@@ -208,6 +253,8 @@ final class HookInstallationCoordinator {
         guard let status = claudeStatusLineStatus else {
             return "Reading \(ClaudeConfigDirectory.resolved().appendingPathComponent("settings.json").path)."
         }
+
+        if let remediation = remediation(for: status.managementOutcome, family: .claudeStatusLine) { return remediation }
 
         if status.managedStatusLineInstalled {
             if let summary = claudeUsageSummaryText {
@@ -298,6 +345,8 @@ final class HookInstallationCoordinator {
             return "managed plugin present in \(status.pluginsDirectory.path)"
         }
 
+        if let remediation = remediation(for: status.managementOutcome, family: .openCodePlugin) { return remediation }
+
         if status.pluginFilePresent && !status.pluginRegistered {
             return "plugin file present but not registered in config.json"
         }
@@ -318,16 +367,18 @@ final class HookInstallationCoordinator {
     }
 
     var cursorHookStatusSummary: String {
-        guard cursorHookStatus != nil else {
+        guard let status = cursorHookStatus else {
             return "Reading ~/.cursor/hooks.json."
         }
+
+        if let remediation = remediation(for: status.managementOutcome, family: .cursor) { return remediation }
 
         if cursorHooksInstalled {
             return "managed hooks present"
         }
 
         if hooksBinaryURL == nil {
-            return "Build OpenIslandHooks before installing."
+            return "Refresh Open Island Dev with zsh scripts/launch-dev-app.sh before installing."
         }
 
         return "no managed Cursor hooks"
@@ -335,6 +386,9 @@ final class HookInstallationCoordinator {
 
     var geminiHookStatusTitle: String {
         guard let status = geminiHookStatus else { return "Gemini hooks loading" }
+        if status.managementOutcome != .exactManaged, status.managementOutcome != .unowned {
+            return "Gemini hooks need attention"
+        }
         return status.managedHooksPresent ? "Gemini hooks installed" : "Gemini hooks not installed"
     }
 
@@ -343,8 +397,10 @@ final class HookInstallationCoordinator {
             return "Reading ~/.gemini/settings.json."
         }
 
+        if let remediation = remediation(for: status.managementOutcome, family: .gemini) { return remediation }
+
         if hooksBinaryURL == nil {
-            return "Build OpenIslandHooks before installing."
+            return "Refresh Open Island Dev with zsh scripts/launch-dev-app.sh before installing."
         }
 
         return status.managedHooksPresent ? "managed hooks present" : "no managed Gemini hooks"
@@ -363,16 +419,18 @@ final class HookInstallationCoordinator {
     }
 
     var kimiHookStatusSummary: String {
-        guard kimiHookStatus != nil else {
+        guard let status = kimiHookStatus else {
             return "Reading ~/.kimi/config.toml."
         }
+
+        if let remediation = remediation(for: status.managementOutcome, family: .kimi) { return remediation }
 
         if kimiHooksInstalled {
             return "managed hooks present"
         }
 
         if hooksBinaryURL == nil {
-            return "Build OpenIslandHooks before installing."
+            return "Refresh Open Island Dev with zsh scripts/launch-dev-app.sh before installing."
         }
 
         return "no managed Kimi hooks"
@@ -395,13 +453,15 @@ final class HookInstallationCoordinator {
             return "Reading ~/.codex state."
         }
 
+        if let remediation = remediation(for: status.managementOutcome, family: .codexCLI) { return remediation }
+
         if codexHooksInstalled {
             let featureText = status.featureFlagEnabled ? "feature on" : "feature off"
             return "\(featureText) · managed hooks present"
         }
 
         if hooksBinaryURL == nil {
-            return "Build OpenIslandHooks before installing."
+            return "Refresh Open Island Dev with zsh scripts/launch-dev-app.sh before installing."
         }
 
         return status.featureFlagEnabled ? "feature on · no managed hooks" : "feature off · no managed hooks"
@@ -433,28 +493,11 @@ final class HookInstallationCoordinator {
 
     // MARK: - Auto-update hooks binary
 
-    /// Overwrites the installed hooks binary if the app bundle ships a newer version.
-    /// Call once at startup after hooksBinaryURL is set.
+    /// Hook helper updates are performed only as part of the user-confirmed
+    /// installer.  Startup must never mutate an agent configuration or helper.
     func updateHooksBinaryIfNeeded() {
-        guard let sourceURL = hooksBinaryURL else { return }
-
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            do {
-                let source = sourceURL
-                let updated = try await Task.detached(priority: .utility) {
-                    try ManagedHooksBinary.updateIfNeeded(from: source)
-                }.value
-                if updated {
-                    self.onStatusMessage?("Hooks binary updated to match the current app version.")
-                    self.refreshCodexHookStatus()
-                    self.refreshClaudeHookStatus()
-                    self.refreshCursorHookStatus()
-                }
-            } catch {
-                self.onStatusMessage?("Failed to update hooks binary: \(error.localizedDescription)")
-            }
-        }
+        guard hooksBinaryURL != nil else { return }
+        onStatusMessage?("Hook helper updates require an explicit install confirmation in Setup.")
     }
 
     // MARK: - Health check & auto-repair
@@ -466,94 +509,58 @@ final class HookInstallationCoordinator {
     var geminiHealthReport: HookHealthReport?
 
 
-    /// Runs health checks for Claude, Codex and OpenCode hooks.
+    /// Runs read-only health checks for Claude, Codex, Gemini and OpenCode hooks.
     func runHealthChecks() {
         Task { @MainActor [weak self] in
             guard let self else { return }
 
             let binaryURL = self.hooksBinaryURL
-            let (claudeReport, codexReport, openCodeReport) = await Task.detached(priority: .utility) {
+            let (claudeReport, codexReport, geminiReport, openCodeReport) = await Task.detached(priority: .utility) {
                 let claude = HookHealthCheck.checkClaude(hooksBinaryURL: binaryURL)
                 let codex = HookHealthCheck.checkCodex(hooksBinaryURL: binaryURL)
+                let gemini = HookHealthCheck.checkGemini(hooksBinaryURL: binaryURL)
                 let openCode = HookHealthCheck.checkOpenCode()
-                return (claude, codex, openCode)
+                return (claude, codex, gemini, openCode)
             }.value
 
             self.claudeHealthReport = claudeReport
             self.codexHealthReport = codexReport
+            self.geminiHealthReport = geminiReport
             self.openCodeHealthReport = openCodeReport
 
-            if !claudeReport.isHealthy || !codexReport.isHealthy || !openCodeReport.isHealthy {
+            if !claudeReport.isHealthy || !codexReport.isHealthy || !geminiReport.isHealthy || !openCodeReport.isHealthy {
                 let claudeIssueCount = claudeReport.errors.count
                 let codexIssueCount = codexReport.errors.count
+                let geminiIssueCount = geminiReport.errors.count
                 let openCodeIssueCount = openCodeReport.errors.count
-                self.onStatusMessage?("Hook health check: \(claudeIssueCount) Claude, \(codexIssueCount) Codex, \(openCodeIssueCount) OpenCode issue(s).")
+                self.onStatusMessage?("Hook health check: \(claudeIssueCount) Claude, \(codexIssueCount) Codex, \(geminiIssueCount) Gemini, \(openCodeIssueCount) OpenCode issue(s).")
             }
         }
     }
 
-    /// Attempts to auto-repair repairable issues by re-installing hooks.
-    /// Returns true if any repairs were attempted.
+    /// Repair is observational until the user reviews a fresh preview in
+    /// Settings.  Startup and diagnostics must never mutate agent files.
     @discardableResult
     func repairHooksIfNeeded() async -> Bool {
-        var repaired = false
-
         // Re-run health checks first
         let binaryURL = hooksBinaryURL
-        let (claudeReport, codexReport, openCodeReport) = await Task.detached(priority: .utility) {
+        let (claudeReport, codexReport, geminiReport, openCodeReport) = await Task.detached(priority: .utility) {
             let claude = HookHealthCheck.checkClaude(hooksBinaryURL: binaryURL)
             let codex = HookHealthCheck.checkCodex(hooksBinaryURL: binaryURL)
+            let gemini = HookHealthCheck.checkGemini(hooksBinaryURL: binaryURL)
             let openCode = HookHealthCheck.checkOpenCode()
-            return (claude, codex, openCode)
+            return (claude, codex, gemini, openCode)
         }.value
 
         claudeHealthReport = claudeReport
         codexHealthReport = codexReport
+        geminiHealthReport = geminiReport
         openCodeHealthReport = openCodeReport
 
-        // Repair Claude hooks if there are repairable issues
-        if !claudeReport.repairableIssues.isEmpty, hooksBinaryURL != nil {
-            onStatusMessage?("Repairing Claude hooks: \(claudeReport.repairableIssues.map(\.description).joined(separator: "; "))")
-            installClaudeHooks()
-            repaired = true
+        if !claudeReport.repairableIssues.isEmpty || !codexReport.repairableIssues.isEmpty || !geminiReport.repairableIssues.isEmpty || !openCodeReport.repairableIssues.isEmpty {
+            onStatusMessage?("Repair requires a new source and target preview plus explicit confirmation in Setup.")
         }
-
-        // Repair Codex hooks if there are repairable issues
-        if !codexReport.repairableIssues.isEmpty, hooksBinaryURL != nil {
-            onStatusMessage?("Repairing Codex hooks: \(codexReport.repairableIssues.map(\.description).joined(separator: "; "))")
-            installCodexHooks()
-            repaired = true
-        }
-
-        // Repair OpenCode plugin if there are repairable issues
-        if !openCodeReport.repairableIssues.isEmpty {
-            onStatusMessage?("Repairing OpenCode plugin: \(openCodeReport.repairableIssues.map(\.description).joined(separator: "; "))")
-            installOpenCodePlugin()
-            repaired = true
-        }
-
-        // Refresh health reports after repair
-        if repaired {
-            try? await Task.sleep(for: .milliseconds(500))
-            let (updatedClaude, updatedCodex, updatedOpenCode) = await Task.detached(priority: .utility) {
-                let claude = HookHealthCheck.checkClaude(hooksBinaryURL: binaryURL)
-                let codex = HookHealthCheck.checkCodex(hooksBinaryURL: binaryURL)
-                let openCode = HookHealthCheck.checkOpenCode()
-                return (claude, codex, openCode)
-            }.value
-            claudeHealthReport = updatedClaude
-            codexHealthReport = updatedCodex
-            openCodeHealthReport = updatedOpenCode
-
-            if updatedClaude.isHealthy && updatedCodex.isHealthy && updatedOpenCode.isHealthy {
-                onStatusMessage?("Hook repair completed successfully.")
-            } else {
-                let remaining = updatedClaude.errors.count + updatedCodex.errors.count + updatedOpenCode.errors.count
-                onStatusMessage?("Hook repair finished with \(remaining) remaining issue(s).")
-            }
-        }
-
-        return repaired
+        return false
     }
 
     // MARK: - Refresh
@@ -751,12 +758,11 @@ final class HookInstallationCoordinator {
 
             do {
                 let usageState = try await Task.detached(priority: .utility) {
-                    var status = try manager.status()
-                    var repairedManagedBridge = false
-                    if status.managedStatusLineNeedsRepair {
-                        status = try manager.install()
-                        repairedManagedBridge = true
-                    }
+                    // Status refresh is intentionally observational. A missing
+                    // script or copied marker is ambiguous until the user
+                    // explicitly chooses an install/repair action in Settings.
+                    let status = try manager.status()
+                    let repairedManagedBridge = false
                     let snapshot = try ClaudeUsageLoader.load()
                     return (status: status, snapshot: snapshot, repairedManagedBridge: repairedManagedBridge)
                 }.value
@@ -799,23 +805,8 @@ final class HookInstallationCoordinator {
     /// untouched agents are surfaced to the user via the first-run
     /// onboarding window and the empty-state banner instead.
     func shouldAutoInstall(_ agent: AgentIdentifier) -> Bool {
-        guard intentStore.intent(for: agent) == .installed else {
-            return false
-        }
-
-        switch agent {
-        case .claudeCode: return !claudeHooksInstalled
-        case .codex: return !codexHooksInstalled
-        case .cursor: return !cursorHooksInstalled
-        case .qoder: return !qoderHooksInstalled
-        case .qwenCode: return !qwenCodeHooksInstalled
-        case .factory: return !factoryHooksInstalled
-        case .codebuddy: return !codebuddyHooksInstalled
-        case .openCode: return !openCodePluginInstalled
-        case .gemini: return !geminiHooksInstalled
-        case .kimi: return !kimiHooksInstalled
-        case .claudeUsageBridge: return !claudeUsageInstalled
-        }
+        _ = agent
+        return false
     }
 
     // MARK: - Intent store migration
@@ -845,9 +836,162 @@ final class HookInstallationCoordinator {
 
     // MARK: - Install / uninstall
 
+    /// Builds a concrete consent record without touching any user target. A
+    /// bad helper/resource is reported before a preview can be shown.
+    func prepareInstallConsent(_ request: HookConsentRequest) -> HookConsentPreview? {
+        do {
+            let preview: HookConsentPreview
+            switch request {
+            case .openCode:
+                guard let url = bundledOpenCodePluginURL() else { throw BundledHookArtifactError.untrustedLocation("bundled OpenCode plugin") }
+                let resource = try VerifiedBundledHookArtifact.verifiedResource(at: url)
+                let status = try openCodePluginInstallationManager.status()
+                preview = HookConsentPreview(resource: resource, target: consentTarget(
+                    integration: "opencode-plugin", targets: [status.configURL, status.pluginFileURL, status.manifestURL],
+                    modes: ["0600 config/plugin/provenance"], additions: ["plugin reference", "Open Island plugin file", "provenance records"], outcome: status.managementOutcome
+                ))
+            case .claudeUsage:
+                let manager = claudeStatusLineInstallationManager
+                let status = try manager.status()
+                let wrapping = status.hasConflictingStatusLine
+                let template = try manager.verifiedTemplateDescriptor(wrapping: wrapping)
+                let targets = wrapping ? [status.settingsURL, status.scriptURL, status.scriptDirectoryURL.appendingPathComponent(ClaudeStatusLineInstallationManager.wrappedDelegateScriptName)] : [status.settingsURL, status.scriptURL]
+                preview = HookConsentPreview(template: template, target: consentTarget(
+                    integration: "claude-status-line", targets: targets, modes: ["0755 scripts", "0600 settings/provenance"],
+                    additions: ["managed Claude statusLine", "local rate-limit bridge"], wrapping: wrapping, restoration: wrapping, outcome: status.managementOutcome
+                ))
+            default:
+                guard let hooksBinaryURL else { throw BundledHookArtifactError.untrustedLocation("missing bundled OpenIslandHooks") }
+                let artifact = try VerifiedBundledHookArtifact.verify(helperURL: hooksBinaryURL)
+                let target = try helperConsentTarget(for: request)
+                preview = HookConsentPreview(artifact: artifact, target: target)
+            }
+            return preview
+        } catch {
+            let outcome = HookManagementOutcome.from(error: error)
+            onStatusMessage?("[\(outcome.rawValue)] \(outcome.remediation)")
+            return nil
+        }
+    }
+
+    func confirmInstallConsent(_ request: HookConsentRequest, preview: HookConsentPreview) {
+        let token = consentGate.confirm(preview)
+        confirmedRequests[request] = (preview, token, .install)
+        switch request {
+        case .claude: installClaudeHooks()
+        case .codex: installCodexHooks()
+        case .openCode: installOpenCodePlugin()
+        case .qoder: installQoderHooks()
+        case .qwenCode: installQwenCodeHooks()
+        case .factory: installFactoryHooks()
+        case .codebuddy: installCodebuddyHooks()
+        case .cursor: installCursorHooks()
+        case .gemini: installGeminiHooks()
+        case .kimi: installKimiHooks()
+        case .claudeUsage: installClaudeUsageBridge()
+        }
+    }
+
+    /// Uninstall is destructive too: it can restore a backup, remove a
+    /// manifest/sidecar, and revoke a credential.  It receives the same
+    /// explicit snapshot review as installation.
+    func prepareUninstallConsent(_ request: HookConsentRequest) -> HookConsentPreview? {
+        guard let installPreview = prepareInstallConsent(request) else { return nil }
+        let target = HookConsentPreview.Target(
+            integrationID: installPreview.integrationID,
+            targetURLs: installPreview.targetPaths.map(URL.init(fileURLWithPath:)),
+            requestedModes: installPreview.requestedModes,
+            managedAdditions: [],
+            managedRemovals: ["remove only exact verified managed entries", "restore only matching verified backups", "remove verified provenance, journals, and credentials"],
+            backupURLs: installPreview.backupPaths.map(URL.init(fileURLWithPath:)),
+            journalURLs: installPreview.journalPaths.map(URL.init(fileURLWithPath:)),
+            provenanceURLs: installPreview.provenancePaths.map(URL.init(fileURLWithPath:)),
+            backupRetentionDays: installPreview.target.backupRetentionDays,
+            involvesWrapping: installPreview.involvesWrapping,
+            involvesRestoration: true,
+            managementOutcome: installPreview.target.managementOutcome
+        )
+        return HookConsentPreview(reusing: installPreview, target: target)
+    }
+
+    func confirmUninstallConsent(_ request: HookConsentRequest, preview: HookConsentPreview) {
+        let token = consentGate.confirm(preview)
+        confirmedRequests[request] = (preview, token, .uninstall)
+        switch request {
+        case .claude: uninstallClaudeHooks()
+        case .codex: uninstallCodexHooks()
+        case .openCode: uninstallOpenCodePlugin()
+        case .qoder: uninstallQoderHooks()
+        case .qwenCode: uninstallQwenCodeHooks()
+        case .factory: uninstallFactoryHooks()
+        case .codebuddy: uninstallCodebuddyHooks()
+        case .cursor: uninstallCursorHooks()
+        case .gemini: uninstallGeminiHooks()
+        case .kimi: uninstallKimiHooks()
+        case .claudeUsage: uninstallClaudeUsageBridge()
+        }
+    }
+
+    private func consumeConsent(for request: HookConsentRequest, operation: HookConsentOperation = .install) -> Bool {
+        guard let confirmation = confirmedRequests.removeValue(forKey: request),
+              confirmation.operation == operation,
+              let current = operation == .install ? prepareInstallConsent(request) : prepareUninstallConsent(request),
+              consentGate.consume(confirmation.token, preview: confirmation.preview, revalidatedAs: current) else {
+            onStatusMessage?("[\(HookManagementOutcome.consentRequired.rawValue)] \(HookManagementOutcome.consentRequired.remediation)")
+            return false
+        }
+        return true
+    }
+
+    private func reportManagementFailure(_ error: Error, operation: String) {
+        let outcome = HookManagementOutcome.from(error: error)
+        onStatusMessage?(outcome.displayMessage(operation: operation))
+    }
+
+    private func consentTarget(integration: String, targets: [URL], modes: [String], additions: [String], wrapping: Bool = false, restoration: Bool = false, outcome: HookManagementOutcome = .unowned) -> HookConsentPreview.Target {
+        HookConsentPreview.Target(
+            integrationID: integration, targetURLs: targets, requestedModes: modes, managedAdditions: additions,
+            backupURLs: targets.map(ManagedHookBackupLifecycle.backupURL),
+            journalURLs: targets.map(ManagedHookFileSystem.journalURL),
+            provenanceURLs: targets.map(ManagedHookProvenance.sidecarURL),
+            involvesWrapping: wrapping, involvesRestoration: restoration, managementOutcome: outcome
+        )
+    }
+
+    private func helperConsentTarget(for request: HookConsentRequest) throws -> HookConsentPreview.Target {
+        switch request {
+        case .codex:
+            let status = try codexHookInstallationManager.status(hooksBinaryURL: hooksBinaryURL)
+            return consentTarget(integration: "codex-hooks", targets: [status.configURL, status.hooksURL, status.manifestURL], modes: ["0600 config/hooks/provenance", "0755 shared helper"], additions: ["Codex hooks feature", "exact Stop/Notification hooks", "manager manifest"], outcome: status.managementOutcome)
+        case .claude, .qoder, .qwenCode, .factory, .codebuddy:
+            let manager: ClaudeHookInstallationManager = switch request {
+            case .claude: claudeHookInstallationManager
+            case .qoder: qoderHookInstallationManager
+            case .qwenCode: qwenCodeHookInstallationManager
+            case .factory: factoryHookInstallationManager
+            case .codebuddy: codebuddyHookInstallationManager
+            default: claudeHookInstallationManager
+            }
+            let status = try manager.status(hooksBinaryURL: hooksBinaryURL)
+            return consentTarget(integration: "claude-hooks:\(manager.hookSource)", targets: [status.settingsURL, status.manifestURL], modes: ["0600 settings/provenance", "0755 shared helper"], additions: ["exact managed hook entries", "manager manifest"], outcome: status.managementOutcome)
+        case .cursor:
+            let status = try cursorHookInstallationManager.status(hooksBinaryURL: hooksBinaryURL)
+            return consentTarget(integration: "cursor-hooks", targets: [status.hooksURL, status.manifestURL], modes: ["0600 hooks/provenance", "0755 shared helper"], additions: ["exact managed hook entries", "manager manifest"], outcome: status.managementOutcome)
+        case .gemini:
+            let status = try geminiHookInstallationManager.status(hooksBinaryURL: hooksBinaryURL)
+            return consentTarget(integration: "gemini-hooks", targets: [status.settingsURL, status.manifestURL], modes: ["0600 settings/provenance", "0755 shared helper"], additions: ["exact managed hook entries", "manager manifest"], outcome: status.managementOutcome)
+        case .kimi:
+            let status = try kimiHookInstallationManager.status(hooksBinaryURL: hooksBinaryURL)
+            return consentTarget(integration: "kimi-hooks", targets: [status.configURL, status.manifestURL], modes: ["0600 config/provenance", "0755 shared helper"], additions: ["exact managed hook entries", "manager manifest"], outcome: status.managementOutcome)
+        case .openCode, .claudeUsage:
+            throw ManagedHookFileSystemError.ambiguous("invalid helper consent request")
+        }
+    }
+
     func installCodexHooks() {
+        guard consumeConsent(for: .codex) else { return }
         guard let hooksBinaryURL else {
-            onStatusMessage?("Could not find a local OpenIslandHooks binary. Build the package first.")
+            onStatusMessage?("Hook installation requires a verified dev bundle. Run zsh scripts/launch-dev-app.sh, then retry.")
             return
         }
 
@@ -857,14 +1001,16 @@ final class HookInstallationCoordinator {
     }
 
     func uninstallCodexHooks() {
+        guard consumeConsent(for: .codex, operation: .uninstall) else { return }
         updateCodexHooks(userMessage: "Removing Codex hooks.", intent: .uninstalled) { manager in
             try manager.uninstall()
         }
     }
 
     func installClaudeHooks() {
+        guard consumeConsent(for: .claude) else { return }
         guard let hooksBinaryURL else {
-            onStatusMessage?("Could not find a local OpenIslandHooks binary. Build the package first.")
+            onStatusMessage?("Hook installation requires a verified dev bundle. Run zsh scripts/launch-dev-app.sh, then retry.")
             return
         }
 
@@ -874,40 +1020,49 @@ final class HookInstallationCoordinator {
     }
 
     func uninstallClaudeHooks() {
+        guard consumeConsent(for: .claude, operation: .uninstall) else { return }
         updateClaudeHooks(userMessage: "Removing Claude hooks.", intent: .uninstalled) { manager in
             try manager.uninstall()
         }
     }
 
     func installQoderHooks() {
+        guard consumeConsent(for: .qoder) else { return }
         updateCCForkHooks(manager: qoderHookInstallationManager, name: "Qoder", agent: .qoder, isBusySetter: { [weak self] in self?.isQoderHookSetupBusy = $0 }, statusSetter: { [weak self] in self?.qoderHookStatus = $0 }, install: true)
     }
 
     func uninstallQoderHooks() {
+        guard consumeConsent(for: .qoder, operation: .uninstall) else { return }
         updateCCForkHooks(manager: qoderHookInstallationManager, name: "Qoder", agent: .qoder, isBusySetter: { [weak self] in self?.isQoderHookSetupBusy = $0 }, statusSetter: { [weak self] in self?.qoderHookStatus = $0 }, install: false)
     }
 
     func installQwenCodeHooks() {
+        guard consumeConsent(for: .qwenCode) else { return }
         updateCCForkHooks(manager: qwenCodeHookInstallationManager, name: "Qwen Code", agent: .qwenCode, isBusySetter: { [weak self] in self?.isQwenCodeHookSetupBusy = $0 }, statusSetter: { [weak self] in self?.qwenCodeHookStatus = $0 }, install: true)
     }
 
     func uninstallQwenCodeHooks() {
+        guard consumeConsent(for: .qwenCode, operation: .uninstall) else { return }
         updateCCForkHooks(manager: qwenCodeHookInstallationManager, name: "Qwen Code", agent: .qwenCode, isBusySetter: { [weak self] in self?.isQwenCodeHookSetupBusy = $0 }, statusSetter: { [weak self] in self?.qwenCodeHookStatus = $0 }, install: false)
     }
 
     func installFactoryHooks() {
+        guard consumeConsent(for: .factory) else { return }
         updateCCForkHooks(manager: factoryHookInstallationManager, name: "Factory", agent: .factory, isBusySetter: { [weak self] in self?.isFactoryHookSetupBusy = $0 }, statusSetter: { [weak self] in self?.factoryHookStatus = $0 }, install: true)
     }
 
     func uninstallFactoryHooks() {
+        guard consumeConsent(for: .factory, operation: .uninstall) else { return }
         updateCCForkHooks(manager: factoryHookInstallationManager, name: "Factory", agent: .factory, isBusySetter: { [weak self] in self?.isFactoryHookSetupBusy = $0 }, statusSetter: { [weak self] in self?.factoryHookStatus = $0 }, install: false)
     }
 
     func installCodebuddyHooks() {
+        guard consumeConsent(for: .codebuddy) else { return }
         updateCCForkHooks(manager: codebuddyHookInstallationManager, name: "CodeBuddy", agent: .codebuddy, isBusySetter: { [weak self] in self?.isCodebuddyHookSetupBusy = $0 }, statusSetter: { [weak self] in self?.codebuddyHookStatus = $0 }, install: true)
     }
 
     func uninstallCodebuddyHooks() {
+        guard consumeConsent(for: .codebuddy, operation: .uninstall) else { return }
         updateCCForkHooks(manager: codebuddyHookInstallationManager, name: "CodeBuddy", agent: .codebuddy, isBusySetter: { [weak self] in self?.isCodebuddyHookSetupBusy = $0 }, statusSetter: { [weak self] in self?.codebuddyHookStatus = $0 }, install: false)
     }
 
@@ -920,7 +1075,7 @@ final class HookInstallationCoordinator {
         install: Bool
     ) {
         guard !install || hooksBinaryURL != nil else {
-            onStatusMessage?("Could not find a local OpenIslandHooks binary. Build the package first.")
+            onStatusMessage?("Hook installation requires a verified dev bundle. Run zsh scripts/launch-dev-app.sh, then retry.")
             return
         }
 
@@ -944,13 +1099,14 @@ final class HookInstallationCoordinator {
                     self.onStatusMessage?("\(name) hooks are not installed.")
                 }
             } catch {
-                self.onStatusMessage?("\(name) hook update failed: \(error.localizedDescription)")
+                self.reportManagementFailure(error, operation: "\(name) hook update")
             }
         }
     }
 
     func installOpenCodePlugin() {
-        guard let pluginData = loadBundledOpenCodePlugin() else {
+        guard consumeConsent(for: .openCode) else { return }
+        guard let pluginURL = bundledOpenCodePluginURL() else {
             onStatusMessage?("Could not find the bundled OpenCode plugin resource.")
             return
         }
@@ -964,7 +1120,7 @@ final class HookInstallationCoordinator {
             defer { self.isOpenCodeSetupBusy = false }
 
             do {
-                let status = try self.openCodePluginInstallationManager.install(pluginSourceData: pluginData)
+                let status = try self.openCodePluginInstallationManager.install(pluginSourceURL: pluginURL)
                 self.openCodePluginStatus = status
                 self.intentStore.setIntent(.installed, for: .openCode)
                 if status.isInstalled {
@@ -973,12 +1129,13 @@ final class HookInstallationCoordinator {
                     self.onStatusMessage?("OpenCode plugin installation incomplete.")
                 }
             } catch {
-                self.onStatusMessage?("OpenCode plugin install failed: \(error.localizedDescription)")
+                self.reportManagementFailure(error, operation: "OpenCode plugin install")
             }
         }
     }
 
     func uninstallOpenCodePlugin() {
+        guard consumeConsent(for: .openCode, operation: .uninstall) else { return }
         isOpenCodeSetupBusy = true
         onStatusMessage?("Removing OpenCode plugin.")
 
@@ -993,14 +1150,15 @@ final class HookInstallationCoordinator {
                 self.intentStore.setIntent(.uninstalled, for: .openCode)
                 self.onStatusMessage?("OpenCode plugin removed.")
             } catch {
-                self.onStatusMessage?("OpenCode plugin removal failed: \(error.localizedDescription)")
+                self.reportManagementFailure(error, operation: "OpenCode plugin removal")
             }
         }
     }
 
     func installCursorHooks() {
+        guard consumeConsent(for: .cursor) else { return }
         guard let hooksBinaryURL else {
-            onStatusMessage?("Could not find a local OpenIslandHooks binary. Build the package first.")
+            onStatusMessage?("Hook installation requires a verified dev bundle. Run zsh scripts/launch-dev-app.sh, then retry.")
             return
         }
 
@@ -1010,14 +1168,16 @@ final class HookInstallationCoordinator {
     }
 
     func uninstallCursorHooks() {
+        guard consumeConsent(for: .cursor, operation: .uninstall) else { return }
         updateCursorHooks(userMessage: "Removing Cursor hooks.", intent: .uninstalled) { manager in
             try manager.uninstall()
         }
     }
 
     func installGeminiHooks() {
+        guard consumeConsent(for: .gemini) else { return }
         guard let hooksBinaryURL else {
-            onStatusMessage?("Could not find a local OpenIslandHooks binary. Build the package first.")
+            onStatusMessage?("Hook installation requires a verified dev bundle. Run zsh scripts/launch-dev-app.sh, then retry.")
             return
         }
 
@@ -1027,14 +1187,16 @@ final class HookInstallationCoordinator {
     }
 
     func uninstallGeminiHooks() {
+        guard consumeConsent(for: .gemini, operation: .uninstall) else { return }
         updateGeminiHooks(userMessage: "Removing Gemini hooks.", intent: .uninstalled) { manager in
             try manager.uninstall()
         }
     }
 
     func installKimiHooks() {
+        guard consumeConsent(for: .kimi) else { return }
         guard let hooksBinaryURL else {
-            onStatusMessage?("Could not find a local OpenIslandHooks binary. Build the package first.")
+            onStatusMessage?("Hook installation requires a verified dev bundle. Run zsh scripts/launch-dev-app.sh, then retry.")
             return
         }
 
@@ -1044,12 +1206,14 @@ final class HookInstallationCoordinator {
     }
 
     func uninstallKimiHooks() {
+        guard consumeConsent(for: .kimi, operation: .uninstall) else { return }
         updateKimiHooks(userMessage: "Removing Kimi hooks.", intent: .uninstalled) { manager in
             try manager.uninstall()
         }
     }
 
     func installClaudeUsageBridge() {
+        guard consumeConsent(for: .claudeUsage) else { return }
         updateClaudeUsageBridge(userMessage: "Installing Claude usage bridge.", intent: .installed) { manager in
             do {
                 return try manager.install()
@@ -1062,32 +1226,149 @@ final class HookInstallationCoordinator {
     }
 
     func uninstallClaudeUsageBridge() {
+        guard consumeConsent(for: .claudeUsage, operation: .uninstall) else { return }
         updateClaudeUsageBridge(userMessage: "Removing Claude usage bridge.", intent: .uninstalled) { manager in
             try manager.uninstall()
         }
     }
 
-    /// Explicitly removes managed integration state and its IPC credential.
-    /// This is intentionally separate from Clear History, which preserves
-    /// enabled integrations and their Keychain bootstrap material.
+    /// Builds the complete, read-only reset inventory.  We retain unowned
+    /// members in the preview so the user can see that they are skipped, and
+    /// retain unsafe members so they block the entire operation instead of
+    /// being silently skipped.
+    func prepareResetIntegrationsConsent() -> HookAggregateConsentPreview {
+        let helperURL = ManagedHooksBinary.defaultURL()
+        let members = [
+            resetMember("codex-hooks", urls: { let s = try codexHookInstallationManager.status(hooksBinaryURL: hooksBinaryURL); return [s.configURL, s.hooksURL, s.manifestURL] }, outcome: { try codexHookInstallationManager.status(hooksBinaryURL: hooksBinaryURL).managementOutcome }),
+            resetMember("claude-hooks:claude", urls: { let s = try claudeHookInstallationManager.status(hooksBinaryURL: hooksBinaryURL); return [s.settingsURL, s.manifestURL] }, outcome: { try claudeHookInstallationManager.status(hooksBinaryURL: hooksBinaryURL).managementOutcome }),
+            resetMember("claude-hooks:qoder", urls: { let s = try qoderHookInstallationManager.status(hooksBinaryURL: hooksBinaryURL); return [s.settingsURL, s.manifestURL] }, outcome: { try qoderHookInstallationManager.status(hooksBinaryURL: hooksBinaryURL).managementOutcome }),
+            resetMember("claude-hooks:qwen", urls: { let s = try qwenCodeHookInstallationManager.status(hooksBinaryURL: hooksBinaryURL); return [s.settingsURL, s.manifestURL] }, outcome: { try qwenCodeHookInstallationManager.status(hooksBinaryURL: hooksBinaryURL).managementOutcome }),
+            resetMember("claude-hooks:factory", urls: { let s = try factoryHookInstallationManager.status(hooksBinaryURL: hooksBinaryURL); return [s.settingsURL, s.manifestURL] }, outcome: { try factoryHookInstallationManager.status(hooksBinaryURL: hooksBinaryURL).managementOutcome }),
+            resetMember("claude-hooks:codebuddy", urls: { let s = try codebuddyHookInstallationManager.status(hooksBinaryURL: hooksBinaryURL); return [s.settingsURL, s.manifestURL] }, outcome: { try codebuddyHookInstallationManager.status(hooksBinaryURL: hooksBinaryURL).managementOutcome }),
+            resetMember("opencode-plugin", urls: { let s = try openCodePluginInstallationManager.status(); return [s.configURL, s.pluginFileURL, s.manifestURL] }, outcome: { try openCodePluginInstallationManager.status().managementOutcome }),
+            resetMember("cursor-hooks", urls: { let s = try cursorHookInstallationManager.status(hooksBinaryURL: hooksBinaryURL); return [s.hooksURL, s.manifestURL] }, outcome: { try cursorHookInstallationManager.status(hooksBinaryURL: hooksBinaryURL).managementOutcome }),
+            resetMember("gemini-hooks", urls: { let s = try geminiHookInstallationManager.status(hooksBinaryURL: hooksBinaryURL); return [s.settingsURL, s.manifestURL] }, outcome: { try geminiHookInstallationManager.status(hooksBinaryURL: hooksBinaryURL).managementOutcome }),
+            resetMember("kimi-hooks", urls: { let s = try kimiHookInstallationManager.status(hooksBinaryURL: hooksBinaryURL); return [s.configURL, s.manifestURL] }, outcome: { try kimiHookInstallationManager.status(hooksBinaryURL: hooksBinaryURL).managementOutcome }),
+            resetMember("claude-status-line", urls: { let s = try claudeStatusLineInstallationManager.status(); return [s.settingsURL, s.scriptURL, s.scriptDirectoryURL.appendingPathComponent(ClaudeStatusLineInstallationManager.wrappedDelegateScriptName)] }, outcome: { try claudeStatusLineInstallationManager.status().managementOutcome }),
+            HookConsentPreview(removalTarget: HookConsentPreview.Target(
+                integrationID: "shared-helper", targetURLs: [helperURL], requestedModes: ["0755 shared helper"],
+                managedAdditions: [], managedRemovals: ["remove the exact verified shared helper last"],
+                journalURLs: [ManagedHookFileSystem.journalURL(for: helperURL)],
+                provenanceURLs: [ManagedHookProvenance.sidecarURL(for: helperURL)],
+                managementOutcome: ManagedHooksBinary.managementOutcome(at: helperURL)
+            ))
+        ]
+        return HookAggregateConsentPreview(
+            members: members,
+            intentKeys: AgentIntentStore.managedIntegrationResetKeys,
+            credentialRoles: BridgeClientRole.allCases.filter { $0 != .observer }.map(\.rawValue),
+            executionOrder: members.dropLast().map(\.integrationID) + ["clear managed integration intent", "revoke all integration credentials", "shared-helper"]
+        )
+    }
+
+    func confirmResetIntegrationsConsent(_ preview: HookAggregateConsentPreview) {
+        guard preview.isSafeToExecute else {
+            onStatusMessage?("[\(HookManagementOutcome.ambiguousUnmanaged.rawValue)] Reset Integrations is blocked by: \(preview.blockingMembers.map(\.integrationID).joined(separator: ", ")). \(HookManagementOutcome.ambiguousUnmanaged.remediation)")
+            return
+        }
+        confirmedReset = (preview, consentGate.confirm(preview))
+        executeConfirmedResetIntegrations()
+    }
+
+    /// Explicitly removes managed integration state and every bridge
+    /// credential. It is intentionally separate from Clear History.
     func resetManagedIntegrations() {
-        uninstallCodexHooks()
-        uninstallClaudeHooks()
-        uninstallQoderHooks()
-        uninstallQwenCodeHooks()
-        uninstallFactoryHooks()
-        uninstallCodebuddyHooks()
-        uninstallOpenCodePlugin()
-        uninstallCursorHooks()
-        uninstallGeminiHooks()
-        uninstallKimiHooks()
-        uninstallClaudeUsageBridge()
-        intentStore.resetManagedIntegrationState()
+        onStatusMessage?("[\(HookManagementOutcome.consentRequired.rawValue)] Reset Integrations requires a reviewed aggregate removal preview and explicit confirmation.")
+    }
+
+    private func resetMember(
+        _ integrationID: String,
+        urls: () throws -> [URL],
+        outcome: () throws -> HookManagementOutcome
+    ) -> HookConsentPreview {
+        var targetURLs: [URL]
+        var currentOutcome: HookManagementOutcome
         do {
-            try BridgeCredentialLifecycle.revokeAllIntegrationCredentials()
-            onStatusMessage?("Managed integrations and their bridge credential were reset.")
+            targetURLs = try urls()
+            currentOutcome = try outcome()
         } catch {
-            onStatusMessage?("Managed integrations were reset, but bridge credential revocation failed: \(error.localizedDescription)")
+            // We still show every known member and bind its currently visible
+            // artifacts.  A failed inspection is unsafe, not permission to
+            // quietly omit that integration from reset.
+            targetURLs = []
+            currentOutcome = HookManagementOutcome.from(error: error)
+        }
+        return HookConsentPreview(removalTarget: HookConsentPreview.Target(
+            integrationID: integrationID,
+            targetURLs: targetURLs,
+            requestedModes: ["preserve existing target modes"],
+            managedAdditions: [],
+            managedRemovals: ["remove only exact verified managed entries", "restore only matching verified backups", "remove verified provenance and journals when the manager confirms removal"],
+            backupURLs: targetURLs.map(ManagedHookBackupLifecycle.backupURL),
+            journalURLs: targetURLs.map(ManagedHookFileSystem.journalURL),
+            provenanceURLs: targetURLs.map(ManagedHookProvenance.sidecarURL),
+            involvesRestoration: true,
+            managementOutcome: currentOutcome
+        ))
+    }
+
+    private func executeConfirmedResetIntegrations() {
+        guard let confirmation = confirmedReset else {
+            onStatusMessage?("[\(HookManagementOutcome.consentRequired.rawValue)] Reset Integrations requires explicit confirmation.")
+            return
+        }
+        confirmedReset = nil
+        let current = prepareResetIntegrationsConsent()
+        guard consentGate.consume(confirmation.token, aggregate: confirmation.preview, revalidatedAs: current) else {
+            onStatusMessage?("[\(HookManagementOutcome.consentRequired.rawValue)] Reset Integrations was not started because a reviewed target, artifact, provenance record, or outcome changed. Review a new preview.")
+            return
+        }
+
+        var stage = "manager preflight"
+        do {
+            // Managers are constructed with a no-op credential callback here
+            // so credentials are revoked exactly once, after every manager
+            // has completed. Their mutation and recovery behavior is unchanged.
+            stage = "Codex"
+            _ = try CodexHookInstallationManager(credentialRevoker: {}).uninstall()
+            stage = "Claude"
+            _ = try ClaudeHookInstallationManager(credentialRevoker: {}).uninstall()
+            stage = "Qoder"
+            _ = try ClaudeHookInstallationManager(claudeDirectory: qoderHookInstallationManager.claudeDirectory, hookSource: "qoder", credentialRevoker: {}).uninstall()
+            stage = "Qwen Code"
+            _ = try ClaudeHookInstallationManager(claudeDirectory: qwenCodeHookInstallationManager.claudeDirectory, hookSource: "qwen", credentialRevoker: {}).uninstall()
+            stage = "Factory"
+            _ = try ClaudeHookInstallationManager(claudeDirectory: factoryHookInstallationManager.claudeDirectory, hookSource: "factory", credentialRevoker: {}).uninstall()
+            stage = "CodeBuddy"
+            _ = try ClaudeHookInstallationManager(claudeDirectory: codebuddyHookInstallationManager.claudeDirectory, hookSource: "codebuddy", credentialRevoker: {}).uninstall()
+            stage = "OpenCode"
+            _ = try OpenCodePluginInstallationManager(credentialRevoker: {}).uninstall()
+            stage = "Cursor"
+            _ = try CursorHookInstallationManager(credentialRevoker: {}).uninstall()
+            stage = "Gemini"
+            _ = try GeminiHookInstallationManager(credentialRevoker: {}).uninstall()
+            stage = "Kimi"
+            _ = try KimiHookInstallationManager(credentialRevoker: {}).uninstall()
+            stage = "Claude status-line"
+            _ = try ClaudeStatusLineInstallationManager().uninstall()
+            stage = "managed integration intent"
+            intentStore.resetManagedIntegrationState()
+            stage = "integration credentials"
+            try BridgeCredentialLifecycle.revokeAllIntegrationCredentials()
+            stage = "shared helper"
+            _ = try ManagedHooksBinary.removeVerified()
+            refreshCodexHookStatus()
+            refreshClaudeHookStatus()
+            refreshCCForkHookStatuses()
+            refreshOpenCodePluginStatus()
+            refreshCursorHookStatus()
+            refreshGeminiHookStatus()
+            refreshKimiHookStatus()
+            refreshClaudeUsageState()
+            onStatusMessage?("Reset Integrations completed: exact managed state removed, setup intent cleared, integration credentials revoked, and the shared helper removed last. Clear History was not run.")
+        } catch {
+            let outcome = HookManagementOutcome.from(error: error)
+            onStatusMessage?("\(outcome.displayMessage(operation: "Reset Integrations interrupted during \(stage)")) Existing manager journals and verified backups were retained for recovery.")
         }
     }
 
@@ -1128,14 +1409,12 @@ final class HookInstallationCoordinator {
         snapshot: ClaudeUsageSnapshot?,
         repairedManagedBridge: Bool
     ) {
+        _ = repairManagedBridgeIfNeeded
         let manager = ClaudeStatusLineInstallationManager()
-        var status = try manager.status()
-        var repairedManagedBridge = false
-
-        if repairManagedBridgeIfNeeded && status.managedStatusLineNeedsRepair {
-            status = try manager.install()
-            repairedManagedBridge = true
-        }
+        let status = try manager.status()
+        // Kept for source compatibility with callers; repair now requires an
+        // explicit install action backed by exact provenance.
+        let repairedManagedBridge = false
 
         let snapshot = try ClaudeUsageLoader.load()
         return (status, snapshot, repairedManagedBridge)
@@ -1166,7 +1445,7 @@ final class HookInstallationCoordinator {
                     self.onStatusMessage?("Codex hooks are not installed.")
                 }
             } catch {
-                self.onStatusMessage?("Codex hook update failed: \(error.localizedDescription)")
+                self.reportManagementFailure(error, operation: "Codex hook update")
             }
         }
     }
@@ -1196,7 +1475,7 @@ final class HookInstallationCoordinator {
                     self.onStatusMessage?("Claude hooks are not installed.")
                 }
             } catch {
-                self.onStatusMessage?("Claude hook update failed: \(error.localizedDescription)")
+                self.reportManagementFailure(error, operation: "Claude hook update")
             }
         }
     }
@@ -1224,7 +1503,7 @@ final class HookInstallationCoordinator {
                     self.onStatusMessage?("Cursor hooks are not installed.")
                 }
             } catch {
-                self.onStatusMessage?("Cursor hook update failed: \(error.localizedDescription)")
+                self.reportManagementFailure(error, operation: "Cursor hook update")
             }
         }
     }
@@ -1252,7 +1531,7 @@ final class HookInstallationCoordinator {
                     self.onStatusMessage?("Gemini hooks are not installed.")
                 }
             } catch {
-                self.onStatusMessage?("Gemini hook update failed: \(error.localizedDescription)")
+                self.reportManagementFailure(error, operation: "Gemini hook update")
             }
         }
     }
@@ -1280,7 +1559,7 @@ final class HookInstallationCoordinator {
                     self.onStatusMessage?("Kimi hooks are not installed.")
                 }
             } catch {
-                self.onStatusMessage?("Kimi hook update failed: \(error.localizedDescription)")
+                self.reportManagementFailure(error, operation: "Kimi hook update")
             }
         }
     }
@@ -1313,20 +1592,20 @@ final class HookInstallationCoordinator {
                     self.onStatusMessage?("Claude usage bridge is not installed.")
                 }
             } catch {
-                self.onStatusMessage?("Claude usage bridge update failed: \(error.localizedDescription)")
+                self.reportManagementFailure(error, operation: "Claude usage bridge update")
             }
         }
     }
 
-    private func loadBundledOpenCodePlugin() -> Data? {
+    private func bundledOpenCodePluginURL() -> URL? {
         // Use appResources which searches both Contents/Resources/ and .app root
         if let url = Bundle.appResources.url(forResource: "open-island-opencode", withExtension: "js") {
-            return try? Data(contentsOf: url)
+            return url
         }
 
         // Fallback: Bundle.main for Xcode builds
         if let url = Bundle.main.url(forResource: "open-island-opencode", withExtension: "js") {
-            return try? Data(contentsOf: url)
+            return url
         }
 
         return nil

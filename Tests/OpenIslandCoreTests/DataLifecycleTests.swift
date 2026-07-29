@@ -92,7 +92,7 @@ struct DataLifecycleTests {
     }
 
     @Test
-    func managedHookBackupLifecycleKeepsOnePrivateBackupAndPrunesAtStrictBoundary() throws {
+    func managedHookBackupLifecycleKeepsOnePrivateBackupAndLeavesUnverifiedLegacySiblingUntouched() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("open-island-hook-backup-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -105,7 +105,10 @@ struct DataLifecycleTests {
 
         try ManagedHookBackupLifecycle.createBackup(of: target, referenceDate: referenceDate)
         let backup = ManagedHookBackupLifecycle.backupURL(for: target)
-        #expect(!FileManager.default.fileExists(atPath: legacyBackup.path))
+        // A timestamped filename alone is not proof of ownership. The hook
+        // backup lifecycle must never delete a user-created or legacy sibling
+        // without private metadata that verifies its bytes.
+        #expect(FileManager.default.fileExists(atPath: legacyBackup.path))
         #expect(try Data(contentsOf: backup) == Data("first".utf8))
         let attributes = try FileManager.default.attributesOfItem(atPath: backup.path)
         #expect((attributes[.posixPermissions] as? NSNumber)?.intValue == 0o600)

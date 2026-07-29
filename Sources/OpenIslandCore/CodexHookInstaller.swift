@@ -43,6 +43,15 @@ public struct CodexHookFileMutation: Equatable, Sendable {
     }
 }
 
+/// Ownership classification for the Codex entries only.  It deliberately
+/// does not inspect command substrings, status messages, or filesystem paths:
+/// those are user content, never authority to change a hook file.
+public enum CodexManagedHookState: Equatable, Sendable {
+    case none
+    case exact(entryDigest: String)
+    case ambiguous
+}
+
 public enum CodexHooksFeatureFlagKey: String, Equatable, Sendable {
     case current = "hooks"
     case legacy = "codex_hooks"
@@ -89,6 +98,95 @@ public enum CodexHookInstaller {
 
     public static func hookCommand(for binaryPath: String) -> String {
         shellQuote(binaryPath)
+    }
+
+    public static func managedHookState(
+        existingData: Data?,
+        hookCommand: String
+    ) throws -> CodexManagedHookState {
+        guard let existingData else { return .none }
+        let root = try loadRootObject(from: existingData)
+        guard let hooksValue = root["hooks"] else { return .none }
+        guard let hooks = hooksValue as? [String: Any] else { return .ambiguous }
+
+        var exactCount = 0
+        var candidateCount = 0
+        for spec in eventSpecs {
+            guard let value = hooks[spec.name] else { continue }
+            guard let groups = value as? [Any] else { return .ambiguous }
+            for item in groups {
+                guard let group = item as? [String: Any] else { continue }
+                if isManagedShapeCandidate(group, spec: spec) {
+                    candidateCount += 1
+                    if canonicalJSONData(group) == canonicalJSONData(managedGroup(matcher: spec.matcher, hookCommand: hookCommand, timeout: spec.timeout)) {
+                        exactCount += 1
+                    }
+                }
+            }
+        }
+
+        guard candidateCount > 0 else { return .none }
+        guard candidateCount == eventSpecs.count, exactCount == eventSpecs.count else { return .ambiguous }
+        return .exact(entryDigest: managedEntriesDigest(hookCommand: hookCommand))
+    }
+
+    /// Adds the canonical low-noise entries without deleting, replacing, or
+    /// normalizing any pre-existing user group.  Callers must first reject
+    /// `.ambiguous` ownership states.
+    public static func appendExactManagedHooksJSON(
+        existingData: Data?,
+        hookCommand: String
+    ) throws -> CodexHookFileMutation {
+        var root = try loadRootObject(from: existingData)
+        var hooks: [String: Any]
+        if let existing = root["hooks"] {
+            guard let decoded = existing as? [String: Any] else { throw CodexHookInstallerError.invalidHooksJSON }
+            hooks = decoded
+        } else {
+            hooks = [:]
+        }
+        for spec in eventSpecs {
+            let groups = hooks[spec.name] as? [Any] ?? []
+            if hooks[spec.name] != nil, !(hooks[spec.name] is [Any]) { throw CodexHookInstallerError.invalidHooksJSON }
+            hooks[spec.name] = groups + [managedGroup(matcher: spec.matcher, hookCommand: hookCommand, timeout: spec.timeout)]
+        }
+        root["hooks"] = hooks
+        let data = try serialize(root)
+        return CodexHookFileMutation(contents: data, changed: data != existingData, hasRemainingHooks: true)
+    }
+
+    /// Removes only the four whole canonical groups after provenance has
+    /// already established exact ownership.
+    public static func removeExactManagedHooksJSON(
+        existingData: Data,
+        hookCommand: String
+    ) throws -> CodexHookFileMutation {
+        guard case .exact = try managedHookState(existingData: existingData, hookCommand: hookCommand) else {
+            throw ManagedHookFileSystemError.ambiguous("Codex managed hook entries")
+        }
+        var root = try loadRootObject(from: existingData)
+        guard var hooks = root["hooks"] as? [String: Any] else { throw CodexHookInstallerError.invalidHooksJSON }
+        for spec in eventSpecs {
+            guard let groups = hooks[spec.name] as? [Any] else { throw ManagedHookFileSystemError.ambiguous(spec.name) }
+            let expected = canonicalJSONData(managedGroup(matcher: spec.matcher, hookCommand: hookCommand, timeout: spec.timeout))
+            let retained = groups.filter { group in
+                guard let group = group as? [String: Any] else { return true }
+                return canonicalJSONData(group) != expected
+            }
+            if retained.isEmpty { hooks.removeValue(forKey: spec.name) }
+            else { hooks[spec.name] = retained }
+        }
+        guard !hooks.isEmpty else { return CodexHookFileMutation(contents: nil, changed: true, hasRemainingHooks: false) }
+        root["hooks"] = hooks
+        let data = try serialize(root)
+        return CodexHookFileMutation(contents: data, changed: data != existingData, hasRemainingHooks: true)
+    }
+
+    public static func managedEntriesDigest(hookCommand: String) -> String {
+        let entries = Dictionary(uniqueKeysWithValues: eventSpecs.map { spec in
+            (spec.name, managedGroup(matcher: spec.matcher, hookCommand: hookCommand, timeout: spec.timeout))
+        })
+        return ManagedHookFileSystem.digest(of: canonicalJSONData(entries))
     }
 
     public static func installHooksJSON(
@@ -258,6 +356,36 @@ public enum CodexHookInstaller {
         )
     }
 
+    public static func managedFeatureEntryDigest(in contents: String) -> String? {
+        let lines = contents.components(separatedBy: "\n")
+        for key in [currentFeatureKey, legacyFeatureKey] where featureValue(for: key, lines: lines) == true {
+            return ManagedHookFileSystem.digest(of: Data("\(key)=true".utf8))
+        }
+        return nil
+    }
+
+    public static func disableCodexHooksFeature(
+        in contents: String,
+        matchingEntryDigest: String
+    ) -> CodexFeatureMutation? {
+        var lines = contents.components(separatedBy: "\n")
+        guard let key = [currentFeatureKey, legacyFeatureKey].first(where: {
+            featureValue(for: $0, lines: lines) == true &&
+                ManagedHookFileSystem.digest(of: Data("\($0)=true".utf8)) == matchingEntryDigest
+        }), let index = lineIndex(ofKey: key, inSection: "features", lines: lines) else { return nil }
+        lines.remove(at: index)
+        if let range = sectionRange(named: "features", lines: lines) {
+            let entries = lines[(range.lowerBound + 1)..<range.upperBound]
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty && !$0.hasPrefix("#") }
+            if entries.isEmpty {
+                lines.remove(at: range.lowerBound)
+                if range.lowerBound < lines.count, lines[range.lowerBound].isEmpty { lines.remove(at: range.lowerBound) }
+            }
+        }
+        return CodexFeatureMutation(contents: lines.joined(separator: "\n"), changed: true, featureEnabledByInstaller: false)
+    }
+
     /// Returns whether the config enables Codex hooks using either the current or legacy flag.
     public static func isCodexHooksFeatureEnabled(in contents: String) -> Bool {
         let lines = contents.components(separatedBy: "\n")
@@ -285,7 +413,12 @@ public enum CodexHookInstaller {
             return [:]
         }
 
-        let object = try JSONSerialization.jsonObject(with: data)
+        let object: Any
+        do {
+            object = try JSONSerialization.jsonObject(with: data)
+        } catch {
+            throw CodexHookInstallerError.invalidHooksJSON
+        }
         guard let rootObject = object as? [String: Any] else {
             throw CodexHookInstallerError.invalidHooksJSON
         }
@@ -295,6 +428,28 @@ public enum CodexHookInstaller {
 
     private static func serialize(_ object: [String: Any]) throws -> Data {
         try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
+    }
+
+    private static func canonicalJSONData(_ object: Any) -> Data {
+        // The inputs above are constructed from JSON-compatible values.  A
+        // failure would be a programming error, not an untrusted-data path.
+        (try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])) ?? Data()
+    }
+
+    private static func isManagedShapeCandidate(
+        _ group: [String: Any],
+        spec: (name: String, matcher: String?, timeout: Int)
+    ) -> Bool {
+        let matcherMatches: Bool
+        if let matcher = spec.matcher { matcherMatches = group["matcher"] as? String == matcher }
+        else { matcherMatches = group["matcher"] == nil }
+        guard matcherMatches,
+              let hooks = group["hooks"] as? [[String: Any]], hooks.count == 1,
+              hooks[0]["type"] as? String == "command",
+              (hooks[0]["timeout"] as? NSNumber)?.intValue == spec.timeout else { return false }
+        // A matching event/matcher plus command-hook structure is a partial or
+        // conflicting managed entry.  It is never used to authorize a write.
+        return true
     }
 
     private static func sanitize(groups: [Any], managedCommand: String?) -> [[String: Any]] {
@@ -379,37 +534,16 @@ public enum CodexHookInstaller {
     }
 
     private static func isManagedHook(_ hook: [String: Any], managedCommand: String?) -> Bool {
-        if let statusMessage = hook["statusMessage"] as? String,
-           statusMessage == managedStatusMessage || statusMessage == legacyManagedStatusMessage {
-            return true
-        }
-
         guard let managedCommand else {
             return false
         }
 
+        // statusMessage is presentation metadata, never authority to mutate.
         return hook["command"] as? String == managedCommand
     }
 
     private static func isManagedHookForInstall(_ hook: [String: Any], replacingCommand: String) -> Bool {
-        if isManagedHook(hook, managedCommand: replacingCommand) {
-            return true
-        }
-
-        guard let command = hook["command"] as? String else {
-            return false
-        }
-
-        return isLegacyOpenIslandHookCommand(command)
-    }
-
-    private static func isLegacyOpenIslandHookCommand(_ command: String) -> Bool {
-        let normalized = command.lowercased()
-        if normalized.contains("openislandhooks") || normalized.contains("vibeislandhooks") {
-            return true
-        }
-
-        return normalized.contains("open-island-bridge") || normalized.contains("vibe-island-bridge")
+        isManagedHook(hook, managedCommand: replacingCommand)
     }
 
     private static func sectionRange(named section: String, lines: [String]) -> Range<Int>? {
