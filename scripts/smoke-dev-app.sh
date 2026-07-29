@@ -49,7 +49,7 @@ import subprocess
 import sys
 
 subprocess.run(
-    [sys.executable, "scripts/validate-harness-artifacts.py", sys.argv[1]],
+    [sys.executable, "scripts/validate-harness-artifacts.py", "--theme", "poured", sys.argv[1]],
     check=True,
 )
 PY

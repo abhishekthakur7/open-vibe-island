@@ -1,5 +1,8 @@
 # Session State Management Refactoring Plan
 
+> Historical refactoring record. Terminal examples below are not the current
+> Automation support matrix; see [architecture.md](./architecture.md).
+
 ## 1. Problem Statement
 
 The current session state management is overly complex: a 3-state attachment model (`attached`/`stale`/`detached`) with 6+ reconciliation passes, AppleScript snapshots driving visibility, multi-pass matching, 15-minute grace windows, synthetic session creation, and CWD-based fallback matching. Every new terminal (e.g., cmux) requires patches across multiple code paths.

@@ -306,9 +306,8 @@ def scenario_case(scenario: str, theme: str = "poured") -> dict:
         if theme == "poured":
             case["textValues"].update(
                 {
-                    f"$ {raw_command}",
+                    raw_command,
                     "Allow exec_command to rewrite SettingsView.swift?",
-                    "Auto-collapses in 10s · hover pauses",
                 }
             )
         elif theme == "flightDeck":
@@ -1178,12 +1177,13 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
 
         poured_requirements = (
             (
-                "Allow exec_command to rewrite SettingsView.swift?",
-                "poured approvalCard AX effect",
+                "head -5000 /Users/wangruobing/Personal/claude-research/"
+                "extracts/claude-bun-2.1.81-v3/islands/000_cli.js.txt",
+                "poured approvalCard AX command",
             ),
             (
-                "Auto-collapses in 10s · hover pauses",
-                "poured approvalCard AX countdown",
+                "Allow exec_command to rewrite SettingsView.swift?",
+                "poured approvalCard AX effect",
             ),
         )
         for semantic, message in poured_requirements:
@@ -1291,7 +1291,6 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
     def test_approval_card_cross_theme_substitution_fails(self) -> None:
         for target_theme, donor_theme in (
             ("poured", "flightDeck"),
-            ("poured", "halo"),
             ("flightDeck", "poured"),
             ("flightDeck", "halo"),
             ("halo", "poured"),

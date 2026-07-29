@@ -1,59 +1,63 @@
 # Docs Index
 
-This index is the repository map for humans and coding agents. Read these files in order when you need the current product boundary, system shape, or verification expectations.
+This is the current documentation map for the local-only macOS product. Read
+the first section before changing product boundaries, hooks, persistence, or
+Automation.
 
-## Start Here
+## Current product and security contract
 
-- [README.md](../README.md) for the public project summary and local quick start
-- [AGENTS.md](../AGENTS.md) for the repository workflow, commit policy, and worktree rules
-- [docs/roadmap.md](./roadmap.md) for the project roadmap and contribution focus areas
-- [docs/roadmap.zh-CN.md](./roadmap.zh-CN.md) for the Chinese roadmap and contribution focus areas
-- [docs/product.md](./product.md) for the product scope, supported agents, and terminals
-- [docs/architecture.md](./architecture.md) for the runtime shape and transport boundaries
-- [docs/quality.md](./quality.md) for the current harness contract and verification expectations
-- [docs/worktree-workflow.md](./worktree-workflow.md) for the parallel worktree lifecycle
-- [docs/packaging.md](./packaging.md) for the current local app packaging and signing path
+- [README.md](../README.md) — local quick start and the only packaging path
+- [AGENTS.md](../AGENTS.md) — repository workflow and commit policy
+- [docs/product.md](./product.md) — local product boundary and non-goals
+- [docs/architecture.md](./architecture.md) — data flow, trust boundaries, IPC,
+  and fixed Automation actions
+- [docs/data-lifecycle.md](./data-lifecycle.md) — exact local stores,
+  retention, Clear History, and Reset Integrations
+- [docs/hooks.md](./hooks.md) — consented hook installation, artifacts,
+  recovery, outcomes, and uninstall
+- [docs/audits/dependency-provenance.md](./audits/dependency-provenance.md) —
+  dependency provenance, licenses, hashes, and offline update rule
+- [docs/audits/local-only-disposition-map.md](./audits/local-only-disposition-map.md)
+  — local-only audit inventory and powerful-action allowlist
+- [docs/packaging.md](./packaging.md) — stable local signing, bundle refresh,
+  and offline package output
+- [docs/quality.md](./quality.md) — verification commands, retained-script
+  catalog, runtime-observer limits, and manual macOS checks
 
-## Hooks
+## Repository workflow
 
-- [docs/hooks.md](./hooks.md) for the supported hook events, payload fields, and directive response protocol
+- [docs/worktree-workflow.md](./worktree-workflow.md) — topic-worktree lifecycle
+- [docs/exec-plans/README.md](./exec-plans/README.md) — active/completed plan
+  convention
+- [docs/roadmap.md](./roadmap.md) and [docs/roadmap.zh-CN.md](./roadmap.zh-CN.md)
+  — current local macOS contribution direction
 
-## Design
+## Runtime and design notes
 
-- [docs/design/overlay-redesign/README.md](./design/overlay-redesign/README.md) for the vendored overlay-redesign materials, the `px @1x = pt` rule, and the authority order
-- [docs/design/overlay-redesign/BRIEF.md](./design/overlay-redesign/BRIEF.md) for the shared redesign brief: ground-truth data model, scenario matrix, and architecture contract
-- [docs/design/overlay-redesign/SPEC-poured-island.md](./design/overlay-redesign/SPEC-poured-island.md) for the Poured Island 2.0 conformance spec
-- [docs/design/overlay-redesign/SPEC-flight-deck.md](./design/overlay-redesign/SPEC-flight-deck.md) for the Flight Deck 2.0 conformance spec
-- [docs/design/overlay-redesign/SPEC-halo.md](./design/overlay-redesign/SPEC-halo.md) for the Halo greenfield build spec
-- [docs/design/overlay-redesign/REMEDIATION-PLAN.md](./design/overlay-redesign/REMEDIATION-PLAN.md) for the completed overlay visual-fidelity remediation plan and its evidence record
+- [docs/notch-surface-model.md](./notch-surface-model.md) — island surface routing
+- [docs/app-ghostty-codex-chain.md](./app-ghostty-codex-chain.md) — historical
+  external-app investigation; not a current transport or network contract
+- [docs/session-state-refactor.md](./session-state-refactor.md) — historical
+  refactoring record; not a supported-terminal matrix
+- [docs/island-position-investigation.md](./island-position-investigation.md)
+  — display placement investigation
+- [docs/notchi-integration.md](./notchi-integration.md) — historical
+  integration notes
+- [docs/installed-app-bundle-analysis.md](./installed-app-bundle-analysis.md)
+  — historical third-party bundle analysis; not a description of Open Island
 
-## Harness And Planning
+## Design material
 
-- [docs/exec-plans/README.md](./exec-plans/README.md) for the active and completed execution-plan convention
-- [docs/exec-plans/active/2026-07-29-local-only-security-cleanup.md](./exec-plans/active/2026-07-29-local-only-security-cleanup.md) for the approved macOS-only, no-network security cleanup roadmap
-- [docs/audits/local-only-disposition-map.md](./audits/local-only-disposition-map.md) for the audit gate and completed cleanup-round evidence
-- [docs/references/README.md](./references/README.md) for pinned reference material and external behavior baselines
+- [docs/design/overlay-redesign/README.md](./design/overlay-redesign/README.md)
+- [docs/design/overlay-redesign/BRIEF.md](./design/overlay-redesign/BRIEF.md)
+- [docs/design/overlay-redesign/SPEC-poured-island.md](./design/overlay-redesign/SPEC-poured-island.md)
+- [docs/design/overlay-redesign/SPEC-flight-deck.md](./design/overlay-redesign/SPEC-flight-deck.md)
+- [docs/design/overlay-redesign/SPEC-halo.md](./design/overlay-redesign/SPEC-halo.md)
+- [docs/design/overlay-redesign/REMEDIATION-PLAN.md](./design/overlay-redesign/REMEDIATION-PLAN.md)
 
-## Superpowers Plans
+## Archived and reference material
 
-- [docs/superpowers/plans/2026-04-18-opencode-stability.md](./superpowers/plans/2026-04-18-opencode-stability.md) for the OpenCode stability implementation plan
-
-## Runtime And Product Notes
-
-- [docs/notch-surface-model.md](./notch-surface-model.md) for the island surface routing model and debug harness intent
-- [docs/app-ghostty-codex-chain.md](./app-ghostty-codex-chain.md) for terminal environment findings across the current supported chain
-
-## Refactoring Plans
-
-- [docs/session-state-refactor.md](./session-state-refactor.md) for the session state management refactoring plan (process discovery as source of truth)
-
-## Watch / iOS
-
-- [docs/watch-notification-design.md](./watch-notification-design.md) for the Apple Watch notification design document
-- [docs/watch-notification-impl-plan.md](./watch-notification-impl-plan.md) for the Watch notification implementation plan
-
-## Investigations
-
-- [docs/island-position-investigation.md](./island-position-investigation.md) for notch and external-display placement work
-- [docs/notchi-integration.md](./notchi-integration.md) for integration notes related to Notchi
-- [docs/installed-app-bundle-analysis.md](./installed-app-bundle-analysis.md) for installed-app bundle observations
+- [docs/references/README.md](./references/README.md) — pinned external
+  behavior references, not runtime dependencies
+- [docs/superpowers/plans/2026-04-18-opencode-stability.md](./superpowers/plans/2026-04-18-opencode-stability.md)
+  — archived OpenCode stability plan

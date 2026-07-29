@@ -1,206 +1,149 @@
 # Architecture
 
-## System Shape
+## System shape
 
-The project is a single Swift package with four targets:
+Open Island is a single local Swift package with four products.
 
 | Target | Role |
-|---|---|
-| **OpenIslandApp** | SwiftUI + AppKit shell — menu bar extra, overlay panel (notch/top-bar), settings. Entry point: `OpenIslandApp.swift` with `AppModel` as the central `@Observable` state owner. |
-| **OpenIslandCore** | Shared library — models (`AgentSession`, `AgentEvent`, `SessionState`), bridge transport (Unix socket IPC with JSON line protocol), hook models/installers, transcript discovery, session persistence/registry. |
-| **OpenIslandHooks** | Lightweight CLI executable invoked by agent hooks. Reads hook payload from stdin, forwards to app bridge via Unix socket, writes blocking JSON to stdout only when island denies a `PreToolUse`. |
-| **OpenIslandSetup** | Installer CLI for managing `~/.codex/config.toml` and `hooks.json`. |
+| --- | --- |
+| `OpenIslandApp` | SwiftUI/AppKit menu-bar and island UI; owns application state, private bridge, Settings, and local actions |
+| `OpenIslandCore` | Shared event models, private bridge protocol, hook management, persistence, discovery, and policy |
+| `OpenIslandHooks` | Bundled helper invoked by a managed hook; reads stdin, submits a local event, and writes only protocol directives to stdout |
+| `OpenIslandSetup` | Read-only command-line status/consent surface for managed hook configuration |
 
-## Data Flow
+The supported product is the macOS `OpenIslandApp`. There is no companion
+mobile product, watch product, relay, server, updater, remote endpoint, or
+distribution service.
 
-### Hook-based agents (Codex, Claude Code, and forks)
+## Local-only boundary and trust boundaries
+
+Open Island owns only its process, bundled helpers, app-owned files, and the
+private local socket. An agent, terminal, or editor that Open Island observes
+or focuses remains an independent process: its traffic, credentials,
+transcripts, cloud behavior, and permissions are not Open Island behavior.
+Open Island does not create IP sockets, load remote URLs, resolve a remote
+package, or ask an external application to make a network request.
+
+| Boundary | Data/action allowed | Protection |
+| --- | --- | --- |
+| Agent → helper | Hook payload on stdin; source-protocol directive on stdout only when needed | Fixed bundled helper and source enum |
+| Helper/plugin → app | Bounded JSON event over private `AF_UNIX` | Safe path/mode checks, peer PID/signature, nonce proof, role capability |
+| App → terminal | Probe/focus for Terminal.app, Ghostty, or iTerm2 | Immutable AppleScript template with typed local parameter |
+| App → filesystem | App data and approved local agent/config roots | Fixed paths; lifecycle, owner, and symlink controls |
+
+## Local data flow
 
 ```
-Agent
-  │  stdin: JSON payload
+Agent hook or OpenCode plugin
+  │ stdin event / local plugin event
   ▼
-OpenIslandHooks CLI  (--source codex | --source claude | ...)
-  │  Unix socket
-  ▼
-BridgeServer → AppModel → UI
-  │  BridgeResponse
-  ▼
-OpenIslandHooks CLI
-  │  stdout: JSON directive (only when a response is needed)
-  ▼
-Agent
+Bundled OpenIslandHooks (fixed role) ── private Unix socket ──► BridgeServer
+                                                               │
+                                                               ▼
+                                                        AppModel → UI
+                                                               │
+Agent directive (only when protocol requires it) ◄────────────┘
 ```
 
-### Plugin-based agents (OpenCode)
+On launch, the app restores minimized session metadata, reads supported local
+agent transcript sources in place, reconciles active local processes, then
+starts the bridge. It does not copy source-agent transcripts into an
+app-owned store. If the bridge is unavailable, the helper fails open: it emits
+no directive and the agent continues under its own behavior.
 
-```
-OpenCode → JS plugin (~/.config/opencode/plugins/) → Unix socket → BridgeServer → AppModel → UI
-```
+The exact paths, fields, retention, user controls, and owners are in
+[data-lifecycle.md](./data-lifecycle.md).
 
-### Session discovery (on launch)
+## Private IPC contract
 
-1. Restore cached sessions from registry
-2. Discover recent JSONL transcripts (`~/.claude/projects/`)
-3. Reconcile with active terminal processes
-4. Start live bridge
+The only bridge socket is
+`~/Library/Application Support/OpenIsland/bridge.sock`. Its directory is
+`0700` and its socket is `0600`; legacy `/tmp` paths and environment socket
+redirects are unsupported. The protocol is newline-delimited JSON, version 2.
 
-**Fail-open principle**: if the bridge is unavailable, the hook process exits silently without writing to stdout, so the agent continues running unaffected.
+Before a privileged connection is usable, the server verifies the current UID,
+kernel-reported peer PID, and designated code-signature requirement. It then
+requires a role-specific Keychain bootstrap secret in a nonce proof. Same UID
+alone is never authority. A successful proof produces a connection-bound,
+60-second capability; client nonces are single-use and expire with the bounded
+handshake/capability lifetime.
 
-## Event Model
+| Role | Permitted operations |
+| --- | --- |
+| `hook-event-submit` | Submit Codex, Claude-family, OpenCode, Cursor, or Gemini hook events |
+| `local-status-read` | Register only local status |
+| `app-internal-control` | Register app/observer state; request/resolve a local question or permission |
+| `observer` | Wire compatibility only; cannot authenticate or mutate |
 
-The shared `AgentEvent` enum drives all state transitions:
+The server fails closed for an unsafe socket path, wrong peer/signature,
+unknown/cross role, invalid proof, replay, expiration, malformed frame, or
+resource exhaustion. Defaults are 256 KiB frames, JSON depth 64, 32 active
+connections, 4 connections per peer, 3 malformed requests, a 5-second
+handshake, 60-second idle/capability lifetime, and a 45-second request limit.
+Bootstrap credentials rotate when the bridge starts or a managed helper changes
+and revoke on uninstall, signature mismatch, or Reset Integrations.
 
-- Session started / updated / completed
-- Permission requested
-- Question asked
-- Tool use (pre/post)
-- Subagent lifecycle
-- Jump target updated
+## Local Automation policy
 
-Each event carries a stable session identifier, agent type, timestamps, and enough metadata to route approvals or focus changes.
+Every powerful action requires `app-internal-control`. The allowed set is
+closed:
 
-## State Management
+- process inspection through fixed `/bin/ps`, `/usr/sbin/lsof`, and
+  `/usr/bin/pgrep` argument shapes;
+- immutable AppleScript probe/focus templates for Terminal.app, Ghostty, and
+  iTerm2;
+- activation of an approved terminal bundle identifier;
+- Finder reveal of an existing regular file or directory under approved local
+  agent/config roots; and
+- the two fixed System Settings privacy panes.
 
-- `SessionState.apply(_:)` is the single source of truth for session mutations (pure reducer)
-- `AppModel` owns all live state and bridge lifecycle
-- All models are `Sendable` and `Codable`
+The process runner uses direct absolute executables with no shell, empty
+environment, `/` as working directory, null stdin, 64 KiB bounded output,
+short timeout, and process-group cleanup. AppleScript source is fixed;
+parameters are bounded typed data passed to `on run argv` templates. Arbitrary
+commands, terminal reply/injection, cmux socket actions, arbitrary AppleScript,
+URLs, bundle identifiers, paths, executables, cwd, and environment are denied.
 
-## Transport
+Focus restoration is supported for Terminal.app (TTY), Ghostty (terminal ID),
+and iTerm2 (session ID or TTY). cmux, tmux, zellij, WezTerm, Kaku, Warp, and
+all terminal command injection are deliberately unsupported Automation paths.
 
-- Unix domain sockets for app ↔ hook communication
-- Newline-delimited JSON envelopes (`BridgeCodec`)
-- Bridge server lives inside the app process
+## Runtime no-network evidence and limitation
 
-## Runtime no-network evidence
+Release builds check their compiled no-network policy version and expected
+entitlements at launch. A mismatch writes only a 1 KiB, mode-restricted local
+diagnostic with a timestamp and policy code; it records no path, command,
+payload, entitlement value, or user data.
 
-Release builds validate the compiled `round-10` policy version and their
-expected entitlement set at launch. A mismatch writes only a 1 KiB,
-mode-restricted local diagnostic containing a timestamp and policy code; it
-never records entitlement values, paths, commands, or user data.
+`scripts/smoke-all-scenarios.sh` records a `network-observation.json` for
+identity-bound harness actions. The observer follows the launched root process
+and descendants with fixed `ps`/`lsof` calls, rejects unallowlisted children,
+prohibited tools or remote-URL arguments, and live IP sockets. Private Unix
+sockets are allowed. It does not scan or attribute traffic from a separately
+running app that Open Island merely focuses.
 
-`scripts/smoke-all-scenarios.sh` writes `network-observation.json` for every
-identity-bound harness action. The observer uses fixed `/bin/ps` and
-`/usr/sbin/lsof` invocations to follow the exact app PID and birth identity,
-record its descendant tree, reject unallowlisted descendants and prohibited
-tool/remote-URL shapes, and fail on live IP sockets. It never scans or
-attributes a separately running application that Open Island only focuses.
-Unix-domain bridge sockets remain allowed. Sampling is passive rather than a
-privileged historical event feed, so fixtures keep short-lived sockets alive
-across multiple samples and the static no-network gate remains the companion
-control for prohibited API use.
+This is passive sampling, not a privileged historical traffic recorder: a
+socket that opens and closes between samples can escape observation. Static
+no-network policy, deliberate negative fixtures, packaged-entitlement
+inspection, and fixtures that hold test sockets across multiple samples are the
+compensating controls. Owner: the maintainer running the local verification
+matrix in [quality.md](./quality.md).
 
-## Terminal Jump-Back
+## UI composition
 
-### Local automation boundary
+`SessionState.apply(_:)` is the pure reducer for session changes; `AppModel`
+owns live state and bridge lifecycle. The island appearance is a swappable
+`IslandTheme` with a stable persisted ID, shared behavior, accessibility
+invariants, and slot factories for the closed pill, opened chrome, session
+rows, notifications, and empty/install states. A theme changes visual tokens,
+not session, hook, IPC, or Automation behavior.
 
-Automation is a closed, typed action set in `LocalAutomationPolicy`. It may
-inspect a local process through fixed `/bin/ps`, `/usr/sbin/lsof`, and
-`/usr/bin/pgrep` argument shapes, or use one of the immutable AppleScript
-probe/focus templates. The runner starts direct absolute executables with an
-empty environment, `/` as its fixed cwd, bounded output, a short timeout, and
-process-group cleanup. It accepts neither shells nor command strings.
+## Engineering rules
 
-AppleScript source is never built from session data: immutable `on run argv`
-templates receive only bounded typed parameters. External inputs cannot choose
-an executable, bundle identifier, URL, script source, cmux command, cwd, or
-environment. Unsupported terminal reply injection, tmux/zellij/WezTerm CLI
-discovery, Codex app-server spawning, and generic file/URL opening are denied.
-Only the app-internal bridge role can invoke a powerful local action; all other
-roles fail closed.
-
-Terminal focus restoration is implemented per-terminal:
-
-| Terminal | Strategy |
-|---|---|
-| Terminal.app | TTY targeting via AppleScript |
-| Ghostty | Window ID matching |
-| cmux | unsupported in local-only mode |
-| iTerm2 | immutable AppleScript session/TTY probe |
-| Kaku, WezTerm, tmux, zellij | unsupported in local-only mode |
-
-The hook helper enriches payloads with terminal-local hints (terminal app, TTY, session ID, window title) from environment inspection at hook invocation time.
-
-## Theme system
-
-The island overlay is composed entirely from a swappable **theme**. A theme is
-one value conforming to `IslandTheme` (`Sources/OpenIslandApp/Theme/`):
-
-- **Identity** — a stable `id` (persisted, never localized), plus a localized
-  `name` / `descriptor` resolved through `lang.t`.
-- **`tokens: IslandThemeTokens`** — the colour / metric / motion tokens injected
-  into `\.islandTokens` for every descendant surface.
-- **Capability flags** — `rowIsDrawingGroupSafe` (gates the row's
-  `.drawingGroup()` rasterization) and `usesVibrancy` (gates the opened
-  surface's native vibrancy base vs. a flat fill).
-- **`agentsGridGeometry`** — the closed-island grid strategy. Classic delegates
-  to the `V6RightSlotView` statics, which encode Classic's shape (pinned by
-  `AgentsGridLayoutTests`), not a universal invariant.
-- **Slot factories** — one factory per overlay slot: `closedPill`,
-  `openedHeader`, `sessionRow`, `sessionList`, `notificationCard`, `emptyState`,
-  `bootstrapPlaceholder`, `installHint`. Each owns a group of the finer slots it
-  renders (e.g. `sessionList` owns the sessions summary, section headers and
-  footer; `sessionRow` owns the approval / question / completion bodies; the
-  factory doc comment maps the Scope slots it covers).
-
-`IslandPanelView` reads the active theme off the `@Observable` `AppModel`
-(`model.islandTheme`), injects it and its tokens into the environment, and
-composes the overlay purely from `theme.<slot>(...)` — it never names a concrete
-component. Descendant slot components (and `OverlayPanelController`'s panel
-sizing) read the theme from the environment / model, so changing the selection
-re-renders live with no restart.
-
-### Adding a theme
-
-1. Add a type conforming to `IslandTheme`, returning your slot views and tokens.
-2. Append it to `ThemeRegistry.all` (order = picker order; first = default).
-3. Add its `theme.<id>.name` / `.descriptor` strings to the three
-   `Localizable.strings`.
-
-Nothing in `IslandPanelView` changes. Selection is global (not per display
-profile), stored on `AppModel.islandThemeID`, persisted to
-`appearance.island.v8.theme`; a missing or unknown id falls back to the registry
-default via `ThemeRegistry.theme(id:)`.
-
-### Not theme-swappable (shared invariants)
-
-Themes swap *look*, never *behavior*. The following stay fixed across every
-theme, and a new theme must respect them rather than reimplement them:
-
-- **Presentation / display rules** — which session is actionable, the
-  attention-is-loudest hierarchy, stale-completed → idle regrouping, notch vs.
-  top-bar layout selection, and the AB-282…286 display rules — live in
-  `SessionState`, `AgentSession+Presentation`, and the values `AppModel` hands to
-  the slot factories, not in the views.
-- **`RowActions` wiring** — approve / answer / reply / jump / dismiss are built
-  by `AppModel` and passed in; a themed row renders them, it doesn't decide them.
-- **Keyboard shortcuts** — registered by the row / question views through the
-  `OverlayUICoordinator`, independent of styling.
-- **Hover container** — `SessionRowContainer` owns the shared hover-highlight
-  state and hit-area; themed rows receive the highlight as a value.
-- **Accessibility gates** — Reduce Motion crossfade fallback, Reduce
-  Transparency flat ink, Increase Contrast opacities, Dynamic Type scaling, and
-  the VoiceOver row/grid summaries are all baked into the shared components and
-  tokens; a theme inherits them.
-
-### New-theme surface checklist
-
-A complete theme covers: closed pill (both layouts) / morph + glyph travel +
-completion pop / opened chrome (both notch and top-bar profiles) / header +
-usage chips + controls / sessions summary + section headers + footer / empty +
-bootstrap + install hint / all row states + the four indicator preferences /
-approval + question + completion bodies + notification card / Settings previews
-(AB-305) / the accessibility fallbacks listed above.
-
-## Technologies
-
-- SwiftUI for most UI composition
-- AppKit for panel behavior, status item control, and activation policy edge cases
-- Unix domain sockets for IPC
-- JSON event envelopes for debugging and adapter simplicity
-
-## Engineering Rules
-
-- Preserve clean separation between UI state and transport concerns
-- Version the event schema so adapters can evolve safely
-- Keep setup reversible when editing third-party tool config files
-- Keep the runtime surface bound to real agent state rather than shipping UI-level demo toggles
+- Keep UI state separate from bridge and hook transport.
+- Version protocol changes and ship app/helper changes together.
+- Treat hook configuration as user-owned unless exact managed provenance proves
+  otherwise.
+- Keep any new persistence field in the data-lifecycle matrix.
+- Do not widen the local-only boundary without an explicit product and security
+  decision.

@@ -1,64 +1,81 @@
 # Privacy Policy / 隐私政策
 
-**Last updated: 2026-04-11**
+**Last updated: 2026-07-29**
 
 ## English
 
-Open Island ("the App") is a companion app for AI coding agents. We are committed to protecting your privacy.
+Open Island is a local macOS companion for AI coding agents.
 
-### Data Collection
+### Local-only boundary
 
-The App does **not** collect, store, or transmit any personal data to external servers.
+The App does not collect, transmit, or sell personal data. It has no account,
+analytics, telemetry, crash-reporting service, updater, relay, remote runtime,
+or third-party tracking SDK. It does not create IP network connections.
 
-### How It Works
+The App can receive local hook events, read supported local agent files in
+place, and focus an existing local terminal through a restricted Automation
+policy. Those external applications remain independent: their own network
+traffic, credentials, transcripts, and cloud behavior are not collected or
+controlled by Open Island.
 
-- The App runs locally on your Mac and does not use a companion mobile or Apple Watch relay.
-- Agent session events, permission requests, and notifications remain on your Mac.
-- No analytics, telemetry, or crash reporting services are used.
-- No third-party SDKs or tracking frameworks are included.
+### Local storage and controls
 
-### Local Storage
+Open Island stores feature preferences and minimized session metadata locally.
+Session metadata excludes transcript text, prompts, command bodies, terminal
+paths, and credentials; it is retained for at most 30 days in app-owned
+protected files. The App does not keep an app-owned transcript store.
 
-The App stores feature preferences in local UserDefaults and minimal local
-session metadata for up to 30 days. Session metadata is protected in an
-app-owned directory and excludes transcript text, prompts, command bodies,
-terminal paths, and credentials. Clear History deletes that metadata and
-eligible local caches; it does not delete source-agent transcripts, preferences,
-hook backups, or enabled integration credentials. Reset Integrations removes
-managed integrations and revokes their local bridge credential. The full field,
-retention, and deletion matrix is in [docs/data-lifecycle.md](docs/data-lifecycle.md).
+- **Clear History** deletes session metadata and eligible local caches/logs. It
+  preserves preferences, source-agent transcripts, hook backups, installed
+  integrations, and Keychain credentials.
+- **Reset Integrations** removes only exactly verified managed integrations,
+  their credentials, journals/provenance/backup state as applicable, and the
+  verified shared helper. It first displays one aggregate consent record and
+  aborts without mutation if any member is unsafe or ambiguous. It does not
+  delete history or unrelated source-tool configuration.
+
+Hook backups may contain source-tool configuration. They are private local
+files, retained for at most 30 days or until a verified uninstall/restore, and
+are not part of Clear History. The full field, path, retention, and deletion
+matrix is [docs/data-lifecycle.md](docs/data-lifecycle.md).
 
 ### Contact
 
-If you have any questions about this privacy policy, please open an issue at:
+For questions, open an issue at:
 https://github.com/Octane0411/open-vibe-island/issues
 
 ---
 
 ## 中文
 
-Open Island（"本应用"）是一款 AI 编程助手的配套应用。我们致力于保护您的隐私。
+Open Island 是一款面向 AI 编程代理的本地 macOS 辅助应用。
 
-### 数据收集
+### 仅本地边界
 
-本应用**不会**收集、存储或向外部服务器传输任何个人数据。
+本应用不会收集、传输或出售个人数据。它没有账户、分析、遥测、崩溃报告服务、更新器、中继、
+远程运行时或第三方追踪 SDK，也不会创建 IP 网络连接。
 
-### 工作原理
+本应用可以接收本地 hook 事件、就地读取受支持的本地代理文件，并通过受限的自动化策略聚焦已有
+本地终端。这些外部应用仍然独立：它们自身的网络流量、凭据、转录内容和云端行为不会被 Open
+Island 收集或控制。
 
-- 本应用在您的 Mac 上本地运行，不使用配套移动端或 Apple Watch 中继。
-- 代理会话事件、权限请求和通知均保留在您的 Mac 上。
-- 不使用任何分析、遥测或崩溃报告服务。
-- 不包含任何第三方 SDK 或追踪框架。
+### 本地存储和用户控制
 
-### 本地存储
+Open Island 仅在本地存储功能偏好和最小化会话元数据。会话元数据不包含转录文本、提示词、命令
+内容、终端路径或凭据；它保存在受保护的应用目录中，最长保留 30 天。本应用不保存自有的转录
+内容库。
 
-本应用在本地 UserDefaults 中存储功能偏好设置，并最多保存 30 天的最小化会话元数据。
-会话元数据保存在应用专用目录中，不包含对话文本、提示词、命令内容、终端路径或凭据。
-“清除历史记录”会删除这些元数据和符合条件的本地缓存，但不会删除源代理转录、偏好、hook
-备份或已启用集成的凭据。“重置集成”会移除受管理的集成并撤销本地 bridge 凭据。完整的字段、
-保留和删除矩阵见 [docs/data-lifecycle.md](docs/data-lifecycle.md)。
+- **清除历史记录** 会删除会话元数据和符合条件的本地缓存/日志；不会删除偏好、源代理转录、
+  hook 备份、已安装集成或钥匙串凭据。
+- **重置集成** 只移除经过精确验证的受管理集成及其相应凭据、日志/溯源/备份状态和经过验证的
+  共享 helper。它会先显示一次汇总同意记录；任一成员不安全或不明确时，整个操作不会修改任何
+  内容。它不会删除历史记录或无关的源工具配置。
+
+hook 备份可能包含源工具配置。它们是私有本地文件，最长保留 30 天或在经过验证的卸载/恢复后
+删除，且不属于“清除历史记录”的范围。完整字段、路径、保留和删除矩阵见
+[docs/data-lifecycle.md](docs/data-lifecycle.md)。
 
 ### 联系方式
 
-如果您对本隐私政策有任何疑问，请在以下地址提交 issue：
+如有问题，请在以下地址提交 issue：
 https://github.com/Octane0411/open-vibe-island/issues

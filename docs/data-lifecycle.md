@@ -33,3 +33,13 @@ items, source-agent files, or hook backups.
   exact verified shared helper is removed last. Runtime interruption leaves the
   existing manager journal/verified backup recovery path intact. It does not
   delete session history or unrelated configuration.
+
+## Local recovery boundary
+
+At launch the bridge removes and recreates only its verified app-owned stale
+socket state; it does not follow symlinks or delete an unsafe path. Expired
+registry/cache rows are discarded under their retention clock. Hook recovery is
+separate from history: Settings status is read-only, and a hook journal can
+only complete a verified target write or restore its matching verified backup.
+An ambiguous, unmanaged, or tampered source-tool file remains untouched and
+receives remediation rather than an automatic repair.

@@ -7,16 +7,53 @@ The repository harness exists to make a round of work mechanically checkable. Th
 ## Commands
 
 - `scripts/harness.sh` runs the baseline checks. With no arguments it runs `docs`, `test`, and `build`.
-- `scripts/harness.sh ci` is the non-GUI local check preset.
+- `scripts/harness.sh ci` is the non-GUI local check preset. The name is a
+  command preset only; this repository has no hosted CI workflow.
 - `scripts/harness.sh smoke` launches the macOS app in harness mode, loads a deterministic debug scenario, captures local artifacts, and auto-exits after a short timeout.
 - `scripts/harness.sh smoke-all` runs the full debug-scenario suite and validates each artifact set.
 - `scripts/check-docs.sh` enforces the minimum doc map and required links.
+- `python3 scripts/verify-local-only-audit.py` checks the product-removal map,
+  powerful-source dispositions, and local delivery boundary.
+- `python3 scripts/verify-no-network-policy.py` checks repository-owned source,
+  scripts, manifests, and entitlements for prohibited network surfaces.
+
+For an offline dependency proof, run resolve, build, and test with empty,
+temporary SwiftPM caches and a host-level network denial. SwiftPM has no remote
+dependency to resolve, and the package/launch scripts explicitly disable
+automatic resolution. The packaging script also validates the resulting bundle
+entitlements and static no-network policy.
+
+## Retained script catalog
+
+Every script is local to the checkout unless noted otherwise. None is an update,
+publishing, or remote-management workflow.
+
+| Script | Purpose and safety boundary |
+| --- | --- |
+| `agent-worktree.sh` | Creates a topic worktree from `origin/main`; requires normal Git remote access and is repository maintenance, not product runtime. |
+| `check-docs.sh` | Verifies required documentation files, headings, and index links. |
+| `clean-user-env.sh` | Developer test cleanup. Always run `--dry-run` first; without it, it deliberately removes this user’s Open Island test state and managed artifacts. |
+| `generate-artifact-manifest.py` | Hashes final local bundle helpers/resources before signing. |
+| `generate-v6-appicon.swift`, `generate_brand_icons.py`, `generate_dmg_background.py` | Regenerate repository artwork only; review resulting assets before commit. |
+| `harness.sh` | Runs named local docs, test, build, lint, and deterministic smoke presets. |
+| `launch-dev-app.sh` | Rebuilds, refreshes, signs locally, and launches `~/Applications/Open Island Dev.app`; it replaces that local development bundle. |
+| `lint-strings.sh` | Parses local `.strings` files. |
+| `observe-runtime-network.py` | Passively observes a bound launched process tree for policy violations; see the limitation below. |
+| `package-local-app.sh` | The sole offline bundle/ZIP workflow; replaces only output beneath its selected package root. |
+| `replay-bridge-scenarios.py` | Developer manual fixture helper for a running local test bridge; never aim it at a user integration or treat it as an authenticated production hook client. |
+| `setup-dev-signing.sh` | Creates a persistent local login-keychain signing identity. This changes keychain state and requires explicit user authority. |
+| `smoke-dev-app.sh`, `smoke-all-scenarios.sh` | Deterministic local app/harness runs that write caller-selected or `output/harness` artifacts. |
+| `validate-harness-artifacts.py` | Validates deterministic harness output. |
+| `verify-ghostty-jumps.sh` | Opt-in local Ghostty focus integration test; requires Ghostty and macOS Automation permission. |
+| `verify-local-only-audit.py`, `verify-no-network-policy.py` | Static policy/audit gates with deliberate negative fixtures in their test modules. |
+| `scripts/tests/*` | Python unit tests for the verification tools and fixtures. |
 
 ## Current Guarantees
 
 - Core docs remain present and indexed from [docs/index.md](./index.md).
 - Markdown files under `docs/` keep a visible top-level heading.
-- `swift test` stays green for the package targets.
+- Targeted policy, audit, documentation, and deterministic UI checks are
+  executable locally; see the known full-suite baseline below.
 - `swift build` stays green for the package products.
 - The app can be launched locally in a deterministic harness mode without requiring live hook traffic.
 - The smoke path produces a machine-readable report plus PNG, accessibility, and runtime-observability evidence for the rendered window surface.
@@ -141,8 +178,36 @@ Every meaningful round should leave behind:
 
 ## Current Gaps
 
+- A clean isolated test home may have 23 `bootstrapUnavailable` failures when
+  it cannot create the macOS Keychain trusted-application ACL, plus 4 known
+  `AppModelSessionListTests` assertion issues in affected baselines. A
+  host-level network-denial sandbox can additionally deny local `AF_UNIX` bind
+  and produce 7 transport fixture failures; that is a sandbox limitation, not
+  evidence of IP traffic. Treat the normal host macOS `swift test` result as
+  the suite baseline and use the isolated run for offline dependency proof.
+  Focused bridge/security tests in an allowed macOS environment, Python policy
+  fixtures, static audits, and bundle inspection are the compensating controls.
 - The full local check preset does not run the GUI smoke step because the
   current baseline avoids depending on a window-server-backed runner path.
 - The harness captures milestone timings and log summaries, but it does not yet provide a queryable log/metrics/trace stack.
 - The current accessibility assertions are still scenario-specific rather than full golden snapshots.
 - We do not yet have execution-plan lifecycle automation beyond the directory conventions defined in [docs/exec-plans/README.md](./exec-plans/README.md).
+
+## Manual macOS limitations and compensating controls
+
+Accessibility, Automation, keychain ACL, real terminal focus, and window-server
+rendering require a signed local bundle, TCC grants, and installed local apps.
+They cannot be truthfully exercised in a headless or unapproved environment.
+The owner is the maintainer running a local release verification: create or
+inspect the stable local identity with `setup-dev-signing.sh`, refresh with
+`launch-dev-app.sh`, grant only the requested macOS permissions, and run the
+deterministic harness plus the focused manual check. Static policy tests,
+artifact manifests, entitlement inspection, and role/limit fixtures remain the
+compensating automated controls when that manual step is unavailable.
+
+The process-tree observer is also intentionally limited to passive samples of
+the identity-bound root and descendants. It cannot prove that an IP socket did
+not exist entirely between samples, and it excludes a pre-existing application
+that is merely focused. Static no-network policy, negative fixtures, packaged
+entitlement inspection, and multi-sample fixture sockets compensate for that
+limit; the same release-verification owner records the result.

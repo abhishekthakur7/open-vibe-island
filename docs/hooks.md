@@ -168,7 +168,7 @@ Set `OPEN_ISLAND_SKIP_HOOKS=1` on a child agent process when another local contr
 
 This is meant for per-process launches. Do not set it globally unless you want Open Island hooks disabled for every agent started from that environment.
 
-**Entry point**: [`Sources/OpenIslandHooks/main.swift`](../Sources/OpenIslandHooks/main.swift)
+**Entry point**: [`Sources/OpenIslandHooks/OpenIslandHooksCLI.swift`](../Sources/OpenIslandHooks/OpenIslandHooksCLI.swift)
 
 ---
 
@@ -459,18 +459,50 @@ Setting `interrupt: true` terminates the current agent turn immediately.
 
 ## Terminal Auto-detection
 
-The hook process infers the terminal type from environment variables at runtime:
+The hook process may classify terminal metadata from environment variables at
+runtime. Classification is used for display/attachment hints only; it does not
+authorize terminal control.
 
 | Environment variable | Inferred terminal |
 |---|---|
 | `ITERM_SESSION_ID` or `LC_TERMINAL=iTerm2` | `iTerm` |
-| `CMUX_WORKSPACE_ID` or `CMUX_SOCKET_PATH` | `cmux` |
+| `CMUX_WORKSPACE_ID` or `CMUX_SOCKET_PATH` | `cmux` metadata only |
 | `GHOSTTY_RESOURCES_DIR` | `Ghostty` |
 | `WARP_IS_LOCAL_SHELL_SESSION` | `Warp` |
 | `TERM_PROGRAM=Apple_Terminal` | `Terminal` |
 | `TERM_PROGRAM=WezTerm` | `WezTerm` |
 
-For iTerm, Terminal, and Ghostty the process additionally runs an AppleScript query to obtain the session ID, TTY, and window title — used to power the "jump back to terminal" feature. The `cmux` terminal uses `CMUX_SURFACE_ID` instead of AppleScript.
+For iTerm, Terminal, and Ghostty the process can obtain local session hints
+used by the fixed jump-back policy. cmux metadata never opens a socket, invokes
+a cmux command, or injects terminal input; cmux control is unsupported.
+
+---
+
+## Recovery, update, and uninstall
+
+If Settings reports `protocolUpgradeRequired` or `unverifiedArtifact`, refresh
+the development bundle with `zsh scripts/launch-dev-app.sh`, then retry the
+explicit Settings flow. Do not point a hook at a build-directory executable or
+an arbitrary helper path: only the manifest-verified helper in the refreshed
+bundle is accepted.
+
+On bridge startup, Open Island removes and recreates only its own verified
+stale socket state. It never follows a symlink or removes an unsafe/non-owned
+path. Replay and capability state are memory-only and expire automatically.
+
+For hook state, use Settings **Status** first. It is read-only. A missing,
+tampered, stale, partially managed, or user-owned target is an ambiguity; Open
+Island leaves it unchanged and reports the exact remediation. A recovery
+journal is resolved only by completing the verified intended write or restoring
+the matching verified backup. Do not delete a source-tool configuration merely
+to make Open Island install.
+
+Use the integration’s explicit Settings **Uninstall** path to restore/remove
+only verified managed state and revoke its hook credential. **Reset
+Integrations** performs the broader all-or-nothing checked reset described in
+[data-lifecycle.md](./data-lifecycle.md). `scripts/clean-user-env.sh --dry-run`
+is a developer-only inventory preview, not a normal hook uninstall; without
+`--dry-run` it intentionally removes this user’s Open Island test artifacts.
 
 ---
 
@@ -478,7 +510,7 @@ For iTerm, Terminal, and Ghostty the process additionally runs an AppleScript qu
 
 | File | Responsibility |
 |---|---|
-| [`Sources/OpenIslandHooks/main.swift`](../Sources/OpenIslandHooks/main.swift) | Hook CLI entry point — routes to Codex, Claude, or Gemini path |
+| [`Sources/OpenIslandHooks/OpenIslandHooksCLI.swift`](../Sources/OpenIslandHooks/OpenIslandHooksCLI.swift) | Hook CLI entry point — routes to Codex, Claude, or Gemini path |
 | [`Sources/OpenIslandCore/CodexHooks.swift`](../Sources/OpenIslandCore/CodexHooks.swift) | Codex payload model, output encoder, terminal detection |
 | [`Sources/OpenIslandCore/ClaudeHooks.swift`](../Sources/OpenIslandCore/ClaudeHooks.swift) | Claude Code payload model, directive types, output encoder |
 | [`Sources/OpenIslandCore/GeminiHooks.swift`](../Sources/OpenIslandCore/GeminiHooks.swift) | Gemini CLI payload model, terminal detection, metadata helpers |

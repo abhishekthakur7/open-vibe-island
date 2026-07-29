@@ -1,5 +1,10 @@
 # App -> Ghostty -> Codex Chain
 
+> Historical external-app investigation only. This document records observations
+> of prior/reference behavior; it is not a current Open Island transport,
+> socket, network, or Automation contract. The current contract is
+> [architecture.md](./architecture.md).
+
 Reviewed on 2026-04-02 against the locally installed app bundle:
 
 - app: `/Applications/Vibe Island.app`

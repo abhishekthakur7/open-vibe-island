@@ -5,7 +5,9 @@
 Open Island has zero third-party SwiftPM dependencies and no `Vendor/`
 directory. `Package.swift` defines only repository-owned targets, so an empty
 SwiftPM cache resolves from the checkout without a registry or source-control
-fetch.
+fetch. There are therefore no current third-party source hashes, licenses, or
+notices to recompute; “none” is the audited provenance result, not an omitted
+check.
 
 | Removed package | Replacement | Reachable behavior retained |
 | --- | --- | --- |
@@ -21,8 +23,32 @@ dependency supply source. With no package dependencies SwiftPM need not create
 one; if a future local path dependency creates it, it must contain no remote
 location and must not replace source committed under this repository.
 
-There are no vendored packages to license, hash, or update. Any future package
-must either be removed or be reviewed into `Vendor/<Package>` with its upstream
-revision/tag, archive SHA-256, tree hash, license/notices, exclusions, reachable
-targets, and an explicit reviewed update procedure recorded here before a local
-`.package(path:)` reference is added.
+## Verification
+
+The offline dependency gate is:
+
+```bash
+swift package resolve
+swift build
+swift test
+swift package describe
+```
+
+Run it with empty temporary SwiftPM caches and host-level network denial when
+proving a clean checkout. A second resolve must leave no dependency-state diff.
+`python3 scripts/verify-local-only-audit.py` additionally rejects remote
+SwiftPM/Xcode references; `python3 scripts/verify-no-network-policy.py` rejects
+remote package URLs in live manifests.
+
+## Future reviewed update procedure
+
+There is no automatic dependency update mechanism. A future dependency must be
+removed where possible; otherwise the maintainer must first obtain and review
+the source outside this repository, vendor only the required source under
+`Vendor/<Package>`, and add only a repository-local `.package(path:)` reference.
+Before committing, record here the canonical upstream, revision/tag, archive
+SHA-256, repository-tree hash, SPDX/license text and notices, reachable targets,
+excluded examples/workflows/binaries/platforms, and the reviewer. Re-run the
+offline gate and recompute both hashes from the vendored files. A remote URL,
+registry lookup, or executable dependency manifest is never an acceptable
+update path.

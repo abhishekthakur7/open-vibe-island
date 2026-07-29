@@ -1,70 +1,59 @@
 # Product Scope
 
-## Problem
+## Product boundary
 
-CLI coding agents are powerful, but they pull attention away from the editor and terminal. Developers need a lightweight control surface to monitor work, approve actions, answer questions, and return to the right session quickly — without handing their machine over to a closed-source paid app.
+Open Island is one local macOS product: `OpenIslandApp`. It gives developers a
+native notch/top-bar surface for local AI coding-agent sessions, local approval
+and question flows, and safe return-to-terminal focus. It has no mobile,
+watch, relay, account, server, telemetry, updater, remote control, CI service,
+or public-distribution runtime.
 
-## Target User
+“Local-only” applies to behavior Open Island owns. When it focuses an existing
+terminal, editor, or agent, that application remains independent. Open Island
+does not request network activity from it and does not claim its traffic,
+credentials, files, or cloud synchronization as its own.
 
-- macOS developers using terminal-based coding agents daily
-- Users running more than one agent or more than one terminal session
-- Users who care about low latency, native behavior, and open-source transparency
+## Product principles
 
-## Product Principles
+- **Local by construction** — repository-owned code has no network entitlement,
+  remote package dependency, or remote runtime endpoint.
+- **Explicit integration** — managed hooks require a Settings confirmation and
+  preserve ambiguous or user-owned configuration unchanged.
+- **Fail closed for privileged work** — the bridge and Automation policy deny
+  unknown roles, sources, paths, URLs, scripts, and commands.
+- **Fail open for agents** — a missing bridge does not make an agent unusable.
+- **Reversible local state** — Clear History and Reset Integrations have
+  separate, documented scopes.
 
-- **Open source** — all code is public, all contributions are AI-produced
-- **Local first** — no server dependency, no accounts, no analytics
-- **Native macOS** — SwiftUI + AppKit, not a web wrapper
-- **Terminal-native** — built to support the terminal workflow, not replace it
-- **Fail open** — if the app or bridge is unavailable, agents keep running unchanged
+## Supported local integrations
 
-## Supported Code Agents
+The supported agent integrations are Claude Code and its listed compatible
+forks, Codex CLI, Cursor, OpenCode, Gemini CLI, and Kimi CLI. Their exact
+events and installation states are in [hooks.md](./hooks.md). Compatibility
+classification of another terminal is not permission to control it.
 
-| Agent | Status | Notes |
-|---|---|---|
-| **Claude Code** | Supported | Hook integration, JSONL session discovery, status line bridge, usage tracking |
-| **Codex** | Supported | Full hook integration (SessionStart, UserPromptSubmit, Stop), usage tracking |
-| **OpenCode** | Supported | JS plugin integration, permission/question flows, process detection |
-| **Qoder** | Supported | Claude Code fork — same hook format, config at `~/.qoder/settings.json` |
-| **Qwen Code** | Supported | Claude Code fork — same hook format, config at `~/.qwen/settings.json` |
-| **Factory** | Supported | Claude Code fork — same hook format, config at `~/.factory/settings.json` |
-| **CodeBuddy** | Supported | Claude Code fork — same hook format, config at `~/.codebuddy/settings.json` |
-| **Gemini CLI** | Supported | Hook integration (`SessionStart`, `BeforeAgent`, `AfterAgent`, `SessionEnd`, `Notification`), session tracking, terminal jump metadata, completion-card compatibility handling |
-| **Kimi CLI** | Supported | Hook integration via `~/.kimi/config.toml` `[[hooks]]` (Moonshot AI). Kimi's hook payload is byte-compatible with Claude Code, so runtime reuses the Claude decode path; a dedicated TOML installer preserves user-authored hooks |
+## Supported jump-back actions
 
-## Supported Terminals
-
-| Terminal | Status | Notes |
-|---|---|---|
-| **Terminal.app** | Full Support | Jump-back with TTY targeting |
-| **Ghostty** | Full Support | Jump-back with ID matching |
-| **cmux** | Full Support | Jump-back via Unix socket API |
-| **Kaku** | Full Support | Jump-back via CLI pane targeting |
-| **WezTerm** | Full Support | Jump-back via CLI pane targeting |
-| **iTerm2** | Full Support | Jump-back with session ID / TTY matching |
-| **tmux** (multiplexer) | Full Support | Jump-back with session/window/pane targeting |
-| **Warp** | Planned | Fallback detection only |
+Only the following focus paths are implemented: Terminal.app by TTY, Ghostty
+by terminal ID, and iTerm2 by session ID or TTY. They use immutable
+AppleScript templates with typed local parameters. cmux, tmux, zellij, WezTerm,
+Kaku, Warp, and terminal command/reply injection are not supported local
+Automation actions.
 
 ## Features
 
-- **Notch overlay** — sits in the notch area on notch Macs, falls back to a compact top-center bar on external displays or non-notch Macs
-- **Settings** — hook install/uninstall, usage dashboard, General, Display, Sound, Shortcuts, Lab, About
-- **Notification mode** — auto-height panel for permission requests and session events
-- **Notification sounds** — configurable system sounds with mute toggle
-- **i18n** — English and Simplified Chinese
-- **Session discovery** — auto-discover from local transcripts, persist across launches
-- **Process discovery** — match active agents via `ps`/`lsof`
-- **Local packaging** — create a locally signed app bundle and ZIP archive from the current checkout
+- Notch overlay with a compact top-center fallback
+- Local session discovery and a private Unix-domain bridge
+- Settings for consented hook management, history clearing, and integration
+  reset
+- Local notification and sound preferences
+- English and Simplified Chinese UI
+- Local bundle packaging for developer-controlled installation
 
-## Success Criteria
+## Non-goals
 
-- Agent events appear in the overlay with low latency
-- Approval and answer actions round-trip back to the source process
-- The app can restore focus to the owning terminal window reliably
-- Idle resource usage remains low enough for all-day background use
-
-## Future Directions
-
-- Warp precision jump support
-- Sound packs, themes, and onboarding polish
-- Deeper terminal split targeting
+Open Island does not provide a remote dashboard, collaborative relay, mobile
+companion, automatic updating, release channel, hosted build system, terminal
+command injection, arbitrary AppleScript, generic URL opening, or arbitrary
+file access. A future change to any of those boundaries requires an explicit
+product and security review.

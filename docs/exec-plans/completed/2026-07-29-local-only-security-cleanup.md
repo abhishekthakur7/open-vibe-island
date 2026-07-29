@@ -1,6 +1,6 @@
 # Local-Only Security Cleanup Execution Plan
 
-- **Status:** Active
+- **Status:** Completed
 - **Created:** 2026-07-29
 - **Scope:** Local macOS use only
 - **Supported runtime after completion:** `OpenIslandApp`
@@ -39,8 +39,8 @@ clear local-only product boundary.
 - Local history and logs are minimal, protected, expiring, and user-clearable.
 - Hook management is explicit opt-in, local-source-only, symlink-safe, atomic,
   reversible, and permission-safe.
-- AppleScript, cmux, URL opening, and subprocess behavior are fixed-operation
-  and allowlisted.
+- AppleScript, URL opening, and subprocess behavior are fixed-operation and
+  allowlisted; cmux control and terminal injection are removed.
 - Stable local development signing, dev-bundle refresh, and offline packaging
   remain available.
 - Product, privacy, architecture, hooks, and packaging documentation accurately
@@ -612,7 +612,7 @@ remain untouched. Rollback restores only a verified managed backup.
 **Owned files**
 
 - process launcher;
-- cmux adapter;
+- removed cmux adapter;
 - AppleScript and Automation helpers;
 - focus and jump handlers;
 - tests;
@@ -637,8 +637,8 @@ Round 1 action allowlist and Round 6 roles.
 - Reject Apple Events that request scripts, downloads, remote URLs, or terminal
   command execution.
 - Permit only fixed local UI, focus, and window-selection templates; validated
-  local file navigation; approved non-network URL schemes; audited cmux
-  local-control actions; and the signed bridge helper.
+  local file navigation; approved non-network URL schemes; and the signed
+  bridge helper. cmux local-control actions are removed.
 - Pass AppleScript data as typed parameters rather than source interpolation.
 - Require the appropriate bridge role for every powerful action.
 
@@ -656,13 +656,14 @@ no network-requesting action.
 - oversized input and output tests;
 - timeout and descendant cleanup tests;
 - role mismatch tests;
-- manual cmux, local focus, and precision-jump verification.
+- static rejection of cmux/multiplexer and terminal-injection targets; manual
+  verification only for the remaining fixed local focus templates.
 
 **Migration and rollback**
 
-Unsupported free-form behavior returns a local-only policy error. Do not add a
-compatibility shell escape hatch. Revert action implementation and tests
-together.
+Unsupported free-form behavior, cmux control, and terminal injection return a
+local-only policy error. Do not add a compatibility shell escape hatch. Revert
+action implementation and tests together.
 
 **Commit**
 
@@ -778,8 +779,9 @@ remains. Every retained script and powerful action is documented.
 5. Package locally and confirm there is no network client or server entitlement.
 6. Run `scripts/setup-dev-signing.sh`, then refresh and launch through
    `scripts/launch-dev-app.sh`.
-7. Exercise the bridge, hooks, history clearing, integration reset, cmux,
-   focus, AppleScript, and precision jump.
+7. Exercise the bridge, hooks, history clearing, integration reset, and the
+   remaining fixed local focus/AppleScript paths; confirm cmux, multiplexer,
+   and terminal-injection requests are rejected.
 8. Verify Unix paths, owners, modes, peer rejection, capability expiry and
    replay, and resource limits.
 9. Observe the app, bundled helpers, and Open Island-launched descendants and
@@ -806,5 +808,23 @@ remains. Every retained script and powerful action is documented.
 - Static tests, adversarial tests, runtime observation, entitlement inspection,
   and offline smoke verification pass.
 - Documentation and the Round 1 disposition map match the final implementation.
-- No known verification gap remains. Any unavoidable macOS limitation is
-  recorded with a compensating control and named owner.
+- Any unavoidable macOS limitation is recorded with a compensating control and
+  named owner.
+
+## Closure Record — 2026-07-29
+
+The automated documentation, static-policy, audit, dependency, package,
+entitlement, bridge/security fixture, and deterministic smoke gates were run
+for the completed local-only implementation. The supported full-suite baseline
+is the host macOS run; an isolated clean-cache run under host network denial
+also proves offline resolve/build, but its deny rule can block local Unix-socket
+fixtures and Keychain ACL creation. Those environment-only outcomes are
+separated in [quality.md](../../quality.md) from product-policy results.
+
+Manual Accessibility, Automation, keychain-identity, and full 45-cell
+Orca-assisted smoke verification remain host/TCC-dependent. The compensating
+controls and owner are recorded in [quality.md](../../quality.md): the release
+verification maintainer refreshes the signed local bundle, grants only the
+requested macOS permissions, and records the manual result. cmux control and
+terminal injection are no longer manual verification requirements because the
+product rejects those actions by policy and test.

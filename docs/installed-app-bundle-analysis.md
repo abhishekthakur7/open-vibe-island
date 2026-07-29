@@ -1,5 +1,9 @@
 # Installed App Bundle Analysis
 
+> Historical analysis of a third-party/reference bundle. Names, endpoints,
+> frameworks, and updater behavior below do not describe Open Island. The
+> current local-only product boundary is [product.md](./product.md).
+
 Reviewed on 2026-04-02 against the locally installed app:
 
 - bundle: `/Applications/Vibe Island.app`

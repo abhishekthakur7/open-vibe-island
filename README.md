@@ -1,65 +1,78 @@
 # Open Island
 
-Native macOS companion for AI coding agents — lives in the notch / top bar, tracks your local agent sessions, and jumps you back to the right terminal or IDE. Open-source, local-first, no server.
+Open Island is a native, local-only macOS companion for AI coding agents. It
+lives in the notch or top bar, displays local agent-session state, and can
+return focus to a supported local terminal session. It has no account, server,
+telemetry, updater, relay, remote runtime, or distribution service.
+
+Open Island observes and controls only the software and files it owns. A
+focused terminal or agent remains an independent application: its own network
+traffic, credentials, transcripts, and permissions are not Open Island traffic
+or storage.
 
 ## Requirements
 
 - macOS 14+
 - Swift 6.2 (Xcode)
 
-## Build & run
+## Build and verify locally
 
-Canonical dev runtime — build and launch the app straight from the package:
-
-```bash
-swift build                    # compile all targets
-swift test                     # run the test suite
-swift run OpenIslandApp        # build + launch the app
-```
-
-Or open it in Xcode and hit **Run**:
+The package has no third-party SwiftPM dependencies. These commands build only
+the current checkout; use an outer network-denial environment when verification
+must prove offline execution.
 
 ```bash
-open Package.swift
-```
-
-Run the full local check suite — lint, docs, tests, and build:
-
-```bash
+swift build
+swift test
+swift run OpenIslandApp
 zsh scripts/harness.sh ci
 ```
 
-## Build a local app bundle
+`swift run OpenIslandApp` is the canonical development runtime. Opening
+`Package.swift` in Xcode and selecting `OpenIslandApp` is equivalent for
+interactive development.
 
-Create a standalone bundle and ZIP archive for local use:
+## Local app bundles
+
+The only packaging workflow is:
 
 ```bash
 zsh scripts/package-local-app.sh
 ```
 
-The script writes `output/local-package/Open Island.app` and
-`output/local-package/Open Island.zip`. It builds only from the current
-checkout's locally available dependencies, signs locally (or ad-hoc), and does
-not upload, notarize, publish, or check for updates.
+It produces `output/local-package/Open Island.app` and
+`output/local-package/Open Island.zip` from the checkout. It uses a local
+identity when available (otherwise ad-hoc signing) and never uploads,
+notarizes, publishes, checks for updates, or contacts a service. Replacing an
+installed local copy is a deliberate manual action.
 
-For a refreshable development bundle at `~/Applications/Open Island Dev.app`,
-run `zsh scripts/launch-dev-app.sh`.
-
-### "Open Island is damaged and can't be opened"
-
-Gatekeeper shows this for an unsigned local build. Clear the quarantine flag (dev use only):
+For a refreshable development bundle, use:
 
 ```bash
-xattr -dr com.apple.quarantine "/Applications/Open Island.app"
+zsh scripts/launch-dev-app.sh
 ```
 
-Or right-click the app → **Open** → **Open** to bypass it once. See
-[docs/packaging.md](docs/packaging.md) for the local packaging contract.
+This rebuilds and refreshes `~/Applications/Open Island Dev.app` before
+launching it. For stable Accessibility and Automation grants during repeated
+manual verification, first create the local signing identity:
 
-## On first launch
+```bash
+zsh scripts/setup-dev-signing.sh
+```
 
-Open Island auto-discovers your active agent sessions and starts the live bridge. Install the per-agent hooks from the in-app **Settings** window.
+That command creates a self-signed identity in the current login keychain; it
+does not contact an Apple or Open Island service. See
+[docs/packaging.md](docs/packaging.md) before using either workflow.
+
+## First launch and integrations
+
+Session discovery reads supported local agent data and starts the private local
+bridge. Hook installation is opt-in in Settings: it previews every target and
+does not change ambiguous or user-owned configuration. See
+[docs/hooks.md](docs/hooks.md) for consent, recovery, and uninstall behavior.
 
 ## More
 
-Repository map, architecture, and deeper docs: [docs/index.md](docs/index.md).
+[docs/index.md](docs/index.md) is the documentation map. The privacy,
+data-lifecycle, architecture, and local security boundaries are documented
+there in detail.

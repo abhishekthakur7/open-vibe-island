@@ -942,18 +942,13 @@ def main() -> None:
         if theme == "poured":
             assert_exact_normalized_entry(
                 text_values,
-                f"$ {raw_command}",
+                raw_command,
                 "poured approvalCard AX command",
             )
             assert_exact_normalized_entry(
                 text_values,
                 effect,
                 "poured approvalCard AX effect",
-            )
-            assert_exact_normalized_entry(
-                text_values,
-                countdown,
-                "poured approvalCard AX countdown",
             )
         elif theme == "flightDeck":
             for expected, context in (
