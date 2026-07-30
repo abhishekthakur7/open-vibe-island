@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "halo-parity/scenario.schema.json",
+  "type": "object",
+  "required": ["schemaVersion", "scenarios"],
+  "properties": {
+    "schemaVersion": {"type": "string"},
+    "scenarios": {
+      "type": "array",
+      "minItems": 57,
+      "maxItems": 57,
+      "items": {
+        "type": "object",
+        "required": ["id", "fixtureData", "html", "native", "capture", "expected", "disposition", "result"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "disposition": {"enum": ["exact", "temporary-surrogate", "temporary-exclusion", "blocked"]},
+          "result": {"enum": ["passed", "not-passed"]}
+        }
+      }
+    }
+  }
+}

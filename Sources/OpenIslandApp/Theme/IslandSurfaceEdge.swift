@@ -174,7 +174,16 @@ struct HaloEdgePhase: Equatable {
 }
 
 private struct HaloEdgePhaseKey: EnvironmentKey {
+    #if HALO_PARITY_TESTING
+    // Gate 0A parity may install a manual diagnostic phase before the real
+    // production composition is presented. Normal and Release launches leave
+    // this nil and therefore retain the production monotonic clocks.
+    static var defaultValue: HaloEdgePhase? {
+        HaloParityEventClock.installedManualPhase
+    }
+    #else
     static let defaultValue: HaloEdgePhase? = nil
+    #endif
 }
 
 extension EnvironmentValues {

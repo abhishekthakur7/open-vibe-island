@@ -1,0 +1,3180 @@
+{
+  "schemaVersion": "1.0.0",
+  "status": "not-passed",
+  "authorityId": "halo-reference-authority-v1",
+  "defaultMode": "inert-original-board",
+  "controllerSchema": {
+    "required": [
+      "scenarioId",
+      "profile",
+      "motionMode",
+      "accessibilityMode",
+      "seed",
+      "eventId",
+      "timeMs"
+    ],
+    "scenarioIds": [
+      "A1",
+      "A2",
+      "A2-prime",
+      "A3",
+      "A4",
+      "A5",
+      "A6-interrupted",
+      "A6-failed",
+      "B",
+      "B-prime",
+      "C",
+      "D",
+      "E-travel",
+      "E1",
+      "E2",
+      "E3",
+      "F1",
+      "F2",
+      "F3",
+      "G",
+      "G-prime",
+      "H-success",
+      "H-interrupted",
+      "H-failed",
+      "I",
+      "I-prime",
+      "J",
+      "J-prime",
+      "K-orbit",
+      "K-morph",
+      "K-condense",
+      "K-success",
+      "K-row",
+      "K-failure",
+      "K-idle",
+      "K-glyph",
+      "ST-LONG",
+      "ST-DUP",
+      "ST-MISSING",
+      "ST-COUNT-0",
+      "ST-COUNT-1",
+      "ST-COUNT-MANY",
+      "ST-OVERFLOW",
+      "ST-USAGE-0",
+      "ST-USAGE-MISSING",
+      "ST-ATTN-RUN",
+      "ST-Q-P",
+      "ST-IPRIME-ATTN",
+      "AX-RM",
+      "AX-IC",
+      "AX-RT",
+      "AX-KBD",
+      "AX-VO",
+      "AX-TEXT",
+      "DP-NOTCH",
+      "DP-TOPBAR",
+      "RESPONSIVE-560"
+    ],
+    "profiles": [
+      "notch-v1",
+      "top-bar-v1"
+    ],
+    "motionModes": [
+      "manual",
+      "normal",
+      "reduced"
+    ],
+    "accessibilityModes": [
+      "default",
+      "reduce-motion",
+      "increase-contrast",
+      "reduce-transparency",
+      "keyboard",
+      "voiceover",
+      "text-scale"
+    ],
+    "eventIds": [
+      "none",
+      "pointer-enter",
+      "pointer-exit",
+      "open",
+      "close",
+      "expand-row",
+      "collapse-row",
+      "approve",
+      "deny",
+      "next",
+      "select-option",
+      "toggle-option",
+      "type-other",
+      "submit",
+      "complete-success",
+      "complete-interrupted",
+      "complete-failed",
+      "insert-row",
+      "focus-next",
+      "escape",
+      "scroll"
+    ],
+    "seedPattern": "^[A-Za-z0-9._:-]{1,128}$",
+    "timeMs": {
+      "minimum": 0,
+      "maximum": 3600000
+    }
+  },
+  "events": {
+    "pointer-enter": {
+      "to": "peek"
+    },
+    "pointer-exit": {
+      "to": "closed"
+    },
+    "open": {
+      "to": "opened"
+    },
+    "close": {
+      "to": "closed"
+    },
+    "expand-row": {
+      "to": "row-expanded"
+    },
+    "collapse-row": {
+      "to": "opened"
+    },
+    "approve": {
+      "to": "approved"
+    },
+    "deny": {
+      "to": "denied"
+    },
+    "next": {
+      "to": "question-page-2"
+    },
+    "select-option": {
+      "to": "question-selected"
+    },
+    "toggle-option": {
+      "to": "question-multiselected"
+    },
+    "type-other": {
+      "to": "question-other"
+    },
+    "submit": {
+      "to": "submitted"
+    },
+    "complete-success": {
+      "to": "success"
+    },
+    "complete-interrupted": {
+      "to": "interrupted"
+    },
+    "complete-failed": {
+      "to": "failed"
+    },
+    "insert-row": {
+      "to": "row-entered"
+    },
+    "focus-next": {
+      "to": "keyboard-focus"
+    },
+    "escape": {
+      "to": "closed"
+    },
+    "scroll": {
+      "to": "scrolled"
+    },
+    "none": {
+      "to": "selected"
+    }
+  },
+  "scenarios": [
+    {
+      "id": "A1",
+      "ordinal": 1,
+      "referenceSection": "A1",
+      "intent": "Idle collapsed pill is optically absent except for a bare hairline, dim glyph, and dim dot.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "A1",
+        "selector": "[data-halo-authored=\"A1\"]",
+        "sourceAnchor": "S1.querySelectorAll('.frame')[0].querySelector('.isle.pill')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [
+          "left idle glyph",
+          "camera dead-zone",
+          "right idle dot"
+        ],
+        "stateMembership": [
+          "idle"
+        ],
+        "lightBehavior": "8%-white 1.5-unit hairline; no bloom and no animation."
+      },
+      "checkpoints": {
+        "stable": [
+          "0s",
+          "2s"
+        ],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "A2",
+      "ordinal": 2,
+      "referenceSection": "A2",
+      "intent": "One working session narrates its activity while a restrained cyan-to-violet segment orbits.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "A2",
+        "selector": "[data-halo-authored=\"A2\"]",
+        "sourceAnchor": "S1.querySelectorAll('.frame')[1].querySelector('.isle.pill.big.work')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Editing AppModel.swift"
+        ],
+        "grouping": [],
+        "order": [
+          "running glyph",
+          "Editing",
+          "AppModel.swift"
+        ],
+        "stateMembership": [
+          "one running session"
+        ],
+        "lightBehavior": "6s linear moving segment with restrained haze; 1.05s three-bar wave with 0/.13/.26s stagger."
+      },
+      "checkpoints": {
+        "stable": [
+          "orbit 0%",
+          "orbit 25%",
+          "orbit 50%",
+          "orbit 75%"
+        ],
+        "timed": [
+          "0s",
+          "0.6s",
+          "1.5s",
+          "3s",
+          "4.5s",
+          "6s",
+          "wave 0/.105/.2625/.525/.7875/1.05s"
+        ]
+      },
+      "events": []
+    },
+    {
+      "id": "A2-prime",
+      "ordinal": 3,
+      "referenceSection": "A2′",
+      "intent": "Multiple workers collapse to a count and one active light per session.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "A2-prime",
+        "selector": "[data-halo-authored=\"A2-prime\"]",
+        "sourceAnchor": "S1.querySelectorAll('.frame')[2].querySelector('.isle.pill.big.work')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "3 working"
+        ],
+        "grouping": [],
+        "order": [
+          "running glyph",
+          "3 working",
+          "six-cell agents grid"
+        ],
+        "stateMembership": [
+          "three running sessions"
+        ],
+        "lightBehavior": "Same restrained orbit as A2; exactly three grid lights active."
+      },
+      "checkpoints": {
+        "stable": [
+          "orbit 0%",
+          "orbit 25%",
+          "orbit 50%",
+          "orbit 75%"
+        ],
+        "timed": [
+          "0s",
+          "0.6s",
+          "1.5s",
+          "3s",
+          "4.5s",
+          "6s"
+        ]
+      },
+      "events": []
+    },
+    {
+      "id": "A3",
+      "ordinal": 4,
+      "referenceSection": "A3",
+      "intent": "Collapsed permission is the loudest ambient state.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "established-anchor",
+        "selector": "S1.querySelectorAll('.frame')[3].querySelector('.isle.pill.big.perm')",
+        "stateMechanism": "Select fragment; set permission pulse currentTime.",
+        "provenance": "06-halo.html pre-authored fragment"
+      },
+      "expected": {
+        "visibleCopy": [
+          "Approve swift build?",
+          "1"
+        ],
+        "grouping": [],
+        "order": [
+          "amber permission dot",
+          "approval narration",
+          "count"
+        ],
+        "stateMembership": [
+          "one permission"
+        ],
+        "lightBehavior": "Amber-to-magenta 1.9s ease-in-out pulse; hottest ambient bloom."
+      },
+      "checkpoints": {
+        "stable": [
+          "pulse trough",
+          "pulse peak"
+        ],
+        "timed": [
+          "0s",
+          "0.19s",
+          "0.475s",
+          "0.95s",
+          "1.425s",
+          "1.9s"
+        ]
+      },
+      "events": []
+    },
+    {
+      "id": "A4",
+      "ordinal": 5,
+      "referenceSection": "A4",
+      "intent": "Collapsed question is softer than permission and distinct by shape, word, hue, and cadence.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "A4",
+        "selector": "[data-halo-authored=\"A4\"]",
+        "sourceAnchor": "S1.querySelectorAll('.frame')[4].querySelector('.isle.pill.big.ques')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Answer needed",
+          "?"
+        ],
+        "grouping": [],
+        "order": [
+          "waiting glyph",
+          "Answer needed",
+          "? badge"
+        ],
+        "stateMembership": [
+          "one question"
+        ],
+        "lightBehavior": "Soft qgold 2.6s pulse with 2.4s waiting breathe; never as loud as permission."
+      },
+      "checkpoints": {
+        "stable": [
+          "pulse trough",
+          "pulse peak"
+        ],
+        "timed": [
+          "0s",
+          "0.26s",
+          "0.65s",
+          "1.3s",
+          "1.95s",
+          "2.6s",
+          "glyph full 2.4s cycle"
+        ]
+      },
+      "events": []
+    },
+    {
+      "id": "A5",
+      "ordinal": 6,
+      "referenceSection": "A5",
+      "intent": "Fresh success blooms once and settles to the idle hairline.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "A5",
+        "selector": "[data-halo-authored=\"A5\"]",
+        "sourceAnchor": "S1.querySelectorAll('.frame')[5].querySelector('.isle.pill.big.ok')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Done · the-automator"
+        ],
+        "grouping": [],
+        "order": [
+          "green dot",
+          "Done · the-automator",
+          "checkmark"
+        ],
+        "stateMembership": [
+          "fresh success"
+        ],
+        "lightBehavior": "One-shot green/cyan bloom, then bare idle hairline with no retained green conic."
+      },
+      "checkpoints": {
+        "stable": [
+          "event start",
+          "settled idle hairline"
+        ],
+        "timed": [
+          "0s",
+          "0.3s",
+          "0.75s",
+          "1.5s",
+          "2.1s",
+          "2.25s",
+          "3s"
+        ]
+      },
+      "events": [
+        "complete-success"
+      ]
+    },
+    {
+      "id": "A6-interrupted",
+      "ordinal": 7,
+      "referenceSection": "A6 interrupted",
+      "intent": "Interrupted is amber, uses a stop mark, and never pulses.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "A6-interrupted",
+        "selector": "[data-halo-authored=\"A6-interrupted\"]",
+        "sourceAnchor": "S1.querySelectorAll('.frame')[6].querySelectorAll('.isle.pill.big')[0]",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Interrupted · niche-radar"
+        ],
+        "grouping": [],
+        "order": [
+          "amber dot",
+          "Interrupted · niche-radar",
+          "stop mark"
+        ],
+        "stateMembership": [
+          "interrupted"
+        ],
+        "lightBehavior": "Static and glow-free; reference outer edge is ambiguous between idle hairline and amber static."
+      },
+      "checkpoints": {
+        "stable": [
+          "0s",
+          "3s"
+        ],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "A6-failed",
+      "ordinal": 8,
+      "referenceSection": "A6 failed",
+      "intent": "Failure is a static dim-red edge segment and never pulses.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "A6-failed",
+        "selector": "[data-halo-authored=\"A6-failed\"]",
+        "sourceAnchor": "S1.querySelectorAll('.frame')[6].querySelector('.isle.pill.big.fail')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Failed · open-vibe-island"
+        ],
+        "grouping": [],
+        "order": [
+          "red dot",
+          "Failed · open-vibe-island",
+          "xmark"
+        ],
+        "stateMembership": [
+          "failed"
+        ],
+        "lightBehavior": "Static dim-red segment; no pulse and no bloom."
+      },
+      "checkpoints": {
+        "stable": [
+          "0s",
+          "3s"
+        ],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "B",
+      "ordinal": 9,
+      "referenceSection": "B",
+      "intent": "A 0.15s dwell reveals one actionable peek before the full panel opens.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "B",
+        "selector": "[data-halo-authored=\"B\"]",
+        "sourceAnchor": "S2.querySelectorAll('.frame')[0].querySelector('.isle.perm')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "the-automator wants to run a command",
+          "swift build",
+          "Click to review & approve",
+          "+2 more sessions",
+          "S5"
+        ],
+        "grouping": [
+          "one actionable lead"
+        ],
+        "order": [
+          "lead request",
+          "command",
+          "review action",
+          "other count"
+        ],
+        "stateMembership": [
+          "one permission",
+          "two compressed others"
+        ],
+        "lightBehavior": "Amber edge is already condensing; one black body scales to 1.03 and grows."
+      },
+      "checkpoints": {
+        "stable": [
+          "pointer-out",
+          "149ms pre-dwell",
+          "150ms dwell",
+          "settled peek"
+        ],
+        "timed": [
+          "0%",
+          "10%",
+          "25%",
+          "50%",
+          "75%",
+          "settled"
+        ]
+      },
+      "events": [
+        "pointer-enter"
+      ]
+    },
+    {
+      "id": "B-prime",
+      "ordinal": 10,
+      "referenceSection": "B′",
+      "intent": "Pill, peek, and panel are one continuous silhouette in both directions.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "B-prime",
+        "selector": "[data-halo-authored=\"B-prime\"]",
+        "sourceAnchor": "S2.querySelectorAll('.frame')[0].querySelector('.isle')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [],
+        "stateMembership": [
+          "closed",
+          "peek",
+          "opened"
+        ],
+        "lightBehavior": "Attached unbroken edge on one black body; no crossfade, duplicate silhouette, seam, or flash."
+      },
+      "checkpoints": {
+        "stable": [
+          "closed",
+          "open settled",
+          "closed settled"
+        ],
+        "timed": [
+          "0%",
+          "10%",
+          "25%",
+          "50%",
+          "75%",
+          "settled in each direction"
+        ]
+      },
+      "events": [
+        "open"
+      ]
+    },
+    {
+      "id": "C",
+      "ordinal": 11,
+      "referenceSection": "C",
+      "intent": "Expanded list is compact, state-grouped, and gives attention the strongest hierarchy.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "C",
+        "selector": "[data-halo-authored=\"C\"]",
+        "sourceAnchor": "S3.querySelector('.isle.panel')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "6 total",
+          "2 waiting",
+          "2 running",
+          "2 done",
+          "Needs you",
+          "Running",
+          "Done",
+          "6 sessions · 2 need you",
+          "Group by project"
+        ],
+        "grouping": [
+          "Needs you 2",
+          "Running 2",
+          "Done 2"
+        ],
+        "order": [
+          "Needs you",
+          "Running",
+          "Done"
+        ],
+        "stateMembership": [
+          "permission and question in Needs you",
+          "two running in Running",
+          "success and interrupted in Done"
+        ],
+        "lightBehavior": "Outer panel is quiet; only live/actionable rows have approved selective rails and attention remains the single loudest thing."
+      },
+      "checkpoints": {
+        "stable": [
+          "settled panel",
+          "running glyph phase 0"
+        ],
+        "timed": [
+          "running glyph full 1.05s cycle"
+        ]
+      },
+      "events": []
+    },
+    {
+      "id": "D",
+      "ordinal": 12,
+      "referenceSection": "D",
+      "intent": "A row expands in place with truthful metadata, narrated activity, assistant prose, and honest actions.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "D",
+        "selector": "[data-halo-authored=\"D\"]",
+        "sourceAnchor": "S4.querySelector('.isle.panel')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Editing AppModel.swift · compiling OpenIslandCore",
+          "Agent",
+          "Model",
+          "Permission",
+          "Branch",
+          "Duration",
+          "Terminal",
+          "Last message · Claude",
+          "Jump to Ghostty",
+          "Transcript",
+          "~/Developer/open-vibe-island"
+        ],
+        "grouping": [
+          "metadata grid",
+          "assistant message",
+          "actions"
+        ],
+        "order": [
+          "row identity",
+          "metadata",
+          "assistant message",
+          "actions",
+          "path"
+        ],
+        "stateMembership": [
+          "one selected running row"
+        ],
+        "lightBehavior": "Settled non-light content is still; row entrance/light sweep occurs only on entry."
+      },
+      "checkpoints": {
+        "stable": [
+          "collapsed",
+          "expanded settled"
+        ],
+        "timed": [
+          "0%",
+          "10%",
+          "25%",
+          "50%",
+          "75%",
+          "settled"
+        ]
+      },
+      "events": [
+        "expand-row"
+      ]
+    },
+    {
+      "id": "E-travel",
+      "ordinal": 13,
+      "referenceSection": "E light travel",
+      "intent": "Attention light travels from perimeter into the actionable hero while outer intensity falls.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "E-travel",
+        "selector": "[data-halo-authored=\"E-travel\"]",
+        "sourceAnchor": "S5.querySelectorAll('.hero')[0]",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [],
+        "stateMembership": [
+          "permission attention"
+        ],
+        "lightBehavior": "Continuous centroid travel and reciprocal outer/inner intensity handoff; one loud thing."
+      },
+      "checkpoints": {
+        "stable": [
+          "perimeter start",
+          "travel midpoint",
+          "hero settled"
+        ],
+        "timed": [
+          "0%",
+          "10%",
+          "25%",
+          "50%",
+          "75%",
+          "settled"
+        ]
+      },
+      "events": [
+        "open"
+      ]
+    },
+    {
+      "id": "E1",
+      "ordinal": 14,
+      "referenceSection": "E1",
+      "intent": "Claude command approval presents syntax-highlighted command, allow/deny, and truthful scoped grants.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "established-anchor",
+        "selector": "S5.querySelectorAll('.hero')[0]",
+        "stateMechanism": "Select the pre-authored command hero; set ring currentTime.",
+        "provenance": "06-halo.html pre-authored fragment"
+      },
+      "expected": {
+        "visibleCopy": [
+          "Permission needed",
+          "the-automator wants to run a command",
+          "Sonnet 5",
+          "Allow once ⌘Y",
+          "Deny ⌘N",
+          "Yes, allow rtk grep from this project ⌘⇧Y",
+          "Yes, allow all rtk commands here"
+        ],
+        "grouping": [
+          "annunciator",
+          "command",
+          "primary actions",
+          "scoped actions"
+        ],
+        "order": [
+          "title",
+          "request",
+          "command",
+          "allow/deny",
+          "scopes"
+        ],
+        "stateMembership": [
+          "one permission"
+        ],
+        "lightBehavior": "2.2s amber hero ring dominates while the opened perimeter is subdued."
+      },
+      "checkpoints": {
+        "stable": [
+          "ring trough",
+          "ring peak"
+        ],
+        "timed": [
+          "0s",
+          "0.22s",
+          "0.55s",
+          "1.1s",
+          "1.65s",
+          "2.2s"
+        ]
+      },
+      "events": []
+    },
+    {
+      "id": "E2",
+      "ordinal": 15,
+      "referenceSection": "E2",
+      "intent": "Claude file edit approval shows an exact inline diff and honest scoped edit grant.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "established-anchor",
+        "selector": "S5.querySelectorAll('.hero')[1]",
+        "stateMechanism": "Select the pre-authored diff hero; set ring currentTime.",
+        "provenance": "06-halo.html pre-authored fragment"
+      },
+      "expected": {
+        "visibleCopy": [
+          "Approve file edit",
+          "the-automator wants to edit AGENTS.md",
+          "AGENTS.md · 2 changed",
+          "Allow once ⌘Y",
+          "Deny ⌘N",
+          "Yes, allow edits to *.md in this project ⌘⇧Y"
+        ],
+        "grouping": [
+          "annunciator",
+          "diff",
+          "primary actions",
+          "scope"
+        ],
+        "order": [
+          "title",
+          "request",
+          "diff",
+          "allow/deny",
+          "scope"
+        ],
+        "stateMembership": [
+          "one file-edit permission"
+        ],
+        "lightBehavior": "Same 2.2s hero dominance and subdued perimeter as E1."
+      },
+      "checkpoints": {
+        "stable": [
+          "ring trough",
+          "ring peak"
+        ],
+        "timed": [
+          "0s",
+          "0.22s",
+          "0.55s",
+          "1.1s",
+          "1.65s",
+          "2.2s"
+        ]
+      },
+      "events": []
+    },
+    {
+      "id": "E3",
+      "ordinal": 16,
+      "referenceSection": "E3",
+      "intent": "Codex approval is honest about in-app-only approval and exposes only a jump action.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "established-anchor",
+        "selector": "S5.querySelectorAll('.hero')[2]",
+        "stateMechanism": "Select the pre-authored terminal hero; set ring currentTime.",
+        "provenance": "06-halo.html pre-authored fragment"
+      },
+      "expected": {
+        "visibleCopy": [
+          "Approval waiting",
+          "Codex needs a decision — in-app only",
+          "Codex approvals happen inside the app. Jump to Codex to review this request.",
+          "Jump to Codex"
+        ],
+        "grouping": [
+          "annunciator",
+          "command",
+          "terminal note",
+          "jump"
+        ],
+        "order": [
+          "title",
+          "request",
+          "command",
+          "note",
+          "jump"
+        ],
+        "stateMembership": [
+          "one terminal-only permission"
+        ],
+        "lightBehavior": "Amber attention remains dominant; no fake approve/deny buttons."
+      },
+      "checkpoints": {
+        "stable": [
+          "ring trough",
+          "ring peak"
+        ],
+        "timed": [
+          "0s",
+          "0.22s",
+          "0.55s",
+          "1.1s",
+          "1.65s",
+          "2.2s"
+        ]
+      },
+      "events": []
+    },
+    {
+      "id": "F1",
+      "ordinal": 17,
+      "referenceSection": "F1",
+      "intent": "Page one of a two-question prompt supports numbered single selection and Next.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "established-anchor",
+        "selector": "S6.querySelectorAll('.hero.q')[0]",
+        "stateMechanism": "Select the pre-authored first page; set hero ring currentTime.",
+        "provenance": "06-halo.html pre-authored fragment"
+      },
+      "expected": {
+        "visibleCopy": [
+          "A question for you",
+          "niche-radar · OpenCode",
+          "1 of 2",
+          "Auth",
+          "Which auth method should the bridge use?",
+          "Next ↵",
+          "Press 1–3 to choose"
+        ],
+        "grouping": [
+          "question header",
+          "three options",
+          "Next",
+          "keyboard hint"
+        ],
+        "order": [
+          "progress",
+          "tag",
+          "question",
+          "options",
+          "Next",
+          "hint"
+        ],
+        "stateMembership": [
+          "page 1 of 2"
+        ],
+        "lightBehavior": "Soft question hero ring; no competing perimeter emphasis."
+      },
+      "checkpoints": {
+        "stable": [
+          "unselected",
+          "option 1 selected"
+        ],
+        "timed": [
+          "hero ring 0/.22/.55/1.1/1.65/2.2s"
+        ]
+      },
+      "events": []
+    },
+    {
+      "id": "F2",
+      "ordinal": 18,
+      "referenceSection": "F2",
+      "intent": "Page two supports multi-select, Other freeform input, and Submit.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "F2",
+        "selector": "[data-halo-authored=\"F2\"]",
+        "sourceAnchor": "S6.querySelectorAll('.hero.q')[1]",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "2 of 2",
+          "Platforms",
+          "multi-select",
+          "Which platforms should CI test against?",
+          "Other… (type a freeform answer)",
+          "Submit ↵",
+          "2 selected · toggle with digits"
+        ],
+        "grouping": [
+          "question header",
+          "four options",
+          "Submit",
+          "selection summary"
+        ],
+        "order": [
+          "progress",
+          "tag",
+          "question",
+          "options",
+          "Other",
+          "Submit",
+          "summary"
+        ],
+        "stateMembership": [
+          "page 2 of 2",
+          "options 1 and 2 selected"
+        ],
+        "lightBehavior": "Soft hero ring; selection is distinguished by shape as well as hue."
+      },
+      "checkpoints": {
+        "stable": [
+          "empty",
+          "two selected",
+          "freeform entered",
+          "submitted"
+        ],
+        "timed": [
+          "each selection/page transition 0/10/25/50/75/settled"
+        ]
+      },
+      "events": [
+        "next"
+      ]
+    },
+    {
+      "id": "F3",
+      "ordinal": 19,
+      "referenceSection": "F3",
+      "intent": "A compact yes/no question pulls the island open without full question chrome.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "F3",
+        "selector": "[data-halo-authored=\"F3\"]",
+        "sourceAnchor": "S6.querySelectorAll('.hero.q')[2]",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Continue past the failing test?",
+          "Yes, skip it for now",
+          "No, stop and let me look"
+        ],
+        "grouping": [
+          "question",
+          "two compact options"
+        ],
+        "order": [
+          "question",
+          "yes",
+          "no"
+        ],
+        "stateMembership": [
+          "one compact question"
+        ],
+        "lightBehavior": "Soft question hero ring; no unrelated motion."
+      },
+      "checkpoints": {
+        "stable": [
+          "selected yes",
+          "selected no",
+          "submitted"
+        ],
+        "timed": [
+          "selection/submission 0/10/25/50/75/settled"
+        ]
+      },
+      "events": [
+        "select-option"
+      ]
+    },
+    {
+      "id": "G",
+      "ordinal": 20,
+      "referenceSection": "G",
+      "intent": "One parent session expands nested subagents and task progress without creating top-level rows.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "G",
+        "selector": "[data-halo-authored=\"G\"]",
+        "sourceAnchor": "S7.querySelector('.isle.panel.narrow')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "the-automator",
+          "3 subagents",
+          "Orchestrating the bridge-auth migration",
+          "Subagents",
+          "3 active",
+          "Implement handshake",
+          "in progress"
+        ],
+        "grouping": [
+          "parent",
+          "Subagents",
+          "task list"
+        ],
+        "order": [
+          "parent",
+          "three subagents",
+          "five tasks"
+        ],
+        "stateMembership": [
+          "three nested running agents",
+          "two done tasks",
+          "one in progress",
+          "two pending"
+        ],
+        "lightBehavior": "Nested activity remains subordinate to the parent and any attention state."
+      },
+      "checkpoints": {
+        "stable": [
+          "expanded settled"
+        ],
+        "timed": [
+          "three liveness waves over 1.05s"
+        ]
+      },
+      "events": []
+    },
+    {
+      "id": "G-prime",
+      "ordinal": 21,
+      "referenceSection": "G′",
+      "intent": "Nested work compresses to the parent plus a count and nodes glyph.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "G-prime",
+        "selector": "[data-halo-authored=\"G-prime\"]",
+        "sourceAnchor": "S7.querySelectorAll('.isle.pill.big.work')[0]",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "the-automator",
+          "3"
+        ],
+        "grouping": [],
+        "order": [
+          "running glyph",
+          "the-automator",
+          "3 + nodes"
+        ],
+        "stateMembership": [
+          "parent with three subagents"
+        ],
+        "lightBehavior": "Restrained working orbit; no nested content in the pill."
+      },
+      "checkpoints": {
+        "stable": [
+          "orbit quadrants"
+        ],
+        "timed": [
+          "orbit 0/.6/1.5/3/4.5/6s",
+          "wave full 1.05s"
+        ]
+      },
+      "events": []
+    },
+    {
+      "id": "H-success",
+      "ordinal": 22,
+      "referenceSection": "H success",
+      "intent": "Completed success detail shows truthful result, metadata, conditional reply, and dismiss.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "H-success",
+        "selector": "[data-halo-authored=\"H-success\"]",
+        "sourceAnchor": "S8.querySelector('.isle.panel')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Success",
+          "Result",
+          "Outcome",
+          "Duration",
+          "Model",
+          "Finished",
+          "Jump to Ghostty",
+          "Transcript",
+          "Reply",
+          "Dismiss"
+        ],
+        "grouping": [
+          "identity",
+          "result",
+          "metadata",
+          "actions"
+        ],
+        "order": [
+          "identity",
+          "result",
+          "metadata",
+          "actions"
+        ],
+        "stateMembership": [
+          "one successful completion"
+        ],
+        "lightBehavior": "Outer edge has settled to a quiet hairline; no continuing success pulse."
+      },
+      "checkpoints": {
+        "stable": [
+          "settled success at 0s",
+          "settled success at 3s"
+        ],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "H-interrupted",
+      "ordinal": 23,
+      "referenceSection": "H interrupted",
+      "intent": "Interrupted completion detail is distinct from success and failure.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "H-interrupted",
+        "selector": "[data-halo-authored=\"H-interrupted\"]",
+        "sourceAnchor": "S8.querySelector('.isle.panel')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Interrupted"
+        ],
+        "grouping": [
+          "identity",
+          "result",
+          "metadata",
+          "actions"
+        ],
+        "order": [
+          "identity",
+          "result",
+          "metadata",
+          "actions"
+        ],
+        "stateMembership": [
+          "one interrupted completion"
+        ],
+        "lightBehavior": "Static and non-pulsing."
+      },
+      "checkpoints": {
+        "stable": [],
+        "timed": []
+      },
+      "events": [
+        "complete-interrupted"
+      ]
+    },
+    {
+      "id": "H-failed",
+      "ordinal": 24,
+      "referenceSection": "H failed",
+      "intent": "Failed completion detail is static, truthful, and distinct from interrupted.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "H-failed",
+        "selector": "[data-halo-authored=\"H-failed\"]",
+        "sourceAnchor": "S8.querySelector('.isle.panel')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Failed"
+        ],
+        "grouping": [
+          "identity",
+          "result",
+          "metadata",
+          "actions"
+        ],
+        "order": [
+          "identity",
+          "result",
+          "metadata",
+          "actions"
+        ],
+        "stateMembership": [
+          "one failed completion"
+        ],
+        "lightBehavior": "Static dim red; never pulses."
+      },
+      "checkpoints": {
+        "stable": [],
+        "timed": []
+      },
+      "events": [
+        "complete-failed"
+      ]
+    },
+    {
+      "id": "I",
+      "ordinal": 25,
+      "referenceSection": "I",
+      "intent": "Full usage card shows provider/window identity, reset time, value, and worded thresholds.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "I",
+        "selector": "[data-halo-authored=\"I\"]",
+        "sourceAnchor": "S9.querySelector('.isle.meterc')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Usage",
+          "Claude · 5h",
+          "34%",
+          "resets in 2h 10m",
+          "FINE",
+          "Claude · 7d",
+          "78%",
+          "WARN",
+          "Codex · 7d · Pro",
+          "94%",
+          "CRITICAL"
+        ],
+        "grouping": [
+          "three meters"
+        ],
+        "order": [
+          "Claude 5h",
+          "Claude 7d",
+          "Codex 7d Pro"
+        ],
+        "stateMembership": [
+          "fine",
+          "warn",
+          "critical"
+        ],
+        "lightBehavior": "Threshold filament is subordinate; only critical may pulse."
+      },
+      "checkpoints": {
+        "stable": [
+          "0s",
+          "2s"
+        ],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "I-prime",
+      "ordinal": 26,
+      "referenceSection": "I′",
+      "intent": "Critical usage earns one compact pill filament without competing with attention.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "I-prime",
+        "selector": "[data-halo-authored=\"I-prime\"]",
+        "sourceAnchor": "S9.querySelector('.isle.pill.big')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Codex 94%",
+          "19h"
+        ],
+        "grouping": [],
+        "order": [
+          "critical usage identity",
+          "percent",
+          "reset"
+        ],
+        "stateMembership": [
+          "critical usage"
+        ],
+        "lightBehavior": "Idle outer hairline; critical filament never outranks permission or question."
+      },
+      "checkpoints": {
+        "stable": [
+          "standalone",
+          "with permission",
+          "with question"
+        ],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "J",
+      "ordinal": 27,
+      "referenceSection": "J",
+      "intent": "Empty opened state is quiet, confident, truthful, and monitoring.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "established-anchor",
+        "selector": "S10.querySelector('.isle.panel.narrow')",
+        "stateMechanism": "Select pre-authored static empty panel.",
+        "provenance": "06-halo.html pre-authored fragment"
+      },
+      "expected": {
+        "visibleCopy": [
+          "All quiet",
+          "No active agent sessions. Open Island is watching your terminals and IDEs — it'll light up the moment one needs you.",
+          "Monitoring · 4 workspaces"
+        ],
+        "grouping": [
+          "quiet heading",
+          "description",
+          "monitoring status"
+        ],
+        "order": [
+          "heading",
+          "description",
+          "monitoring status"
+        ],
+        "stateMembership": [
+          "zero sessions"
+        ],
+        "lightBehavior": "Bare idle hairline; no glow or motion."
+      },
+      "checkpoints": {
+        "stable": [
+          "0s",
+          "2s"
+        ],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "J-prime",
+      "ordinal": 28,
+      "referenceSection": "J′",
+      "intent": "Collapsed empty state is visually indistinguishable from A1.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "J-prime",
+        "selector": "[data-halo-authored=\"J-prime\"]",
+        "sourceAnchor": "S10.querySelector('.isle.pill')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [
+          "idle glyph",
+          "camera dead-zone",
+          "idle dot"
+        ],
+        "stateMembership": [
+          "zero sessions"
+        ],
+        "lightBehavior": "Pixel-equivalent to A1 after registration."
+      },
+      "checkpoints": {
+        "stable": [
+          "0s",
+          "2s"
+        ],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "K-orbit",
+      "ordinal": 29,
+      "referenceSection": "K working orbit",
+      "intent": "Working edge segment completes a 6s linear orbit.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "K-orbit",
+        "selector": "[data-halo-authored=\"K-orbit\"]",
+        "sourceAnchor": "S11.querySelectorAll('.mdemo')[0].querySelector('.isle.work')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [],
+        "stateMembership": [
+          "working"
+        ],
+        "lightBehavior": "One restrained cyan-to-violet segment travels linearly around the perimeter."
+      },
+      "checkpoints": {
+        "stable": [
+          "orbit quadrants"
+        ],
+        "timed": [
+          "0s",
+          "0.6s",
+          "1.5s",
+          "3s",
+          "4.5s",
+          "6s"
+        ]
+      },
+      "events": []
+    },
+    {
+      "id": "K-morph",
+      "ordinal": 30,
+      "referenceSection": "K expand morph",
+      "intent": "One black body grows continuously with an attached edge.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "K-morph",
+        "selector": "[data-halo-authored=\"K-morph\"]",
+        "sourceAnchor": "S11.querySelectorAll('.mdemo')[1].querySelector('.morphd')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [],
+        "stateMembership": [
+          "closed",
+          "opened"
+        ],
+        "lightBehavior": "Unbroken edge on one topology; no crossfade or seam."
+      },
+      "checkpoints": {
+        "stable": [
+          "closed",
+          "opened"
+        ],
+        "timed": [
+          "0%",
+          "10%",
+          "25%",
+          "50%",
+          "75%",
+          "settled"
+        ]
+      },
+      "events": [
+        "open"
+      ]
+    },
+    {
+      "id": "K-condense",
+      "ordinal": 31,
+      "referenceSection": "K attention condense",
+      "intent": "Permission attention warms, pulses, and condenses inward.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "K-condense",
+        "selector": "[data-halo-authored=\"K-condense\"]",
+        "sourceAnchor": "S11.querySelectorAll('.mdemo')[2].querySelector('.isle.perm')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [],
+        "stateMembership": [
+          "permission"
+        ],
+        "lightBehavior": "1.9s attention pulse."
+      },
+      "checkpoints": {
+        "stable": [
+          "trough",
+          "peak"
+        ],
+        "timed": [
+          "0s",
+          "0.19s",
+          "0.475s",
+          "0.95s",
+          "1.425s",
+          "1.9s"
+        ]
+      },
+      "events": []
+    },
+    {
+      "id": "K-success",
+      "ordinal": 32,
+      "referenceSection": "K success bloom",
+      "intent": "Success blooms once, dissolves, and remains quiet.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "K-success",
+        "selector": "[data-halo-authored=\"K-success\"]",
+        "sourceAnchor": "S11.querySelectorAll('.mdemo')[3].querySelector('.isle.ok')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [],
+        "stateMembership": [
+          "fresh success"
+        ],
+        "lightBehavior": "One-shot only; final frame is the bare idle hairline."
+      },
+      "checkpoints": {
+        "stable": [
+          "event start",
+          "settled"
+        ],
+        "timed": [
+          "0s",
+          "0.3s",
+          "0.75s",
+          "1.5s",
+          "2.1s",
+          "2.25s",
+          "3s"
+        ]
+      },
+      "events": [
+        "complete-success"
+      ]
+    },
+    {
+      "id": "K-row",
+      "ordinal": 33,
+      "referenceSection": "K row entrance",
+      "intent": "A new row receives one faint light sweep; settled content does not move.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "K-row",
+        "selector": "[data-halo-authored=\"K-row\"]",
+        "sourceAnchor": "S11.querySelectorAll('.mdemo')[4].querySelector('.rowd')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [],
+        "stateMembership": [
+          "new row"
+        ],
+        "lightBehavior": "Only a single faint sweep moves; row content is still after settling."
+      },
+      "checkpoints": {
+        "stable": [
+          "pre-entry",
+          "settled"
+        ],
+        "timed": [
+          "0s",
+          "0.32s",
+          "0.8s",
+          "1.6s",
+          "2.4s",
+          "3.2s"
+        ]
+      },
+      "events": [
+        "insert-row"
+      ]
+    },
+    {
+      "id": "K-failure",
+      "ordinal": 34,
+      "referenceSection": "K failure",
+      "intent": "Failure edge is static for the entire observation.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "K-failure",
+        "selector": "[data-halo-authored=\"K-failure\"]",
+        "sourceAnchor": "S11.querySelectorAll('.mdemo')[5].querySelector('.isle.fail')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [],
+        "stateMembership": [
+          "failure"
+        ],
+        "lightBehavior": "Static dim red; changed area stays at neutral noise floor."
+      },
+      "checkpoints": {
+        "stable": [
+          "0s",
+          "0.3s",
+          "0.75s",
+          "1.5s",
+          "2.25s",
+          "3s"
+        ],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "K-idle",
+      "ordinal": 35,
+      "referenceSection": "K idle",
+      "intent": "Idle is a motionless 8%-white hairline without glow.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "K-idle",
+        "selector": "[data-halo-authored=\"K-idle\"]",
+        "sourceAnchor": "S11.querySelectorAll('.mdemo')[6].querySelector('.isle:not(.work,.perm,.ok,.fail)')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [],
+        "stateMembership": [
+          "idle"
+        ],
+        "lightBehavior": "Bare 8%-white hairline; no bloom, pulse, or orbit."
+      },
+      "checkpoints": {
+        "stable": [
+          "0s",
+          "2s"
+        ],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "K-glyph",
+      "ordinal": 36,
+      "referenceSection": "K liveness glyph",
+      "intent": "Running waves, waiting breathes, and idle remains still.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "K-glyph",
+        "selector": "[data-halo-authored=\"K-glyph\"]",
+        "sourceAnchor": "S11.querySelectorAll('.mdemo')[0].querySelector('.isle')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [
+          "three bars"
+        ],
+        "stateMembership": [
+          "running",
+          "waiting",
+          "idle"
+        ],
+        "lightBehavior": "Running stagger 0/.13/.26s; waiting breathes; idle is phase-independent."
+      },
+      "checkpoints": {
+        "stable": [
+          "running extrema",
+          "waiting extrema",
+          "idle 0s/2s"
+        ],
+        "timed": [
+          "running 0/.105/.2625/.525/.7875/1.05s",
+          "waiting 0/.24/.6/1.2/1.8/2.4s"
+        ]
+      },
+      "events": []
+    },
+    {
+      "id": "ST-LONG",
+      "ordinal": 37,
+      "referenceSection": "stress: long text",
+      "intent": "Long workspace, branch, command, path, and activity strings preserve hierarchy without clipping actions.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "ST-LONG",
+        "selector": "[data-halo-authored=\"ST-LONG\"]",
+        "sourceAnchor": "S3.querySelector('.isle.panel')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [
+          "preserved"
+        ],
+        "order": [
+          "preserved"
+        ],
+        "stateMembership": [
+          "long-content variants"
+        ],
+        "lightBehavior": "Unchanged from base scenario."
+      },
+      "checkpoints": {
+        "stable": [],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "ST-DUP",
+      "ordinal": 38,
+      "referenceSection": "stress: duplicate workspaces",
+      "intent": "Duplicate workspace names remain distinguishable by branch or path.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "ST-DUP",
+        "selector": "[data-halo-authored=\"ST-DUP\"]",
+        "sourceAnchor": "S3.querySelector('.isle.panel')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "the-automator",
+          "feat/bridge-auth",
+          "main"
+        ],
+        "grouping": [
+          "stable"
+        ],
+        "order": [
+          "stable"
+        ],
+        "stateMembership": [
+          "duplicates"
+        ],
+        "lightBehavior": "Unchanged from row states."
+      },
+      "checkpoints": {
+        "stable": [],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "ST-MISSING",
+      "ordinal": 39,
+      "referenceSection": "stress: missing metadata",
+      "intent": "Missing workspace/path metadata uses meaningful copy and never '/' fallback.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "ST-MISSING",
+        "selector": "[data-halo-authored=\"ST-MISSING\"]",
+        "sourceAnchor": "S3.querySelector('.isle.panel')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "must not include /"
+        ],
+        "grouping": [
+          "preserved"
+        ],
+        "order": [
+          "preserved"
+        ],
+        "stateMembership": [
+          "missing metadata"
+        ],
+        "lightBehavior": "Unchanged."
+      },
+      "checkpoints": {
+        "stable": [],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "ST-COUNT-0",
+      "ordinal": 40,
+      "referenceSection": "stress: zero sessions",
+      "intent": "Zero sessions select J/J′ with correct workspace count grammar.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "ST-COUNT-0",
+        "selector": "[data-halo-authored=\"ST-COUNT-0\"]",
+        "sourceAnchor": "S10",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "All quiet"
+        ],
+        "grouping": [],
+        "order": [],
+        "stateMembership": [
+          "zero sessions"
+        ],
+        "lightBehavior": "Idle hairline."
+      },
+      "checkpoints": {
+        "stable": [],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "ST-COUNT-1",
+      "ordinal": 41,
+      "referenceSection": "stress: one session",
+      "intent": "Singular session and workspace grammar is correct.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "ST-COUNT-1",
+        "selector": "[data-halo-authored=\"ST-COUNT-1\"]",
+        "sourceAnchor": "S3.querySelector('.isle.panel')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "singular forms not approved"
+        ],
+        "grouping": [
+          "one non-empty group"
+        ],
+        "order": [
+          "state order"
+        ],
+        "stateMembership": [
+          "one session"
+        ],
+        "lightBehavior": "Matches the session state."
+      },
+      "checkpoints": {
+        "stable": [],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "ST-COUNT-MANY",
+      "ordinal": 42,
+      "referenceSection": "stress: many sessions",
+      "intent": "Many sessions preserve priority and produce usable bounded scrolling.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "ST-COUNT-MANY",
+        "selector": "[data-halo-authored=\"ST-COUNT-MANY\"]",
+        "sourceAnchor": "S3.querySelector('.isle.panel')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [
+          "Needs you",
+          "Running",
+          "Done"
+        ],
+        "order": [
+          "Needs you",
+          "Running",
+          "Done"
+        ],
+        "stateMembership": [
+          "many"
+        ],
+        "lightBehavior": "Attention remains dominant."
+      },
+      "checkpoints": {
+        "stable": [],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "ST-OVERFLOW",
+      "ordinal": 43,
+      "referenceSection": "stress: overflow",
+      "intent": "Overflow keeps the header/hero and actions usable.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "ST-OVERFLOW",
+        "selector": "[data-halo-authored=\"ST-OVERFLOW\"]",
+        "sourceAnchor": "S3.querySelector('.isle.panel')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [
+          "priority preserved"
+        ],
+        "order": [
+          "actions remain reachable"
+        ],
+        "stateMembership": [
+          "overflow"
+        ],
+        "lightBehavior": "Unchanged from base state."
+      },
+      "checkpoints": {
+        "stable": [],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "ST-USAGE-0",
+      "ordinal": 44,
+      "referenceSection": "stress: zero usage",
+      "intent": "Zero usage is honest and does not fabricate reset data.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "ST-USAGE-0",
+        "selector": "[data-halo-authored=\"ST-USAGE-0\"]",
+        "sourceAnchor": "S9.querySelector('.isle.meterc')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "0%",
+          "reset behavior not approved"
+        ],
+        "grouping": [
+          "provider windows"
+        ],
+        "order": [
+          "stable"
+        ],
+        "stateMembership": [
+          "fine"
+        ],
+        "lightBehavior": "Fine filament, no pulse."
+      },
+      "checkpoints": {
+        "stable": [],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "ST-USAGE-MISSING",
+      "ordinal": 45,
+      "referenceSection": "stress: missing usage",
+      "intent": "Missing provider/window data is represented honestly.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "ST-USAGE-MISSING",
+        "selector": "[data-halo-authored=\"ST-USAGE-MISSING\"]",
+        "sourceAnchor": "S9.querySelector('.isle.meterc')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "not approved"
+        ],
+        "grouping": [],
+        "order": [],
+        "stateMembership": [
+          "missing"
+        ],
+        "lightBehavior": "No fabricated warning or critical state."
+      },
+      "checkpoints": {
+        "stable": [],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "ST-ATTN-RUN",
+      "ordinal": 46,
+      "referenceSection": "stress: permission plus running",
+      "intent": "Permission is the only loud thing while running sessions remain legible.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "ST-ATTN-RUN",
+        "selector": "[data-halo-authored=\"ST-ATTN-RUN\"]",
+        "sourceAnchor": "S3.querySelector('.isle.panel')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [
+          "Needs you",
+          "Running"
+        ],
+        "order": [
+          "Needs you",
+          "Running"
+        ],
+        "stateMembership": [
+          "permission",
+          "running"
+        ],
+        "lightBehavior": "Permission is dominant; running light is restrained."
+      },
+      "checkpoints": {
+        "stable": [],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "ST-Q-P",
+      "ordinal": 47,
+      "referenceSection": "stress: question plus permission",
+      "intent": "Permission/question tie-breaking is explicit and deterministic.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "ST-Q-P",
+        "selector": "[data-halo-authored=\"ST-Q-P\"]",
+        "sourceAnchor": "S3.querySelector('.isle.panel')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [
+          "Needs you"
+        ],
+        "order": [
+          "not approved"
+        ],
+        "stateMembership": [
+          "permission",
+          "question"
+        ],
+        "lightBehavior": "Exactly one dominant attention target."
+      },
+      "checkpoints": {
+        "stable": [],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "ST-IPRIME-ATTN",
+      "ordinal": 48,
+      "referenceSection": "stress: critical usage plus attention",
+      "intent": "Critical usage never competes with permission or question.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "ST-IPRIME-ATTN",
+        "selector": "[data-halo-authored=\"ST-IPRIME-ATTN\"]",
+        "sourceAnchor": "S3.querySelector('.isle.panel')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [
+          "attention first"
+        ],
+        "stateMembership": [
+          "critical usage",
+          "attention"
+        ],
+        "lightBehavior": "Attention wins; usage recedes."
+      },
+      "checkpoints": {
+        "stable": [],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "AX-RM",
+      "ordinal": 49,
+      "referenceSection": "accessibility: Reduce Motion",
+      "intent": "Reduced Motion preserves state meaning without freezing a transient peak.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "AX-RM",
+        "selector": "[data-halo-authored=\"AX-RM\"]",
+        "sourceAnchor": "S3.querySelector('.isle.panel')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "unchanged"
+        ],
+        "grouping": [
+          "unchanged"
+        ],
+        "order": [
+          "unchanged"
+        ],
+        "stateMembership": [
+          "unchanged"
+        ],
+        "lightBehavior": "No decorative orbit/pulse/morph; success is settled, attention remains distinguishable without color alone."
+      },
+      "checkpoints": {
+        "stable": [],
+        "timed": []
+      },
+      "events": [
+        "focus-next"
+      ]
+    },
+    {
+      "id": "AX-IC",
+      "ordinal": 50,
+      "referenceSection": "accessibility: Increase Contrast",
+      "intent": "Increase Contrast strengthens legibility without changing hierarchy.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "AX-IC",
+        "selector": "[data-halo-authored=\"AX-IC\"]",
+        "sourceAnchor": "S3.querySelector('.isle.panel')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "unchanged"
+        ],
+        "grouping": [
+          "unchanged"
+        ],
+        "order": [
+          "unchanged"
+        ],
+        "stateMembership": [
+          "unchanged"
+        ],
+        "lightBehavior": "Idle hairline brightens under an approved rule; state hierarchy remains intact."
+      },
+      "checkpoints": {
+        "stable": [],
+        "timed": []
+      },
+      "events": [
+        "focus-next"
+      ]
+    },
+    {
+      "id": "AX-RT",
+      "ordinal": 51,
+      "referenceSection": "accessibility: Reduce Transparency",
+      "intent": "Reduce Transparency preserves the opaque true-black surface and content hierarchy.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "AX-RT",
+        "selector": "[data-halo-authored=\"AX-RT\"]",
+        "sourceAnchor": "S3.querySelector('.isle.panel')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "unchanged"
+        ],
+        "grouping": [
+          "unchanged"
+        ],
+        "order": [
+          "unchanged"
+        ],
+        "stateMembership": [
+          "unchanged"
+        ],
+        "lightBehavior": "No material transparency; true black remains #000."
+      },
+      "checkpoints": {
+        "stable": [],
+        "timed": []
+      },
+      "events": [
+        "focus-next"
+      ]
+    },
+    {
+      "id": "AX-KBD",
+      "ordinal": 52,
+      "referenceSection": "accessibility: keyboard",
+      "intent": "Every action, option, row, focus transition, and dismissal works from the keyboard.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "AX-KBD",
+        "selector": "[data-halo-authored=\"AX-KBD\"]",
+        "sourceAnchor": "S3.querySelector('.isle.panel')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "unchanged"
+        ],
+        "grouping": [
+          "logical focus groups"
+        ],
+        "order": [
+          "approved focus order"
+        ],
+        "stateMembership": [
+          "all interactive states"
+        ],
+        "lightBehavior": "Focus is visible without becoming a competing loud thing."
+      },
+      "checkpoints": {
+        "stable": [],
+        "timed": []
+      },
+      "events": [
+        "focus-next"
+      ]
+    },
+    {
+      "id": "AX-VO",
+      "ordinal": 53,
+      "referenceSection": "accessibility: VoiceOver",
+      "intent": "VoiceOver exposes exact labels, groups, order, state, and actions.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "AX-VO",
+        "selector": "[data-halo-authored=\"AX-VO\"]",
+        "sourceAnchor": "S3.querySelector('.isle.panel')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "matches visual copy"
+        ],
+        "grouping": [
+          "approved semantic groups"
+        ],
+        "order": [
+          "visual reading order"
+        ],
+        "stateMembership": [
+          "state not color alone"
+        ],
+        "lightBehavior": "Visual adaptation does not substitute for semantics."
+      },
+      "checkpoints": {
+        "stable": [],
+        "timed": []
+      },
+      "events": [
+        "focus-next"
+      ]
+    },
+    {
+      "id": "AX-TEXT",
+      "ordinal": 54,
+      "referenceSection": "accessibility: text scaling",
+      "intent": "Every supported content size preserves state and actions with approved wrapping.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "AX-TEXT",
+        "selector": "[data-halo-authored=\"AX-TEXT\"]",
+        "sourceAnchor": "S3.querySelector('.isle.panel')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "no hidden state/action"
+        ],
+        "grouping": [
+          "preserved"
+        ],
+        "order": [
+          "preserved"
+        ],
+        "stateMembership": [
+          "preserved"
+        ],
+        "lightBehavior": "Unchanged except geometry registration."
+      },
+      "checkpoints": {
+        "stable": [],
+        "timed": []
+      },
+      "events": [
+        "focus-next"
+      ]
+    },
+    {
+      "id": "DP-NOTCH",
+      "ordinal": 55,
+      "referenceSection": "display profile: notch",
+      "intent": "All affected states are reproduced on the shipped notch profile.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "DP-NOTCH",
+        "selector": "[data-halo-authored=\"DP-NOTCH\"]",
+        "sourceAnchor": "S1.querySelectorAll('.frame')[0].querySelector('.isle.pill')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "unchanged"
+        ],
+        "grouping": [
+          "unchanged"
+        ],
+        "order": [
+          "unchanged"
+        ],
+        "stateMembership": [
+          "all"
+        ],
+        "lightBehavior": "Attached edge around the physical-notch silhouette."
+      },
+      "checkpoints": {
+        "stable": [],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "DP-TOPBAR",
+      "ordinal": 56,
+      "referenceSection": "display profile: top bar",
+      "intent": "All affected states are reproduced on the shipped external/top-bar profile.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "DP-TOPBAR",
+        "selector": "[data-halo-authored=\"DP-TOPBAR\"]",
+        "sourceAnchor": "S1.querySelectorAll('.frame')[0].querySelector('.isle.pill')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "unchanged"
+        ],
+        "grouping": [
+          "unchanged"
+        ],
+        "order": [
+          "unchanged"
+        ],
+        "stateMembership": [
+          "all"
+        ],
+        "lightBehavior": "Attached edge around the top-bar silhouette."
+      },
+      "checkpoints": {
+        "stable": [],
+        "timed": []
+      },
+      "events": []
+    },
+    {
+      "id": "RESPONSIVE-560",
+      "ordinal": 57,
+      "referenceSection": "reference responsive <=560",
+      "intent": "The HTML board's narrow rule is recorded without treating it as a shipped capture profile.",
+      "fixtureSeed": "halo-parity-reference-v1",
+      "mapping": {
+        "kind": "authored-variant",
+        "variantId": "RESPONSIVE-560",
+        "selector": "[data-halo-authored=\"RESPONSIVE-560\"]",
+        "sourceAnchor": "S1.querySelectorAll('.frame')[0].querySelector('.isle.pill')",
+        "laws": [
+          "L1-one-true-black-body",
+          "L2-edge-is-state-channel",
+          "L3-quiet-default",
+          "L4-one-loud-thing",
+          "L5-light-localizes-and-travels",
+          "L6-continuous-shape",
+          "L7-content-still",
+          "L8-type-spacing-hairlines",
+          "L9-attention-first",
+          "L10-narrated-work",
+          "L11-state-not-color-alone",
+          "L12-accessible-comprehension"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "unchanged"
+        ],
+        "grouping": [
+          "unchanged"
+        ],
+        "order": [
+          "unchanged"
+        ],
+        "stateMembership": [
+          "reference only"
+        ],
+        "lightBehavior": "Unchanged."
+      },
+      "checkpoints": {
+        "stable": [],
+        "timed": []
+      },
+      "events": []
+    }
+  ]
+}

@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en" data-neutral-status="booting">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Neutral calibration v1</title>
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      color-scheme: dark;
+      --canvas-width: 540px;
+      --motion-x: 0px;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+    }
+    body {
+      display: grid;
+      place-items: start center;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+    }
+    #neutral-suite {
+      width: var(--canvas-width);
+      height: 320px;
+      padding: 12px;
+      background: #000;
+      border: 1px solid #808080;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-rows: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .primitive {
+      position: relative;
+      min-height: 0;
+      overflow: hidden;
+      border: 1px solid #202020;
+      background: #000;
+    }
+    .primitive::after {
+      content: attr(data-primitive-id);
+      position: absolute;
+      right: 4px;
+      bottom: 3px;
+      color: #808080;
+      font: 8px ui-monospace, "SF Mono", monospace;
+    }
+    #registration-grid {
+      background:
+        linear-gradient(#808080 1px, transparent 1px),
+        linear-gradient(90deg, #808080 1px, transparent 1px),
+        #000;
+      background-size: 16px 16px;
+    }
+    #registration-grid i {
+      position: absolute;
+      width: 5px;
+      height: 5px;
+      border: 1px solid #fff;
+    }
+    #registration-grid i:nth-child(1) { left: 8px; top: 8px; }
+    #registration-grid i:nth-child(2) { right: 8px; top: 8px; }
+    #registration-grid i:nth-child(3) { left: 8px; bottom: 8px; }
+    #registration-grid i:nth-child(4) { right: 8px; bottom: 8px; }
+    #solid-srgb-patches, #alpha-gradient-stack {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+    }
+    #solid-srgb-patches i:nth-child(1) { background: #000; }
+    #solid-srgb-patches i:nth-child(2) { background: #202020; }
+    #solid-srgb-patches i:nth-child(3) { background: #808080; }
+    #solid-srgb-patches i:nth-child(4) { background: #fff; }
+    #neutral-width-lines {
+      display: grid;
+      place-content: center stretch;
+      gap: 12px;
+      padding: 12px;
+    }
+    #neutral-width-lines i { display: block; background: #fff; }
+    #neutral-width-lines i:nth-child(1) { height: 1px; }
+    #neutral-width-lines i:nth-child(2) { height: 1.5px; }
+    #neutral-width-lines i:nth-child(3) { height: 2px; }
+    #rounded-geometry {
+      display: flex;
+      align-items: center;
+      justify-content: space-evenly;
+    }
+    #rounded-geometry i {
+      width: 42px;
+      height: 42px;
+      border: 1px solid #fff;
+      background: #202020;
+    }
+    #rounded-geometry i:nth-child(1) { border-radius: 8px; }
+    #rounded-geometry i:nth-child(2) { border-radius: 19px; }
+    #rounded-geometry i:nth-child(3) { border-radius: 28px; }
+    #alpha-gradient-stack i { background: #fff; }
+    #alpha-gradient-stack i:nth-child(1) { opacity: .08; }
+    #alpha-gradient-stack i:nth-child(2) { opacity: .16; }
+    #alpha-gradient-stack i:nth-child(3) { opacity: .5; }
+    #alpha-gradient-stack i:nth-child(4) { opacity: 1; }
+    #neutral-bloom {
+      display: flex;
+      align-items: center;
+      justify-content: space-evenly;
+    }
+    #neutral-bloom i {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #fff;
+    }
+    #neutral-bloom i:nth-child(1) { box-shadow: 0 0 2px #fff; }
+    #neutral-bloom i:nth-child(2) { box-shadow: 0 0 4px #fff; }
+    #neutral-bloom i:nth-child(3) { box-shadow: 0 0 8px #fff; }
+    #font-raster-boxes {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      align-content: center;
+      gap: 3px 8px;
+      padding: 8px;
+    }
+    #font-raster-boxes span { white-space: nowrap; line-height: 1; }
+    #font-raster-boxes .mono { font-family: ui-monospace, "SF Mono", monospace; }
+    #font-raster-boxes .s10 { font-size: 10px; }
+    #font-raster-boxes .s11 { font-size: 11px; }
+    #font-raster-boxes .s12 { font-size: 12px; }
+    #font-raster-boxes .s13 { font-size: 13px; }
+    #motion-track::before {
+      content: "";
+      position: absolute;
+      left: 14px;
+      top: 31px;
+      width: 120px;
+      height: 1px;
+      background: #808080;
+    }
+    #motion-marker {
+      position: absolute;
+      left: 14px;
+      top: 25px;
+      width: 13px;
+      height: 13px;
+      background: #fff;
+      transform: translateX(var(--motion-x));
+    }
+    html[data-neutral-mode="normal"] #motion-marker {
+      animation: neutral-linear-motion 1000ms linear infinite;
+    }
+    @keyframes neutral-linear-motion {
+      from { transform: translateX(0); }
+      to { transform: translateX(120px); }
+    }
+    #neutral-error {
+      display: none;
+      width: var(--canvas-width);
+      padding: 12px;
+      color: #fff;
+      background: #400;
+      border: 1px solid #fff;
+      font: 12px ui-monospace, "SF Mono", monospace;
+    }
+    html[data-neutral-status="error"] #neutral-suite { display: none; }
+    html[data-neutral-status="error"] #neutral-error { display: block; }
+  </style>
+</head>
+<body>
+  <main id="neutral-suite" aria-label="Neutral calibration suite">
+    <div id="registration-grid" class="primitive" data-primitive-id="registration-grid"><i></i><i></i><i></i><i></i></div>
+    <div id="solid-srgb-patches" class="primitive" data-primitive-id="solid-srgb-patches"><i></i><i></i><i></i><i></i></div>
+    <div id="neutral-width-lines" class="primitive" data-primitive-id="neutral-width-lines"><i></i><i></i><i></i></div>
+    <div id="rounded-geometry" class="primitive" data-primitive-id="rounded-geometry"><i></i><i></i><i></i></div>
+    <div id="alpha-gradient-stack" class="primitive" data-primitive-id="alpha-gradient-stack"><i></i><i></i><i></i><i></i></div>
+    <div id="neutral-bloom" class="primitive" data-primitive-id="neutral-bloom"><i></i><i></i><i></i></div>
+    <div id="font-raster-boxes" class="primitive" data-primitive-id="font-raster-boxes">
+      <span class="s10">Ag 012345</span><span class="mono s10">Ag 012345</span>
+      <span class="s11">Ag 012345</span><span class="mono s11">Ag 012345</span>
+      <span class="s12">Ag 012345</span><span class="mono s12">Ag 012345</span>
+      <span class="s13">Ag 012345</span><span class="mono s13">Ag 012345</span>
+    </div>
+    <div id="motion-track" class="primitive" data-primitive-id="motion-track"><i id="motion-marker"></i></div>
+  </main>
+  <pre id="neutral-error" role="alert"></pre>
+  <script>
+    (() => {
+      "use strict";
+      const profiles = Object.freeze({
+        "notch-v1": Object.freeze({ width: 540, height: 320, scale: 2 }),
+        "top-bar-v1": Object.freeze({ width: 520, height: 320, scale: 2 })
+      });
+      const modes = Object.freeze(["static", "manual", "normal", "reduced"]);
+      const query = new URLSearchParams(location.search);
+      const profileId = query.get("profile") || "notch-v1";
+      const mode = query.get("mode") || "static";
+      const timeMs = Number(query.get("timeMs") || 0);
+      const fail = message => {
+        document.documentElement.dataset.neutralStatus = "error";
+        document.getElementById("neutral-error").textContent = message;
+        throw new Error(message);
+      };
+      if (!Object.hasOwn(profiles, profileId)) fail(`unknown neutral profile: ${profileId}`);
+      if (!modes.includes(mode)) fail(`unknown neutral mode: ${mode}`);
+      if (!Number.isFinite(timeMs) || timeMs < 0 || timeMs > 3600000) fail("invalid neutral timeMs");
+      if (mode !== "manual" && query.has("timeMs") && timeMs !== 0) fail("timeMs is valid only in manual mode");
+      const profile = profiles[profileId];
+      const phase = mode === "manual" ? ((timeMs % 1000) / 1000) : 0;
+      const html = document.documentElement;
+      html.style.setProperty("--canvas-width", `${profile.width}px`);
+      html.style.setProperty("--motion-x", `${phase * 120}px`);
+      html.dataset.neutralStatus = "ready";
+      html.dataset.neutralProfile = profileId;
+      html.dataset.neutralMode = mode;
+      html.dataset.neutralTimeMs = String(timeMs);
+      html.dataset.neutralMappedUnitCssPx = "1";
+      html.dataset.neutralExpectedScale = String(profile.scale);
+      html.dataset.neutralViewportWidth = String(profile.width);
+      html.dataset.neutralViewportHeight = String(profile.height);
+      html.dataset.neutralObservedDpr = String(devicePixelRatio);
+      const canvasRect = document.getElementById("neutral-suite").getBoundingClientRect();
+      if (canvasRect.x !== 0 || canvasRect.y !== 0 ||
+          canvasRect.width !== profile.width || canvasRect.height !== profile.height) {
+        fail(`neutral canvas geometry mismatch: ${JSON.stringify({
+          x: canvasRect.x,
+          y: canvasRect.y,
+          width: canvasRect.width,
+          height: canvasRect.height
+        })}`);
+      }
+      html.dataset.neutralCanvasX = String(canvasRect.x);
+      html.dataset.neutralCanvasY = String(canvasRect.y);
+      html.dataset.neutralCanvasWidth = String(canvasRect.width);
+      html.dataset.neutralCanvasHeight = String(canvasRect.height);
+    })();
+  </script>
+</body>
+</html>

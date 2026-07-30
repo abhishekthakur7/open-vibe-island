@@ -1,0 +1,3220 @@
+{
+  "schemaVersion": "1.0.0",
+  "manifestVersion": "gate-0a-v1",
+  "status": "not-passed",
+  "earliestOpenGate": "0A",
+  "resolutionRule": "Each scenario record is resolved by deep-merging manifestDefaults with the record. Arrays replace defaults. A temporary or blocked disposition is always NOT PASSED.",
+  "selectorAliases": {
+    "S1": "document.querySelectorAll('body > .board > section')[0]",
+    "S2": "document.querySelectorAll('body > .board > section')[1]",
+    "S3": "document.querySelectorAll('body > .board > section')[2]",
+    "S4": "document.querySelectorAll('body > .board > section')[3]",
+    "S5": "document.querySelectorAll('body > .board > section')[4]",
+    "S6": "document.querySelectorAll('body > .board > section')[5]",
+    "S7": "document.querySelectorAll('body > .board > section')[6]",
+    "S8": "document.querySelectorAll('body > .board > section')[7]",
+    "S9": "document.querySelectorAll('body > .board > section')[8]",
+    "S10": "document.querySelectorAll('body > .board > section')[9]",
+    "S11": "document.querySelectorAll('body > .board > section')[10]"
+  },
+  "manifestDefaults": {
+    "fixtureSeed": "halo-parity-gate-0a-v1",
+    "sources": {
+      "commitSha": "d3917044fc76a3bafaaccba7b17f3954dbaddb5e",
+      "dirty": true,
+      "referenceHtml": {
+        "path": "docs/design/overlay-redesign/06-halo.html",
+        "sha256": "71fc0890bcb49ad173c1f52e17c641251a483fda43eecbdcb1d9802382fbf64f"
+      },
+      "audit": {
+        "path": "docs/design/overlay-redesign/halo-visual-parity-audit.md",
+        "sha256": "d245e1b270e1919ebe3382e0ad19e5d37e3f26d3bf2bad70d8fd4fa81977e6db"
+      },
+      "sourceSetSha256": "d6a97c84d1583254d8e471345fd0a1b8cacc47d6e16ced49f712999ce04a044b"
+    },
+    "capture": {
+      "viewport": {
+        "width": 1920,
+        "height": 1080,
+        "unit": "CSS px"
+      },
+      "browserZoom": 1,
+      "deviceScale": 2,
+      "unitTransform": "provisional: 1 CSS px = 1 SwiftUI pt = 2 device px; not yet calibrated",
+      "crop": "Halo-owned .isle bounds only; desk, notch mockup chrome, and OS chrome excluded",
+      "stableCheckpoints": [],
+      "timedCheckpoints": []
+    },
+    "requiredMaskIds": [
+      "silhouette-body-v1-pending",
+      "edge-core-v1-pending",
+      "emissive-bloom-v1-pending",
+      "non-text-content-v1-pending",
+      "text-layout-boxes-v1-pending",
+      "os-external-v1-pending"
+    ],
+    "thresholdProfileId": null,
+    "expected": {
+      "visibleCopy": [],
+      "grouping": [],
+      "order": [],
+      "stateMembership": [],
+      "lightBehavior": ""
+    },
+    "artifactNames": {
+      "referenceStatic": null,
+      "nativeStatic": null,
+      "referenceMotion": null,
+      "nativeMotion": null
+    },
+    "reproductionEvidence": [],
+    "result": "not-passed",
+    "approver": null,
+    "risk": "Unresolved coverage cannot be treated as parity evidence.",
+    "restorationRequirement": "Replace every temporary or blocked mapping with an exact deterministic HTML/native state before Gate 0A can pass."
+  },
+  "scenarios": [
+    {
+      "id": "A1",
+      "referenceSection": "A1",
+      "intent": "Idle collapsed pill is optically absent except for a bare hairline, dim glyph, and dim dot.",
+      "fixtureData": {
+        "sessions": [],
+        "ambient": "idle"
+      },
+      "html": {
+        "selector": "S1.querySelectorAll('.frame')[0].querySelector('.isle.pill')",
+        "stateMechanism": "Select the pre-authored fragment; pause descendant animations."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.A1",
+        "state": "HaloClosedPill + HaloEdgeLight(.idle)",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture A1",
+          "resolve HaloParityFixtureCatalog.A1 from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "214x38 minimum, radius 19",
+        "stableCheckpoints": [
+          "0s",
+          "2s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [
+          "left idle glyph",
+          "camera dead-zone",
+          "right idle dot"
+        ],
+        "stateMembership": [
+          "idle"
+        ],
+        "lightBehavior": "8%-white 1.5-unit hairline; no bloom and no animation."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant A1 is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.A1 resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "A2",
+      "referenceSection": "A2",
+      "intent": "One working session narrates its activity while a restrained cyan-to-violet segment orbits.",
+      "fixtureData": {
+        "sessions": 1,
+        "activity": "Editing AppModel.swift"
+      },
+      "html": {
+        "selector": "S1.querySelectorAll('.frame')[1].querySelector('.isle.pill.big.work')",
+        "stateMechanism": "Select fragment; pause animations and set orbit/wave currentTime externally."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.A2",
+        "state": "closed ambient working(manyWorking:false)",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture A2",
+          "resolve HaloParityFixtureCatalog.A2 from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": ">=352x38",
+        "stableCheckpoints": [
+          "orbit 0%",
+          "orbit 25%",
+          "orbit 50%",
+          "orbit 75%"
+        ],
+        "timedCheckpoints": [
+          "0s",
+          "0.6s",
+          "1.5s",
+          "3s",
+          "4.5s",
+          "6s",
+          "wave 0/.105/.2625/.525/.7875/1.05s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Editing AppModel.swift"
+        ],
+        "grouping": [],
+        "order": [
+          "running glyph",
+          "Editing",
+          "AppModel.swift"
+        ],
+        "stateMembership": [
+          "one running session"
+        ],
+        "lightBehavior": "6s linear moving segment with restrained haze; 1.05s three-bar wave with 0/.13/.26s stagger."
+      },
+      "artifactNames": {
+        "referenceStatic": "reference/static/iab-reference-collapsed-a2-canonical-attempt.png",
+        "nativeStatic": "native/static/native-collapsed-closed.png",
+        "referenceMotion": null,
+        "nativeMotion": null
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant A2 is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.A2 resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "A2-prime",
+      "referenceSection": "A2′",
+      "intent": "Multiple workers collapse to a count and one active light per session.",
+      "fixtureData": {
+        "sessions": 3,
+        "working": 3,
+        "gridOnMap": [
+          true,
+          true,
+          false,
+          true,
+          false,
+          false
+        ]
+      },
+      "html": {
+        "selector": "S1.querySelectorAll('.frame')[2].querySelector('.isle.pill.big.work')",
+        "stateMechanism": "Select fragment; pause animations and set orbit/wave currentTime externally."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.A2-prime",
+        "state": "closed ambient working(manyWorking:true) + agents right slot",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture A2-prime",
+          "resolve HaloParityFixtureCatalog.A2-prime from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": ">=352x38",
+        "stableCheckpoints": [
+          "orbit 0%",
+          "orbit 25%",
+          "orbit 50%",
+          "orbit 75%"
+        ],
+        "timedCheckpoints": [
+          "0s",
+          "0.6s",
+          "1.5s",
+          "3s",
+          "4.5s",
+          "6s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "3 working"
+        ],
+        "grouping": [],
+        "order": [
+          "running glyph",
+          "3 working",
+          "six-cell agents grid"
+        ],
+        "stateMembership": [
+          "three running sessions"
+        ],
+        "lightBehavior": "Same restrained orbit as A2; exactly three grid lights active."
+      },
+      "artifactNames": {
+        "referenceStatic": "reference/static/iab-reference-collapsed-a2-prime-canonical-attempt.png",
+        "nativeStatic": "native/static/native-collapsed-closed.png",
+        "referenceMotion": null,
+        "nativeMotion": null
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant A2-prime is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.A2-prime resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "A3",
+      "referenceSection": "A3",
+      "intent": "Collapsed permission is the loudest ambient state.",
+      "fixtureData": {
+        "command": "swift build",
+        "attentionCount": 1
+      },
+      "html": {
+        "selector": "S1.querySelectorAll('.frame')[3].querySelector('.isle.pill.big.perm')",
+        "stateMechanism": "Select fragment; set permission pulse currentTime."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.A3",
+        "state": "waitingForApproval lead session",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture A3",
+          "resolve HaloParityFixtureCatalog.A3 from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": ">=352x38",
+        "stableCheckpoints": [
+          "pulse trough",
+          "pulse peak"
+        ],
+        "timedCheckpoints": [
+          "0s",
+          "0.19s",
+          "0.475s",
+          "0.95s",
+          "1.425s",
+          "1.9s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Approve swift build?",
+          "1"
+        ],
+        "grouping": [],
+        "order": [
+          "amber permission dot",
+          "approval narration",
+          "count"
+        ],
+        "stateMembership": [
+          "one permission"
+        ],
+        "lightBehavior": "Amber-to-magenta 1.9s ease-in-out pulse; hottest ambient bloom."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant A3 is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.A3 resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "A4",
+      "referenceSection": "A4",
+      "intent": "Collapsed question is softer than permission and distinct by shape, word, hue, and cadence.",
+      "fixtureData": {
+        "question": "Answer needed",
+        "attentionCount": 1
+      },
+      "html": {
+        "selector": "S1.querySelectorAll('.frame')[4].querySelector('.isle.pill.big.ques')",
+        "stateMechanism": "Select fragment; set edge and glyph currentTime."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.A4",
+        "state": "waitingForAnswer closed ambient",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture A4",
+          "resolve HaloParityFixtureCatalog.A4 from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": ">=352x38",
+        "stableCheckpoints": [
+          "pulse trough",
+          "pulse peak"
+        ],
+        "timedCheckpoints": [
+          "0s",
+          "0.26s",
+          "0.65s",
+          "1.3s",
+          "1.95s",
+          "2.6s",
+          "glyph full 2.4s cycle"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Answer needed",
+          "?"
+        ],
+        "grouping": [],
+        "order": [
+          "waiting glyph",
+          "Answer needed",
+          "? badge"
+        ],
+        "stateMembership": [
+          "one question"
+        ],
+        "lightBehavior": "Soft qgold 2.6s pulse with 2.4s waiting breathe; never as loud as permission."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant A4 is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.A4 resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "A5",
+      "referenceSection": "A5",
+      "intent": "Fresh success blooms once and settles to the idle hairline.",
+      "fixtureData": {
+        "workspace": "the-automator",
+        "outcome": "success",
+        "fresh": true
+      },
+      "html": {
+        "selector": "S1.querySelectorAll('.frame')[5].querySelector('.isle.pill.big.ok')",
+        "stateMechanism": "Interpret the authored infinite CSS as one 3s event, then externally swap to the idle hairline."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.A5",
+        "state": "fresh completed(.success) closed ambient",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture A5",
+          "resolve HaloParityFixtureCatalog.A5 from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": ">=352x38",
+        "stableCheckpoints": [
+          "event start",
+          "settled idle hairline"
+        ],
+        "timedCheckpoints": [
+          "0s",
+          "0.3s",
+          "0.75s",
+          "1.5s",
+          "2.1s",
+          "2.25s",
+          "3s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Done · the-automator"
+        ],
+        "grouping": [],
+        "order": [
+          "green dot",
+          "Done · the-automator",
+          "checkmark"
+        ],
+        "stateMembership": [
+          "fresh success"
+        ],
+        "lightBehavior": "One-shot green/cyan bloom, then bare idle hairline with no retained green conic."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant A5 is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.A5 resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "A6-interrupted",
+      "referenceSection": "A6 interrupted",
+      "intent": "Interrupted is amber, uses a stop mark, and never pulses.",
+      "fixtureData": {
+        "workspace": "niche-radar",
+        "outcome": "interrupted"
+      },
+      "html": {
+        "selector": "S1.querySelectorAll('.frame')[6].querySelectorAll('.isle.pill.big')[0]",
+        "stateMechanism": "Select pre-authored fragment and hold still."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.A6-interrupted",
+        "state": "completed(.interrupted)",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture A6-interrupted",
+          "resolve HaloParityFixtureCatalog.A6-interrupted from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": ">=352x38",
+        "stableCheckpoints": [
+          "0s",
+          "3s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Interrupted · niche-radar"
+        ],
+        "grouping": [],
+        "order": [
+          "amber dot",
+          "Interrupted · niche-radar",
+          "stop mark"
+        ],
+        "stateMembership": [
+          "interrupted"
+        ],
+        "lightBehavior": "Static and glow-free; reference outer edge is ambiguous between idle hairline and amber static."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant A6-interrupted is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.A6-interrupted resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "A6-failed",
+      "referenceSection": "A6 failed",
+      "intent": "Failure is a static dim-red edge segment and never pulses.",
+      "fixtureData": {
+        "workspace": "open-vibe-island",
+        "outcome": "failed"
+      },
+      "html": {
+        "selector": "S1.querySelectorAll('.frame')[6].querySelector('.isle.pill.big.fail')",
+        "stateMechanism": "Select pre-authored fragment and hold still."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.A6-failed",
+        "state": "completed(.failed)",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture A6-failed",
+          "resolve HaloParityFixtureCatalog.A6-failed from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": ">=352x38",
+        "stableCheckpoints": [
+          "0s",
+          "3s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Failed · open-vibe-island"
+        ],
+        "grouping": [],
+        "order": [
+          "red dot",
+          "Failed · open-vibe-island",
+          "xmark"
+        ],
+        "stateMembership": [
+          "failed"
+        ],
+        "lightBehavior": "Static dim-red segment; no pulse and no bloom."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant A6-failed is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.A6-failed resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "B",
+      "referenceSection": "B",
+      "intent": "A 0.15s dwell reveals one actionable peek before the full panel opens.",
+      "fixtureData": {
+        "lead": "permission",
+        "otherSessions": 2
+      },
+      "html": {
+        "selector": "S2.querySelectorAll('.frame')[0].querySelector('.isle.perm')",
+        "stateMechanism": "The fragment is already the peek end-state; no authored hover event exists."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.B",
+        "state": "hovered closed surface",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture B",
+          "resolve HaloParityFixtureCatalog.B from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "408px wide, radius 18",
+        "stableCheckpoints": [
+          "pointer-out",
+          "149ms pre-dwell",
+          "150ms dwell",
+          "settled peek"
+        ],
+        "timedCheckpoints": [
+          "0%",
+          "10%",
+          "25%",
+          "50%",
+          "75%",
+          "settled"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "the-automator wants to run a command",
+          "swift build",
+          "Click to review & approve",
+          "+2 more sessions",
+          "S5"
+        ],
+        "grouping": [
+          "one actionable lead"
+        ],
+        "order": [
+          "lead request",
+          "command",
+          "review action",
+          "other count"
+        ],
+        "stateMembership": [
+          "one permission",
+          "two compressed others"
+        ],
+        "lightBehavior": "Amber edge is already condensing; one black body scales to 1.03 and grows."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant B is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.B resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "B-prime",
+      "referenceSection": "B′",
+      "intent": "Pill, peek, and panel are one continuous silhouette in both directions.",
+      "fixtureData": {
+        "lead": "permission"
+      },
+      "html": {
+        "selector": "Array.from(S2.querySelectorAll('.frame')[1].querySelectorAll('.fstage .isle')).slice(0, 3)",
+        "stateMechanism": "Static filmstrip plus a perpetual illustrative K loop."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.B-prime",
+        "state": "normal open/close morph",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture B-prime",
+          "resolve HaloParityFixtureCatalog.B-prime from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "pill 132x30 -> peek 132x58 -> panel 132x92 in filmstrip",
+        "stableCheckpoints": [
+          "closed",
+          "open settled",
+          "closed settled"
+        ],
+        "timedCheckpoints": [
+          "0%",
+          "10%",
+          "25%",
+          "50%",
+          "75%",
+          "settled in each direction"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [],
+        "stateMembership": [
+          "closed",
+          "peek",
+          "opened"
+        ],
+        "lightBehavior": "Attached unbroken edge on one black body; no crossfade, duplicate silhouette, seam, or flash."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant B-prime is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.B-prime resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "C",
+      "referenceSection": "C",
+      "intent": "Expanded list is compact, state-grouped, and gives attention the strongest hierarchy.",
+      "fixtureData": {
+        "sessions": 6,
+        "waiting": 2,
+        "running": 2,
+        "done": 2,
+        "group": "state",
+        "sort": "attention"
+      },
+      "html": {
+        "selector": "S3.querySelector('.isle.panel')",
+        "stateMechanism": "Select the pre-authored panel; pause descendant glyph animations."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.C",
+        "state": "opened session list with sessionGroup=.state",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture C",
+          "resolve HaloParityFixtureCatalog.C from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "520px wide, radius 20",
+        "stableCheckpoints": [
+          "settled panel",
+          "running glyph phase 0"
+        ],
+        "timedCheckpoints": [
+          "running glyph full 1.05s cycle"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "6 total",
+          "2 waiting",
+          "2 running",
+          "2 done",
+          "Needs you",
+          "Running",
+          "Done",
+          "6 sessions · 2 need you",
+          "Group by project"
+        ],
+        "grouping": [
+          "Needs you 2",
+          "Running 2",
+          "Done 2"
+        ],
+        "order": [
+          "Needs you",
+          "Running",
+          "Done"
+        ],
+        "stateMembership": [
+          "permission and question in Needs you",
+          "two running in Running",
+          "success and interrupted in Done"
+        ],
+        "lightBehavior": "Outer panel is quiet; only live/actionable rows have approved selective rails and attention remains the single loudest thing."
+      },
+      "artifactNames": {
+        "referenceStatic": "reference/static/iab-reference-expanded-c-canonical-attempt.png",
+        "nativeStatic": "native/static/native-expanded-session-list.png",
+        "referenceMotion": null,
+        "nativeMotion": null
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant C is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.C resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "D",
+      "referenceSection": "D",
+      "intent": "A row expands in place with truthful metadata, narrated activity, assistant prose, and honest actions.",
+      "fixtureData": {
+        "workspace": "open-vibe-island",
+        "branch": "main",
+        "expanded": true
+      },
+      "html": {
+        "selector": "S4.querySelector('.isle.panel')",
+        "stateMechanism": "Select the pre-authored expanded end-state; no authored collapsed pair or click handler exists."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.D",
+        "state": "force-expanded selected row",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture D",
+          "resolve HaloParityFixtureCatalog.D from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "520px wide, radius 20",
+        "stableCheckpoints": [
+          "collapsed",
+          "expanded settled"
+        ],
+        "timedCheckpoints": [
+          "0%",
+          "10%",
+          "25%",
+          "50%",
+          "75%",
+          "settled"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Editing AppModel.swift · compiling OpenIslandCore",
+          "Agent",
+          "Model",
+          "Permission",
+          "Branch",
+          "Duration",
+          "Terminal",
+          "Last message · Claude",
+          "Jump to Ghostty",
+          "Transcript",
+          "~/Developer/open-vibe-island"
+        ],
+        "grouping": [
+          "metadata grid",
+          "assistant message",
+          "actions"
+        ],
+        "order": [
+          "row identity",
+          "metadata",
+          "assistant message",
+          "actions",
+          "path"
+        ],
+        "stateMembership": [
+          "one selected running row"
+        ],
+        "lightBehavior": "Settled non-light content is still; row entrance/light sweep occurs only on entry."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant D is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.D resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "E-travel",
+      "referenceSection": "E light travel",
+      "intent": "Attention light travels from perimeter into the actionable hero while outer intensity falls.",
+      "fixtureData": {
+        "kind": "permission"
+      },
+      "html": {
+        "selector": "Array.from(S5.querySelectorAll('.travel')).slice(0, 3)",
+        "stateMechanism": "Three unrelated static story frames; no continuous animation."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.E-travel",
+        "state": "permission open handoff",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture E-travel",
+          "resolve HaloParityFixtureCatalog.E-travel from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "story nodes 150x34 -> 150x74 -> 150x96",
+        "stableCheckpoints": [
+          "perimeter start",
+          "travel midpoint",
+          "hero settled"
+        ],
+        "timedCheckpoints": [
+          "0%",
+          "10%",
+          "25%",
+          "50%",
+          "75%",
+          "settled"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [],
+        "stateMembership": [
+          "permission attention"
+        ],
+        "lightBehavior": "Continuous centroid travel and reciprocal outer/inner intensity handoff; one loud thing."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant E-travel is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.E-travel resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "E1",
+      "referenceSection": "E1",
+      "intent": "Claude command approval presents syntax-highlighted command, allow/deny, and truthful scoped grants.",
+      "fixtureData": {
+        "agent": "Claude",
+        "command": "rtk grep -rn \"fetch(\" packages/ui/src",
+        "requiresTerminalApproval": false
+      },
+      "html": {
+        "selector": "S5.querySelectorAll('.hero')[0]",
+        "stateMechanism": "Select the pre-authored command hero; set ring currentTime."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.E1",
+        "state": "approval command hero",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture E1",
+          "resolve HaloParityFixtureCatalog.E1 from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "452px panel, hero radius 16",
+        "stableCheckpoints": [
+          "ring trough",
+          "ring peak"
+        ],
+        "timedCheckpoints": [
+          "0s",
+          "0.22s",
+          "0.55s",
+          "1.1s",
+          "1.65s",
+          "2.2s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Permission needed",
+          "the-automator wants to run a command",
+          "Sonnet 5",
+          "Allow once ⌘Y",
+          "Deny ⌘N",
+          "Yes, allow rtk grep from this project ⌘⇧Y",
+          "Yes, allow all rtk commands here"
+        ],
+        "grouping": [
+          "annunciator",
+          "command",
+          "primary actions",
+          "scoped actions"
+        ],
+        "order": [
+          "title",
+          "request",
+          "command",
+          "allow/deny",
+          "scopes"
+        ],
+        "stateMembership": [
+          "one permission"
+        ],
+        "lightBehavior": "2.2s amber hero ring dominates while the opened perimeter is subdued."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant E1 is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.E1 resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "E2",
+      "referenceSection": "E2",
+      "intent": "Claude file edit approval shows an exact inline diff and honest scoped edit grant.",
+      "fixtureData": {
+        "agent": "Claude",
+        "file": "AGENTS.md",
+        "hasFileDiff": true
+      },
+      "html": {
+        "selector": "S5.querySelectorAll('.hero')[1]",
+        "stateMechanism": "Select the pre-authored diff hero; set ring currentTime."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.E2",
+        "state": "approval diff hero",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture E2",
+          "resolve HaloParityFixtureCatalog.E2 from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "452px panel, hero radius 16",
+        "stableCheckpoints": [
+          "ring trough",
+          "ring peak"
+        ],
+        "timedCheckpoints": [
+          "0s",
+          "0.22s",
+          "0.55s",
+          "1.1s",
+          "1.65s",
+          "2.2s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Approve file edit",
+          "the-automator wants to edit AGENTS.md",
+          "AGENTS.md · 2 changed",
+          "Allow once ⌘Y",
+          "Deny ⌘N",
+          "Yes, allow edits to *.md in this project ⌘⇧Y"
+        ],
+        "grouping": [
+          "annunciator",
+          "diff",
+          "primary actions",
+          "scope"
+        ],
+        "order": [
+          "title",
+          "request",
+          "diff",
+          "allow/deny",
+          "scope"
+        ],
+        "stateMembership": [
+          "one file-edit permission"
+        ],
+        "lightBehavior": "Same 2.2s hero dominance and subdued perimeter as E1."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant E2 is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.E2 resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "E3",
+      "referenceSection": "E3",
+      "intent": "Codex approval is honest about in-app-only approval and exposes only a jump action.",
+      "fixtureData": {
+        "agent": "Codex",
+        "command": "git push --force-with-lease origin main",
+        "requiresTerminalApproval": true
+      },
+      "html": {
+        "selector": "S5.querySelectorAll('.hero')[2]",
+        "stateMechanism": "Select the pre-authored terminal hero; set ring currentTime."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.E3",
+        "state": "terminal approval hero",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture E3",
+          "resolve HaloParityFixtureCatalog.E3 from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "452px panel, hero radius 16",
+        "stableCheckpoints": [
+          "ring trough",
+          "ring peak"
+        ],
+        "timedCheckpoints": [
+          "0s",
+          "0.22s",
+          "0.55s",
+          "1.1s",
+          "1.65s",
+          "2.2s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Approval waiting",
+          "Codex needs a decision — in-app only",
+          "Codex approvals happen inside the app. Jump to Codex to review this request.",
+          "Jump to Codex"
+        ],
+        "grouping": [
+          "annunciator",
+          "command",
+          "terminal note",
+          "jump"
+        ],
+        "order": [
+          "title",
+          "request",
+          "command",
+          "note",
+          "jump"
+        ],
+        "stateMembership": [
+          "one terminal-only permission"
+        ],
+        "lightBehavior": "Amber attention remains dominant; no fake approve/deny buttons."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant E3 is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.E3 resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "F1",
+      "referenceSection": "F1",
+      "intent": "Page one of a two-question prompt supports numbered single selection and Next.",
+      "fixtureData": {
+        "page": 1,
+        "pageCount": 2,
+        "multiSelect": false,
+        "tag": "Auth"
+      },
+      "html": {
+        "selector": "S6.querySelectorAll('.hero.q')[0]",
+        "stateMechanism": "Select the pre-authored first page; set hero ring currentTime."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.F1",
+        "state": "question pageIndex=0",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture F1",
+          "resolve HaloParityFixtureCatalog.F1 from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "452px panel",
+        "stableCheckpoints": [
+          "unselected",
+          "option 1 selected"
+        ],
+        "timedCheckpoints": [
+          "hero ring 0/.22/.55/1.1/1.65/2.2s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "A question for you",
+          "niche-radar · OpenCode",
+          "1 of 2",
+          "Auth",
+          "Which auth method should the bridge use?",
+          "Next ↵",
+          "Press 1–3 to choose"
+        ],
+        "grouping": [
+          "question header",
+          "three options",
+          "Next",
+          "keyboard hint"
+        ],
+        "order": [
+          "progress",
+          "tag",
+          "question",
+          "options",
+          "Next",
+          "hint"
+        ],
+        "stateMembership": [
+          "page 1 of 2"
+        ],
+        "lightBehavior": "Soft question hero ring; no competing perimeter emphasis."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant F1 is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.F1 resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "F2",
+      "referenceSection": "F2",
+      "intent": "Page two supports multi-select, Other freeform input, and Submit.",
+      "fixtureData": {
+        "page": 2,
+        "pageCount": 2,
+        "multiSelect": true,
+        "selected": [
+          1,
+          2
+        ],
+        "other": ""
+      },
+      "html": {
+        "selector": "S6.querySelectorAll('.hero.q')[1]",
+        "stateMechanism": "Select the pre-authored second page; options and Other are non-interactive divs."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.F2",
+        "state": "question pageIndex=1",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture F2",
+          "resolve HaloParityFixtureCatalog.F2 from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "452px panel",
+        "stableCheckpoints": [
+          "empty",
+          "two selected",
+          "freeform entered",
+          "submitted"
+        ],
+        "timedCheckpoints": [
+          "each selection/page transition 0/10/25/50/75/settled"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "2 of 2",
+          "Platforms",
+          "multi-select",
+          "Which platforms should CI test against?",
+          "Other… (type a freeform answer)",
+          "Submit ↵",
+          "2 selected · toggle with digits"
+        ],
+        "grouping": [
+          "question header",
+          "four options",
+          "Submit",
+          "selection summary"
+        ],
+        "order": [
+          "progress",
+          "tag",
+          "question",
+          "options",
+          "Other",
+          "Submit",
+          "summary"
+        ],
+        "stateMembership": [
+          "page 2 of 2",
+          "options 1 and 2 selected"
+        ],
+        "lightBehavior": "Soft hero ring; selection is distinguished by shape as well as hue."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant F2 is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.F2 resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "F3",
+      "referenceSection": "F3",
+      "intent": "A compact yes/no question pulls the island open without full question chrome.",
+      "fixtureData": {
+        "question": "Continue past the failing test?",
+        "options": [
+          "Yes, skip it for now",
+          "No, stop and let me look"
+        ]
+      },
+      "html": {
+        "selector": "S6.querySelectorAll('.hero.q')[2]",
+        "stateMechanism": "Select the pre-authored compact static fragment."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.F3",
+        "state": "simple question opened",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture F3",
+          "resolve HaloParityFixtureCatalog.F3 from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "404px panel",
+        "stableCheckpoints": [
+          "selected yes",
+          "selected no",
+          "submitted"
+        ],
+        "timedCheckpoints": [
+          "selection/submission 0/10/25/50/75/settled"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Continue past the failing test?",
+          "Yes, skip it for now",
+          "No, stop and let me look"
+        ],
+        "grouping": [
+          "question",
+          "two compact options"
+        ],
+        "order": [
+          "question",
+          "yes",
+          "no"
+        ],
+        "stateMembership": [
+          "one compact question"
+        ],
+        "lightBehavior": "Soft question hero ring; no unrelated motion."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant F3 is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.F3 resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "G",
+      "referenceSection": "G",
+      "intent": "One parent session expands nested subagents and task progress without creating top-level rows.",
+      "fixtureData": {
+        "subagents": 3,
+        "tasksDone": 2,
+        "tasksTotal": 5
+      },
+      "html": {
+        "selector": "S7.querySelector('.isle.panel.narrow')",
+        "stateMechanism": "Select the pre-authored expanded nested-work panel."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.G",
+        "state": "expanded nested subagents and tasks",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture G",
+          "resolve HaloParityFixtureCatalog.G from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "452px panel",
+        "stableCheckpoints": [
+          "expanded settled"
+        ],
+        "timedCheckpoints": [
+          "three liveness waves over 1.05s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "the-automator",
+          "3 subagents",
+          "Orchestrating the bridge-auth migration",
+          "Subagents",
+          "3 active",
+          "Implement handshake",
+          "in progress"
+        ],
+        "grouping": [
+          "parent",
+          "Subagents",
+          "task list"
+        ],
+        "order": [
+          "parent",
+          "three subagents",
+          "five tasks"
+        ],
+        "stateMembership": [
+          "three nested running agents",
+          "two done tasks",
+          "one in progress",
+          "two pending"
+        ],
+        "lightBehavior": "Nested activity remains subordinate to the parent and any attention state."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant G is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.G resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "G-prime",
+      "referenceSection": "G′",
+      "intent": "Nested work compresses to the parent plus a count and nodes glyph.",
+      "fixtureData": {
+        "subagents": 3
+      },
+      "html": {
+        "selector": "S7.querySelectorAll('.isle.pill.big.work')[0]",
+        "stateMechanism": "Select fragment; set orbit and wave currentTime."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.G-prime",
+        "state": "closed task counter with subagents -> nodes(3)",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture G-prime",
+          "resolve HaloParityFixtureCatalog.G-prime from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": ">=352x38",
+        "stableCheckpoints": [
+          "orbit quadrants"
+        ],
+        "timedCheckpoints": [
+          "orbit 0/.6/1.5/3/4.5/6s",
+          "wave full 1.05s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "the-automator",
+          "3"
+        ],
+        "grouping": [],
+        "order": [
+          "running glyph",
+          "the-automator",
+          "3 + nodes"
+        ],
+        "stateMembership": [
+          "parent with three subagents"
+        ],
+        "lightBehavior": "Restrained working orbit; no nested content in the pill."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant G-prime is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.G-prime resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "H-success",
+      "referenceSection": "H success",
+      "intent": "Completed success detail shows truthful result, metadata, conditional reply, and dismiss.",
+      "fixtureData": {
+        "outcome": "success",
+        "workspace": "open-vibe-island"
+      },
+      "html": {
+        "selector": "S8.querySelector('.isle.panel')",
+        "stateMechanism": "Select pre-authored settled success panel."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.H-success",
+        "state": "completion detail",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture H-success",
+          "resolve HaloParityFixtureCatalog.H-success from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "520px panel",
+        "stableCheckpoints": [
+          "settled success at 0s",
+          "settled success at 3s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Success",
+          "Result",
+          "Outcome",
+          "Duration",
+          "Model",
+          "Finished",
+          "Jump to Ghostty",
+          "Transcript",
+          "Reply",
+          "Dismiss"
+        ],
+        "grouping": [
+          "identity",
+          "result",
+          "metadata",
+          "actions"
+        ],
+        "order": [
+          "identity",
+          "result",
+          "metadata",
+          "actions"
+        ],
+        "stateMembership": [
+          "one successful completion"
+        ],
+        "lightBehavior": "Outer edge has settled to a quiet hairline; no continuing success pulse."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant H-success is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.H-success resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "H-interrupted",
+      "referenceSection": "H interrupted",
+      "intent": "Interrupted completion detail is distinct from success and failure.",
+      "fixtureData": {
+        "outcome": "interrupted"
+      },
+      "html": {
+        "selector": null,
+        "stateMechanism": "No H-level interrupted fragment exists."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.H-interrupted",
+        "state": "interrupted completion detail",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture H-interrupted",
+          "resolve HaloParityFixtureCatalog.H-interrupted from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "520px target"
+      },
+      "expected": {
+        "visibleCopy": [
+          "Interrupted"
+        ],
+        "grouping": [
+          "identity",
+          "result",
+          "metadata",
+          "actions"
+        ],
+        "order": [
+          "identity",
+          "result",
+          "metadata",
+          "actions"
+        ],
+        "stateMembership": [
+          "one interrupted completion"
+        ],
+        "lightBehavior": "Static and non-pulsing."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant H-interrupted is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.H-interrupted resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "H-failed",
+      "referenceSection": "H failed",
+      "intent": "Failed completion detail is static, truthful, and distinct from interrupted.",
+      "fixtureData": {
+        "outcome": "failed"
+      },
+      "html": {
+        "selector": null,
+        "stateMechanism": "No H-level failed fragment exists."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.H-failed",
+        "state": "failed completion detail",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture H-failed",
+          "resolve HaloParityFixtureCatalog.H-failed from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "520px target"
+      },
+      "expected": {
+        "visibleCopy": [
+          "Failed"
+        ],
+        "grouping": [
+          "identity",
+          "result",
+          "metadata",
+          "actions"
+        ],
+        "order": [
+          "identity",
+          "result",
+          "metadata",
+          "actions"
+        ],
+        "stateMembership": [
+          "one failed completion"
+        ],
+        "lightBehavior": "Static dim red; never pulses."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant H-failed is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.H-failed resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "I",
+      "referenceSection": "I",
+      "intent": "Full usage card shows provider/window identity, reset time, value, and worded thresholds.",
+      "fixtureData": {
+        "meters": [
+          [
+            "Claude",
+            "5h",
+            34,
+            "2h 10m",
+            "FINE"
+          ],
+          [
+            "Claude",
+            "7d",
+            78,
+            "3d 4h",
+            "WARN"
+          ],
+          [
+            "Codex · 7d · Pro",
+            "7d",
+            94,
+            "19h",
+            "CRITICAL"
+          ]
+        ]
+      },
+      "html": {
+        "selector": "S9.querySelector('.isle.meterc')",
+        "stateMechanism": "Select pre-authored static usage card."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.I",
+        "state": "full HaloUsageMeterCard",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture I",
+          "resolve HaloParityFixtureCatalog.I from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "520px card, 52px meters",
+        "stableCheckpoints": [
+          "0s",
+          "2s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Usage",
+          "Claude · 5h",
+          "34%",
+          "resets in 2h 10m",
+          "FINE",
+          "Claude · 7d",
+          "78%",
+          "WARN",
+          "Codex · 7d · Pro",
+          "94%",
+          "CRITICAL"
+        ],
+        "grouping": [
+          "three meters"
+        ],
+        "order": [
+          "Claude 5h",
+          "Claude 7d",
+          "Codex 7d Pro"
+        ],
+        "stateMembership": [
+          "fine",
+          "warn",
+          "critical"
+        ],
+        "lightBehavior": "Threshold filament is subordinate; only critical may pulse."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant I is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.I resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "I-prime",
+      "referenceSection": "I′",
+      "intent": "Critical usage earns one compact pill filament without competing with attention.",
+      "fixtureData": {
+        "provider": "Codex",
+        "percent": 94,
+        "reset": "19h"
+      },
+      "html": {
+        "selector": "S9.querySelector('.isle.pill.big')",
+        "stateMechanism": "Select pre-authored static critical-usage pill."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.I-prime",
+        "state": "critical usage right slot",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture I-prime",
+          "resolve HaloParityFixtureCatalog.I-prime from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": ">=352x38",
+        "stableCheckpoints": [
+          "standalone",
+          "with permission",
+          "with question"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "Codex 94%",
+          "19h"
+        ],
+        "grouping": [],
+        "order": [
+          "critical usage identity",
+          "percent",
+          "reset"
+        ],
+        "stateMembership": [
+          "critical usage"
+        ],
+        "lightBehavior": "Idle outer hairline; critical filament never outranks permission or question."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant I-prime is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.I-prime resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "J",
+      "referenceSection": "J",
+      "intent": "Empty opened state is quiet, confident, truthful, and monitoring.",
+      "fixtureData": {
+        "sessions": 0,
+        "workspaces": 4
+      },
+      "html": {
+        "selector": "S10.querySelector('.isle.panel.narrow')",
+        "stateMechanism": "Select pre-authored static empty panel."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.J",
+        "state": "zero sessions opened",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture J",
+          "resolve HaloParityFixtureCatalog.J from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "452px panel",
+        "stableCheckpoints": [
+          "0s",
+          "2s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [
+          "All quiet",
+          "No active agent sessions. Open Island is watching your terminals and IDEs — it'll light up the moment one needs you.",
+          "Monitoring · 4 workspaces"
+        ],
+        "grouping": [
+          "quiet heading",
+          "description",
+          "monitoring status"
+        ],
+        "order": [
+          "heading",
+          "description",
+          "monitoring status"
+        ],
+        "stateMembership": [
+          "zero sessions"
+        ],
+        "lightBehavior": "Bare idle hairline; no glow or motion."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant J is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.J resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "J-prime",
+      "referenceSection": "J′",
+      "intent": "Collapsed empty state is visually indistinguishable from A1.",
+      "fixtureData": {
+        "sessions": 0
+      },
+      "html": {
+        "selector": "S10.querySelector('.isle.pill')",
+        "stateMechanism": "Select pre-authored static idle pill."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.J-prime",
+        "state": "zero sessions collapsed",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture J-prime",
+          "resolve HaloParityFixtureCatalog.J-prime from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "214x38 minimum",
+        "stableCheckpoints": [
+          "0s",
+          "2s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [
+          "idle glyph",
+          "camera dead-zone",
+          "idle dot"
+        ],
+        "stateMembership": [
+          "zero sessions"
+        ],
+        "lightBehavior": "Pixel-equivalent to A1 after registration."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant J-prime is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.J-prime resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "K-orbit",
+      "referenceSection": "K working orbit",
+      "intent": "Working edge segment completes a 6s linear orbit.",
+      "fixtureData": {
+        "motion": "orbit"
+      },
+      "html": {
+        "selector": "S11.querySelectorAll('.mdemo')[0].querySelector('.isle.work')",
+        "stateMechanism": "Set Web Animation currentTime at exact checkpoints."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.K-orbit",
+        "state": "HaloEdgeLight(.working)",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture K-orbit",
+          "resolve HaloParityFixtureCatalog.K-orbit from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "132x26 demo",
+        "stableCheckpoints": [
+          "orbit quadrants"
+        ],
+        "timedCheckpoints": [
+          "0s",
+          "0.6s",
+          "1.5s",
+          "3s",
+          "4.5s",
+          "6s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [],
+        "stateMembership": [
+          "working"
+        ],
+        "lightBehavior": "One restrained cyan-to-violet segment travels linearly around the perimeter."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant K-orbit is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.K-orbit resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "K-morph",
+      "referenceSection": "K expand morph",
+      "intent": "One black body grows continuously with an attached edge.",
+      "fixtureData": {
+        "motion": "morph"
+      },
+      "html": {
+        "selector": "S11.querySelectorAll('.mdemo')[1].querySelector('.morphd')",
+        "stateMechanism": "Set illustrative loop currentTime."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.K-morph",
+        "state": "normal opened-state morph",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture K-morph",
+          "resolve HaloParityFixtureCatalog.K-morph from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "132px demo",
+        "stableCheckpoints": [
+          "closed",
+          "opened"
+        ],
+        "timedCheckpoints": [
+          "0%",
+          "10%",
+          "25%",
+          "50%",
+          "75%",
+          "settled"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [],
+        "stateMembership": [
+          "closed",
+          "opened"
+        ],
+        "lightBehavior": "Unbroken edge on one topology; no crossfade or seam."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant K-morph is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.K-morph resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "K-condense",
+      "referenceSection": "K attention condense",
+      "intent": "Permission attention warms, pulses, and condenses inward.",
+      "fixtureData": {
+        "motion": "permissionPulse"
+      },
+      "html": {
+        "selector": "S11.querySelectorAll('.mdemo')[2].querySelector('.isle.perm')",
+        "stateMechanism": "Set CSS currentTime across one 1.9s cycle."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.K-condense",
+        "state": "permission edge",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture K-condense",
+          "resolve HaloParityFixtureCatalog.K-condense from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "132x26 demo",
+        "stableCheckpoints": [
+          "trough",
+          "peak"
+        ],
+        "timedCheckpoints": [
+          "0s",
+          "0.19s",
+          "0.475s",
+          "0.95s",
+          "1.425s",
+          "1.9s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [],
+        "stateMembership": [
+          "permission"
+        ],
+        "lightBehavior": "1.9s attention pulse; native live clock currently approximates 1.96s."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant K-condense is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.K-condense resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "K-success",
+      "referenceSection": "K success bloom",
+      "intent": "Success blooms once, dissolves, and remains quiet.",
+      "fixtureData": {
+        "motion": "success"
+      },
+      "html": {
+        "selector": "S11.querySelectorAll('.mdemo')[3].querySelector('.isle.ok')",
+        "stateMechanism": "Interpret the infinite CSS loop as one event."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.K-success",
+        "state": "fresh success",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture K-success",
+          "resolve HaloParityFixtureCatalog.K-success from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "132x26 demo",
+        "stableCheckpoints": [
+          "event start",
+          "settled"
+        ],
+        "timedCheckpoints": [
+          "0s",
+          "0.3s",
+          "0.75s",
+          "1.5s",
+          "2.1s",
+          "2.25s",
+          "3s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [],
+        "stateMembership": [
+          "fresh success"
+        ],
+        "lightBehavior": "One-shot only; final frame is the bare idle hairline."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant K-success is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.K-success resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "K-row",
+      "referenceSection": "K row entrance",
+      "intent": "A new row receives one faint light sweep; settled content does not move.",
+      "fixtureData": {
+        "motion": "rowEntrance"
+      },
+      "html": {
+        "selector": "S11.querySelectorAll('.mdemo')[4].querySelector('.rowd')",
+        "stateMechanism": "Interpret the 3.2s perpetual demo as a single entrance."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.K-row",
+        "state": "new Halo session row",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture K-row",
+          "resolve HaloParityFixtureCatalog.K-row from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "172x38 demo",
+        "stableCheckpoints": [
+          "pre-entry",
+          "settled"
+        ],
+        "timedCheckpoints": [
+          "0s",
+          "0.32s",
+          "0.8s",
+          "1.6s",
+          "2.4s",
+          "3.2s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [],
+        "stateMembership": [
+          "new row"
+        ],
+        "lightBehavior": "Only a single faint sweep moves; row content is still after settling."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant K-row is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.K-row resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "K-failure",
+      "referenceSection": "K failure",
+      "intent": "Failure edge is static for the entire observation.",
+      "fixtureData": {
+        "motion": "failure"
+      },
+      "html": {
+        "selector": "S11.querySelectorAll('.mdemo')[5].querySelector('.isle.fail')",
+        "stateMechanism": "Hold the pre-authored fragment."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.K-failure",
+        "state": "HaloEdgeLight(.failure)",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture K-failure",
+          "resolve HaloParityFixtureCatalog.K-failure from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "132x26 demo",
+        "stableCheckpoints": [
+          "0s",
+          "0.3s",
+          "0.75s",
+          "1.5s",
+          "2.25s",
+          "3s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [],
+        "stateMembership": [
+          "failure"
+        ],
+        "lightBehavior": "Static dim red; changed area stays at neutral noise floor."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant K-failure is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.K-failure resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "K-idle",
+      "referenceSection": "K idle",
+      "intent": "Idle is a motionless 8%-white hairline without glow.",
+      "fixtureData": {
+        "motion": "idle"
+      },
+      "html": {
+        "selector": "S11.querySelectorAll('.mdemo')[6].querySelector('.isle:not(.work,.perm,.ok,.fail)')",
+        "stateMechanism": "Hold the pre-authored fragment."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.K-idle",
+        "state": "HaloEdgeLight(.idle)",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture K-idle",
+          "resolve HaloParityFixtureCatalog.K-idle from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "132x26 demo",
+        "stableCheckpoints": [
+          "0s",
+          "2s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [],
+        "stateMembership": [
+          "idle"
+        ],
+        "lightBehavior": "Bare 8%-white hairline; no bloom, pulse, or orbit."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant K-idle is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.K-idle resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "K-glyph",
+      "referenceSection": "K liveness glyph",
+      "intent": "Running waves, waiting breathes, and idle remains still.",
+      "fixtureData": {
+        "motion": "liveness"
+      },
+      "html": {
+        "selector": "S11.querySelectorAll('.mdemo')[7].querySelector('.gly.run'); A4 wait; A1 idle",
+        "stateMechanism": "Combine three authored fragments and set currentTime."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.K-glyph",
+        "state": "HaloLivenessGlyph running/waiting/idle",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture K-glyph",
+          "resolve HaloParityFixtureCatalog.K-glyph from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "glyph bounds",
+        "stableCheckpoints": [
+          "running extrema",
+          "waiting extrema",
+          "idle 0s/2s"
+        ],
+        "timedCheckpoints": [
+          "running 0/.105/.2625/.525/.7875/1.05s",
+          "waiting 0/.24/.6/1.2/1.8/2.4s"
+        ]
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [
+          "three bars"
+        ],
+        "stateMembership": [
+          "running",
+          "waiting",
+          "idle"
+        ],
+        "lightBehavior": "Running stagger 0/.13/.26s; waiting breathes; idle is phase-independent."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant K-glyph is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.K-glyph resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "ST-LONG",
+      "referenceSection": "stress: long text",
+      "intent": "Long workspace, branch, command, path, and activity strings preserve hierarchy without clipping actions.",
+      "fixtureData": {
+        "seed": "long-v1",
+        "strings": "not approved"
+      },
+      "html": {
+        "selector": "clone C/D/E fragments",
+        "stateMechanism": "Mutation required; no approved exact strings or wrap outcomes exist."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.ST-LONG",
+        "state": "long-content fixtures",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture ST-LONG",
+          "resolve HaloParityFixtureCatalog.ST-LONG from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "not specified"
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [
+          "preserved"
+        ],
+        "order": [
+          "preserved"
+        ],
+        "stateMembership": [
+          "long-content variants"
+        ],
+        "lightBehavior": "Unchanged from base scenario."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant ST-LONG is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.ST-LONG resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "ST-DUP",
+      "referenceSection": "stress: duplicate workspaces",
+      "intent": "Duplicate workspace names remain distinguishable by branch or path.",
+      "fixtureData": {
+        "workspace": "the-automator",
+        "duplicates": 2
+      },
+      "html": {
+        "selector": "S3.querySelector('.isle.panel')",
+        "stateMechanism": "C contains two the-automator rows with branch disambiguation."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.ST-DUP",
+        "state": "duplicate workspace rows",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture ST-DUP",
+          "resolve HaloParityFixtureCatalog.ST-DUP from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "520px target"
+      },
+      "expected": {
+        "visibleCopy": [
+          "the-automator",
+          "feat/bridge-auth",
+          "main"
+        ],
+        "grouping": [
+          "stable"
+        ],
+        "order": [
+          "stable"
+        ],
+        "stateMembership": [
+          "duplicates"
+        ],
+        "lightBehavior": "Unchanged from row states."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant ST-DUP is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.ST-DUP resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "ST-MISSING",
+      "referenceSection": "stress: missing metadata",
+      "intent": "Missing workspace/path metadata uses meaningful copy and never '/' fallback.",
+      "fixtureData": {
+        "workspace": null,
+        "path": null
+      },
+      "html": {
+        "selector": "clone C/D",
+        "stateMechanism": "Mutation required; fallback copy is unspecified."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.ST-MISSING",
+        "state": "missing metadata",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture ST-MISSING",
+          "resolve HaloParityFixtureCatalog.ST-MISSING from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "not specified"
+      },
+      "expected": {
+        "visibleCopy": [
+          "must not include /"
+        ],
+        "grouping": [
+          "preserved"
+        ],
+        "order": [
+          "preserved"
+        ],
+        "stateMembership": [
+          "missing metadata"
+        ],
+        "lightBehavior": "Unchanged."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant ST-MISSING is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.ST-MISSING resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "ST-COUNT-0",
+      "referenceSection": "stress: zero sessions",
+      "intent": "Zero sessions select J/J′ with correct workspace count grammar.",
+      "fixtureData": {
+        "sessions": 0
+      },
+      "html": {
+        "selector": "S10",
+        "stateMechanism": "Use J/J′ authored fragments."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.ST-COUNT-0",
+        "state": "zero sessions",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture ST-COUNT-0",
+          "resolve HaloParityFixtureCatalog.ST-COUNT-0 from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "452px opened; 214x38 closed target"
+      },
+      "expected": {
+        "visibleCopy": [
+          "All quiet"
+        ],
+        "grouping": [],
+        "order": [],
+        "stateMembership": [
+          "zero sessions"
+        ],
+        "lightBehavior": "Idle hairline."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant ST-COUNT-0 is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.ST-COUNT-0 resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "ST-COUNT-1",
+      "referenceSection": "stress: one session",
+      "intent": "Singular session and workspace grammar is correct.",
+      "fixtureData": {
+        "sessions": 1
+      },
+      "html": {
+        "selector": "clone A2/C/J",
+        "stateMechanism": "Mutation required; singular panel outcome is not authored."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.ST-COUNT-1",
+        "state": "one session",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture ST-COUNT-1",
+          "resolve HaloParityFixtureCatalog.ST-COUNT-1 from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "not specified"
+      },
+      "expected": {
+        "visibleCopy": [
+          "singular forms not approved"
+        ],
+        "grouping": [
+          "one non-empty group"
+        ],
+        "order": [
+          "state order"
+        ],
+        "stateMembership": [
+          "one session"
+        ],
+        "lightBehavior": "Matches the session state."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant ST-COUNT-1 is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.ST-COUNT-1 resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "ST-COUNT-MANY",
+      "referenceSection": "stress: many sessions",
+      "intent": "Many sessions preserve priority and produce usable bounded scrolling.",
+      "fixtureData": {
+        "sessions": "many"
+      },
+      "html": {
+        "selector": "clone C",
+        "stateMechanism": "Mutation required; maximum count and scroll cap are unspecified."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.ST-COUNT-MANY",
+        "state": "many sessions",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture ST-COUNT-MANY",
+          "resolve HaloParityFixtureCatalog.ST-COUNT-MANY from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "not specified"
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [
+          "Needs you",
+          "Running",
+          "Done"
+        ],
+        "order": [
+          "Needs you",
+          "Running",
+          "Done"
+        ],
+        "stateMembership": [
+          "many"
+        ],
+        "lightBehavior": "Attention remains dominant."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant ST-COUNT-MANY is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.ST-COUNT-MANY resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "ST-OVERFLOW",
+      "referenceSection": "stress: overflow",
+      "intent": "Overflow keeps the header/hero and actions usable.",
+      "fixtureData": {
+        "content": "overflow"
+      },
+      "html": {
+        "selector": "clone C/G/E2",
+        "stateMechanism": "Mutation required; no authored scroll container or maximum height contract."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.ST-OVERFLOW",
+        "state": "overflow content",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture ST-OVERFLOW",
+          "resolve HaloParityFixtureCatalog.ST-OVERFLOW from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "not specified"
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [
+          "priority preserved"
+        ],
+        "order": [
+          "actions remain reachable"
+        ],
+        "stateMembership": [
+          "overflow"
+        ],
+        "lightBehavior": "Unchanged from base state."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant ST-OVERFLOW is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.ST-OVERFLOW resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "ST-USAGE-0",
+      "referenceSection": "stress: zero usage",
+      "intent": "Zero usage is honest and does not fabricate reset data.",
+      "fixtureData": {
+        "percent": 0
+      },
+      "html": {
+        "selector": "clone S9",
+        "stateMechanism": "Mutation required; zero-state copy is not authored."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.ST-USAGE-0",
+        "state": "zero usage",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture ST-USAGE-0",
+          "resolve HaloParityFixtureCatalog.ST-USAGE-0 from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "520px target"
+      },
+      "expected": {
+        "visibleCopy": [
+          "0%",
+          "reset behavior not approved"
+        ],
+        "grouping": [
+          "provider windows"
+        ],
+        "order": [
+          "stable"
+        ],
+        "stateMembership": [
+          "fine"
+        ],
+        "lightBehavior": "Fine filament, no pulse."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant ST-USAGE-0 is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.ST-USAGE-0 resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "ST-USAGE-MISSING",
+      "referenceSection": "stress: missing usage",
+      "intent": "Missing provider/window data is represented honestly.",
+      "fixtureData": {
+        "usage": null
+      },
+      "html": {
+        "selector": "clone S9",
+        "stateMechanism": "Mutation required; missing-data presentation is not authored."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.ST-USAGE-MISSING",
+        "state": "missing usage",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture ST-USAGE-MISSING",
+          "resolve HaloParityFixtureCatalog.ST-USAGE-MISSING from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "not specified"
+      },
+      "expected": {
+        "visibleCopy": [
+          "not approved"
+        ],
+        "grouping": [],
+        "order": [],
+        "stateMembership": [
+          "missing"
+        ],
+        "lightBehavior": "No fabricated warning or critical state."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant ST-USAGE-MISSING is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.ST-USAGE-MISSING resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "ST-ATTN-RUN",
+      "referenceSection": "stress: permission plus running",
+      "intent": "Permission is the only loud thing while running sessions remain legible.",
+      "fixtureData": {
+        "permission": 1,
+        "running": 2
+      },
+      "html": {
+        "selector": "S3.querySelector('.isle.panel')",
+        "stateMechanism": "C is the closest authored composition but not an ambient/open handoff fixture."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.ST-ATTN-RUN",
+        "state": "permission plus running",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture ST-ATTN-RUN",
+          "resolve HaloParityFixtureCatalog.ST-ATTN-RUN from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "520px opened; >=352x38 closed"
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [
+          "Needs you",
+          "Running"
+        ],
+        "order": [
+          "Needs you",
+          "Running"
+        ],
+        "stateMembership": [
+          "permission",
+          "running"
+        ],
+        "lightBehavior": "Permission is dominant; running light is restrained."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant ST-ATTN-RUN is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.ST-ATTN-RUN resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "ST-Q-P",
+      "referenceSection": "stress: question plus permission",
+      "intent": "Permission/question tie-breaking is explicit and deterministic.",
+      "fixtureData": {
+        "permission": 1,
+        "question": 1
+      },
+      "html": {
+        "selector": "S3.querySelector('.isle.panel')",
+        "stateMechanism": "Both appear under Needs you, but tie-breaking is not authored."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.ST-Q-P",
+        "state": "permission plus question",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture ST-Q-P",
+          "resolve HaloParityFixtureCatalog.ST-Q-P from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "520px target"
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [
+          "Needs you"
+        ],
+        "order": [
+          "not approved"
+        ],
+        "stateMembership": [
+          "permission",
+          "question"
+        ],
+        "lightBehavior": "Exactly one dominant attention target."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant ST-Q-P is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.ST-Q-P resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "ST-IPRIME-ATTN",
+      "referenceSection": "stress: critical usage plus attention",
+      "intent": "Critical usage never competes with permission or question.",
+      "fixtureData": {
+        "criticalUsage": true,
+        "attention": true
+      },
+      "html": {
+        "selector": "compose S9 I′ with S1 A3/A4",
+        "stateMechanism": "No authored combination exists."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.ST-IPRIME-ATTN",
+        "state": "critical usage plus attention",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture ST-IPRIME-ATTN",
+          "resolve HaloParityFixtureCatalog.ST-IPRIME-ATTN from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "not specified"
+      },
+      "expected": {
+        "visibleCopy": [],
+        "grouping": [],
+        "order": [
+          "attention first"
+        ],
+        "stateMembership": [
+          "critical usage",
+          "attention"
+        ],
+        "lightBehavior": "Attention wins; usage recedes."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant ST-IPRIME-ATTN is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.ST-IPRIME-ATTN resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "AX-RM",
+      "referenceSection": "accessibility: Reduce Motion",
+      "intent": "Reduced Motion preserves state meaning without freezing a transient peak.",
+      "fixtureData": {
+        "reduceMotion": true
+      },
+      "html": {
+        "selector": "all A-K animated states",
+        "stateMechanism": "No prefers-reduced-motion rules exist."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.AX-RM",
+        "state": "accessibilityReduceMotion=true",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture AX-RM",
+          "resolve HaloParityFixtureCatalog.AX-RM from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "both shipped profiles"
+      },
+      "expected": {
+        "visibleCopy": [
+          "unchanged"
+        ],
+        "grouping": [
+          "unchanged"
+        ],
+        "order": [
+          "unchanged"
+        ],
+        "stateMembership": [
+          "unchanged"
+        ],
+        "lightBehavior": "No decorative orbit/pulse/morph; success is settled, attention remains distinguishable without color alone."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant AX-RM is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.AX-RM resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "AX-IC",
+      "referenceSection": "accessibility: Increase Contrast",
+      "intent": "Increase Contrast strengthens legibility without changing hierarchy.",
+      "fixtureData": {
+        "increaseContrast": true
+      },
+      "html": {
+        "selector": "all A-K states",
+        "stateMechanism": "No prefers-contrast/forced-colors rules exist."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.AX-IC",
+        "state": "accessibilityDifferentiateWithoutColor/increaseContrast",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture AX-IC",
+          "resolve HaloParityFixtureCatalog.AX-IC from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "both shipped profiles"
+      },
+      "expected": {
+        "visibleCopy": [
+          "unchanged"
+        ],
+        "grouping": [
+          "unchanged"
+        ],
+        "order": [
+          "unchanged"
+        ],
+        "stateMembership": [
+          "unchanged"
+        ],
+        "lightBehavior": "Idle hairline brightens under an approved rule; state hierarchy remains intact."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant AX-IC is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.AX-IC resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "AX-RT",
+      "referenceSection": "accessibility: Reduce Transparency",
+      "intent": "Reduce Transparency preserves the opaque true-black surface and content hierarchy.",
+      "fixtureData": {
+        "reduceTransparency": true
+      },
+      "html": {
+        "selector": "all A-K opened states",
+        "stateMechanism": "No accessibility rule exists; reference is already opaque."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.AX-RT",
+        "state": "accessibilityReduceTransparency=true",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture AX-RT",
+          "resolve HaloParityFixtureCatalog.AX-RT from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "both shipped profiles"
+      },
+      "expected": {
+        "visibleCopy": [
+          "unchanged"
+        ],
+        "grouping": [
+          "unchanged"
+        ],
+        "order": [
+          "unchanged"
+        ],
+        "stateMembership": [
+          "unchanged"
+        ],
+        "lightBehavior": "No material transparency; true black remains #000."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant AX-RT is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.AX-RT resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "AX-KBD",
+      "referenceSection": "accessibility: keyboard",
+      "intent": "Every action, option, row, focus transition, and dismissal works from the keyboard.",
+      "fixtureData": {
+        "input": "keyboard-only"
+      },
+      "html": {
+        "selector": "B/C/D/E/F/H controls",
+        "stateMechanism": "Most controls are non-focusable divs and no focus styles are authored."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.AX-KBD",
+        "state": "keyboard-only",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture AX-KBD",
+          "resolve HaloParityFixtureCatalog.AX-KBD from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "all interactive scenarios"
+      },
+      "expected": {
+        "visibleCopy": [
+          "unchanged"
+        ],
+        "grouping": [
+          "logical focus groups"
+        ],
+        "order": [
+          "approved focus order"
+        ],
+        "stateMembership": [
+          "all interactive states"
+        ],
+        "lightBehavior": "Focus is visible without becoming a competing loud thing."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant AX-KBD is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.AX-KBD resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "AX-VO",
+      "referenceSection": "accessibility: VoiceOver",
+      "intent": "VoiceOver exposes exact labels, groups, order, state, and actions.",
+      "fixtureData": {
+        "screenReader": "VoiceOver"
+      },
+      "html": {
+        "selector": "C-H",
+        "stateMechanism": "No ARIA roles, labels, or group semantics are authored."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.AX-VO",
+        "state": "VoiceOver traversal",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture AX-VO",
+          "resolve HaloParityFixtureCatalog.AX-VO from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "all interactive scenarios"
+      },
+      "expected": {
+        "visibleCopy": [
+          "matches visual copy"
+        ],
+        "grouping": [
+          "approved semantic groups"
+        ],
+        "order": [
+          "visual reading order"
+        ],
+        "stateMembership": [
+          "state not color alone"
+        ],
+        "lightBehavior": "Visual adaptation does not substitute for semantics."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant AX-VO is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.AX-VO resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "AX-TEXT",
+      "referenceSection": "accessibility: text scaling",
+      "intent": "Every supported content size preserves state and actions with approved wrapping.",
+      "fixtureData": {
+        "contentSizes": "supported set not declared"
+      },
+      "html": {
+        "selector": "C-J",
+        "stateMechanism": "Fixed pixel typography; no authored scaling states."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.AX-TEXT",
+        "state": "supported dynamic type sizes",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture AX-TEXT",
+          "resolve HaloParityFixtureCatalog.AX-TEXT from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "both shipped profiles"
+      },
+      "expected": {
+        "visibleCopy": [
+          "no hidden state/action"
+        ],
+        "grouping": [
+          "preserved"
+        ],
+        "order": [
+          "preserved"
+        ],
+        "stateMembership": [
+          "preserved"
+        ],
+        "lightBehavior": "Unchanged except geometry registration."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant AX-TEXT is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.AX-TEXT resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "DP-NOTCH",
+      "referenceSection": "display profile: notch",
+      "intent": "All affected states are reproduced on the shipped notch profile.",
+      "fixtureData": {
+        "profile": "notch"
+      },
+      "html": {
+        "selector": "all canonical states",
+        "stateMechanism": "Reference board mockup uses a decorative notch but declares no shipped viewport/crop contract."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.DP-NOTCH",
+        "state": "notch screen profile",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture DP-NOTCH",
+          "resolve HaloParityFixtureCatalog.DP-NOTCH from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "notch profile dimensions not formally declared"
+      },
+      "expected": {
+        "visibleCopy": [
+          "unchanged"
+        ],
+        "grouping": [
+          "unchanged"
+        ],
+        "order": [
+          "unchanged"
+        ],
+        "stateMembership": [
+          "all"
+        ],
+        "lightBehavior": "Attached edge around the physical-notch silhouette."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant DP-NOTCH is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.DP-NOTCH resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "DP-TOPBAR",
+      "referenceSection": "display profile: top bar",
+      "intent": "All affected states are reproduced on the shipped external/top-bar profile.",
+      "fixtureData": {
+        "profile": "topBar"
+      },
+      "html": {
+        "selector": "all canonical states",
+        "stateMechanism": "No exact shipped top-bar viewport/crop contract exists."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.DP-TOPBAR",
+        "state": "top-bar screen profile",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture DP-TOPBAR",
+          "resolve HaloParityFixtureCatalog.DP-TOPBAR from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "panelGeometry": "top-bar profile dimensions not formally declared"
+      },
+      "expected": {
+        "visibleCopy": [
+          "unchanged"
+        ],
+        "grouping": [
+          "unchanged"
+        ],
+        "order": [
+          "unchanged"
+        ],
+        "stateMembership": [
+          "all"
+        ],
+        "lightBehavior": "Attached edge around the top-bar silhouette."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant DP-TOPBAR is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.DP-TOPBAR resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    },
+    {
+      "id": "RESPONSIVE-560",
+      "referenceSection": "reference responsive <=560",
+      "intent": "The HTML board's narrow rule is recorded without treating it as a shipped native profile.",
+      "fixtureData": {
+        "viewportWidth": 560
+      },
+      "html": {
+        "selector": "all panels and filmstrip",
+        "stateMechanism": "Set viewport width to 560px or less."
+      },
+      "native": {
+        "fixture": "HaloParityFixtureCatalog.RESPONSIVE-560",
+        "state": "not a shipped native profile",
+        "triggerSequence": [
+          "launch dedicated Halo parity fixture RESPONSIVE-560",
+          "resolve HaloParityFixtureCatalog.RESPONSIVE-560 from the locked seed",
+          "apply the demo-origin snapshot through AppModel with runtime loading and bridge startup disabled"
+        ]
+      },
+      "capture": {
+        "viewport": {
+          "width": 560,
+          "height": 1080,
+          "unit": "CSS px"
+        },
+        "panelGeometry": "panel and meterc width 100%; film arrows rotate"
+      },
+      "expected": {
+        "visibleCopy": [
+          "unchanged"
+        ],
+        "grouping": [
+          "unchanged"
+        ],
+        "order": [
+          "unchanged"
+        ],
+        "stateMembership": [
+          "reference only"
+        ],
+        "lightBehavior": "Unchanged."
+      },
+      "reproductionEvidence": [
+        "Approved authored reference variant RESPONSIVE-560 is frozen by reference-authority-v1.",
+        "HaloParityFixtureCatalog.RESPONSIVE-560 resolves a dedicated deterministic record and demo-origin AppModel snapshot from the locked seed.",
+        "The exact disposition asserts reproducible state mapping only; result remains not-passed until canonical reference/native evidence and later gate comparisons pass."
+      ],
+      "disposition": "exact",
+      "rationale": "Reference and native state mechanisms are deterministic and directly identified; no parity result or waiver is implied."
+    }
+  ]
+}

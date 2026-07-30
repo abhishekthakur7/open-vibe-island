@@ -16,6 +16,9 @@ struct HarnessLaunchConfigurationTests {
         #expect(configuration.captureDelay == nil)
         #expect(configuration.autoExitAfter == nil)
         #expect(configuration.artifactDirectoryURL == nil)
+        #if HALO_PARITY_TESTING
+        #expect(configuration.haloParity == .inactive)
+        #endif
     }
 
     @Test

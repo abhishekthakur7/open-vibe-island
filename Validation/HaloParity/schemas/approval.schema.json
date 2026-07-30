@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "halo-parity/approval.schema.json",
+  "type": "object",
+  "required": ["namespace", "principal", "evidenceIndexSha256", "referenceInputLockSha256", "displayProfilesSha256", "measurementSpecSha256", "noWaivers", "decision"],
+  "properties": {
+    "namespace": {"const": "halo-parity"},
+    "noWaivers": {"const": true},
+    "decision": {"const": "approved"}
+  }
+}

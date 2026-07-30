@@ -31,8 +31,14 @@ struct HarnessLaunchConfiguration {
     let captureDelay: TimeInterval?
     let autoExitAfter: TimeInterval?
     let artifactDirectoryURL: URL?
+    #if HALO_PARITY_TESTING
+    let haloParity: HaloParityLaunchState
+    #endif
 
-    init(environment: [String: String] = ProcessInfo.processInfo.environment) {
+    init(
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        arguments: [String] = CommandLine.arguments
+    ) {
         scenario = Self.scenarioValue(from: environment["OPEN_ISLAND_HARNESS_SCENARIO"])
         presentOverlay = Self.boolValue(
             environment["OPEN_ISLAND_HARNESS_PRESENT_OVERLAY"],
@@ -63,7 +69,162 @@ struct HarnessLaunchConfiguration {
         artifactDirectoryURL = Self.directoryURLValue(
             from: environment["OPEN_ISLAND_HARNESS_ARTIFACT_DIR"]
         )
+        #if HALO_PARITY_TESTING
+        haloParity = Self.haloParityValue(environment: environment, arguments: arguments)
+        #endif
     }
+
+    #if HALO_PARITY_TESTING
+    private static func haloParityValue(
+        environment: [String: String],
+        arguments: [String]
+    ) -> HaloParityLaunchState {
+        let enableArgument = arguments.contains("--halo-parity")
+        let enableEnvironment = environment["OPEN_ISLAND_HALO_PARITY"]
+        let enabledByEnvironment: Bool
+        if let enableEnvironment {
+            let normalized = enableEnvironment.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if ["1", "true", "yes", "on"].contains(normalized) {
+                enabledByEnvironment = true
+            } else if ["0", "false", "no", "off", ""].contains(normalized) {
+                enabledByEnvironment = false
+            } else {
+                return .rejected(.unknown("OPEN_ISLAND_HALO_PARITY", enableEnvironment))
+            }
+        } else {
+            enabledByEnvironment = false
+        }
+        guard enableArgument || enabledByEnvironment else {
+            return .inactive
+        }
+
+        let valuedArguments = [
+            "--halo-scenario", "--halo-profile", "--halo-motion",
+            "--halo-accessibility", "--halo-event", "--halo-seed", "--halo-time-ms",
+        ]
+        var parsed: [String: String] = [:]
+        var index = 0
+        while index < arguments.count {
+            let argument = arguments[index]
+            if valuedArguments.contains(argument) {
+                guard parsed[argument] == nil else {
+                    return .rejected(.duplicateArgument(argument))
+                }
+                guard index + 1 < arguments.count else {
+                    return .rejected(.danglingArgument(argument))
+                }
+                let value = arguments[index + 1]
+                guard !value.hasPrefix("--") else {
+                    return .rejected(.danglingArgument(argument))
+                }
+                parsed[argument] = value
+                index += 2
+            } else {
+                index += 1
+            }
+        }
+
+        func value(_ argument: String, environmentKey: String) -> String? {
+            parsed[argument] ?? environment[environmentKey]
+        }
+        func required(_ argument: String, environmentKey: String) -> Result<String, HaloParityConfigurationError> {
+            guard let raw = value(argument, environmentKey: environmentKey)?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+                !raw.isEmpty else {
+                return .failure(.missing(argument))
+            }
+            return .success(raw)
+        }
+
+        let scenarioRaw: String
+        let profileRaw: String
+        let motionRaw: String
+        let accessibilityRaw: String
+        let seedRaw: String
+        switch required("--halo-scenario", environmentKey: "OPEN_ISLAND_HALO_SCENARIO") {
+        case let .success(value): scenarioRaw = value
+        case let .failure(error): return .rejected(error)
+        }
+        switch required("--halo-profile", environmentKey: "OPEN_ISLAND_HALO_PROFILE") {
+        case let .success(value): profileRaw = value
+        case let .failure(error): return .rejected(error)
+        }
+        switch required("--halo-motion", environmentKey: "OPEN_ISLAND_HALO_MOTION") {
+        case let .success(value): motionRaw = value
+        case let .failure(error): return .rejected(error)
+        }
+        switch required("--halo-accessibility", environmentKey: "OPEN_ISLAND_HALO_ACCESSIBILITY") {
+        case let .success(value): accessibilityRaw = value
+        case let .failure(error): return .rejected(error)
+        }
+        switch required("--halo-seed", environmentKey: "OPEN_ISLAND_HALO_SEED") {
+        case let .success(value): seedRaw = value
+        case let .failure(error): return .rejected(error)
+        }
+
+        guard let scenario = HaloParityScenarioID.allCases.first(where: {
+            $0.rawValue.caseInsensitiveCompare(scenarioRaw) == .orderedSame
+        }) else {
+            return .rejected(.unknown("--halo-scenario", scenarioRaw))
+        }
+        guard let profile = HaloParityProfile.allCases.first(where: {
+            $0.rawValue.caseInsensitiveCompare(profileRaw) == .orderedSame
+        }) else {
+            return .rejected(.unknown("--halo-profile", profileRaw))
+        }
+        guard let motion = HaloParityMotionMode(rawValue: motionRaw.lowercased()) else {
+            return .rejected(.unknown("--halo-motion", motionRaw))
+        }
+        guard let accessibility = HaloParityAccessibility.allCases.first(where: {
+            $0.rawValue.caseInsensitiveCompare(accessibilityRaw) == .orderedSame
+        }) else {
+            return .rejected(.unknown("--halo-accessibility", accessibilityRaw))
+        }
+        guard let seed = UInt64(seedRaw) else {
+            return .rejected(.invalidSeed)
+        }
+        let eventRaw = value("--halo-event", environmentKey: "OPEN_ISLAND_HALO_EVENT")?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let event: HaloParityEvent?
+        if let eventRaw, !eventRaw.isEmpty {
+            guard let parsedEvent = HaloParityEvent.allCases.first(where: {
+                $0.rawValue.caseInsensitiveCompare(eventRaw) == .orderedSame
+            }) else {
+                return .rejected(.unknown("--halo-event", eventRaw))
+            }
+            event = parsedEvent
+        } else {
+            event = nil
+        }
+        let timeRaw = value("--halo-time-ms", environmentKey: "OPEN_ISLAND_HALO_TIME_MS")?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let time: UInt64?
+        if let timeRaw, !timeRaw.isEmpty {
+            guard let parsedTime = UInt64(timeRaw) else {
+                return .rejected(.invalidTime)
+            }
+            time = parsedTime
+        } else {
+            time = nil
+        }
+
+        do {
+            return .configured(try HaloParityConfiguration(
+                scenario: scenario,
+                profile: profile,
+                motion: motion,
+                accessibility: accessibility,
+                event: event,
+                seed: seed,
+                manualTimeMilliseconds: time
+            ).validated())
+        } catch let error as HaloParityConfigurationError {
+            return .rejected(error)
+        } catch {
+            return .rejected(.unknown("configuration", error.localizedDescription))
+        }
+    }
+    #endif
 
     private static func scenarioValue(from rawValue: String?) -> IslandDebugScenario? {
         guard let rawValue else {

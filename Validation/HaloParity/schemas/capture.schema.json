@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "halo-parity/capture.schema.json",
+  "type": "object",
+  "required": ["scenarioId", "profileId", "renderer", "captureMode", "artifactPath", "artifactSha256", "authenticitySidecar"],
+  "properties": {
+    "renderer": {
+      "enum": [
+        "in-app-browser",
+        "open-island-app",
+        "native-swiftui-calibration"
+      ]
+    },
+    "captureMode": {"const": "live-window"}
+  }
+}

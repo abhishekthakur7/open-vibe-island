@@ -1,0 +1,375 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "halo-parity/mask-set.schema.json",
+  "title": "Halo frozen reference mask set",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "maskSetId",
+    "status",
+    "profile",
+    "coordinateSpace",
+    "dimensions",
+    "annotationAuthority",
+    "annotationsSha256",
+    "neutralTransform",
+    "neutralTransformSha256",
+    "rasterizer",
+    "families",
+    "manifestSha256"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "1.0.0"},
+    "maskSetId": {
+      "enum": [
+        "halo-reference-masks-v1-notch-v1",
+        "halo-reference-masks-v1-top-bar-v1"
+      ]
+    },
+    "status": {"const": "frozen"},
+    "profile": {"$ref": "#/$defs/profile"},
+    "coordinateSpace": {"const": "canonical-device-pixels"},
+    "dimensions": {"$ref": "#/$defs/dimensions"},
+    "annotationAuthority": {"$ref": "#/$defs/annotationAuthority"},
+    "annotationsSha256": {"$ref": "#/$defs/sha256"},
+    "neutralTransform": {"$ref": "#/$defs/neutralTransform"},
+    "neutralTransformSha256": {"$ref": "#/$defs/sha256"},
+    "rasterizer": {"$ref": "#/$defs/rasterizer"},
+    "families": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "prefixItems": [
+        {"$ref": "#/$defs/silhouetteBody"},
+        {"$ref": "#/$defs/edgeCore"},
+        {"$ref": "#/$defs/emissiveBloom"},
+        {"$ref": "#/$defs/nonTextContent"},
+        {"$ref": "#/$defs/textLayoutBoxes"},
+        {"$ref": "#/$defs/osExternal"}
+      ],
+      "items": false
+    },
+    "manifestSha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "dimensions": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["width", "height"],
+          "properties": {
+            "width": {"const": 1080},
+            "height": {"const": 640}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["width", "height"],
+          "properties": {
+            "width": {"const": 1040},
+            "height": {"const": 640}
+          }
+        }
+      ]
+    },
+    "profile": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "logicalSize", "backingScale"],
+          "properties": {
+            "id": {"const": "notch-v1"},
+            "logicalSize": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["width", "height"],
+              "properties": {
+                "width": {"const": 540},
+                "height": {"const": 320}
+              }
+            },
+            "backingScale": {"const": 2}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "logicalSize", "backingScale"],
+          "properties": {
+            "id": {"const": "top-bar-v1"},
+            "logicalSize": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["width", "height"],
+              "properties": {
+                "width": {"const": 520},
+                "height": {"const": 320}
+              }
+            },
+            "backingScale": {"const": 2}
+          }
+        }
+      ]
+    },
+    "annotationAuthority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceRole", "sourcePath", "sha256"],
+      "properties": {
+        "sourceRole": {"const": "authoritative-reference"},
+        "sourcePath": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "neutralTransform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "transformId",
+        "status",
+        "scale",
+        "translationDevicePixels",
+        "provenance"
+      ],
+      "properties": {
+        "schemaVersion": {"const": "1.0.0"},
+        "transformId": {"type": "string", "minLength": 1},
+        "status": {"const": "frozen"},
+        "scale": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["numerator", "denominator"],
+          "properties": {
+            "numerator": {"type": "integer", "minimum": 1},
+            "denominator": {"type": "integer", "minimum": 1}
+          }
+        },
+        "translationDevicePixels": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y"],
+          "properties": {
+            "x": {"type": "integer"},
+            "y": {"type": "integer"}
+          }
+        },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sourceRole", "sourcePath", "sha256"],
+          "properties": {
+            "sourceRole": {"const": "neutral-calibration"},
+            "sourcePath": {"type": "string", "minLength": 1},
+            "sha256": {"$ref": "#/$defs/sha256"}
+          }
+        }
+      }
+    },
+    "rasterizer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "fillRule",
+        "boundsRule",
+        "binaryValues",
+        "textRule",
+        "overlapRule"
+      ],
+      "properties": {
+        "id": {"const": "halo-mask-rasterizer-v1"},
+        "fillRule": {"const": "nonzero"},
+        "boundsRule": {
+          "const": "half-open-after-nearest-half-up-device-pixel-quantization"
+        },
+        "binaryValues": {
+          "const": [0, 255]
+        },
+        "textRule": {
+          "const": "text-layout-boxes-subtracted-from-all-aggregate-families"
+        },
+        "overlapRule": {
+          "const": "aggregate-family-overlap-allowed; text/aggregate and os-external/Halo-owned overlap-forbidden"
+        }
+      }
+    },
+    "geometry": {
+      "oneOf": [
+        {"$ref": "#/$defs/rect"},
+        {"$ref": "#/$defs/roundedRect"},
+        {"$ref": "#/$defs/ellipse"},
+        {"$ref": "#/$defs/polygon"},
+        {"$ref": "#/$defs/strokeRoundedRect"}
+      ]
+    },
+    "number": {"type": ["number", "string"]},
+    "positiveNumber": {
+      "oneOf": [
+        {"type": "number", "exclusiveMinimum": 0},
+        {"type": "string", "minLength": 1}
+      ]
+    },
+    "rect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "x", "y", "width", "height"],
+      "properties": {
+        "type": {"const": "rect"},
+        "x": {"$ref": "#/$defs/number"},
+        "y": {"$ref": "#/$defs/number"},
+        "width": {"$ref": "#/$defs/positiveNumber"},
+        "height": {"$ref": "#/$defs/positiveNumber"}
+      }
+    },
+    "roundedRect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "x", "y", "width", "height", "radius"],
+      "properties": {
+        "type": {"const": "rounded-rect"},
+        "x": {"$ref": "#/$defs/number"},
+        "y": {"$ref": "#/$defs/number"},
+        "width": {"$ref": "#/$defs/positiveNumber"},
+        "height": {"$ref": "#/$defs/positiveNumber"},
+        "radius": {"$ref": "#/$defs/number"}
+      }
+    },
+    "ellipse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "x", "y", "width", "height"],
+      "properties": {
+        "type": {"const": "ellipse"},
+        "x": {"$ref": "#/$defs/number"},
+        "y": {"$ref": "#/$defs/number"},
+        "width": {"$ref": "#/$defs/positiveNumber"},
+        "height": {"$ref": "#/$defs/positiveNumber"}
+      }
+    },
+    "polygon": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "points"],
+      "properties": {
+        "type": {"const": "polygon"},
+        "points": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "prefixItems": [
+              {"$ref": "#/$defs/number"},
+              {"$ref": "#/$defs/number"}
+            ],
+            "items": false
+          }
+        }
+      }
+    },
+    "strokeRoundedRect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "x",
+        "y",
+        "width",
+        "height",
+        "radius",
+        "strokeWidth"
+      ],
+      "properties": {
+        "type": {"const": "stroke-rounded-rect"},
+        "x": {"$ref": "#/$defs/number"},
+        "y": {"$ref": "#/$defs/number"},
+        "width": {"$ref": "#/$defs/positiveNumber"},
+        "height": {"$ref": "#/$defs/positiveNumber"},
+        "radius": {"$ref": "#/$defs/number"},
+        "strokeWidth": {"$ref": "#/$defs/positiveNumber"}
+      }
+    },
+    "familyBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maskId",
+        "family",
+        "path",
+        "dimensions",
+        "sha256",
+        "selectors",
+        "selectorsSha256",
+        "geometry",
+        "geometrySha256",
+        "purpose"
+      ],
+      "properties": {
+        "maskId": {"type": "string", "minLength": 1},
+        "family": {"type": "string"},
+        "path": {"type": "string", "pattern": "^[^/]+\\.png$"},
+        "dimensions": {"$ref": "#/$defs/dimensions"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "selectors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "selectorsSha256": {"$ref": "#/$defs/sha256"},
+        "geometry": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/geometry"}
+        },
+        "geometrySha256": {"$ref": "#/$defs/sha256"},
+        "purpose": {"type": "string", "minLength": 1}
+      }
+    },
+    "silhouetteBody": {
+      "allOf": [
+        {"$ref": "#/$defs/familyBase"},
+        {"properties": {"family": {"const": "silhouette-body"}}}
+      ]
+    },
+    "edgeCore": {
+      "allOf": [
+        {"$ref": "#/$defs/familyBase"},
+        {"properties": {"family": {"const": "edge-core"}}}
+      ]
+    },
+    "emissiveBloom": {
+      "allOf": [
+        {"$ref": "#/$defs/familyBase"},
+        {"properties": {"family": {"const": "emissive-bloom"}}}
+      ]
+    },
+    "nonTextContent": {
+      "allOf": [
+        {"$ref": "#/$defs/familyBase"},
+        {"properties": {"family": {"const": "non-text-content"}}}
+      ]
+    },
+    "textLayoutBoxes": {
+      "allOf": [
+        {"$ref": "#/$defs/familyBase"},
+        {"properties": {"family": {"const": "text-layout-boxes"}}}
+      ]
+    },
+    "osExternal": {
+      "allOf": [
+        {"$ref": "#/$defs/familyBase"},
+        {"properties": {"family": {"const": "os-external"}}}
+      ]
+    }
+  }
+}

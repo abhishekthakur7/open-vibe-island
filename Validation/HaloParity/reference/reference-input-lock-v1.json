@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "1.0.0",
+  "algorithm": "sha256",
+  "generation": "deterministic-no-timestamps",
+  "merkleConstruction": "sha256(sorted(path + NUL + sha256(file)).join(LF))",
+  "merkleRoot": "c47c92a3ffc07136dce179791a5d695ce4d1f3702195c1eca9a915cb16bb0a1c",
+  "inputs": [
+    {
+      "path": "docs/design/overlay-redesign/06-halo.html",
+      "sha256": "71fc0890bcb49ad173c1f52e17c641251a483fda43eecbdcb1d9802382fbf64f"
+    },
+    {
+      "path": "Validation/HaloParity/reference/reference-authority-v1.json",
+      "sha256": "1bad71370d929dd800a4f54414b298c50133dadd98cba8e72aedbe100d2fcb34"
+    },
+    {
+      "path": "Validation/HaloParity/reference/build-reference-harness.mjs",
+      "sha256": "1bab78e2daf13e82107e605d6ea75e83a48df65d7e4a2e8c7b5742197cc626fb"
+    },
+    {
+      "path": "Validation/HaloParity/reference/halo-reference-controller.js",
+      "sha256": "20503eed0e5e1f2e9692a2a11ea34aff999188e1dfab846ad5fb8ef4303c10d1"
+    },
+    {
+      "path": "Validation/HaloParity/reference/halo-reference-variants.css",
+      "sha256": "c6059c9d43e7d90420313a8d38ca5b7169f0960fd3b33ad53dddeae9d6a653d8"
+    },
+    {
+      "path": "Validation/HaloParity/reference/halo-reference-export.js",
+      "sha256": "5e90c2a0411d74871b717e2ced1b56b691231d49fb37b963a4f4c663ddc6caba"
+    }
+  ],
+  "outputs": [
+    {
+      "path": "Validation/HaloParity/reference/generated/halo-reference-v1.html",
+      "sha256": "35ec087205d76fe279643afc2a4cfa4f60ed2c6eee7fb5a2d1a0e10d2972be32"
+    },
+    {
+      "path": "Validation/HaloParity/reference/reference-spec-v1.json",
+      "sha256": "6b3c965f9f0360bbcb2f8dd08ea5982b8f4b2b4d6f810b7d2197522705b94243"
+    },
+    {
+      "path": "Validation/HaloParity/reference/reference-variants.json",
+      "sha256": "9954f162e79146db029eee8581c0d8a82f7dc3ef006e1f96eb2e4eec9ca3e229"
+    }
+  ],
+  "sourceImmutability": {
+    "path": "docs/design/overlay-redesign/06-halo.html",
+    "sha256": "71fc0890bcb49ad173c1f52e17c641251a483fda43eecbdcb1d9802382fbf64f"
+  }
+}

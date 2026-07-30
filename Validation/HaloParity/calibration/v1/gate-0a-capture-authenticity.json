@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "1.0.0",
+  "passed": true,
+  "rendererProofs": {
+    "in-app-browser": {
+      "canonicalEligible": true,
+      "captureMode": "live-window",
+      "captureAPI": "ScreenCaptureKit",
+      "authenticityComplete": true,
+      "authenticitySidecar": "../../../../artifacts/halo-parity/d3917044fc76a3bafaaccba7b17f3954dbaddb5e/gate0a-canonical-capture-20260730T171200Z/reference/A3/notch-v1/reference.authenticity.json",
+      "authenticitySha256": "17eeaaa03776a7e2467c6e4e5138dad86759d44d46104580bc0dbca2202c2f44"
+    },
+    "open-island-app": {
+      "canonicalEligible": true,
+      "captureMode": "live-window",
+      "captureAPI": "ScreenCaptureKit",
+      "authenticityComplete": true,
+      "authenticitySidecar": "../../../../artifacts/halo-parity/d3917044fc76a3bafaaccba7b17f3954dbaddb5e/gate0a-canonical-capture-20260730T171200Z/native/A3/notch-v1/native.authenticity.json",
+      "authenticitySha256": "a30ac382ff6905611e7880dfb44b58fab560f106e361ca0e3f1d94155342b715"
+    }
+  }
+}

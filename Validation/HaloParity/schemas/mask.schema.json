@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "halo-parity/mask.schema.json",
+  "type": "object",
+  "required": ["maskId", "family", "version", "dimensions", "coordinateSpace", "path", "sha256", "purpose", "sourceHashes", "frozenAt"],
+  "properties": {
+    "family": {"enum": ["silhouette-body", "edge-core", "emissive-bloom", "non-text-content", "text-layout-boxes", "os-external"]}
+  }
+}

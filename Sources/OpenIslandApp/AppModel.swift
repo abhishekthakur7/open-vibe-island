@@ -494,7 +494,11 @@ final class AppModel {
     /// dependencies, so flipping the theme re-renders the live overlay with the
     /// new tokens and slot factories immediately — no app restart.
     var islandTheme: any IslandTheme {
+        #if HALO_PARITY_TESTING
+        ThemeRegistry.theme(id: haloParityThemeIDOverride ?? islandThemeID)
+        #else
         ThemeRegistry.theme(id: islandThemeID)
+        #endif
     }
 
     private var notchAppearancePreferences = IslandAppearancePreferences() {
@@ -516,8 +520,21 @@ final class AppModel {
     /// Runtime profile selected from current overlay placement. External
     /// displays use the top-bar presentation; built-in notch displays keep
     /// notch-aware geometry and their own persisted appearance choices.
+    #if HALO_PARITY_TESTING
+    /// Non-persisting overrides used only by the dedicated parity build.
+    /// They deliberately bypass the preference setters below.
+    var haloParityThemeIDOverride: String?
+    var haloParityAppearanceProfileOverride: IslandAppearanceDisplayProfile?
+    var haloParityNotchAppearancePreferencesOverride: IslandAppearancePreferences?
+    var haloParityTopBarAppearancePreferencesOverride: IslandAppearancePreferences?
+    var haloParityBootstrapIsolation: HaloParityBootstrapIsolationProof?
+    #endif
+
     var activeAppearanceProfile: IslandAppearanceDisplayProfile {
-        overlayPlacementDiagnostics?.mode == .notch ? .notch : .topBar
+        #if HALO_PARITY_TESTING
+        if let haloParityAppearanceProfileOverride { return haloParityAppearanceProfileOverride }
+        #endif
+        return overlayPlacementDiagnostics?.mode == .notch ? .notch : .topBar
     }
 
     var islandRightSlot: IslandRightSlot {
@@ -562,7 +579,19 @@ final class AppModel {
     private var hasFinishedInit = false
 
     func appearancePreferences(for profile: IslandAppearanceDisplayProfile) -> IslandAppearancePreferences {
+        #if HALO_PARITY_TESTING
         switch profile {
+        case .notch:
+            if let haloParityNotchAppearancePreferencesOverride {
+                return haloParityNotchAppearancePreferencesOverride
+            }
+        case .topBar:
+            if let haloParityTopBarAppearancePreferencesOverride {
+                return haloParityTopBarAppearancePreferencesOverride
+            }
+        }
+        #endif
+        return switch profile {
         case .notch: notchAppearancePreferences
         case .topBar: topBarAppearancePreferences
         }
@@ -644,6 +673,14 @@ final class AppModel {
     /// .suppressInstallHint`) — no real user sets it. `hasAnyInstalledAgent`
     /// itself, the real probe, is untouched.
     var debugSuppressesInstallHint = false
+
+    #if HALO_PARITY_TESTING
+    /// Populated only by the dedicated parity build. External capture
+    /// tooling merges its WindowServer identifiers/timestamps into this
+    /// authenticity payload; normal launches leave both values nil.
+    var haloParityCaptureManifest: HaloParityCaptureManifest?
+    var haloParityStateDump: HaloParityStateDump?
+    #endif
 
     @ObservationIgnored
     private var bridgeTask: Task<Void, Never>?

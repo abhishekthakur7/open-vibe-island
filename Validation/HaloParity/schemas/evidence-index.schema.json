@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "halo-parity/evidence-index.schema.json",
+  "type": "object",
+  "required": ["schemaVersion", "createdAt", "commitSha", "root", "files", "indexSha256"],
+  "properties": {
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "role", "sha256", "bytes"]
+      }
+    }
+  }
+}

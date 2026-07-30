@@ -1,0 +1,118 @@
+{
+  "allowUnapproved": true,
+  "commitSha": "d3917044fc76a3bafaaccba7b17f3954dbaddb5e",
+  "createdAt": "2026-07-30T04:44:59.459107Z",
+  "dirty": true,
+  "inputs": [
+    {
+      "bytes": 80834,
+      "path": "Validation/HaloParity/halo-scenarios.json",
+      "role": "scenario-manifest",
+      "sha256": "7d83bc82dbf839f8759813bf51aa22a097702a067c739ffe96f6515ad0a6923a"
+    },
+    {
+      "bytes": 1981,
+      "path": "Validation/HaloParity/display-profiles-v1.json",
+      "role": "display-profile-lock",
+      "sha256": "88c1ce784772744a50d4c2bf6a671db015cf893791b18397b954ac45033eb809"
+    },
+    {
+      "bytes": 6882,
+      "path": "Validation/HaloParity/measurement-spec-v1.json",
+      "role": "measurement-spec",
+      "sha256": "0d8e0d3855d78bb0346660ba61cb750726db1e1273cf646bf4d2e16c6b045c81"
+    },
+    {
+      "bytes": 101205,
+      "path": "Validation/HaloParity/reference/reference-spec-v1.json",
+      "role": "reference-spec",
+      "sha256": "d5d509cb8a717c97b699bfe8ee1fb3bbd780902de9b90470e8f1b699a269c970"
+    },
+    {
+      "bytes": 2305,
+      "path": "Validation/HaloParity/reference/reference-input-lock-v1.json",
+      "role": "reference-input-lock",
+      "sha256": "8c58c19652062358fa0da655d42266fd6d3b0f4e77041481502dbf2df1351dbc"
+    }
+  ],
+  "lockSha256": "d994485c51c215a52446e81edfc81ab781bc796149f69503023a4326c10d94aa",
+  "lockVersion": "v1",
+  "manifest": {
+    "dispositions": {
+      "blocked": 43,
+      "exact": 6,
+      "temporary-surrogate": 8
+    },
+    "scenarioCount": 57,
+    "scenarioIds": [
+      "A1",
+      "A2",
+      "A2-prime",
+      "A3",
+      "A4",
+      "A5",
+      "A6-interrupted",
+      "A6-failed",
+      "B",
+      "B-prime",
+      "C",
+      "D",
+      "E-travel",
+      "E1",
+      "E2",
+      "E3",
+      "F1",
+      "F2",
+      "F3",
+      "G",
+      "G-prime",
+      "H-success",
+      "H-interrupted",
+      "H-failed",
+      "I",
+      "I-prime",
+      "J",
+      "J-prime",
+      "K-orbit",
+      "K-morph",
+      "K-condense",
+      "K-success",
+      "K-row",
+      "K-failure",
+      "K-idle",
+      "K-glyph",
+      "ST-LONG",
+      "ST-DUP",
+      "ST-MISSING",
+      "ST-COUNT-0",
+      "ST-COUNT-1",
+      "ST-COUNT-MANY",
+      "ST-OVERFLOW",
+      "ST-USAGE-0",
+      "ST-USAGE-MISSING",
+      "ST-ATTN-RUN",
+      "ST-Q-P",
+      "ST-IPRIME-ATTN",
+      "AX-RM",
+      "AX-IC",
+      "AX-RT",
+      "AX-KBD",
+      "AX-VO",
+      "AX-TEXT",
+      "DP-NOTCH",
+      "DP-TOPBAR",
+      "RESPONSIVE-560"
+    ]
+  },
+  "measurement": {
+    "measurementSpecId": "halo-measurement-v1"
+  },
+  "profiles": {
+    "profileCount": 2,
+    "profileIds": [
+      "notch-v1",
+      "top-bar-v1"
+    ]
+  },
+  "schemaVersion": "1.0.0"
+}
