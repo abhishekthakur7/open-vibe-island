@@ -245,11 +245,11 @@ private struct HaloSuccessEdge: View {
 /// animated value (`angle`, `edgeOpacity`, `bloom`) arrives as a plain parameter
 /// from an animating `@State` above, so this view carries no clock of its own.
 ///
-/// The bloom is a colored `.shadow` cast by the **same** shape's stroke, so it
-/// bleeds *unclipped* past the silhouette (the overlay is composited outside every
-/// `.clipShape` — the point of Halo's grown shadow-inset window tokens). The crisp
-/// bloom stroke sits directly under the gradient ring (identical 1.5pt path), so
-/// only its shadow — the glow — extends beyond the edge.
+/// The bloom is the **same** shape's stroke blurred away into a pure glow — no
+/// crisp lit ring of its own — so the only visible ring is the masked angular
+/// gradient. It bleeds *unclipped* past the silhouette (the overlay is composited
+/// outside every `.clipShape` — the point of Halo's grown shadow-inset window
+/// tokens).
 struct HaloEdgeRing<S: Shape>: View {
     let shape: S
     let stops: [HaloEdgeStop]
@@ -264,7 +264,7 @@ struct HaloEdgeRing<S: Shape>: View {
                 shape
                     .stroke(lineWidth: HaloMetrics.edge)
                     .foregroundStyle(bloom.color)
-                    .shadow(color: bloom.color, radius: bloom.radius)
+                    .blur(radius: bloom.radius)
             }
             AngularGradient(gradient: gradient, center: .center, angle: .degrees(angle))
                 .mask(shape.stroke(lineWidth: HaloMetrics.edge))

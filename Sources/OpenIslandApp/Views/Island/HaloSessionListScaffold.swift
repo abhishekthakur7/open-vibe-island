@@ -132,7 +132,7 @@ struct HaloSessionListScaffold: View {
             Text(lang.t("island.sessionList.title").uppercased())
                 .font(.system(size: HaloTypography.sectionHeaderSize, weight: .bold))
                 .tracking(HaloTypography.sectionHeaderSize * 0.10)
-                .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
+                .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
 
             ViewThatFits(in: .horizontal) {
                 summaryStrip(buckets, spacing: 12)
@@ -234,7 +234,7 @@ struct HaloSessionListScaffold: View {
         case "state-answer":
             return tokens.colors.statusWaitingForAnswer
         default:
-            return tokens.colors.paper.opacity(tokens.colors.text(0.72, increaseContrast: increasesContrast))
+            return tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast))
         }
     }
 
@@ -249,7 +249,7 @@ struct HaloSessionListScaffold: View {
         return HStack(spacing: 8) {
             Text(lang.t("island.halo.footer.summary", sessions.count, need))
                 .font(.system(size: HaloTypography.summaryLabelSize).monospacedDigit())
-                .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
+                .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
 
             Spacer(minLength: 0)
 

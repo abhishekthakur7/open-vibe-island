@@ -311,9 +311,9 @@ enum HaloMetrics {
     static let workingBloomRadius: CGFloat = 8
     /// Permission bloompulse **min** — mockup `r20 -4` → `(20-4)/2 = 8`.
     static let permissionBloomRadiusMin: CGFloat = 8
-    /// Permission bloompulse **max** — mockup `r46 -4` → `(46-4)/2 = 21`. The
-    /// loudest bloom; the grown `closedShadowInset` tokens (44pt) contain it.
-    static let permissionBloomRadiusMax: CGFloat = 21
+    /// Permission bloompulse **max** — mockup `r46 -4` → an effective ~42pt blur.
+    /// The loudest bloom; the grown `closedShadowInset` tokens (44pt) contain it.
+    static let permissionBloomRadiusMax: CGFloat = 42
     /// Question steady glow — mockup `0 0 22 -10` → `(22-10)/2 = 6`.
     static let questionBloomRadius: CGFloat = 6
     /// Success okbloom **peak** — mockup `r40 → 0` (no spread) → `40/2 = 20`,
@@ -775,7 +775,7 @@ extension IslandColorTokens {
         statusIdle: Color.white.opacity(0.42),
         statusInactive: Color.white.opacity(0.28),
         secondaryTextOpacity: 0.63,
-        tertiaryTextOpacity: 0.50,
+        tertiaryTextOpacity: 0.42,
         increasedContrastTextBoost: 0.24,
         hairlineOpacity: 0.08,
         hairlineOpacityIncreasedContrast: 0.24

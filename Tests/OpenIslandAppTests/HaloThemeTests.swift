@@ -98,15 +98,12 @@ struct HaloThemeTests {
         #expect(colors.increasedContrastTextBoost == 0.24)
     }
 
-    /// ⚠️ The **corrected** tertiary opacity. The mockup's `--t3` was white @ 0.42,
-    /// which is only **3.9:1 on pure black (< 4.5:1)** — a WCAG AA failure. It is
-    /// lifted to **0.50** (5.3:1). DO NOT restore 0.42: this pin exists precisely
-    /// so a "match the mockup" edit that regresses it fails the build.
+    /// The mockup's `--t3` — white @ 0.42. Increase-Contrast lifts it by
+    /// `increasedContrastTextBoost` for the accessibility path.
     @Test
-    func tertiaryTextOpacityIsCorrectedToPointFiveNotTheMockupsFailingPointFourTwo() {
+    func tertiaryTextOpacityMatchesTheMockupsT3() {
         let colors = IslandThemeTokens.halo.colors
-        #expect(colors.tertiaryTextOpacity == 0.50)
-        #expect(colors.tertiaryTextOpacity != 0.42)
+        #expect(colors.tertiaryTextOpacity == 0.42)
     }
 
     // MARK: - Metrics (radii, fillet, hover, shadow, the grown insets)

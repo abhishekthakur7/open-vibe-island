@@ -1082,7 +1082,7 @@ private struct HaloRowContent: View {
     private func metadataCell<Content: View>(key: String, @ViewBuilder value: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(key.uppercased())
-                .font(.system(size: HaloTypography.metadataKeySize, weight: .semibold))
+                .font(.system(size: HaloTypography.metadataKeySize, weight: .medium))
                 .tracking(HaloTypography.metadataKeySize * 0.08)
                 .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
             value()

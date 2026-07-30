@@ -300,7 +300,7 @@ struct HaloUsageWindowFilament: View {
 
             VStack(alignment: .leading, spacing: 1) {
                 Text("\(providerTitle) \(window.label)")
-                    .font(.system(size: HaloTypography.usageKickerSize, weight: .semibold))
+                    .font(.system(size: HaloTypography.usageKickerSize, weight: .medium))
                     .tracking(0.7)
                     .textCase(.uppercase)
                     .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
