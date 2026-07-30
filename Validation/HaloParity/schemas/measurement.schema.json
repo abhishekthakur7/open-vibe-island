@@ -1,7 +1,0 @@
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "halo-parity/measurement.schema.json",
-  "type": "object",
-  "required": ["specId", "status", "coordinateSpaces", "registration", "sampling", "staticMetrics", "motionMetrics", "hardCaps", "forbiddenInputs"],
-  "properties": {"status": {"const": "frozen-before-calibration"}}
-}

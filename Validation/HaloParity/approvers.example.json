@@ -1,9 +1,0 @@
-{
-  "schemaVersion": "1.0.0",
-  "status": "example-only-not-authorized",
-  "namespace": "halo-parity",
-  "principal": "replace-with-authorized-human-identity",
-  "allowedSignersFile": "Validation/HaloParity/allowed-signers",
-  "publicKey": "replace-with-authorized-SSH-public-key",
-  "instructions": "The user or designated design owner must provide the actual principal and key."
-}
