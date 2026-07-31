@@ -140,13 +140,19 @@ struct HaloUsageFilamentArc: View {
 
     private var effectiveGlowRadius: CGFloat {
         guard isCritical else { return glowRadius }
-        if reduceMotion { return glowRadius }
-        return glowPulse ? glowRadius + 2 : glowRadius - 1
+        if reduceMotion { return glowRadius + 1 }
+        return glowPulse ? glowRadius + 1 : glowRadius
     }
+
+    /// The mockup's ring path spans 80.8% of its box (`r=21` in a 52 viewBox,
+    /// `r=16` in 40) — the remainder is breathing room for the glow. A full-frame
+    /// `Circle()` plus a centered stroke would overshoot the box instead.
+    private var ringInset: CGFloat { diameter * 0.096 }
 
     var body: some View {
         ZStack {
             Circle()
+                .inset(by: ringInset)
                 .trim(from: 0, to: HaloUsageMetrics.arcSpan)
                 .stroke(
                     Color.white.opacity(reduceTransparency ? 0.2 : 0.1),
@@ -154,10 +160,11 @@ struct HaloUsageFilamentArc: View {
                 )
 
             Circle()
+                .inset(by: ringInset)
                 .trim(from: 0, to: valueTrim)
                 .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .shadow(
-                    color: color.opacity(isCritical && !reduceMotion && glowPulse ? 0.75 : 0.6),
+                    color: color.opacity(isCritical && !reduceMotion && glowPulse ? 0.6 : 0.55),
                     radius: effectiveGlowRadius
                 )
         }
