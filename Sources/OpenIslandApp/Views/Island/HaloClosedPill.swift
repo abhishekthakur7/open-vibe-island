@@ -469,9 +469,21 @@ private struct HaloLivenessBar: View {
         return breathing ? 1.0 : 0.45
     }
 
+    /// Mockup `.gly.run i` — a running bar is the cyan→violet vertical gradient
+    /// (`--cyan` → `--violet`, the working state's partner hue); every other kind
+    /// keeps its flat tint.
+    private var fillStyle: AnyShapeStyle {
+        guard kind == .running else { return AnyShapeStyle(tint) }
+        return AnyShapeStyle(LinearGradient(
+            colors: [tint, HaloEdge.violet],
+            startPoint: .top,
+            endPoint: .bottom
+        ))
+    }
+
     var body: some View {
         Capsule(style: .continuous)
-            .fill(tint)
+            .fill(fillStyle)
             .frame(width: width, height: max(0, height))
             .frame(height: 24 * scale)           // vertically centred in the box
             .opacity(opacity)
