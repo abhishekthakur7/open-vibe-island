@@ -10,6 +10,15 @@ focused terminal or agent remains an independent application: its own network
 traffic, credentials, transcripts, and permissions are not Open Island traffic
 or storage.
 
+## Install
+
+One command builds the release bundle and installs it to `/Applications`
+(sudo is required to write there; the copy replaces any previous install):
+
+```bash
+zsh scripts/package-local-app.sh && sudo rm -rf "/Applications/Open Island.app" && sudo ditto "output/local-package/Open Island.app" "/Applications/Open Island.app"
+```
+
 ## Requirements
 
 - macOS 14+

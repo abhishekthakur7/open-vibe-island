@@ -1840,7 +1840,7 @@ enum HaloActivityNarration {
             with: "$1",
             options: .regularExpression
         )
-        // Bare autolinks `<https://…>` → the URL is debris on a one-line summary.
+        // Bare autolinks (angle-bracketed URLs) are debris on a one-line summary.
         text = text.replacingOccurrences(of: "<https?://[^>]*>", with: "", options: .regularExpression)
 
         // Line-leading block markers (headings, quotes, bullets, ordered items).
