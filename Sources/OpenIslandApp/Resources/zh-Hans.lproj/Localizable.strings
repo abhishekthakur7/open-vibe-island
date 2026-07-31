@@ -355,6 +355,10 @@
 "island.halo.usage.warn" = "偏高";
 "island.halo.usage.critical" = "临界";
 "island.halo.usage.resetsIn" = "%@ 后重置";
+"island.halo.section.needsYou" = "需要你";
+"island.halo.section.running" = "运行中";
+"island.halo.section.done" = "已完成";
+"island.halo.section.idle" = "空闲";
 "island.halo.footer.summary" = "%lld 个会话 · %lld 个需要你";
 "island.halo.footer.groupedByState" = "按状态分组";
 "island.halo.footer.groupedByAgent" = "按代理分组";

@@ -354,6 +354,10 @@
 "island.halo.usage.warn" = "Warn";
 "island.halo.usage.critical" = "Critical";
 "island.halo.usage.resetsIn" = "resets in %@";
+"island.halo.section.needsYou" = "Needs you";
+"island.halo.section.running" = "Running";
+"island.halo.section.done" = "Done";
+"island.halo.section.idle" = "Idle";
 "island.halo.footer.summary" = "%lld sessions · %lld need you";
 "island.halo.footer.groupedByState" = "Grouped by state";
 "island.halo.footer.groupedByAgent" = "Grouped by agent";

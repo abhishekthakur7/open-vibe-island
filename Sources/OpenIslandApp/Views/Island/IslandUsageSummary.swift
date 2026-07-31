@@ -212,6 +212,23 @@ enum IslandHeaderLaneLayout {
     static let headerHorizontalPadding: CGFloat = 18
     static let notchHeaderHorizontalPadding: CGFloat = 46
     static let notchLaneSafetyInset: CGFloat = 12
+    /// The floor a right-of-notch usage lane must clear before it is allowed to
+    /// render at all (below it, `rightUsageWidth` snaps to `0` and every
+    /// flattened window routes to the left lane instead).
+    ///
+    /// **Do not "just lower this" to make a starved lane render** (halo parity
+    /// Q2, final-gate finding #1 — measured on 14" notch hardware, panel surface
+    /// 540pt, `HaloHeaderControls`' own instrumentation): `rawRightWidth` is
+    /// 131.5pt, of which `notchLaneSafetyInset` takes 12 and the three 26pt
+    /// controls + their 8pt gap take 94 + 8 — leaving the gauge **17.5pt**, not
+    /// the ~52 the parity notes assumed. No value of this constant admits a
+    /// legible gauge into 17.5pt, and the themes' own header gauges need *more*
+    /// than 58, not less: Halo's §C filament is a 30pt arc + 9pt gap + an 11pt
+    /// percent readout ≈ 64pt (≈56pt even at the 22pt top-bar arc with the
+    /// kicker dropped). Freeing the missing ~35–45pt means changing the header
+    /// itself — `notchHeaderHorizontalPadding` (46 here; the Halo board's
+    /// `.p-head` says 16, which alone recovers 30pt), the control size, or
+    /// column-stacking the lane — never this floor.
     static let minimumRightUsageLaneWidth: CGFloat = 58
 
     /// How the right lane's control buttons share their lane with the usage

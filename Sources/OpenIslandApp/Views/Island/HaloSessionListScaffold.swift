@@ -80,12 +80,14 @@ struct HaloSessionListScaffold: View {
     /// so the headers the file already draws actually render. Any explicit grouping
     /// the user picked is honoured verbatim.
     private var displaySections: [IslandSessionSection] {
-        guard group == .none else { return sections }
-        return IslandSessionSectioning.sections(
-            for: sessions,
-            group: .state,
-            sort: .attention,
-            completedStaleThreshold: completedStaleThreshold
+        guard group == .none else { return HaloSectionTaxonomy.merged(sections) }
+        return HaloSectionTaxonomy.merged(
+            IslandSessionSectioning.sections(
+                for: sessions,
+                group: .state,
+                sort: .attention,
+                completedStaleThreshold: completedStaleThreshold
+            )
         )
     }
 
@@ -248,7 +250,15 @@ struct HaloSessionListScaffold: View {
         }
     }
 
+    /// Halo's §C header words. The shared `island.section.*` catalog is
+    /// cross-theme product copy (`In progress` / `Just done` / `Idle`) and stays
+    /// exactly as it is — the mockup's own taxonomy (`NEEDS YOU` / `RUNNING` /
+    /// `DONE`) is a **skin** on top of it, so it lives in Halo-scoped
+    /// `island.halo.section.*` strings resolved here and nowhere else.
     private func sessionSectionTitle(for section: IslandSessionSection) -> String {
+        if let key = HaloSectionTaxonomy.localizationKey(forSectionID: section.id) {
+            return lang.t(key)
+        }
         if section.title.hasPrefix("island.") {
             return lang.t(section.title)
         }
@@ -272,6 +282,13 @@ struct HaloSessionListScaffold: View {
             return tokens.colors.statusWaitingForApproval
         case "state-answer":
             return tokens.colors.statusWaitingForAnswer
+        case HaloSectionTaxonomy.needsYouSectionID:
+            // The merged NEEDS YOU group takes the loudest phase it holds — the
+            // permission amber whenever one is waiting, the question gold when
+            // it is only questions.
+            return section.sessions.contains { $0.phase == .waitingForApproval }
+                ? tokens.colors.statusWaitingForApproval
+                : tokens.colors.statusWaitingForAnswer
         default:
             return tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast))
         }
@@ -406,5 +423,78 @@ enum HaloSessionListModel {
         guard session.phase == .completed else { return false }
         return session.isStaleCompletedForIsland(at: referenceDate, threshold: threshold)
             || session.islandPresence(at: referenceDate) == .inactive
+    }
+}
+
+/// Halo's §C **section-header taxonomy** (final-gate finding #3).
+///
+/// The live list sections by state through the shared `IslandSessionSectioning`
+/// (`state-approval` / `state-answer` / `state-running` / `state-done` /
+/// `state-idle`, titled by the cross-theme `island.section.*` catalog: `Needs
+/// approval` / `Needs answer` / `In progress` / `Just done` / `Idle`). The Halo
+/// board (`06-halo.html` §C) names only **three** groups — `Needs you`,
+/// `Running`, `Done` — and files the permission row *and* the question row under
+/// the single `Needs you` header (`06-halo.html:794`, rows at 796 / 815).
+///
+/// This enum is that skin, and only that: the shared strings are untouched
+/// product copy every other theme keeps rendering, while Halo resolves its own
+/// `island.halo.section.*` words here. It also performs the one structural
+/// consequence of the mockup's three-group taxonomy — **merging the adjacent
+/// approval + answer sections into one `NEEDS YOU` group** — because two
+/// consecutive headers both reading `NEEDS YOU` would be a bug, not a skin.
+///
+/// `state-idle` has no mockup word (the board never renders an idle group). It
+/// keeps `IDLE`, the least-surprising Halo word: it is what the shared copy
+/// already says, it is what the summary strip's own idle bucket is called, and
+/// inventing a fourth board word for a group the board doesn't name would be
+/// less honest than reusing it. Non-state groupings (`agent-…`, `project-…`)
+/// fall through untouched — they carry workspace / agent names, not taxonomy.
+enum HaloSectionTaxonomy {
+    /// Identity of the merged attention group (`state-approval` + `state-answer`).
+    static let needsYouSectionID = "state-halo-needsYou"
+
+    /// The Halo header word for a section identity, or `nil` when the section
+    /// isn't part of the state taxonomy and keeps its shared title.
+    static func localizationKey(forSectionID id: String) -> String? {
+        switch id {
+        case "state-approval", "state-answer", needsYouSectionID:
+            return "island.halo.section.needsYou"
+        case "state-running":
+            return "island.halo.section.running"
+        case "state-done":
+            return "island.halo.section.done"
+        case "state-idle":
+            return "island.halo.section.idle"
+        default:
+            return nil
+        }
+    }
+
+    /// Collapses the adjacent `state-approval` / `state-answer` sections into the
+    /// single `NEEDS YOU` group the mockup draws, preserving list order (approval
+    /// rows first, then questions — attention still sorted loudest-first). Any
+    /// other sectioning passes through unchanged.
+    static func merged(_ sections: [IslandSessionSection]) -> [IslandSessionSection] {
+        let attention = sections.filter { $0.id == "state-approval" || $0.id == "state-answer" }
+        guard attention.count > 1 else { return sections }
+
+        var merged: [IslandSessionSection] = []
+        var inserted = false
+        for section in sections {
+            guard section.id == "state-approval" || section.id == "state-answer" else {
+                merged.append(section)
+                continue
+            }
+            guard !inserted else { continue }
+            inserted = true
+            merged.append(
+                IslandSessionSection(
+                    id: needsYouSectionID,
+                    title: "island.halo.section.needsYou",
+                    sessions: attention.flatMap(\.sessions)
+                )
+            )
+        }
+        return merged
     }
 }

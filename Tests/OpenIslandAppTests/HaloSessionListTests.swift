@@ -132,6 +132,60 @@ struct HaloSessionListTests {
         #expect(HaloSessionListModel.BucketKind.idle.labelKey == "island.sessionOverview.idle")
     }
 
+    // MARK: - §C section-header taxonomy (Q2 follow-up)
+
+    /// Halo skins the shared `island.section.*` product copy with the board's own
+    /// three words (`NEEDS YOU` / `RUNNING` / `DONE`); `state-idle` keeps `IDLE`
+    /// (the board never names an idle group) and non-state groupings fall
+    /// through to their shared title.
+    @Test
+    func sectionTaxonomyMapsStateSectionsToBoardWords() {
+        #expect(HaloSectionTaxonomy.localizationKey(forSectionID: "state-approval") == "island.halo.section.needsYou")
+        #expect(HaloSectionTaxonomy.localizationKey(forSectionID: "state-answer") == "island.halo.section.needsYou")
+        #expect(HaloSectionTaxonomy.localizationKey(forSectionID: HaloSectionTaxonomy.needsYouSectionID) == "island.halo.section.needsYou")
+        #expect(HaloSectionTaxonomy.localizationKey(forSectionID: "state-running") == "island.halo.section.running")
+        #expect(HaloSectionTaxonomy.localizationKey(forSectionID: "state-done") == "island.halo.section.done")
+        #expect(HaloSectionTaxonomy.localizationKey(forSectionID: "state-idle") == "island.halo.section.idle")
+        #expect(HaloSectionTaxonomy.localizationKey(forSectionID: "agent-codex") == nil)
+    }
+
+    /// The board files a permission row and a question row under **one** `Needs
+    /// you` header (`06-halo.html` §C), so the two adjacent attention sections
+    /// merge — order preserved, approval rows first. Every other section passes
+    /// through untouched, and a list with only one attention section is left
+    /// exactly as the shared sectioning built it.
+    @Test
+    func attentionSectionsMergeIntoOneNeedsYouGroup() {
+        let approval = session(id: "a", phase: .waitingForApproval, updatedAt: now)
+        let answer = session(id: "b", phase: .waitingForAnswer, updatedAt: now)
+        let running = session(id: "c", phase: .running, updatedAt: now)
+        let sections = [
+            IslandSessionSection(id: "state-approval", title: "island.section.needsApproval", sessions: [approval]),
+            IslandSessionSection(id: "state-answer", title: "island.section.needsAnswer", sessions: [answer]),
+            IslandSessionSection(id: "state-running", title: "island.section.inProgress", sessions: [running]),
+        ]
+
+        let merged = HaloSectionTaxonomy.merged(sections)
+        #expect(merged.map(\.id) == [HaloSectionTaxonomy.needsYouSectionID, "state-running"])
+        #expect(merged[0].sessions.map(\.id) == ["a", "b"])
+
+        let single = Array(sections.dropFirst())
+        #expect(HaloSectionTaxonomy.merged(single).map(\.id) == ["state-answer", "state-running"])
+    }
+
+    /// Every Halo header word resolves in all three app languages (never falls
+    /// back to the raw key).
+    @Test
+    func sectionStringsResolveInEveryLanguage() {
+        let lang = LanguageManager()
+        for language in [LanguageManager.AppLanguage.en, .zhHans, .zhHant] {
+            lang.language = language
+            for key in ["needsYou", "running", "done", "idle"].map({ "island.halo.section.\($0)" }) {
+                #expect(lang.t(key) != key)
+            }
+        }
+    }
+
     /// The footer summary + grouping strings resolve in all three app languages
     /// (the two-`%lld` readout must never fall back to the raw key).
     @Test
