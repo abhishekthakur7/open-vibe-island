@@ -4,9 +4,18 @@ import OpenIslandCore
 /// Halo's install-hooks hint (AB-340 · SPEC-halo §7 Slot 8).
 ///
 /// The persistent "install hooks" prompt shown while no agent hooks are installed —
-/// the positive inverse of §J's monitoring pill. A quiet hairline-bounded line: a
-/// muted caution glyph, the hint copy, a `SETUP` tag + chevron, and a single
-/// hairline rule beneath. The tap routes to Settings → Setup through `onTap`.
+/// the positive inverse of §J's monitoring pill. A quiet hairline **card**: a muted
+/// caution glyph, the hint copy, and a `SETUP` tag + chevron, all inside the panel's
+/// `hair2` chip chrome. The tap routes to Settings → Setup through `onTap`.
+///
+/// **V9 / G-64 — the calmest state must stay calm.** The hint is not in mockup §J at
+/// all, yet in real (non-harness) mode it sits between the header and the empty
+/// state and was reading as the loudest element on the panel: full-bleed secondary
+/// ink over two lines, seated on a full-width rule that made it a *banner*. It now
+/// wears the same chrome as the §D/§H `.mcell` chips (radius 9, `hair2` inset
+/// stroke, a 2% wash, `8/11` padding) and drops to the tertiary ink tier, so it
+/// reads as one more quiet fact on the surface rather than an attention state.
+/// Position, copy and tap behaviour are unchanged — this is a restyle only.
 ///
 /// **Deliberately quiet — a hint is not an attention state.** There is **NO
 /// edge-light and NO glow**: nowhere in this view is a `.shadow` modifier, and
@@ -32,38 +41,50 @@ struct HaloInstallHooksHint: View {
         Button {
             onTap()
         } label: {
-            VStack(spacing: 8) {
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.system(size: 11, weight: .regular))
-                        // Muted tertiary ink — never the amber attention accent, and
-                        // never a glow (a hint is not a session attention state).
-                        .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
-                        .accessibilityHidden(true)
-                    Text(lang.t("island.hint.installHooks"))
-                        .font(.system(size: HaloTypography.emptySubtitleSize, weight: .regular))
-                        .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(hovering ? 0.9 : tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                    Spacer(minLength: 6)
-                    Text(lang.t("island.halo.hint.setup"))
-                        .font(.system(size: HaloTypography.keycapSize, weight: .semibold))
-                        .tracking(lang.usesCJKScript ? 0 : 1.0)
-                        .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(hovering ? 0.7 : tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
-                        .accessibilityHidden(true)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .regular))
-                        .foregroundStyle(tokens.colors.paper.opacity(hovering ? 0.6 : 0.4))
-                        .accessibilityHidden(true)
-                }
-                // A single hairline rule seats the line — no box, no pill, no fill.
-                Rectangle()
-                    .fill(tokens.colors.paper.opacity(tokens.colors.hairline(increaseContrast: increasesContrast)))
-                    .frame(height: 1)
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 11, weight: .regular))
+                    // Muted tertiary ink — never the amber attention accent, and
+                    // never a glow (a hint is not a session attention state).
+                    .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
+                    .accessibilityHidden(true)
+                Text(lang.t("island.hint.installHooks"))
+                    .font(.system(size: HaloTypography.emptySubtitleSize, weight: .regular))
+                    // G-64: tertiary tier at rest (was secondary) — the hint sits a
+                    // step *below* the empty state's own subtitle, never above it.
+                    .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(hovering ? tokens.colors.secondaryTextOpacity : tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    // The chip's 11pt side padding costs the line the width it used
+                    // to have: without this the copy tail-truncates ("Tap to…")
+                    // instead of wrapping to its second line. Copy is unchanged.
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 6)
+                Text(lang.t("island.halo.hint.setup"))
+                    .font(.system(size: HaloTypography.keycapSize, weight: .semibold))
+                    .tracking(lang.usesCJKScript ? 0 : 1.0)
+                    .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(hovering ? tokens.colors.secondaryTextOpacity : tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
+                    .accessibilityHidden(true)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .regular))
+                    .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(hovering ? tokens.colors.secondaryTextOpacity : tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
+                    .accessibilityHidden(true)
             }
-            .padding(.horizontal, 2)
-            .padding(.vertical, 4)
-            .contentShape(Rectangle())
+            // `.mcell` chrome (G-55 / G-64): 8/11 padding inside a radius-9 chip.
+            .padding(.horizontal, 11)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(tokens.colors.paper.opacity(hovering ? 0.04 : 0.02))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .strokeBorder(
+                                tokens.colors.paper.opacity(increasesContrast ? 0.14 : 0.05),
+                                lineWidth: 1
+                            )
+                    )
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }

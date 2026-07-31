@@ -36,7 +36,11 @@ struct HaloEmptyState: View {
     @Environment(\.islandTokens) private var tokens
 
     var body: some View {
-        VStack(spacing: 10) {
+        // §J vertical rhythm (G-26): the mockup is a *ramp*, not a uniform stack —
+        // `.eg{margin-bottom:13}` → `.et` → `.es{margin-top:6}` → `.ec{margin-top:15}`.
+        // The base spacing carries the 6pt title→subtitle step; the two wider gaps
+        // are the deltas on top of it (6+7=13, 6+9=15).
+        VStack(spacing: 6) {
             Spacer()
 
             // Static monitor glyph (34pt, tertiary) — the still centre of the void.
@@ -44,6 +48,7 @@ struct HaloEmptyState: View {
                 .font(.system(size: 34, weight: .thin))
                 .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
                 .accessibilityHidden(true)
+                .padding(.bottom, 7)
 
             Text(lang.t("island.halo.empty.allQuiet"))
                 .font(.system(size: HaloTypography.emptyTitleSize, weight: .semibold))
@@ -57,7 +62,7 @@ struct HaloEmptyState: View {
                 .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
 
             monitoringPill
-                .padding(.top, 2)
+                .padding(.top, 9)
 
             Spacer()
         }
