@@ -2571,7 +2571,11 @@ struct StructuredQuestionPromptView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if showsPromptTitle {
+            // G-72: on Halo the hero head already says "A question for you" and
+            // the `.q-tag` chip names the category, so this gold title is the
+            // first of the four stacked lines the board doesn't have. Every
+            // other theme keeps it.
+            if showsPromptTitle, !isHalo {
                 Text(promptTitle)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(tokens.colors.statusWaitingForAnswer)
@@ -2591,22 +2595,42 @@ struct StructuredQuestionPromptView: View {
                     }
                 }
 
-                if let hint = keyboardHintCaption {
-                    Text(hint)
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(tokens.colors.surfaceText.opacity(tokens.colors.tertiaryTextOpacity))
-                        .fixedSize(horizontal: false, vertical: true)
+                if isHalo {
+                    // G-25: mockup `.q-foot` — the CTA first, the hint beside it.
+                    quickReplyField
+                    HStack(alignment: .center, spacing: 8) {
+                        submitButton(title: submitButtonTitle)
+                        if let hint = keyboardHintCaption {
+                            haloKeyboardHint(hint)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.top, 2)
+                } else {
+                    if let hint = keyboardHintCaption {
+                        Text(hint)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(tokens.colors.surfaceText.opacity(tokens.colors.tertiaryTextOpacity))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    quickReplyField
+
+                    submitButton(title: submitButtonTitle)
                 }
-
-                quickReplyField
-
-                submitButton(title: submitButtonTitle)
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        // Halo's hero shell already pads the card body (`HaloHeroShell`'s 16pt
+        // inset); the shared box's own inset only pushed the options off the
+        // `.q-tag` chip's left edge.
+        .padding(.horizontal, isHalo ? 0 : 10)
+        .padding(.vertical, isHalo ? 0 : 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .modifier(QuestionCardContainerModifier())
+        // G-23/G-24/G-72: tells `HaloQuestionHero`'s head which page is on
+        // screen (progress / category / multi-select). Inert for every other
+        // theme — nobody else reads the key.
+        .preference(key: HaloQuestionPageInfoKey.self, value: haloPageInfo)
         .onAppear {
             registerKeyboardHandlersIfNeeded()
             seedPreselectionIfNeeded()
@@ -2617,6 +2641,60 @@ struct StructuredQuestionPromptView: View {
             seedPreselectionIfNeeded()
         }
         .onDisappear { keyboardCoordinator?.clearQuestionCardKeyboardHandlers() }
+    }
+
+    // MARK: - Halo §F seam (visual-parity batch V8)
+
+    /// Whether the §F question card is being drawn on Halo. Every Halo-only
+    /// branch in this shared view keys off this one flag, so the other five
+    /// themes render byte-identically to before the batch.
+    private var isHalo: Bool { theme.id == "halo" }
+
+    /// The mockup's `--qgold` (`#FFCF7A`) — Halo's `statusWaitingForAnswer`.
+    private var qgold: Color { tokens.colors.statusWaitingForAnswer }
+
+    /// `.opt.sel .num{color:#2a2003}` — the dark ink on a solid qgold chip.
+    private static let haloSelectedNumberInk = Color(red: 0x2A / 255.0, green: 0x20 / 255.0, blue: 0x03 / 255.0)
+
+    /// `.qtext{color:#fff2da}` — the question sentence's warm cream.
+    private static let haloQuestionInk = Color(red: 0xFF / 255.0, green: 0xF2 / 255.0, blue: 0xDA / 255.0)
+
+    /// What Halo's hero head needs to know about the page on screen
+    /// (G-23/G-24/G-72). `nil` off Halo and for a freeform-only prompt.
+    private var haloPageInfo: HaloQuestionPageInfo? {
+        guard isHalo, let question = currentPage.first else { return nil }
+        return HaloQuestionPageInfo(
+            progress: HaloQuestionFormat.progress(
+                questionIndex: currentPageStartIndex,
+                questionCount: structuredQuestions.count,
+                lang: lang
+            ),
+            header: question.header,
+            isMultiSelect: question.multiSelect
+        )
+    }
+
+    /// G-25: the `.q-hint` caption with its keys rendered as the mockup's `kbd`
+    /// chips instead of printed as prose. The whole run reads as one a11y label
+    /// so VoiceOver still hears the sentence, not a stream of chips.
+    @ViewBuilder
+    private func haloKeyboardHint(_ hint: String) -> some View {
+        HStack(spacing: 0) {
+            ForEach(Array(HaloQuestionFormat.hintSegments(hint).enumerated()), id: \.offset) { _, segment in
+                switch segment {
+                case .text(let text):
+                    Text(text)
+                        .font(.system(size: 10.5, weight: .regular))
+                        .foregroundStyle(tokens.colors.surfaceText.opacity(tokens.colors.tertiaryTextOpacity))
+                case .key(let key):
+                    HaloKeycap(glyphs: [key])
+                }
+            }
+        }
+        .lineLimit(1)
+        .fixedSize(horizontal: true, vertical: false)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(hint)
     }
 
     // MARK: - Per-theme typography (overlay remediation Phase 2A · F1)
@@ -2780,31 +2858,39 @@ struct StructuredQuestionPromptView: View {
     /// not a per-theme branch.
     @ViewBuilder
     private func questionRow(_ question: QuestionPromptItem, questionIndex: Int, digitBase: Int) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if let progress = QuestionPromptFormat.progressReadout(
-                questionIndex: questionIndex,
-                questionCount: structuredQuestions.count,
-                lang: lang
-            ) {
-                Text(progress)
-                    .font(.system(size: 10, weight: .bold))
-                    .monospacedDigit()
-                    .foregroundStyle(tokens.colors.surfaceText.opacity(tokens.colors.secondaryTextOpacity))
-            }
+        VStack(alignment: .leading, spacing: isHalo ? 10 : 6) {
+            // G-72: Halo lifts both of these into the hero head — the ordinal
+            // pair to the right-aligned `.qprog` slot, the category to the
+            // inline `.q-tag` chip — so the board's two-line head replaces the
+            // four-line stack this rendered.
+            if !isHalo {
+                if let progress = QuestionPromptFormat.progressReadout(
+                    questionIndex: questionIndex,
+                    questionCount: structuredQuestions.count,
+                    lang: lang
+                ) {
+                    Text(progress)
+                        .font(.system(size: 10, weight: .bold))
+                        .monospacedDigit()
+                        .foregroundStyle(tokens.colors.surfaceText.opacity(tokens.colors.secondaryTextOpacity))
+                }
 
-            if structuredQuestions.count > 1 {
-                Text(question.header)
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(multiQuestionHeaderColor)
+                if structuredQuestions.count > 1 {
+                    Text(question.header)
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(multiQuestionHeaderColor)
+                }
             }
 
             Text(question.question)
                 .font(questionTextFont)
                 .tracking(questionTextTracking)
-                .foregroundStyle(.white.opacity(0.88))
+                // `.qtext{color:#fff2da}` — the warm cream the hero head sets.
+                .foregroundStyle(isHalo ? Self.haloQuestionInk : .white.opacity(0.88))
                 .fixedSize(horizontal: false, vertical: true)
 
-            VStack(alignment: .leading, spacing: 4) {
+            // `.opts{gap:7px}`.
+            VStack(alignment: .leading, spacing: isHalo ? 7 : 4) {
                 ForEach(
                     Array(QuestionPromptFormat.orderedOptions(question.options).enumerated()),
                     id: \.element.id
@@ -2827,34 +2913,44 @@ struct StructuredQuestionPromptView: View {
         let key = optionKey(for: question, option: option)
         let isHovered = hoveredOptionKey == key
         let showsFreeform = option.allowsFreeform && isSelected
+        // G-41: on Halo the freeform row is the mockup's `.opt-other` — italic
+        // 12 @ t3 with an achromatic (never qgold) digit chip, so "Other…"
+        // reads as the escape hatch rather than a fourth peer answer.
+        let isOther = isHalo && option.allowsFreeform
+        let numberShape = RoundedRectangle(
+            cornerRadius: optionNumberCornerRadius(multiSelect: question.multiSelect),
+            style: .continuous
+        )
         VStack(alignment: .leading, spacing: 0) {
             Button {
                 toggle(option: option.label, for: question)
             } label: {
-                HStack(spacing: 10) {
+                HStack(spacing: isHalo ? 11 : 10) {
                     Text("\(optionIndex + 1)")
                         .font(optionNumberFont)
-                        .foregroundStyle(isSelected ? .black.opacity(0.82) : tokens.colors.paper.opacity(0.42))
-                        .frame(width: 22, height: 20)
-                        .background(
-                            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                .fill(isSelected ? tokens.colors.paper.opacity(0.88) : Color.white.opacity(0.045))
-                        )
+                        .foregroundStyle(optionNumberInk(isSelected: isSelected, isOther: isOther))
+                        .frame(width: isHalo ? 19 : 22, height: isHalo ? 19 : 20)
+                        .background(numberShape.fill(optionNumberFill(isSelected: isSelected, isOther: isOther)))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                .strokeBorder(.white.opacity(isSelected ? 0 : 0.08))
+                            numberShape
+                                .strokeBorder(.white.opacity(isHalo || isSelected ? 0 : 0.08))
                         )
 
-                    VStack(alignment: .leading, spacing: 1) {
+                    VStack(alignment: .leading, spacing: isHalo ? 2 : 1) {
                         Text(option.label)
-                            .font(optionLabelFont)
-                            .foregroundStyle(.white.opacity(isSelected ? 1 : 0.78))
+                            .font(isOther ? Self.haloOtherFont : optionLabelFont)
+                            .italic(isOther)
+                            .foregroundStyle(optionLabelColor(isSelected: isSelected, isOther: isOther))
 
                         if !option.description.isEmpty {
                             Text(option.description)
                                 .font(optionDescFont)
-                                .foregroundStyle(.white.opacity(isHovered || isSelected ? 0.48 : 0.38))
-                                .lineLimit(1)
+                                .foregroundStyle(optionDescColor(isSelected: isSelected, isHovered: isHovered))
+                                // G-04: `.opt .od{line-height:1.42}` wraps in the
+                                // board; one line tail-truncated every real
+                                // description native ever showed.
+                                .lineLimit(isHalo ? 2 : 1)
+                                .fixedSize(horizontal: false, vertical: isHalo)
                         }
                     }
 
@@ -2868,8 +2964,9 @@ struct StructuredQuestionPromptView: View {
                     }
                 }
                 .contentShape(Rectangle())
-                .padding(.vertical, 5)
-                .padding(.horizontal, 11)
+                // `.opt{padding:10px 12px}` — the board's roomier option row.
+                .padding(.vertical, isHalo ? 8 : 5)
+                .padding(.horizontal, isHalo ? 12 : 11)
             }
             .buttonStyle(.plain)
             // AB-244: selection state conveyed via the `.isSelected` trait
@@ -2884,18 +2981,19 @@ struct StructuredQuestionPromptView: View {
             }
         }
         .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(optionFillColor(isSelected: isSelected, isHovered: isHovered))
+            RoundedRectangle(cornerRadius: optionCornerRadius, style: .continuous)
+                .fill(optionFillColor(isSelected: isSelected, isHovered: isHovered, isOther: isOther))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
+            RoundedRectangle(cornerRadius: optionCornerRadius, style: .continuous)
                 .strokeBorder(
                     optionStrokeColor(isSelected: isSelected, isHovered: isHovered),
                     lineWidth: isSelected ? 1.5 : 1
                 )
         )
         .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.12)) {
+            // M-17: `.opt{transition:.14s}`.
+            withAnimation(.easeInOut(duration: isHalo ? 0.14 : 0.12)) {
                 hoveredOptionKey = hovering ? key : (hoveredOptionKey == key ? nil : hoveredOptionKey)
             }
         }
@@ -3281,7 +3379,17 @@ struct StructuredQuestionPromptView: View {
         "\(question.question)|\(option.label)"
     }
 
-    private func optionFillColor(isSelected: Bool, isHovered: Bool) -> Color {
+    /// G-38: `.opt{background:rgba(255,255,255,.022)}` /
+    /// `.opt:hover{rgba(255,207,122,.07)}` (G-39/M-17) /
+    /// `.opt.sel{rgba(255,207,122,.1)}` — the whole row warms qgold on Halo
+    /// instead of the achromatic wash every theme shared.
+    private func optionFillColor(isSelected: Bool, isHovered: Bool, isOther: Bool = false) -> Color {
+        if isHalo {
+            if isSelected { return qgold.opacity(0.10) }
+            if isHovered { return qgold.opacity(0.07) }
+            // `.opt-other{background:rgba(255,255,255,.015)}`.
+            return Color.white.opacity(isOther ? 0.015 : 0.022)
+        }
         if isSelected {
             return tokens.colors.paper.opacity(0.10)
         }
@@ -3294,14 +3402,68 @@ struct StructuredQuestionPromptView: View {
     private func optionStrokeColor(isSelected: Bool, isHovered: Bool) -> Color {
         if isSelected {
             // Unified selection ring — `statusWaitingForAnswer` tint at 0.5,
-            // 1.5pt inset. Themes do not restyle this ring (AB-325).
-            return tokens.colors.statusWaitingForAnswer.opacity(0.5)
+            // 1.5pt inset. Themes do not restyle this ring (AB-325) — except
+            // Halo, whose board pins `.opt.sel{inset 0 0 0 1.5px rgba(255,207,122,.55)}`
+            // (G-38): same ring, one step hotter so the selected row is
+            // unmistakably amber on the void.
+            return tokens.colors.statusWaitingForAnswer.opacity(isHalo ? 0.55 : 0.5)
         }
         if isHovered {
-            return .white.opacity(0.13)
+            return isHalo ? HaloEdge.hair2 : .white.opacity(0.13)
         }
-        return .white.opacity(0.045)
+        return isHalo ? HaloEdge.hair2 : .white.opacity(0.045)
     }
+
+    /// `.opt{border-radius:10px}` — Halo's option rows are rounder than the 8pt
+    /// every other theme draws.
+    private var optionCornerRadius: CGFloat { isHalo ? 10 : 8 }
+
+    /// `.opt .num{border-radius:6px}`, `.opt.multi .num{border-radius:4px}` —
+    /// the digit chip squares off for multi-select, the same shape signal the
+    /// trailing marker carries.
+    private func optionNumberCornerRadius(multiSelect: Bool) -> CGFloat {
+        guard isHalo else { return 5 }
+        return multiSelect ? 4 : 6
+    }
+
+    /// `.opt .num{color:var(--qgold)}` / `.opt.sel .num{color:#2a2003}` /
+    /// `.opt-other .num{color:var(--t3)}`.
+    private func optionNumberInk(isSelected: Bool, isOther: Bool) -> Color {
+        guard isHalo else {
+            return isSelected ? .black.opacity(0.82) : tokens.colors.paper.opacity(0.42)
+        }
+        if isOther { return tokens.colors.paper.opacity(tokens.colors.tertiaryTextOpacity) }
+        return isSelected ? Self.haloSelectedNumberInk : qgold
+    }
+
+    /// `.opt .num{background:rgba(255,207,122,.13)}` /
+    /// `.opt.sel .num{background:var(--qgold)}` /
+    /// `.opt-other .num{background:rgba(255,255,255,.05)}`.
+    private func optionNumberFill(isSelected: Bool, isOther: Bool) -> Color {
+        guard isHalo else {
+            return isSelected ? tokens.colors.paper.opacity(0.88) : Color.white.opacity(0.045)
+        }
+        if isOther { return Color.white.opacity(0.05) }
+        return isSelected ? qgold : qgold.opacity(0.13)
+    }
+
+    /// G-04: `.opt .ol{color:var(--t1)}` — 0.95, not the 0.78 the shared row
+    /// used. `.opt-other` drops the whole row to t3 instead.
+    private func optionLabelColor(isSelected: Bool, isOther: Bool) -> Color {
+        guard isHalo else { return .white.opacity(isSelected ? 1 : 0.78) }
+        if isOther { return tokens.colors.paper.opacity(tokens.colors.tertiaryTextOpacity) }
+        return .white.opacity(0.95)
+    }
+
+    /// G-04: `.opt .od{color:var(--t2)}` — a flat, readable 0.63 on Halo, so
+    /// the description no longer needs hover to become legible.
+    private func optionDescColor(isSelected: Bool, isHovered: Bool) -> Color {
+        guard isHalo else { return .white.opacity(isHovered || isSelected ? 0.48 : 0.38) }
+        return .white.opacity(tokens.colors.secondaryTextOpacity)
+    }
+
+    /// `.opt-other{font-size:12px;font-style:italic}`.
+    private static let haloOtherFont = Font.system(size: 12, weight: .regular)
 
     private func trimmedFreeform(for question: QuestionPromptItem, option: QuestionOption) -> String {
         (freeformTexts[freeformKey(for: question, option: option)] ?? "")

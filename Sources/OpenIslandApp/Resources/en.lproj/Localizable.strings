@@ -399,6 +399,8 @@
 "island.halo.approval.diffFileFallback" = "File";
 "island.halo.question.title" = "A question for you";
 "island.halo.question.tag" = "Question";
+"island.halo.question.multiSelect" = "multi-select";
+"island.halo.question.progress" = "%1$lld of %2$lld";
 
 /* Island Panel - Annual theme rows (AB-317) */
 "island.annual.row.jump" = "Jump";

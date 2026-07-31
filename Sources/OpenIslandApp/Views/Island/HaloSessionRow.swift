@@ -1981,6 +1981,12 @@ private struct HaloHeroShell<HeroBody: View>: View {
     let modelName: String?
     let tokens: IslandThemeTokens
     let increasesContrast: Bool
+    /// The `.qprog` slot (mockup `1 of 2`, V8 · G-23/G-72): when a hero carries
+    /// pagination progress it takes the head's trailing lane — the board's §F
+    /// heads print the ordinal pair there, not the who-line, because the
+    /// subtitle (`workspace · agent`) already carries identity. `nil` (every
+    /// permission hero, and a single-question card) keeps the who-line.
+    var progress: String? = nil
     @ViewBuilder let content: () -> HeroBody
 
     private var attentionColor: Color {
@@ -2048,17 +2054,27 @@ private struct HaloHeroShell<HeroBody: View>: View {
 
             Spacer(minLength: 8)
 
-            // Who-line (mockup `.who`): the achromatic monogram + model name.
-            HStack(spacing: 6) {
-                HaloAgentMonogram(text: monogram, tokens: tokens, increasesContrast: increasesContrast)
-                if let modelName, !modelName.isEmpty {
-                    Text(modelName)
-                        .font(.system(size: 10.5, weight: .regular))
-                        .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
-                        .lineLimit(1)
+            if let progress, !progress.isEmpty {
+                // `.qprog{margin-left:auto;font-size:11px;color:var(--t3)}`.
+                Text(progress)
+                    .font(.system(size: 11, weight: .regular))
+                    .monospacedDigit()
+                    .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+            } else {
+                // Who-line (mockup `.who`): the achromatic monogram + model name.
+                HStack(spacing: 6) {
+                    HaloAgentMonogram(text: monogram, tokens: tokens, increasesContrast: increasesContrast)
+                    if let modelName, !modelName.isEmpty {
+                        Text(modelName)
+                            .font(.system(size: 10.5, weight: .regular))
+                            .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
+                            .lineLimit(1)
+                    }
                 }
+                .fixedSize(horizontal: true, vertical: false)
             }
-            .fixedSize(horizontal: true, vertical: false)
         }
     }
 
@@ -2340,8 +2356,25 @@ private struct HaloQuestionHero: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     private var increasesContrast: Bool { colorSchemeContrast == .increased }
 
+    /// What page the shared interior is on — published by
+    /// `StructuredQuestionPromptView` (V8 · G-23/G-24/G-72), whose `@State`
+    /// owns the page index this head has to narrate.
+    @State private var pageInfo: HaloQuestionPageInfo?
+
     private var tag: String? {
-        HaloQuestionFormat.tag(for: session.questionPrompt, lang: lang)
+        guard session.questionPrompt != nil else { return nil }
+        // The chip follows pagination: `Auth` on page 1, `Scope` on page 2.
+        return HaloQuestionFormat.tag(header: pageInfo?.header, lang: lang)
+    }
+
+    /// `.hero-head .hs` — `niche-radar · OpenCode`: the workspace this question
+    /// came from and the agent asking it (G-23). Both are honest session fields;
+    /// nothing here is fabricated.
+    private var subtitle: String {
+        [session.spotlightDisplayName, session.tool.displayName]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " · ")
     }
 
     var body: some View {
@@ -2349,15 +2382,24 @@ private struct HaloQuestionHero: View {
             tint: .question,
             annunciatorGlyph: "questionmark.circle",
             title: lang.t("island.halo.question.title"),
-            subtitle: nil,
+            subtitle: subtitle,
             monogram: HaloSessionRowFormat.monogram(agentShortName: session.tool.shortName),
             modelName: session.displayModelName,
             tokens: tokens,
-            increasesContrast: increasesContrast
+            increasesContrast: increasesContrast,
+            progress: pageInfo?.progress
         ) {
             VStack(alignment: .leading, spacing: 11) {
+                // G-24: mockup's tag row — the category chip and, when the page's
+                // question takes several answers, the `multi-select` companion
+                // chip, inline and directly above the question sentence.
                 if let tag {
-                    HaloQuestionTag(text: tag)
+                    HStack(spacing: 8) {
+                        HaloQuestionTag(text: tag)
+                        if pageInfo?.isMultiSelect == true {
+                            HaloQuestionModeChip(text: lang.t("island.halo.question.multiSelect"), tokens: tokens)
+                        }
+                    }
                 }
                 // The shared T07 interior — passed the prompt, language, the keyboard
                 // coordinator, and the answer round-trip. Not restyled: its qgold
@@ -2370,7 +2412,36 @@ private struct HaloQuestionHero: View {
                     onAnswer: { actions.answer?($0) }
                 )
             }
+            .onPreferenceChange(HaloQuestionPageInfoKey.self) { info in
+                pageInfo = info
+            }
         }
+    }
+}
+
+/// The `multi-select` companion chip (mockup §F2's `.chip` beside the `.q-tag`,
+/// V8 · G-24): a quiet achromatic marker that says the page's question takes
+/// several answers — the *word* backing up the square markers' shape signal, so
+/// the mode is never carried by geometry alone.
+private struct HaloQuestionModeChip: View {
+    let text: String
+    let tokens: IslandThemeTokens
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 9.5, weight: .medium))
+            .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.secondaryTextOpacity))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(Color.white.opacity(0.06))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .strokeBorder(HaloEdge.hair2, lineWidth: 1)
+            )
+            .accessibilityHidden(true)
     }
 }
 
@@ -2390,8 +2461,11 @@ private struct HaloQuestionTag: View {
             .foregroundStyle(Self.ink)
             .padding(.horizontal, 7)
             .padding(.vertical, 2)
+            // `.q-tag{border-radius:6px}` — a rounded marker, not the capsule
+            // native drew (V8 · G-24).
             .background(
-                Capsule(style: .continuous).fill(IslandColorTokens.halo.statusWaitingForAnswer)
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(IslandColorTokens.halo.statusWaitingForAnswer)
             )
             .accessibilityHidden(true)
     }
@@ -2521,7 +2595,11 @@ extension IslandDiffStyle {
 /// A key-hint chip (mockup `.kc kbd`): black@.3 fill, inset white@.16 ring,
 /// white@.78 text, 10pt/600, one chip per glyph. On a light (primary) button it
 /// inverts to a dark amber-ink chip so it stays legible on the gradient.
-private struct HaloKeycap: View {
+/// Not `private` (V8 · G-25): the §F footer's `.q-hint` renders its keys as the
+/// same `kbd` chips from inside the shared `StructuredQuestionPromptView`
+/// (`IslandPanelView.swift`), so the hint's keycaps and the hero buttons' stay
+/// one component rather than two drifting copies.
+struct HaloKeycap: View {
     let glyphs: [String]
     var onLightButton: Bool = false
 
@@ -2598,15 +2676,30 @@ struct HaloHeroButton: View {
             // gradient buttons lift 6% on hover (`.deny` states its hover as a
             // fill change instead, in `background` below).
             .brightness(isHovered && isEnabled && kind != .deny ? 0.06 : 0)
-            .saturation(isEnabled ? 1 : IslandQuestionSubmitDisabledStyle.saturation)
-            .opacity(isEnabled ? 1 : IslandQuestionSubmitDisabledStyle.opacity)
+            .saturation(isEnabled ? 1 : Self.disabledSaturation)
+            .opacity(isEnabled ? 1 : Self.disabledOpacity)
             .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
-        .buttonStyle(.plain)
+        // G-40: **not** `.buttonStyle(.plain)`. The built-in plain style applies
+        // its own disabled dimming on top of the floors above — the two
+        // compounded to ~0.36 of the amber, which is exactly the dead slab the
+        // gap reported (measured `rgb(93,76,56)`). A pass-through style leaves
+        // the disabled paint entirely to `disabledSaturation`/`disabledOpacity`,
+        // so Halo's Submit dims to a *muted amber*, never to grey.
+        .buttonStyle(HaloHeroButtonStyle())
         .onHover { isHovered = $0 }
         .disabled(!isEnabled)
         .accessibilityLabel(accessibilityLabel)
     }
+
+    /// G-40: the shared `IslandQuestionSubmitDisabledStyle` floors (`0.35` sat ×
+    /// `0.5` opacity) desaturated Halo's amber gradient into a dead grey slab —
+    /// and on the void that grey was the loudest thing in the question card. The
+    /// Halo-local floors keep the CTA unmistakably amber while still reading as
+    /// not-yet-actionable. Scoped to this button (Halo's only gradient CTA), so
+    /// Poured / Flight Deck keep the shared recipe untouched.
+    static let disabledSaturation: Double = 0.75
+    static let disabledOpacity: Double = 0.8
 
     private var foreground: Color {
         switch kind {
@@ -2643,6 +2736,18 @@ struct HaloHeroButton: View {
         case .deny:
             return AnyShapeStyle(Color(red: 224 / 255.0, green: 89 / 255.0, blue: 108 / 255.0).opacity(isHovered ? 0.22 : 0.13))
         }
+    }
+}
+
+/// A pass-through button style: the label, exactly as `HaloHeroButton` painted
+/// it, with no style-owned pressed or disabled treatment. `HaloHeroButton` owns
+/// both states itself (hover brightness M-18; the disabled saturation/opacity
+/// floors, G-40), so the style must not stack a second, uncontrollable dimming
+/// on top — which is precisely what `.plain` was doing.
+private struct HaloHeroButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.85 : 1)
     }
 }
 

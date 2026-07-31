@@ -793,8 +793,16 @@ enum HaloQuestionFormat {
     /// echoes the annunciator's own title.
     static func tag(for prompt: QuestionPrompt?, lang: LanguageManager = .shared) -> String? {
         guard prompt != nil else { return nil }
+        return tag(header: prompt?.questions.first?.header, lang: lang)
+    }
+
+    /// The same normalization for an already-resolved header — the **page's own**
+    /// question, not always the first (V8 · G-24): with `questionPageSize == 1` the
+    /// hero's chip must follow pagination (`Auth` on page 1, `Scope` on page 2),
+    /// which the prompt-level overload above cannot see.
+    static func tag(header: String?, lang: LanguageManager = .shared) -> String {
         let generic = lang.t("island.halo.question.tag")
-        let header = prompt?.questions.first?.header.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let header = (header ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let answerNeeded = lang.t("question.answerNeeded")
         let source: String
         if header.isEmpty || header.caseInsensitiveCompare(answerNeeded) == .orderedSame {
@@ -803,6 +811,98 @@ enum HaloQuestionFormat {
             source = header
         }
         return String(source.prefix(maxTagLength))
+    }
+
+    /// The `.qprog` readout (mockup `1 of 2`) — the hero head's right-aligned
+    /// progress token (V8 · G-23/G-72). Deliberately *not* the shared
+    /// `question.progress` string ("Question 1 of 2"): the head already says
+    /// "A question for you", so the noun is redundant and the board prints the
+    /// bare ordinal pair. `nil` for a single-question prompt, where progress is
+    /// noise. `questionIndex` is 0-based; the readout renders it 1-based.
+    static func progress(
+        questionIndex: Int,
+        questionCount: Int,
+        lang: LanguageManager = .shared
+    ) -> String? {
+        guard questionCount > 1 else { return nil }
+        return lang.t("island.halo.question.progress", questionIndex + 1, questionCount)
+    }
+
+    /// One run of the `.q-hint` footer caption: either prose or a real key that
+    /// deserves the mockup's `kbd` keycap chip (V8 · G-25).
+    enum HintSegment: Equatable, Sendable {
+        case text(String)
+        case key(String)
+    }
+
+    /// Splits a localized keyboard-hint sentence ("1–3 select · Enter submits ·
+    /// Esc closes") into prose + keycap runs, so the footer can render the keys
+    /// as `kbd` chips instead of printing them as prose (mockup `.q-hint`).
+    ///
+    /// Tokenizes on alphanumeric runs and promotes a run to a keycap when it is
+    /// a 1–2 digit number or one of the ASCII key names every localization keeps
+    /// verbatim (`Enter` / `Esc` / `Return` — the zh tables translate the verbs
+    /// around them, never the key caps themselves). Everything else — including
+    /// CJK words — stays prose, so this degrades to "no keycaps" rather than
+    /// mis-chipping a translated word.
+    static func hintSegments(_ hint: String) -> [HintSegment] {
+        var segments: [HintSegment] = []
+        var prose = ""
+        var token = ""
+
+        func flushToken() {
+            guard !token.isEmpty else { return }
+            if isKeyToken(token) {
+                if !prose.isEmpty {
+                    segments.append(.text(prose))
+                    prose = ""
+                }
+                segments.append(.key(token))
+            } else {
+                prose += token
+            }
+            token = ""
+        }
+
+        for character in hint {
+            if character.isLetter || character.isNumber {
+                token.append(character)
+            } else {
+                flushToken()
+                prose.append(character)
+            }
+        }
+        flushToken()
+        if !prose.isEmpty {
+            segments.append(.text(prose))
+        }
+        return segments
+    }
+
+    private static func isKeyToken(_ token: String) -> Bool {
+        if token.count <= 2, token.allSatisfy(\.isNumber) { return true }
+        return ["Enter", "Esc", "Return", "Tab"].contains(token)
+    }
+}
+
+/// What the shared question view tells Halo's hero head about the page it is
+/// currently rendering (V8 · G-23/G-24/G-72): the `1 of 2` progress token, the
+/// page question's category header, and whether that question is multi-select.
+///
+/// The page index lives in `StructuredQuestionPromptView`'s `@State`, so the
+/// hero — which wraps that view — can only learn it by preference. Published
+/// unconditionally by the shared view and read only by `HaloQuestionHero`;
+/// every other theme ignores it.
+struct HaloQuestionPageInfo: Equatable, Sendable {
+    var progress: String?
+    var header: String?
+    var isMultiSelect: Bool
+}
+
+struct HaloQuestionPageInfoKey: PreferenceKey {
+    static let defaultValue: HaloQuestionPageInfo? = nil
+    static func reduce(value: inout HaloQuestionPageInfo?, nextValue: () -> HaloQuestionPageInfo?) {
+        value = nextValue() ?? value
     }
 }
 

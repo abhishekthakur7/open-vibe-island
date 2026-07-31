@@ -400,6 +400,8 @@
 "island.halo.approval.diffFileFallback" = "文件";
 "island.halo.question.title" = "有个问题请你决定";
 "island.halo.question.tag" = "问题";
+"island.halo.question.multiSelect" = "多选";
+"island.halo.question.progress" = "第 %1$lld / %2$lld 题";
 
 /* Island Panel - Annual theme rows (AB-317) */
 "island.annual.row.jump" = "跳转";
