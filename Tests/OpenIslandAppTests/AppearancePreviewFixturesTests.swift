@@ -360,10 +360,12 @@ struct IslandDebugScenarioConformanceTests {
     }
 
     @Test
-    func onlyUsageMetersScenarioCarriesUsageProviders() {
+    func onlyUsageScenariosCarryUsageProviders() {
+        // `closedCritical` needs the ≥90% providers so the I′ filament wins the
+        // right-slot resolver ladder — see its fixture comment.
         for scenario in IslandDebugScenario.allCases {
             let snapshot = scenario.snapshot()
-            if scenario == .usageMeters {
+            if scenario == .usageMeters || scenario == .closedCritical {
                 #expect(snapshot.usageProviders?.isEmpty == false)
             } else {
                 #expect(snapshot.usageProviders == nil, "\(scenario.rawValue) unexpectedly set usage providers")
