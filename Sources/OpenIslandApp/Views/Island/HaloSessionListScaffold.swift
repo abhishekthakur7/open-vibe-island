@@ -230,7 +230,7 @@ struct HaloSessionListScaffold: View {
             Text(sessionSectionTitle(for: section).uppercased())
                 .font(.system(size: HaloTypography.sectionHeaderSize, weight: .bold))
                 .tracking(HaloTypography.sectionHeaderSize * 0.10)
-                .foregroundStyle(sectionLabelColor(for: section))
+                .foregroundStyle(sectionLabelColor)
             // G-09 (mockup `.gn{margin-left:auto}`): the count is pushed to the
             // trailing edge, not parked next to the title.
             Spacer(minLength: 8)
@@ -273,25 +273,13 @@ struct HaloSessionListScaffold: View {
         return tokens.colors.statusTint(for: first.phase, outcome: first.outcome)
     }
 
-    /// Attention sections ("Needs you" — a permission request, a pending
-    /// question) spend the status tint on their caps title; every calm section is
-    /// warm paper. Accent discipline at the section level.
-    private func sectionLabelColor(for section: IslandSessionSection) -> Color {
-        switch section.id {
-        case "state-approval":
-            return tokens.colors.statusWaitingForApproval
-        case "state-answer":
-            return tokens.colors.statusWaitingForAnswer
-        case HaloSectionTaxonomy.needsYouSectionID:
-            // The merged NEEDS YOU group takes the loudest phase it holds — the
-            // permission amber whenever one is waiting, the question gold when
-            // it is only questions.
-            return section.sessions.contains { $0.phase == .waitingForApproval }
-                ? tokens.colors.statusWaitingForApproval
-                : tokens.colors.statusWaitingForAnswer
-        default:
-            return tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast))
-        }
+    /// N4: `.grp{color:var(--t3)}` (06-halo.html:263-264) governs **every** group
+    /// header, `NEEDS YOU` included — the 6px `.gd` dot is the only thing that
+    /// carries the state hue. Tinting the caps title too would spend the accent
+    /// twice on the same fact and make one header shout over its peers, which the
+    /// board never does. Same ink as the trailing `.gn` count, deliberately.
+    private var sectionLabelColor: Color {
+        tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast))
     }
 
     // MARK: - Footer (readout + passive grouping caption)

@@ -303,6 +303,10 @@ final class OverlayPanelController {
             return handleApprovalShortcut(model, action: .deny)
         }
 
+        if flags.contains(.command), characters == "j" {
+            return handleJumpShortcut(model)
+        }
+
         if event.keyCode == UInt16(kVK_Return) || event.keyCode == UInt16(kVK_ANSI_KeypadEnter) {
             return model.overlay.handleQuestionSubmitKey()
         }
@@ -321,6 +325,24 @@ final class OverlayPanelController {
             return false
         }
         model.approvePermission(for: session.id, action: action)
+        return true
+    }
+
+    /// N3: the presented card's Jump action, fired by ⌘J — the *same*
+    /// `jumpToSession` round-trip the Jump CTA button calls, so the keycap the
+    /// Halo Codex hero prints (`06-halo.html:1056`) names a real binding rather
+    /// than decorating one. Deliberately inert (returns `false`, the event
+    /// continues through normal AppKit dispatch) whenever the card has no
+    /// reachable jump target, which is also `jumpToSession`'s own precondition —
+    /// so a swallowed key never leaves a "Cannot jump" message behind. Themes
+    /// that print no ⌘J simply gain a shortcut they do not advertise.
+    private func handleJumpShortcut(_ model: AppModel) -> Bool {
+        guard let session = model.activeIslandCardSession,
+              let jumpTarget = session.jumpTarget,
+              jumpTarget.terminalApp.lowercased() != "unknown" else {
+            return false
+        }
+        model.jumpToSession(session)
         return true
     }
 

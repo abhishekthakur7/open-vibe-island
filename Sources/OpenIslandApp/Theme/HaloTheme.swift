@@ -641,6 +641,9 @@ enum HaloHeroFormat {
     /// of `ClaudePermissionUpdate.shortenedPath` — is trimmed off the *chip text*
     /// only. Nothing found ⇒ `code == nil` and the sentence renders whole, so an
     /// unrecognised label degrades to exactly today's flat row.
+    ///
+    /// The bracket a template wrapped its `%@` in is dropped from whichever
+    /// segment faces the chip (`trimmedSegment`) — see N2 there.
     static func scopeLabel(_ label: String, candidates: [String?]) -> ScopeLabel {
         let found = candidates
             .compactMap { $0 }
@@ -658,22 +661,59 @@ enum HaloHeroFormat {
         while chip.hasSuffix("/") { chip = String(chip.dropLast()) }
         guard !chip.isEmpty else { return ScopeLabel(leading: label, code: nil, trailing: "") }
         return ScopeLabel(
-            leading: String(label[label.startIndex..<range.lowerBound])
-                .trimmingCharacters(in: .whitespaces),
+            leading: Self.trimmedSegment(String(label[label.startIndex..<range.lowerBound]), side: .leading),
             code: chip,
-            trailing: String(label[range.upperBound...])
-                .trimmingCharacters(in: .whitespaces)
+            trailing: Self.trimmedSegment(String(label[range.upperBound...]), side: .trailing)
         )
     }
 
-    // MARK: Keycaps (track the REAL registered shortcuts — ⌘Y / ⌘⇧Y / ⌘N)
+    private enum ScopeSegmentSide { case leading, trailing }
 
-    /// The in-app approval shortcuts, each paired with the **real** glyphs the
-    /// registered `OverlayPanelController` handler fires (⌘Y / ⌘⇧Y / ⌘N). Mirrors
-    /// `FlightDeckApprovalFormat.Shortcut`; there is no ⌘J (the Codex jump button
-    /// prints no keycap because no jump shortcut is registered).
+    /// The parentheses a localized template wraps `%@` in — ASCII for `en`
+    /// (`Always Allow (%@)`), fullwidth for `zh-Hans` / `zh-Hant`
+    /// (`始终允许（%@）`).
+    private static let scopeBracketCharacters: Set<Character> = ["(", "（", ")", "）"]
+
+    /// N2: the shared `approval.alwaysAllow` template parenthesises its `%@`, so
+    /// splitting it around the tool name would leave the brackets orphaned either
+    /// side of the chip (`Always Allow ( exec_command )`). The mockup §E writes a
+    /// scope row as a sentence with the chip inline, so the bracket that only
+    /// existed to delimit the substitution is dropped from the segment that faces
+    /// the chip — the chip itself is now the delimiter. Halo-side only: the shared
+    /// string is untouched and every other theme still renders it verbatim.
+    private static func trimmedSegment(_ segment: String, side: ScopeSegmentSide) -> String {
+        var trimmed = Substring(segment)
+        var didStrip = true
+        while didStrip {
+            didStrip = false
+            switch side {
+            case .leading:
+                while let last = trimmed.last, last.isWhitespace { trimmed = trimmed.dropLast(); didStrip = true }
+                if let last = trimmed.last, scopeBracketCharacters.contains(last) {
+                    trimmed = trimmed.dropLast()
+                    didStrip = true
+                }
+            case .trailing:
+                while let first = trimmed.first, first.isWhitespace { trimmed = trimmed.dropFirst(); didStrip = true }
+                if let first = trimmed.first, scopeBracketCharacters.contains(first) {
+                    trimmed = trimmed.dropFirst()
+                    didStrip = true
+                }
+            }
+        }
+        return String(trimmed).trimmingCharacters(in: .whitespaces)
+    }
+
+    // MARK: Keycaps (track the REAL registered shortcuts — ⌘Y / ⌘⇧Y / ⌘N / ⌘J)
+
+    /// The in-app card shortcuts, each paired with the **real** glyphs the
+    /// registered `OverlayPanelController.handleOverlayKeyDown` fires
+    /// (⌘Y / ⌘⇧Y / ⌘N / ⌘J). Mirrors `FlightDeckApprovalFormat.Shortcut`, plus
+    /// `jump` — N3 registered ⌘J against the presented card's jump action
+    /// (`handleJumpShortcut`), so the Codex hero's mockup keycap is now a case of
+    /// this enum like any other rather than a view-local literal.
     enum Shortcut: CaseIterable {
-        case allowOnce, alwaysAllow, deny
+        case allowOnce, alwaysAllow, deny, jump
 
         /// The key-hint glyphs printed on the keycap chip, in order.
         var glyphs: [String] {
@@ -681,6 +721,7 @@ enum HaloHeroFormat {
             case .allowOnce: return ["⌘", "Y"]
             case .alwaysAllow: return ["⌘", "⇧", "Y"]
             case .deny: return ["⌘", "N"]
+            case .jump: return ["⌘", "J"]
             }
         }
 

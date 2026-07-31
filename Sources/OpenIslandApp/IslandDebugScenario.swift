@@ -573,7 +573,11 @@ private enum DebugSessionFactory {
                 lastUserPrompt: "askUserquestion 和权限审批，我想把他们也做到我们的 island 里。",
                 lastAssistantMessage: "已经准备好重写 DEV 页面，需要批准文件改动。",
                 currentTool: "exec_command",
-                currentToolInputPreview: "head -5000 /Users/wangruobing/Personal/claude-research/extracts/claude-bun-2.1.81-v3/islands/000_cli.js.txt",
+                // The command has to *be* the rewrite the summary / title /
+                // affectedPath all describe — a `head -5000 …` read here made the
+                // demo card contradict itself. Still long enough to exercise the
+                // hero command block's middle truncation (G-27).
+                currentToolInputPreview: "sed -i '' -e 's/AppearanceSection/AppearanceSettingsSection/g' /Users/wangruobing/Personal/open-island/Sources/OpenIslandApp/Views/SettingsView.swift",
                 model: "claude-opus-4-8-20260101",
                 worktreeBranch: "feat/approval-flow"
             )

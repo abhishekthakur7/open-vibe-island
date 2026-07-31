@@ -18,13 +18,14 @@ struct HaloPermissionHeroTests {
 
     private let colors = IslandColorTokens.halo
 
-    // MARK: - Keycaps (track the REAL ⌘Y / ⌘⇧Y / ⌘N handlers; no ⌘J)
+    // MARK: - Keycaps (track the REAL ⌘Y / ⌘⇧Y / ⌘N / ⌘J handlers)
 
     @Test
     func keycapGlyphsMatchTheRegisteredShortcuts() {
         #expect(HaloHeroFormat.Shortcut.allowOnce.glyphs == ["⌘", "Y"])
         #expect(HaloHeroFormat.Shortcut.alwaysAllow.glyphs == ["⌘", "⇧", "Y"])
         #expect(HaloHeroFormat.Shortcut.deny.glyphs == ["⌘", "N"])
+        #expect(HaloHeroFormat.Shortcut.jump.glyphs == ["⌘", "J"])
     }
 
     @Test
@@ -32,18 +33,21 @@ struct HaloPermissionHeroTests {
         #expect(HaloHeroFormat.Shortcut.allowOnce.glyphString == "⌘Y")
         #expect(HaloHeroFormat.Shortcut.alwaysAllow.glyphString == "⌘⇧Y")
         #expect(HaloHeroFormat.Shortcut.deny.glyphString == "⌘N")
+        #expect(HaloHeroFormat.Shortcut.jump.glyphString == "⌘J")
     }
 
-    /// There is deliberately **no** jump shortcut: `OverlayPanelController`
-    /// registers ⌘Y / ⌘⇧Y / ⌘N only. The Codex jump button prints the mockup's ⌘J
-    /// hint as a view-local literal, so no `Shortcut` case may spell a ⌘J — every
-    /// glyph this enum vends must track a real handler.
+    /// N3: the Codex hero's ⌘J is a **registered** binding now
+    /// (`OverlayPanelController.handleJumpShortcut` fires the presented card's
+    /// jump), so it earned a `Shortcut` case. The enum's contract is unchanged —
+    /// every glyph it vends tracks a real handler — so the case list is exactly
+    /// the four keys the controller handles, and no case may invent a fifth.
     @Test
-    func noShortcutAdvertisesAJumpKey() {
+    func everyShortcutTracksARegisteredHandler() {
+        #expect(HaloHeroFormat.Shortcut.allCases.count == 4)
+        let registered: Set<String> = ["⌘Y", "⌘⇧Y", "⌘N", "⌘J"]
         for shortcut in HaloHeroFormat.Shortcut.allCases {
-            #expect(!shortcut.glyphs.contains("J"))
+            #expect(registered.contains(shortcut.glyphString))
         }
-        #expect(HaloHeroFormat.Shortcut.allCases.count == 3)
     }
 
     // MARK: - Capability fork (claude vs codex — §5E · E3)
@@ -225,6 +229,31 @@ struct HaloPermissionHeroTests {
         #expect(split.leading == "Yes, allow writing to")
         #expect(split.code == "AGENTS.md")      // the display `/` is trimmed off the chip
         #expect(split.trailing == "in this project")
+    }
+
+    /// N2: `approval.alwaysAllow` is the shared `Always Allow (%@)` template, so
+    /// splitting it around the tool name would strand its brackets either side of
+    /// the chip (`Always Allow ( exec_command )`). The mockup §E writes a scope row
+    /// as a sentence with the chip inline, so the bracket facing the chip is
+    /// dropped — Halo-side, with the shared string untouched.
+    @Test
+    func scopeLabelDropsTheBracketsTheTemplateWrappedTheSubstitutionIn() {
+        let split = HaloHeroFormat.scopeLabel("Always Allow (exec_command)", candidates: ["exec_command"])
+        #expect(split.leading == "Always Allow")
+        #expect(split.code == "exec_command")
+        #expect(split.trailing.isEmpty)
+    }
+
+    /// The zh templates wrap `%@` in **fullwidth** brackets (`始终允许（%@）`), so the
+    /// strip has to know both forms or the localized row keeps the orphans.
+    @Test
+    func scopeLabelDropsFullwidthBracketsForTheChineseTemplates() {
+        for label in ["始终允许（exec_command）", "始終允許（exec_command）"] {
+            let split = HaloHeroFormat.scopeLabel(label, candidates: ["exec_command"])
+            #expect(split.code == "exec_command")
+            #expect(!split.leading.contains("（"))
+            #expect(split.trailing.isEmpty)
+        }
     }
 
     /// A sentence with no recognisable rule fragment degrades to a flat row.

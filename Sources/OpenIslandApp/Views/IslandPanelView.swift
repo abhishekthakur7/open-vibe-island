@@ -2925,7 +2925,13 @@ struct StructuredQuestionPromptView: View {
             Button {
                 toggle(option: option.label, for: question)
             } label: {
-                HStack(spacing: isHalo ? 11 : 10) {
+                // N1: `.opt{align-items:flex-start}` (06-halo.html:405) — on a
+                // two-line option the digit chip and the tick stay level with
+                // the *label* line instead of drifting to the row's vertical
+                // centre. The freeform escape hatch is the board's separate
+                // `.opt-other{align-items:center}` (:418), and it is always one
+                // line, so it keeps centring.
+                HStack(alignment: isHalo && !isOther ? .top : .center, spacing: isHalo ? 11 : 10) {
                     Text("\(optionIndex + 1)")
                         .font(optionNumberFont)
                         .foregroundStyle(optionNumberInk(isSelected: isSelected, isOther: isOther))

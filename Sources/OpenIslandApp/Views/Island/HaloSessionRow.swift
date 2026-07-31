@@ -2416,13 +2416,13 @@ private struct HaloPermissionHero: View {
     private var jumpToApproveAction: some View {
         HaloHeroButton(
             title: lang.t("island.halo.approval.jumpToCodex"),
-            // Mockup `06-halo.html:1056` prints a ⌘J keycap on this button. No ⌘J
-            // handler is registered (`OverlayPanelController` owns ⌘Y / ⌘⇧Y / ⌘N
-            // only, and the jump is not an approval round-trip), so this glyph is
-            // the board's affordance hint, not a live binding — owner-sanctioned.
-            // It stays a literal rather than a `HaloHeroFormat.Shortcut` case,
-            // because that enum's contract is "every case tracks a real handler".
-            keycaps: ["⌘", "J"],
+            // Mockup `06-halo.html:1056` prints a ⌘J keycap on this button, and
+            // N3 made it honest: `OverlayPanelController.handleJumpShortcut`
+            // registers ⌘J against the presented card's jump action — the very
+            // round-trip this button's `actions.jump()` fires. So the glyph is a
+            // `HaloHeroFormat.Shortcut` case like ⌘Y / ⌘⇧Y / ⌘N, keeping that
+            // enum's contract ("every case tracks a real handler") intact.
+            keycaps: HaloHeroFormat.Shortcut.jump.glyphs,
             kind: .codex,
             accessibilityLabel: lang.t("island.halo.approval.jumpToCodex"),
             action: { actions.jump() }
