@@ -361,8 +361,8 @@ struct HaloPillIndicatorGlyph: View {
 /// The closed pill's 3-bar liveness glyph — the mockup's `.gly` filament bars.
 /// Three modes carry the live states without colour: **still** (idle, short bars),
 /// **wave** (running — bars rise/fall on the 1.05s `wave` period, staggered
-/// .13/.26s so the light travels left→right), and **breathe** (question — the
-/// outer bars pulse opacity on the 2.4s `breathe` period, the middle bar dropped).
+/// .13/.26s so the light travels left→right), and **breathe** (question — all
+/// three bars pulse opacity on the 2.4s `breathe` period).
 ///
 /// Motion follows the `PouredPulsingStatusDot` / `HaloEdgeLight` rule: under Reduce
 /// Motion no clock is ever acquired — the wave freezes to a **static wave
@@ -401,9 +401,9 @@ struct HaloLivenessGlyph: View {
 
     /// The three bars, in the mockup's 24pt design box.
     static let bars: [HaloLivenessGlyphBar] = [
-        HaloLivenessGlyphBar(idleH: 3, waveHigh: 12, waitH: 10, delay: HaloMotion.waveBarDelays[0]),
-        HaloLivenessGlyphBar(idleH: 5, waveHigh: 16, waitH: 0,  delay: HaloMotion.waveBarDelays[1]),
-        HaloLivenessGlyphBar(idleH: 3, waveHigh: 10, waitH: 10, delay: HaloMotion.waveBarDelays[2]),
+        HaloLivenessGlyphBar(idleH: 3, waveHigh: 14, waitH: 10, delay: HaloMotion.waveBarDelays[0]),
+        HaloLivenessGlyphBar(idleH: 5, waveHigh: 14, waitH: 10, delay: HaloMotion.waveBarDelays[1]),
+        HaloLivenessGlyphBar(idleH: 3, waveHigh: 14, waitH: 10, delay: HaloMotion.waveBarDelays[2]),
     ]
 
     var body: some View {
@@ -459,7 +459,8 @@ private struct HaloLivenessBar: View {
         }
     }
 
-    /// Question-mode opacity breathe (the middle, dropped bar stays hidden).
+    /// Question-mode opacity breathe (all three bars now pulse; a `waitH == 0`
+    /// bar would still stay hidden).
     private var opacity: Double {
         guard kind == .waiting, bar.waitH > 0 else {
             return kind == .waiting ? 0 : 1
@@ -499,8 +500,8 @@ private struct HaloLivenessBar: View {
 }
 
 /// One filament bar's geometry in the 24pt design box. `idleH` is the still/rest
-/// height, `waveHigh` the wave crest, `waitH` the question-mode height (0 = the
-/// mockup's dropped middle bar), `delay` the per-bar wave/breathe stagger.
+/// height, `waveHigh` the wave crest, `waitH` the question-mode height (0 hides
+/// a bar entirely), `delay` the per-bar wave/breathe stagger.
 struct HaloLivenessGlyphBar {
     let idleH: CGFloat
     let waveHigh: CGFloat
@@ -950,23 +951,41 @@ private struct HaloUsageFilament: View {
 
     private var fraction: Double { min(1, max(0, Double(percent) / 100)) }
 
+    /// The value arc spans `arcSpan` (270°) scaled by usage — the same 3/4-ring
+    /// geometry the §I meter card and header filaments use (G-63), so the pill is
+    /// no longer the odd 360° one out.
+    private var valueTrim: CGFloat { HaloUsageMetrics.arcSpan * CGFloat(fraction) }
+
     var body: some View {
         HStack(spacing: 5) {
             ZStack {
+                // 270° track (mockup `dasharray "75 100"` under `rotate(135)`,
+                // `rgba(255,255,255,.14)`), 2.4pt stroke, in a 15pt box (G-63).
                 Circle()
-                    .stroke(tokens.colors.paper.opacity(0.12), lineWidth: 1.5)
+                    .trim(from: 0, to: HaloUsageMetrics.arcSpan)
+                    .stroke(
+                        tokens.colors.paper.opacity(0.14),
+                        style: StrokeStyle(lineWidth: 2.4, lineCap: .round)
+                    )
                 Circle()
-                    .trim(from: 0, to: fraction)
-                    .stroke(tint, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                    .shadow(color: tint.opacity(0.6), radius: 3)
+                    .trim(from: 0, to: valueTrim)
+                    // G-68: the 15pt pill filament has no glow — only the §I
+                    // card's 52pt ring gets the drop-shadow.
+                    .stroke(tint, style: StrokeStyle(lineWidth: 2.4, lineCap: .round))
             }
-            .frame(width: 14, height: 14)
+            .rotationEffect(.degrees(HaloUsageMetrics.arcRotationDegrees))
+            .frame(width: 15, height: 15)
 
-            Text("\(providerTitle) \(percent)%")
-                .font(.system(size: HaloTypography.pillLabelSize, weight: .semibold, design: .default))
-                .monospacedDigit()
-                .foregroundStyle(tint)
+            // G-67: the red is spent on the number, not the vendor — the
+            // provider name reads dim, only the percent lights the threshold tint.
+            (
+                Text(providerTitle)
+                    .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.tertiaryTextOpacity))
+                    + Text(" \(percent)%")
+                    .foregroundStyle(tint)
+            )
+            .font(.system(size: HaloTypography.pillLabelSize, weight: .semibold, design: .default))
+            .monospacedDigit()
 
             Text(windowLabel)
                 .font(.system(size: HaloTypography.usageKickerSize, weight: .regular, design: .default))

@@ -872,7 +872,14 @@ struct IslandPanelView: View {
     }
 
     private var closedNotchHeight: CGFloat {
-        (targetOverlayScreen ?? NSScreen.screens.first(where: { $0.safeAreaInsets.top > 0 }))?.islandClosedHeight ?? 24
+        let notch = (targetOverlayScreen ?? NSScreen.screens.first(where: { $0.safeAreaInsets.top > 0 }))?.islandClosedHeight ?? 24
+        // G-18/G-19 (Halo §A): the collapsed pill is a body that *hangs below*
+        // the notch, not a notch tint — a fixed 12pt overhang, floored at 38 (the
+        // mockup's `.pill{height:38px}`). The bottom radius follows for free as
+        // `closedNotchHeight / 2` = 19 (`--pill-r`, G-19). Halo-scoped so no other
+        // theme's closed silhouette or open/close morph frame changes.
+        if theme.id == "halo" { return max(notch + 12, 38) }
+        return notch
     }
 
     /// AB-298: the header row is now the `IslandHeaderControls` slot component.

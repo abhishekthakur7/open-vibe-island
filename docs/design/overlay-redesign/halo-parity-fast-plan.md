@@ -323,4 +323,7 @@ introduced by token changes. Squash-merge to main per repo convention.
 
 | Batch | Gap ID | Remaining delta | Why parked |
 |---|---|---|---|
-| — | — | — | — |
+| V2 | G-20/G-46/G-47 | Pill labels ("3 working", "Approve `swift build`?") truncate at the shared 84pt notch lane on this MacBook | The cited external-layout `minWidth` fix never applies in notch-wrapping `.macbook` layout; widening the shared `V6ClosedPill.notchLaneLabelMaxWidth` lane touches all six themes — exceeds minimum-change |
+| V2 | G-62/M-27 | Hover-peek shows only the scale-1.03 bump; §B narrated peek surface (command, "Click to review & approve", "+N more") not built | Net-new content surface, not a token/wiring edit; interacts with the V3-owned morph — needs a dedicated follow-up |
+| V2 | G-32 | I′ pill third token shows the `7d` window label, not the `19h` reset countdown | `resetsAt` + `UsageCountdownFormatter` exist, but surfacing it means threading a new field through `UsageReading`/`IslandRightSlotContent.usage`/`PillIndicator` plus injecting a clock into `worstUsage` — feasible follow-up, flagged to owner |
+| V2 | G-45 | Agents grid implemented (Halo default when >1 running) but unverifiable — every closed fixture has exactly 1 running session, so `×9` correctly still shows | No multi-running scenario exists and only the `closedCritical` enabler was sanctioned; verify when a multi-running fixture lands |

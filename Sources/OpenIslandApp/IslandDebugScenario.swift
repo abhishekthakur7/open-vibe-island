@@ -29,6 +29,7 @@ struct IslandDebugSnapshot {
 enum IslandDebugScenario: String, CaseIterable, Identifiable {
     case closed
     case closedAttention
+    case closedCritical
     case sessionList
     case approvalCard
     case questionCard
@@ -57,6 +58,8 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
             "Closed Notch"
         case .closedAttention:
             "Closed Notch — Permission"
+        case .closedCritical:
+            "Closed Notch — Critical Usage"
         case .sessionList:
             "Session List"
         case .approvalCard:
@@ -94,6 +97,8 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
             "Collapsed idle/running notch with live count and attention affordance."
         case .closedAttention:
             "Collapsed notch spotlighting a permission request — the A3 amber attention glow bleeding outside the pill."
+        case .closedCritical:
+            "Collapsed notch with no running/waiting sessions and one usage window past 90% — the only state that surfaces the I′ usage filament in the pill."
         case .sessionList:
             "Manual expanded list with running, active, and inactive session rows."
         case .approvalCard:
@@ -159,6 +164,26 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
                 islandSurface: .sessionList(),
                 sessions: sessions,
                 selectedSessionID: approval.id
+            )
+
+        case .closedCritical:
+            // I′ usage compression (mockup §I′): a collapsed notch whose right
+            // slot is the critical-usage filament. That slot only wins the
+            // resolver ladder when nothing outranks usage — no waiting sessions
+            // and no *running* spotlight — so the fixture is the completed rows
+            // only, paired with the ≥90% usage providers (Codex 7d = 92%).
+            let sessions = DebugSessionFactory.listSessions(now: now)
+                .filter { $0.phase == .completed }
+            return IslandDebugSnapshot(
+                title: title,
+                summary: summary,
+                previewHeight: 78,
+                notchStatus: .closed,
+                notchOpenReason: nil,
+                islandSurface: .sessionList(),
+                sessions: sessions,
+                selectedSessionID: sessions.first?.id,
+                usageProviders: AppearancePreviewFixtures.usageProviders(now: now)
             )
 
         case .sessionList:

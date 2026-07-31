@@ -1213,31 +1213,47 @@ final class AppModel {
         case .count:
             let n = sessions.count
             guard n > 0 else { return nil }
+            // G-45 (Halo §A2′): Halo's working pill defaults its right wing to the
+            // bloomed agents grid (mockup `.agrid`) rather than the neutral ×N
+            // count whenever more than one session is running. Halo-scoped — every
+            // other theme keeps the shipped ×N count for a `.count` preference.
+            if islandThemeID == "halo",
+               sessions.filter({ $0.phase == .running }).count > 1,
+               let grid = agentsGridRightSlotContent(for: sessions) {
+                return grid
+            }
             return .count(n)
         case .agents:
-            // Display order = order-of-first-observation-in-the-island. A
-            // session that later flips visibility (e.g. attachment churn,
-            // completed↔running) keeps its existing slot instead of being
-            // reshuffled by session.firstSeenAt, which tracks the historical
-            // event time and can be older than visible peers. Bulk-observing
-            // N sessions at once (e.g. at app launch) breaks the tie by
-            // session.firstSeenAt so historical order is preserved.
-            stampAgentsGridObservationTickets(for: sessions)
-            let ordered = sessions.sorted { a, b in
-                let ta = _agentsGridObservedSequence[a.id] ?? .max
-                let tb = _agentsGridObservedSequence[b.id] ?? .max
-                if ta != tb { return ta < tb }
-                return a.id < b.id
-            }
-            var cells: [AgentGridCell] = []
-            if ordered.count <= 9 {
-                cells = ordered.map(Self.agentsGridCell(for:))
-            } else {
-                cells = ordered.prefix(7).map(Self.agentsGridCell(for:))
-                cells.append(.overflow(ordered.count - 7))
-            }
-            return cells.isEmpty ? nil : .agents(cells)
+            return agentsGridRightSlotContent(for: sessions)
         }
+    }
+
+    /// The `.agents` grid right-slot payload for a session set, or `nil` when
+    /// empty. Shared by the `.agents` preference and Halo's `.count`→grid default
+    /// (G-45) so both order and overflow the tiles identically.
+    ///
+    /// Display order = order-of-first-observation-in-the-island. A session that
+    /// later flips visibility (e.g. attachment churn, completed↔running) keeps its
+    /// existing slot instead of being reshuffled by session.firstSeenAt, which
+    /// tracks the historical event time and can be older than visible peers.
+    /// Bulk-observing N sessions at once (e.g. at app launch) breaks the tie by
+    /// session.firstSeenAt so historical order is preserved.
+    private func agentsGridRightSlotContent(for sessions: [AgentSession]) -> IslandRightSlotContent? {
+        stampAgentsGridObservationTickets(for: sessions)
+        let ordered = sessions.sorted { a, b in
+            let ta = _agentsGridObservedSequence[a.id] ?? .max
+            let tb = _agentsGridObservedSequence[b.id] ?? .max
+            if ta != tb { return ta < tb }
+            return a.id < b.id
+        }
+        var cells: [AgentGridCell] = []
+        if ordered.count <= 9 {
+            cells = ordered.map(Self.agentsGridCell(for:))
+        } else {
+            cells = ordered.prefix(7).map(Self.agentsGridCell(for:))
+            cells.append(.overflow(ordered.count - 7))
+        }
+        return cells.isEmpty ? nil : .agents(cells)
     }
 
     /// Usage providers and their windows, in the shape both the opened header's

@@ -93,12 +93,13 @@ struct HaloClosedPillTests {
         #expect(HaloLivenessGlyph.bars.map(\.delay) == HaloMotion.waveBarDelays)
     }
 
-    /// The waiting glyph drops its middle bar (the mockup's `wait` glyph), so the
-    /// question state is distinct in *shape* from the full running/idle triplet.
+    /// The waiting/breathe glyph keeps all three bars (mockup §K `breathe`:
+    /// "all three bars", M-09) — the state reads by opacity pulse, not by a
+    /// dropped bar.
     @Test
-    func waitingGlyphDropsTheMiddleBar() {
-        #expect(HaloLivenessGlyph.bars[1].waitH == 0)
+    func waitingGlyphKeepsAllThreeBars() {
         #expect(HaloLivenessGlyph.bars[0].waitH > 0)
+        #expect(HaloLivenessGlyph.bars[1].waitH > 0)
         #expect(HaloLivenessGlyph.bars[2].waitH > 0)
     }
 
