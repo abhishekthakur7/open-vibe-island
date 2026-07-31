@@ -55,6 +55,12 @@ struct HaloEdgeLight: View {
     /// leaves are simply not in the tree otherwise.
     private var animates: Bool { !reduceMotion && frozenPhase == nil }
 
+    /// G-36/M-20: the perimeter drops its own bloom while a hero is presented, so
+    /// the card ring is the only glow in the frame.
+    private var suppressesBloom: Bool {
+        HaloEdgeLightModel.perimeterSuppressesBloom(for: context.state, isOpened: context.isOpened)
+    }
+
     var body: some View {
         Group {
             switch context.state {
@@ -74,7 +80,7 @@ struct HaloEdgeLight: View {
 
             case .permission:
                 if animates {
-                    HaloPermissionEdge(shape: shape, colors: colors)
+                    HaloPermissionEdge(shape: shape, colors: colors, suppressesBloom: suppressesBloom)
                 } else {
                     // Reduce Motion → peak opacity + bloom at peak radius (attention
                     // stays loudest statically, §3c); frozen phase → the frozen pulse.
@@ -83,7 +89,7 @@ struct HaloEdgeLight: View {
 
             case .question:
                 if animates {
-                    HaloQuestionEdge(shape: shape, colors: colors)
+                    HaloQuestionEdge(shape: shape, colors: colors, suppressesBloom: suppressesBloom)
                 } else {
                     staticEdge(state: .question, angle: 0)
                 }
@@ -126,7 +132,7 @@ struct HaloEdgeLight: View {
             edgeOpacity: HaloEdgeLightModel.edgeOpacity(
                 for: state, pulse: pulse, successProgress: 1, reduceMotion: reduceMotion
             ),
-            bloom: HaloEdgeLightModel.bloom(
+            bloom: suppressesBloom ? nil : HaloEdgeLightModel.bloom(
                 for: state, pulse: pulse, successProgress: 1,
                 colors: colors, reduceMotion: reduceMotion
             )
@@ -171,6 +177,9 @@ private struct HaloWorkingEdge: View {
 private struct HaloPermissionEdge: View {
     let shape: OpenedIslandSurfaceShape
     let colors: IslandColorTokens
+    /// G-36/M-20: `true` once the hero is presented — the perimeter keeps its
+    /// (dimmed) pulsing hairline but stops casting its own glow.
+    var suppressesBloom: Bool = false
 
     @State private var clock = PulseClock()
 
@@ -180,7 +189,7 @@ private struct HaloPermissionEdge: View {
             stops: HaloEdgeLightModel.stops(for: .permission, colors: colors, reduceMotion: false, increaseContrast: false),
             angle: 0,
             edgeOpacity: HaloEdgeLightModel.edgeOpacity(for: .permission, pulse: clock.phase, successProgress: 0, reduceMotion: false),
-            bloom: HaloEdgeLightModel.bloom(for: .permission, pulse: clock.phase, successProgress: 0, colors: colors, reduceMotion: false)
+            bloom: suppressesBloom ? nil : HaloEdgeLightModel.bloom(for: .permission, pulse: clock.phase, successProgress: 0, colors: colors, reduceMotion: false)
         )
         .onAppear { clock.acquire() }
         .onDisappear { clock.release() }
@@ -194,6 +203,8 @@ private struct HaloPermissionEdge: View {
 private struct HaloQuestionEdge: View {
     let shape: OpenedIslandSurfaceShape
     let colors: IslandColorTokens
+    /// G-36/M-20 — see `HaloPermissionEdge.suppressesBloom`.
+    var suppressesBloom: Bool = false
 
     @State private var pulse: Double = 0
 
@@ -203,7 +214,7 @@ private struct HaloQuestionEdge: View {
             stops: HaloEdgeLightModel.stops(for: .question, colors: colors, reduceMotion: false, increaseContrast: false),
             angle: 0,
             edgeOpacity: HaloEdgeLightModel.edgeOpacity(for: .question, pulse: pulse, successProgress: 0, reduceMotion: false),
-            bloom: HaloEdgeLightModel.bloom(for: .question, pulse: pulse, successProgress: 0, colors: colors, reduceMotion: false)
+            bloom: suppressesBloom ? nil : HaloEdgeLightModel.bloom(for: .question, pulse: pulse, successProgress: 0, colors: colors, reduceMotion: false)
         )
         .onAppear {
             withAnimation(.easeInOut(duration: HaloMotion.question).repeatForever(autoreverses: true)) {
@@ -317,10 +328,15 @@ enum HaloEdgeLightModel {
     /// The perimeter edge's opacity floor once the surface opens on an **attention**
     /// state (the glow-travel handoff, §3b step 4). The whole silhouette edge dims
     /// to this luminous floor as the hero card grows its own amber ring, so the
-    /// light reads as *condensing* into the card — never going dark (both ends stay
-    /// amber). Only permission / question dim; every other state (and the closed
-    /// pill) holds full `1.0`.
-    static let perimeterOpenHandoffFloor: Double = 0.55
+    /// light reads as *condensing* into the card. Only permission / question dim;
+    /// every other state (and the closed pill) holds full `1.0`.
+    ///
+    /// G-36/M-20: 0.55 left both rings loud, so the §E filmstrip's third frame —
+    /// "the perimeter goes dark, the card ring becomes the only light" — never
+    /// happened. The floor now sits at the same near-dark luminance the success
+    /// dissolve settles to (`successOpacityEnd = 0.12`): still amber, still
+    /// present as a hairline, but unmistakably the quiet end of the handoff.
+    static let perimeterOpenHandoffFloor: Double = 0.15
 
     /// The perimeter-edge opacity for the glow-travel handoff (§3b step 4): the
     /// `perimeterOpenHandoffFloor` when the surface is **open** on an attention
@@ -337,6 +353,27 @@ enum HaloEdgeLightModel {
             return perimeterOpenHandoffFloor
         case .idle, .working, .success, .failure:
             return 1.0
+        }
+    }
+
+    /// Whether the perimeter suppresses its **own bloom** for this frame
+    /// (G-36/M-20). Dimming the ring alone is not enough: the permission bloom is
+    /// a 42pt coloured shadow that keeps washing the whole silhouette even at a
+    /// 0.15 floor, so the panel still reads as two competing lights. While a hero
+    /// is presented (open + attention) the silhouette therefore keeps only its
+    /// dimmed hairline and casts no glow at all — the hero card's own
+    /// `0 0 48px -8px` amber glow is the one loud thing. Same predicate as
+    /// `perimeterOpenHandoffOpacity`, kept separate so both ends stay pinnable.
+    static func perimeterSuppressesBloom(
+        for state: IslandSurfaceEdgeState,
+        isOpened: Bool
+    ) -> Bool {
+        guard isOpened else { return false }
+        switch state {
+        case .permission, .question:
+            return true
+        case .idle, .working, .success, .failure:
+            return false
         }
     }
 

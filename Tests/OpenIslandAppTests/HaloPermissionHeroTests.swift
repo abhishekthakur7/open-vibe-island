@@ -79,8 +79,9 @@ struct HaloPermissionHeroTests {
         #expect(HaloHeroFormat.ringRadius == 16)        // heroRadius
         #expect(HaloHeroFormat.ringWidth == 1.5)        // heroRingWidth
         #expect(HaloHeroFormat.pulsePeriod == 2.2)      // edgepulse 2.2s
-        // Outer glow `0 0 48 -8` under the T22 spread-equivalence rule (48-8)/2.
-        #expect(HaloHeroFormat.glowRadius == 20)
+        // Outer glow `0 0 48px -8px` — G-37 raised the effective radius to 48×2/3
+        // once G-36 made the hero the only glow in the frame.
+        #expect(HaloHeroFormat.glowRadius == 32)
         // The `::before` ring rides the shared `.55 ↔ 1` edge pulse.
         #expect(HaloHeroFormat.pulseMinOpacity == 0.55)
         #expect(HaloHeroFormat.pulseMaxOpacity == 1.0)
@@ -182,13 +183,55 @@ struct HaloPermissionHeroTests {
             == HaloEdgeLightModel.perimeterOpenHandoffFloor)
         #expect(HaloEdgeLightModel.perimeterOpenHandoffOpacity(for: .question, isOpened: true)
             == HaloEdgeLightModel.perimeterOpenHandoffFloor)
-        // The floor is a luminous mid-value — the edge never goes dark (both ends
-        // stay amber through the handoff).
-        #expect(HaloEdgeLightModel.perimeterOpenHandoffFloor == 0.55)
+        // G-36/M-20: the floor is near-dark — the §E filmstrip's third frame has
+        // the perimeter give up its light entirely to the card ring — but still
+        // non-zero, so the silhouette keeps an amber hairline through the handoff.
+        #expect(HaloEdgeLightModel.perimeterOpenHandoffFloor == 0.15)
         #expect(HaloEdgeLightModel.perimeterOpenHandoffFloor > 0)
 
         for state in [IslandSurfaceEdgeState.idle, .working, .success, .failure] {
             #expect(HaloEdgeLightModel.perimeterOpenHandoffOpacity(for: state, isOpened: true) == 1.0)
         }
+    }
+
+    /// G-36/M-20: dimming the ring is only half the handoff — the perimeter also
+    /// drops its own bloom while a hero is presented, so the card's glow is the
+    /// one loud thing. Closed, and every non-attention state, keeps its bloom.
+    @Test
+    func openedAttentionPerimeterSuppressesItsOwnBloom() {
+        #expect(HaloEdgeLightModel.perimeterSuppressesBloom(for: .permission, isOpened: true))
+        #expect(HaloEdgeLightModel.perimeterSuppressesBloom(for: .question, isOpened: true))
+
+        for state in [IslandSurfaceEdgeState.idle, .working, .success, .failure] {
+            #expect(!HaloEdgeLightModel.perimeterSuppressesBloom(for: state, isOpened: true))
+        }
+        for state in IslandSurfaceEdgeState.allCases {
+            #expect(!HaloEdgeLightModel.perimeterSuppressesBloom(for: state, isOpened: false))
+        }
+    }
+
+    // MARK: - Scoped-grant label (G-21 · mockup `.scope code`)
+
+    /// The rule fragment becomes the amber `code` chip; the sentence around it is
+    /// preserved verbatim, and the longest present candidate wins so the
+    /// `shortenedPath` form beats its own prefix.
+    @Test
+    func scopeLabelSplitsAroundTheRuleFragment() {
+        let split = HaloHeroFormat.scopeLabel(
+            "Yes, allow writing to AGENTS.md/ in this project",
+            candidates: ["AGENTS.md/", "AGENTS.md", "Edit"]
+        )
+        #expect(split.leading == "Yes, allow writing to")
+        #expect(split.code == "AGENTS.md")      // the display `/` is trimmed off the chip
+        #expect(split.trailing == "in this project")
+    }
+
+    /// A sentence with no recognisable rule fragment degrades to a flat row.
+    @Test
+    func scopeLabelWithoutAMatchRendersWhole() {
+        let split = HaloHeroFormat.scopeLabel("Yes, and bypass permissions", candidates: ["Bash", nil])
+        #expect(split.leading == "Yes, and bypass permissions")
+        #expect(split.code == nil)
+        #expect(split.trailing.isEmpty)
     }
 }

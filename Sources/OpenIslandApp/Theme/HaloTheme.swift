@@ -619,6 +619,53 @@ enum HaloHeroFormat {
         }
     }
 
+    // MARK: Scoped-grant label (G-21 · mockup `.scope code`)
+
+    /// A scoped always-allow label split around its `code` fragment — the mockup's
+    /// `Yes, allow `rtk grep` from this project`, where the rule itself is an amber
+    /// mono chip (`.scope code`) and the surrounding sentence is plain 12pt body.
+    struct ScopeLabel: Equatable {
+        var leading: String
+        var code: String?
+        var trailing: String
+    }
+
+    /// Splits an already-**localized** scope sentence around the first (longest)
+    /// candidate rule fragment it actually contains, so the chip never invents or
+    /// re-orders copy: the whole label still comes from `displayLabel` /
+    /// `approval.alwaysAllow`, this only says which run of it is the rule.
+    ///
+    /// Candidates arrive most-specific-first (the shortened rule content, the raw
+    /// rule content, the tool name); the longest one present wins so
+    /// `AGENTS.md/` beats its own `AGENTS.md` prefix. A trailing `/` — an artifact
+    /// of `ClaudePermissionUpdate.shortenedPath` — is trimmed off the *chip text*
+    /// only. Nothing found ⇒ `code == nil` and the sentence renders whole, so an
+    /// unrecognised label degrades to exactly today's flat row.
+    static func scopeLabel(_ label: String, candidates: [String?]) -> ScopeLabel {
+        let found = candidates
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+            .compactMap { candidate -> (Range<String.Index>, String)? in
+                guard let range = label.range(of: candidate) else { return nil }
+                return (range, candidate)
+            }
+            .max { $0.1.count < $1.1.count }
+
+        guard let (range, candidate) = found else {
+            return ScopeLabel(leading: label, code: nil, trailing: "")
+        }
+        var chip = candidate
+        while chip.hasSuffix("/") { chip = String(chip.dropLast()) }
+        guard !chip.isEmpty else { return ScopeLabel(leading: label, code: nil, trailing: "") }
+        return ScopeLabel(
+            leading: String(label[label.startIndex..<range.lowerBound])
+                .trimmingCharacters(in: .whitespaces),
+            code: chip,
+            trailing: String(label[range.upperBound...])
+                .trimmingCharacters(in: .whitespaces)
+        )
+    }
+
     // MARK: Keycaps (track the REAL registered shortcuts — ⌘Y / ⌘⇧Y / ⌘N)
 
     /// The in-app approval shortcuts, each paired with the **real** glyphs the
@@ -649,9 +696,15 @@ enum HaloHeroFormat {
     static let ringWidth: CGFloat = HaloMetrics.heroRingWidth
     /// The `::before` ring pulse period (`edgepulse 2.2s`).
     static let pulsePeriod: TimeInterval = HaloMotion.heroRing
-    /// Outer-glow effective radius — mockup `0 0 48 -8` under the T22
-    /// spread-equivalence rule `(blur + spread) / 2 = (48 − 8) / 2`.
-    static let glowRadius: CGFloat = 20
+    /// Outer-glow effective radius — mockup `0 0 48px -8px rgba(255,140,80,.5)`.
+    ///
+    /// G-37: the T22 spread-equivalence rule `(48 − 8) / 2 = 20` under-reads the
+    /// board badly — CSS blurs the shadow *outward* from the (negatively spread)
+    /// silhouette, while SwiftUI's `.shadow(radius:)` is a symmetric Gaussian, so
+    /// 20 buys roughly half the visible bleed. Raised to `48 × 2/3` now that G-36
+    /// makes this the only glow in the frame: the hero is the one loud thing, so
+    /// it can afford the mockup's full halo without two lights competing.
+    static let glowRadius: CGFloat = 32
     /// The `::before` ring rides the `.55 ↔ 1` edge pulse; Reduce Motion pins it at
     /// the **peak** so attention stays loudest statically (§3c).
     static let pulseMinOpacity: Double = HaloEdgeLightModel.pulseOpacityMin

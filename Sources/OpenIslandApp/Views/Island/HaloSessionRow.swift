@@ -402,6 +402,15 @@ private struct HaloRowContent: View {
             return nil
         }
 
+        // G-22/G-48: the §5E hero head *is* the narration ("the-automator wants to
+        // run a command") — the request's own summary phrase, printed one line
+        // below this. Same shape as the G-74 rule above: the row keeps the title
+        // (the target), the hero keeps the sentence, and the panel never prints
+        // one sentence twice. Only suppressed when the hero really carries it.
+        if isExpanded, edgeState == .permission, permissionHeroNarration != nil {
+            return nil
+        }
+
         // G-70: the fan-out count now rides in the title's `.disamb` chip, so an
         // "Orchestrating 3 subagents" narration would print it twice and say
         // nothing about the work. The row falls through to its human phrase,
@@ -1459,6 +1468,16 @@ private struct HaloRowContent: View {
             .contains { HaloActivityNarration.flatten($0).hasPrefix(line) }
     }
 
+    /// The sentence the §5E hero head prints as its subtitle — mirrors
+    /// `HaloPermissionHero.heroSubtitle` exactly (the request's own summary,
+    /// trimmed, `nil` when empty). Read by `activityText` so the row only gives up
+    /// its `.act` line when the hero genuinely takes it over (G-22/G-48).
+    private var permissionHeroNarration: String? {
+        guard let summary = session.permissionRequest?.summary
+            .trimmingCharacters(in: .whitespacesAndNewlines), !summary.isEmpty else { return nil }
+        return summary
+    }
+
     private var permissionModeChipText: String? {
         switch session.claudeMetadata?.permissionMode {
         case .plan: return lang.t("badge.planMode")
@@ -2219,7 +2238,11 @@ private struct HaloPermissionHero: View {
             scopeContainer {
                 ForEach(Array(updates.enumerated()), id: \.offset) { index, update in
                     HaloScopeRow(
-                        label: update.displayLabel,
+                        label: HaloHeroFormat.scopeLabel(
+                            update.displayLabel,
+                            candidates: Self.codeCandidates(for: update)
+                        ),
+                        accessibilityLabel: update.displayLabel,
                         keycaps: index == 0 ? HaloHeroFormat.Shortcut.alwaysAllow.glyphs : nil,
                         tokens: tokens,
                         increasesContrast: increasesContrast,
@@ -2228,9 +2251,11 @@ private struct HaloPermissionHero: View {
                 }
             }
         } else if let toolName = request?.toolName {
+            let label = lang.t("approval.alwaysAllow", toolName)
             scopeContainer {
                 HaloScopeRow(
-                    label: lang.t("approval.alwaysAllow", toolName),
+                    label: HaloHeroFormat.scopeLabel(label, candidates: [toolName]),
+                    accessibilityLabel: label,
                     keycaps: HaloHeroFormat.Shortcut.alwaysAllow.glyphs,
                     tokens: tokens,
                     increasesContrast: increasesContrast,
@@ -2245,6 +2270,22 @@ private struct HaloPermissionHero: View {
                     }
                 )
             }
+        }
+    }
+
+    /// The rule fragments the mockup sets as a `code` chip inside a scope sentence,
+    /// most-specific first: the shortened rule content `displayLabel` itself
+    /// printed (`swift build/`), the raw content, then the bare tool name. Only a
+    /// fragment that is *actually present* in the localized sentence is chipped
+    /// (`HaloHeroFormat.scopeLabel`), so this list can safely over-offer.
+    private static func codeCandidates(for update: ClaudePermissionUpdate) -> [String?] {
+        switch update {
+        case let .addRules(_, rules, _), let .replaceRules(_, rules, _), let .removeRules(_, rules, _):
+            guard let rule = rules.first else { return [] }
+            let content = rule.ruleContent
+            return [content.map { $0 + "/" }, content, rule.toolName]
+        case .setMode, .addDirectories, .removeDirectories:
+            return []
         }
     }
 
@@ -2369,9 +2410,15 @@ private struct HaloHeroCommand: View {
         commandText
             .font(.system(size: HaloTypography.commandSize, weight: .regular, design: .monospaced))
             .foregroundStyle(HaloHeroFormat.commandInk)
-            .lineSpacing(4)
+            // G-27: the mockup's `.cmd` is `white-space:pre; overflow-x:auto` — it
+            // never wraps. Native wrapped a long absolute path to three lines,
+            // which made the whisper surface the tallest thing in the hero and
+            // buried the action rail. One line, middle-truncated: the command verb
+            // and the leaf filename — the two ends that identify the request —
+            // both survive, and the block's height is now constant.
+            .lineLimit(1)
+            .truncationMode(.middle)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .background(
@@ -2540,14 +2587,17 @@ struct HaloHeroButton: View {
                 Text(title)
                     .font(.system(size: 13, weight: .semibold))
                 if let keycaps {
-                    HaloKeycap(glyphs: keycaps, onLightButton: kind == .primary)
+                    HaloKeycap(glyphs: keycaps, onLightButton: kind != .deny)
                 }
             }
             .foregroundStyle(foreground)
             .padding(.horizontal, 13)
             .padding(.vertical, 8)
             .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(background))
-            .brightness(isHovered && isEnabled && kind != .deny ? 0.05 : 0)
+            // M-18: mockup `.btn.primary:hover{filter:brightness(1.06)}` — the
+            // gradient buttons lift 6% on hover (`.deny` states its hover as a
+            // fill change instead, in `background` below).
+            .brightness(isHovered && isEnabled && kind != .deny ? 0.06 : 0)
             .saturation(isEnabled ? 1 : IslandQuestionSubmitDisabledStyle.saturation)
             .opacity(isEnabled ? 1 : IslandQuestionSubmitDisabledStyle.opacity)
             .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -2560,43 +2610,56 @@ struct HaloHeroButton: View {
 
     private var foreground: Color {
         switch kind {
-        case .primary: return Color(red: 0x3A / 255.0, green: 0x22 / 255.0, blue: 0x05 / 255.0)
+        // G-73: `.codex` shares `.primary`'s `#3A2205` amber ink. See `background`.
+        case .primary, .codex: return Color(red: 0x3A / 255.0, green: 0x22 / 255.0, blue: 0x05 / 255.0)
         case .deny: return Color(red: 0xF0 / 255.0, green: 0xA6 / 255.0, blue: 0xB0 / 255.0)
-        case .codex: return Color(red: 0x04 / 255.0, green: 0x23 / 255.0, blue: 0x3A / 255.0)
         }
     }
 
+    /// The `.btn.primary` amber seam (`linear-gradient(135deg,#ffce8a,#ffab54)`).
+    private static let amber = LinearGradient(
+        colors: [Color(red: 0xFF / 255.0, green: 0xCE / 255.0, blue: 0x8A / 255.0),
+                 Color(red: 0xFF / 255.0, green: 0xAB / 255.0, blue: 0x54 / 255.0)],
+        startPoint: .topLeading, endPoint: .bottomTrailing
+    )
+
     private var background: AnyShapeStyle {
         switch kind {
-        case .primary:
-            return AnyShapeStyle(LinearGradient(
-                colors: [Color(red: 0xFF / 255.0, green: 0xCE / 255.0, blue: 0x8A / 255.0),
-                         Color(red: 0xFF / 255.0, green: 0xAB / 255.0, blue: 0x54 / 255.0)],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            ))
+        // G-73: the Codex jump used its own `#7EC9FF→#4AA3DF` cool-blue slab, which
+        // put a second, *louder* accent hue inside an amber attention card — in the
+        // one card the user must act on. The CTA is the hero's primary action
+        // whatever the agent is, so it routes through the same amber seam
+        // (`.primary`) and the card keeps one accent. The honesty of the Codex
+        // fork is carried by the copy and the cool-blue `.codex-note` panel above
+        // it, not by re-hueing the button.
+        case .primary, .codex:
+            return AnyShapeStyle(Self.amber)
         case .deny:
             return AnyShapeStyle(Color(red: 224 / 255.0, green: 89 / 255.0, blue: 108 / 255.0).opacity(isHovered ? 0.22 : 0.13))
-        case .codex:
-            return AnyShapeStyle(LinearGradient(
-                colors: [Color(red: 0x7E / 255.0, green: 0xC9 / 255.0, blue: 0xFF / 255.0),
-                         Color(red: 0x4A / 255.0, green: 0xA3 / 255.0, blue: 0xDF / 255.0)],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            ))
         }
     }
 }
 
 /// A scoped always-allow row (mockup `.scope`): a check glyph + the human rule
-/// label + an optional trailing keycap, on a whisper fill that warms amber on
-/// hover. Fires the exact `allowWithUpdates` round-trip ⌘⇧Y would.
+/// label — with the rule itself as an **amber mono `code` chip** (`.scope code`,
+/// G-21) — and an optional trailing keycap, on a whisper fill that warms amber on
+/// hover over `.14s` (M-19). Fires the exact `allowWithUpdates` round-trip ⌘⇧Y would.
 private struct HaloScopeRow: View {
-    let label: String
+    /// The localized sentence pre-split around its rule fragment
+    /// (`HaloHeroFormat.scopeLabel`); `code == nil` renders the sentence whole.
+    let label: HaloHeroFormat.ScopeLabel
+    /// The unsplit sentence — the a11y label, so VoiceOver never hears the chip
+    /// as a separate element.
+    let accessibilityLabel: String
     let keycaps: [String]?
     let tokens: IslandThemeTokens
     let increasesContrast: Bool
     let action: () -> Void
 
     @State private var isHovered = false
+
+    /// `.scope code{color:#ffd6a4;background:rgba(255,160,80,.1)}`.
+    private static let chipInk = Color(red: 0xFF / 255.0, green: 0xD6 / 255.0, blue: 0xA4 / 255.0)
 
     var body: some View {
         Button(action: action) {
@@ -2606,11 +2669,24 @@ private struct HaloScopeRow: View {
                     .foregroundStyle(isHovered ? tokens.colors.statusWaitingForApproval : tokens.colors.paper.opacity(tokens.colors.tertiaryTextOpacity))
                     .frame(width: 14)
                     .accessibilityHidden(true)
-                Text(label)
-                    .font(.system(size: 12, weight: .regular))
-                    .foregroundStyle(tokens.colors.paper.opacity(isHovered ? tokens.colors.text(0.96, increaseContrast: increasesContrast) : tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
+
+                // Squeeze order when a long rule meets a 520pt panel: the chip is
+                // the fact (it names what is being granted) and keeps its width,
+                // the opening clause follows, and the trailing scope phrase
+                // ("… in this project") is the first to tail-truncate.
+                HStack(spacing: 6) {
+                    if !label.leading.isEmpty {
+                        sentence(label.leading).layoutPriority(1)
+                    }
+                    if let code = label.code {
+                        codeChip(code).layoutPriority(2)
+                    }
+                    if !label.trailing.isEmpty {
+                        sentence(label.trailing).layoutPriority(0)
+                    }
+                }
+                .layoutPriority(1)
+
                 Spacer(minLength: 8)
                 if let keycaps {
                     HaloKeycap(glyphs: keycaps)
@@ -2624,7 +2700,32 @@ private struct HaloScopeRow: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
-        .accessibilityLabel(label)
+        // M-19: `.scope{transition:.14s}` — the wash and the glyph's amber warm in
+        // together rather than snapping.
+        .animation(.easeInOut(duration: 0.14), value: isHovered)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private func sentence(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 12, weight: .regular))
+            .foregroundStyle(tokens.colors.paper.opacity(isHovered ? tokens.colors.text(0.96, increaseContrast: increasesContrast) : tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
+            .lineLimit(1)
+            .truncationMode(.tail)
+    }
+
+    private func codeChip(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 11, weight: .regular, design: .monospaced))
+            .foregroundStyle(Self.chipInk)
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 1)
+            .background(
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .fill(tokens.colors.statusWaitingForApproval.opacity(0.1))
+            )
     }
 }
 
