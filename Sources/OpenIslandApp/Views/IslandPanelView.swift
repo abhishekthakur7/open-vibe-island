@@ -246,6 +246,23 @@ struct IslandPanelView: View {
     private var increasesContrast: Bool { colorSchemeContrast == .increased }
 
     @State private var isHovering = false
+    /// M-24/M-25/M-26 (halo parity V3): the ONE interpolant the morph is built
+    /// from — `0` = closed pill, `1` = opened panel. Every derived geometry
+    /// value (surface width/height, both corner radii, the edge-light's `size:`
+    /// argument) is computed from it, so they can never desynchronise.
+    ///
+    /// This replaces relying on SwiftUI's implicit `.animation(_:value:)`
+    /// animation of the surface's *layout frame*: that only animates values
+    /// SwiftUI knows how to interpolate (the `.frame(width:height:)` itself),
+    /// while plain `CGSize`/`CGFloat` arguments handed to child views — most
+    /// visibly `surfaceEdgeOverlay(size:)`, the bright prismatic ring that reads
+    /// as the silhouette's outline — snapped to their opened value on the first
+    /// frame. That is the single-frame ≈278 → ≈430pt width jump M-24 recorded.
+    /// Driven from one animated `CGFloat`, the width now interpolates out of the
+    /// pill's own measured width, and it retargets mid-flight (interrupting an
+    /// open with a close just reverses from wherever it got to) exactly as the
+    /// frame animation did.
+    @State private var morphProgress: CGFloat = 0
     @State private var showingQuitConfirmation = false
     @State private var keepsOpenedSurfaceMounted = false
     @State private var openedSurfaceMountGeneration: UInt64 = 0
@@ -351,9 +368,11 @@ struct IslandPanelView: View {
         }
         .onAppear {
             syncOpenedSurfaceMount(with: model.notchStatus, immediate: true)
+            morphProgress = usesOpenedVisualState ? 1 : 0
         }
         .onChange(of: model.notchStatus) { _, status in
             syncOpenedSurfaceMount(with: status)
+            syncMorphProgress(with: status)
         }
     }
 
@@ -406,6 +425,26 @@ struct IslandPanelView: View {
             if model.notchStatus != .opened {
                 model.notchOpen(reason: .click)
             }
+        }
+    }
+
+    /// Retargets the single morph interpolant on every status change, under the
+    /// theme's own open/close/pop animation token (`notchTransitionAnimation`,
+    /// already resolved against the *new* status by the time `onChange` runs).
+    ///
+    /// Deliberately animated here rather than left to the ambient
+    /// `.animation(notchTransitionAnimation, value: model.notchStatus)` in
+    /// `notchContent`: that modifier only creates an animation on the pass where
+    /// `model.notchStatus` itself changes, so every value derived from
+    /// `morphProgress` would otherwise step instantly. Driving the interpolant
+    /// in its own transaction leaves the ambient modifier owning exactly what it
+    /// owned before (content opacity, glyph travel, stroke), while geometry
+    /// rides one continuous, interruptible spring (M-24/M-26).
+    private func syncMorphProgress(with status: NotchStatus) {
+        let target: CGFloat = status == .opened ? 1 : 0
+        guard morphProgress != target else { return }
+        withAnimation(notchTransitionAnimation) {
+            morphProgress = target
         }
     }
 
@@ -786,14 +825,41 @@ struct IslandPanelView: View {
         let topProfile: OpenedIslandSurfaceShape.TopProfile = usesNotchAwareOpenedHeader ? .notch : .topBar
         let opened = usesOpenedVisualState
 
-        let surfaceWidth = opened ? openedWidth : closedWidth
-        let surfaceHeight = opened ? openedHeight : closedNotchHeight
+        // M-24: ONE interpolant, every geometry value derived from it, so the
+        // silhouette leaves the pill at its own measured width (`closedWidth`,
+        // the very number `HaloClosedPill`/`V6ClosedPill` size themselves with)
+        // and arrives at the panel's — no intermediate layout width, and no
+        // plain-argument value (the edge-light's `size:`, the shadow) able to
+        // snap ahead of the frame. Clamped because a spring may overshoot its
+        // 0…1 range on retarget, and a negative width is not a thing.
+        let morph = max(0, min(1, morphProgress))
+        let closedBottomRadius = closedNotchHeight / 2
+        let surfaceWidth = closedWidth + (openedWidth - closedWidth) * morph
+        let surfaceHeight = closedNotchHeight + (openedHeight - closedNotchHeight) * morph
         let shape = OpenedIslandSurfaceShape(
             topProfile: topProfile,
-            topCornerRadius: opened ? tokens.metrics.openedTopRadius : 0,
-            bottomCornerRadius: opened ? tokens.metrics.openedBottomRadius : (closedNotchHeight / 2),
+            topCornerRadius: tokens.metrics.openedTopRadius * morph,
+            bottomCornerRadius: closedBottomRadius
+                + (tokens.metrics.openedBottomRadius - closedBottomRadius) * morph,
             filletRadius: tokens.metrics.filletRadius
         )
+
+        // M-25: the mockup's §B′ filmstrip grows an EMPTY silhouette — the
+        // container reads as a growing object, not a dissolving one. The closed
+        // pill's own content clears out in the first quarter of the morph, and
+        // the panel's content is revealed only once the surface has essentially
+        // arrived (>0.55 of the interpolant), inside the clip the growing shape
+        // already imposes. Scoped to the theme whose spec calls for it so the
+        // other five keep the crossfade they shipped with; outside Halo these
+        // two values are exactly the `opened ? 1 : 0` pair from before, still
+        // animated by the ambient `.animation(_:value: model.notchStatus)`.
+        let gatesContentOnMorph = theme.id == "halo"
+        let closedContentOpacity: Double = gatesContentOnMorph
+            ? Double(max(0, min(1, 1 - morph / 0.25)))
+            : (opened ? 0 : 1)
+        let openedContentOpacity: Double = gatesContentOnMorph
+            ? Double(max(0, min(1, (morph - 0.55) / 0.45)))
+            : (opened ? 1 : 0)
         // AB-320: the closed end of the morph is no longer hard-zeroed. It
         // interpolates towards whatever the theme declares for the closed state
         // (`closedSurfaceShadow`), which defaults to an inert same-hue shadow —
@@ -817,11 +883,29 @@ struct IslandPanelView: View {
             // surface's vibrancy, but the silhouette — the thing that
             // actually reads as "growing" — never doubles up, because
             // there's only ever one shape instance underneath.
+            //
+            // M-23 (the most damaging morph defect): that crossfade is what
+            // made the body *see-through for the entire growth* — two layers at
+            // `o` and `1 - o` composite to `1 - o + o²` alpha, i.e. only 75%
+            // opaque at the midpoint, so the desktop behind read straight
+            // through the panel. When both ends of the crossfade are the same
+            // flat opaque ink there is nothing to crossfade: that is every
+            // theme under Reduce Transparency, and Halo always (`usesVibrancy`
+            // is false — `OpenedSurfaceBackground` takes the `surfaceInk` path,
+            // the identical fill the closed layer below used). Draw one opaque
+            // layer instead and let the shape and frame do all the morphing.
+            // Vibrancy themes keep the crossfade — their opened body genuinely
+            // is a different, translucent material.
+            let bodyIsOpaqueInk = reduceTransparency || !theme.usesVibrancy
             ZStack {
-                OpenedSurfaceBackground(reduceTransparency: reduceTransparency || !theme.usesVibrancy)
-                    .opacity(opened ? 1 : 0)
-                tokens.colors.surfaceInk
-                    .opacity(opened ? 0 : 1)
+                if bodyIsOpaqueInk {
+                    OpenedSurfaceBackground(reduceTransparency: true)
+                } else {
+                    OpenedSurfaceBackground(reduceTransparency: false)
+                        .opacity(opened ? 1 : 0)
+                    tokens.colors.surfaceInk
+                        .opacity(opened ? 0 : 1)
+                }
             }
             .frame(width: surfaceWidth, height: surfaceHeight)
             .clipShape(shape)
@@ -832,12 +916,12 @@ struct IslandPanelView: View {
                 // `showsGlyph: false` — the glyph is rendered once, below,
                 // as its own overlay so it can travel instead of fading.
                 v6ClosedSurface(showsGlyph: false)
-                    .opacity(opened ? 0 : 1)
+                    .opacity(closedContentOpacity)
                     .allowsHitTesting(!opened)
 
                 if shouldRenderOpenedSurface {
                     openedSurfaceContent(width: openedWidth, height: openedHeight)
-                        .opacity(opened ? 1 : 0)
+                        .opacity(openedContentOpacity)
                         .allowsHitTesting(opened)
                 }
             }

@@ -386,11 +386,27 @@ final class OverlayPanelController {
             cancelHoverOpenImmediately()
             model.notchOpen(reason: .click)
         } else if model.notchStatus == .opened {
-            if !isPointInExpandedArea(screenLocation) {
+            if !isPointInExpandedArea(screenLocation), !isPointInsidePanelWindow(screenLocation) {
                 model.notchClose()
                 repostMouseDown(at: screenLocation)
             }
         }
+    }
+
+    /// G-61 (second half): a click anywhere over the overlay's own window is
+    /// never an "outside click".
+    ///
+    /// `isPointInExpandedArea` deliberately answers a narrower question — the
+    /// *interactive* rect, i.e. the window minus the transparent ring reserved
+    /// for the surface's drop shadow and the theme's blooms (40 × 48pt for
+    /// Halo). Treating that ring as outside meant a click that visually landed
+    /// on the panel's own halo dismissed the overlay *and* got reposted into
+    /// whatever app sits behind it — "I clicked the island and it closed",
+    /// exactly the first-click complaint. The ring carries no controls, so
+    /// swallowing the click there costs nothing.
+    private func isPointInsidePanelWindow(_ screenPoint: NSPoint) -> Bool {
+        guard let panel, panel.isVisible else { return false }
+        return Self.rectContainsIncludingEdges(panel.frame, point: screenPoint)
     }
 
     /// Grace period before a hover-open timer is cancelled.  Prevents
@@ -820,7 +836,7 @@ final class NotchEventMonitors {
             guard now - sharedLastMove >= throttleInterval else { return }
             sharedLastMove = now
             let location = NSEvent.mouseLocation
-            Task { @MainActor in mouseMoveHandler(location) }
+            Self.deliverOnMain(location, to: mouseMoveHandler)
         }
 
         localMoveMonitor = NSEvent.addLocalMonitorForEvents(matching: .mouseMoved) { event in
@@ -828,19 +844,44 @@ final class NotchEventMonitors {
             guard now - sharedLastMove >= throttleInterval else { return event }
             sharedLastMove = now
             let location = NSEvent.mouseLocation
-            Task { @MainActor in mouseMoveHandler(location) }
+            Self.deliverOnMain(location, to: mouseMoveHandler)
             return event
         }
 
         globalClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDown) { event in
             let location = NSEvent.mouseLocation
-            Task { @MainActor in mouseDownHandler(location) }
+            Self.deliverOnMain(location, to: mouseDownHandler)
         }
 
         localClickMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { event in
             let location = NSEvent.mouseLocation
-            Task { @MainActor in mouseDownHandler(location) }
+            Self.deliverOnMain(location, to: mouseDownHandler)
             return event
+        }
+    }
+
+    /// G-61: runs the handler **synchronously**, on the same main-thread turn
+    /// the event arrived on, instead of hopping through `Task { @MainActor in }`.
+    ///
+    /// `NSEvent` monitors already fire on the main thread, so the hop bought
+    /// nothing but latency — and that latency was the bug: a deferred
+    /// `mouseDownHandler` decided "was this click inside the panel?" against the
+    /// panel's geometry *after* SwiftUI had already handled the same click and
+    /// relaid out (a row expanding/collapsing resizes the overlay window, and
+    /// `OverlayPanelController.isPointInExpandedArea` reads the live
+    /// `panel.frame`). A first click that landed near the bottom of the panel
+    /// could therefore be judged outside a window that had since shrunk under
+    /// it — dismissing the whole overlay on the user's first click. Evaluating
+    /// on the event's own turn pins the decision to the geometry the user
+    /// actually clicked on.
+    private nonisolated static func deliverOnMain(
+        _ location: NSPoint,
+        to handler: @MainActor @escaping @Sendable (NSPoint) -> Void
+    ) {
+        if Thread.isMainThread {
+            MainActor.assumeIsolated { handler(location) }
+        } else {
+            Task { @MainActor in handler(location) }
         }
     }
 

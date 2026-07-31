@@ -19,7 +19,9 @@ struct HaloHeaderControls: View {
     /// 26pt circular control (mockup `.ctl` — `white@.06` fill).
     static let headerControlButtonSize: CGFloat = 26
     static let headerControlSpacing: CGFloat = 8
-    private static let headerTopPadding: CGFloat = 2
+    /// G-14 — the mockup's `.p-head{padding:11px 16px 10px}` breathes below the
+    /// notch; the shared 2pt default made the lane cling to the notch edge.
+    private static let headerTopPadding: CGFloat = 10
 
     let providers: [UsageProviderPresentation]
     let usesNotchAwareLayout: Bool

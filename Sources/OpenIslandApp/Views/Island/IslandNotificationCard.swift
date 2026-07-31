@@ -98,14 +98,22 @@ struct IslandNotificationCard: View {
                         onShowAll(session)
                     } label: {
                         Text(lang.t("island.showAll", totalSessionCount))
-                            .font(.system(size: 10.5, weight: .medium))
-                            .foregroundStyle(.white.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
-                            .frame(maxWidth: .infinity, alignment: .center)
+                            .font(.system(size: 11, weight: .regular))
+                            .foregroundStyle(.white.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, sideInset)
-                            .padding(.top, 6)
-                            .padding(.bottom, 2)
+                            .padding(.vertical, 9)
                     }
                     .buttonStyle(.plain)
+                    // G-07 — the mockup's `.p-foot`: a quiet 11pt tertiary line,
+                    // left-aligned over a single hairline, 9/16 padding. The
+                    // opacity and hairline come from the active theme's tokens,
+                    // so every theme keeps its own footer voice.
+                    .overlay(alignment: .top) {
+                        Rectangle()
+                            .fill(Color.white.opacity(tokens.colors.hairline(increaseContrast: increasesContrast)))
+                            .frame(height: 1)
+                    }
                 }
             }
         }

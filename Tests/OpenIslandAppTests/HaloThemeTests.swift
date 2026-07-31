@@ -148,7 +148,8 @@ struct HaloThemeTests {
     func motionTokensPinTheFluidLightTravelsSprings() {
         let motion = IslandThemeTokens.halo.motion
         #expect(motion.openAnimation == .spring(response: 0.46, dampingFraction: 0.86, blendDuration: 0))
-        #expect(motion.closeAnimation == .smooth(duration: 0.32, extraBounce: 0))
+        // M-26: the close is the open reversed — same spring, both directions.
+        #expect(motion.closeAnimation == .spring(response: 0.46, dampingFraction: 0.86, blendDuration: 0))
         #expect(motion.popAnimation == .spring(response: 0.34, dampingFraction: 0.66, blendDuration: 0))
         #expect(motion.openedSurfaceUnmountDelay == 0.36)
     }

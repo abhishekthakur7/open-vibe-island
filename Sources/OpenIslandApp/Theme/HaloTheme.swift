@@ -839,9 +839,16 @@ extension IslandMotionTokens {
     /// .5/.84 and Annual's .44/.86); the close is a clean collapse back to the
     /// notch; the pop is a soft "condense" (light gathering, not a mechanical
     /// snap). The ambient edge-light periods live in `HaloMotion`, not here.
+    ///
+    /// **M-26 (halo parity V3): the close IS the open, reversed.** `closeAnimation`
+    /// used to be `.smooth(duration: 0.32)`, which collapsed the panel in ~0.13 s
+    /// against the open's ~0.30 s — a visibly asymmetric pair when the two are
+    /// scrubbed frame-by-frame against §B′. Both directions now ride the exact
+    /// same spring, so the reverse morph traces the same envelope (the same
+    /// `morphProgress` interpolant in `IslandPanelView` drives both).
     static let halo = IslandMotionTokens(
         openAnimation: .spring(response: 0.46, dampingFraction: 0.86, blendDuration: 0),
-        closeAnimation: .smooth(duration: 0.32, extraBounce: 0),
+        closeAnimation: .spring(response: 0.46, dampingFraction: 0.86, blendDuration: 0),
         popAnimation: .spring(response: 0.34, dampingFraction: 0.66, blendDuration: 0),
         openedSurfaceUnmountDelay: 0.36
     )

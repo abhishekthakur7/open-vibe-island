@@ -213,7 +213,7 @@ private struct HaloRowContent: View {
         .animation(.easeInOut(duration: 0.18), value: session.outcome)
         .animation(.easeInOut(duration: 0.18), value: presence)
         .animation(.easeInOut(duration: 0.18), value: isExpanded)
-        .onTapGesture(perform: handlePrimaryTap)
+        .onTapGesture { handlePrimaryTap(isExpanded: isExpanded) }
         .onChange(of: isInteractive) { _, interactive in
             if !interactive { detailOverride = nil }
         }
@@ -1224,9 +1224,13 @@ private struct HaloRowContent: View {
 
     // MARK: - Behaviour
 
-    private func handlePrimaryTap() {
+    /// Mockup §D: "tap a row to expand it in place". The row body is an *expand*
+    /// affordance, never a jump — jumping dismisses the whole overlay, so wiring it
+    /// to the body made the first click into the panel close it (G-61). Jump stays
+    /// on its explicit blue-lit chip in the expanded action rail (`jumpPrimaryChip`).
+    private func handlePrimaryTap(isExpanded: Bool) {
         guard isInteractive else { return }
-        actions.jump()
+        toggleDetail(currentlyOpen: isExpanded)
     }
 
     // MARK: - Colour helpers

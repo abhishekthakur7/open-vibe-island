@@ -232,7 +232,7 @@ IslandHeaderControls.swift	sf-symbol	1	.font(.system(size: 10, weight: .semibold
 IslandInstallHooksHint.swift	sf-symbol	1	.font(.system(size: 10, weight: .semibold))
 IslandInstallHooksHint.swift	sf-symbol	1	.font(.system(size: 12, weight: .semibold))
 IslandInstallHooksHint.swift	typography-debt	1	.font(.system(size: 12, weight: .medium))
-IslandNotificationCard.swift	typography-debt	1	.font(.system(size: 10.5, weight: .medium))
+IslandNotificationCard.swift	typography-debt	1	.font(.system(size: 11, weight: .regular))
 IslandSessionListScaffold.swift	typography-debt	1	.font(.system(size: 10.5, weight: .medium, design: .monospaced))
 IslandSessionListScaffold.swift	typography-debt	1	.font(.system(size: 10.5, weight: .semibold, design: .monospaced))
 IslandSessionListScaffold.swift	typography-debt	1	.font(.system(size: 10.5, weight: .semibold, design: .monospaced))
