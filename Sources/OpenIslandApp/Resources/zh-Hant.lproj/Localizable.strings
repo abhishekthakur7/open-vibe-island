@@ -381,6 +381,7 @@
 "island.halo.outcome.failed" = "失敗";
 "island.halo.subagents.header" = "子代理";
 "island.halo.subagents.active" = "%lld 個活躍";
+"island.halo.subagents.fanout" = "%lld 個子代理";
 "island.halo.tasks.progress" = "%1$lld / %2$lld";
 "island.halo.tasks.doing" = "進行中";
 "island.halo.attachment.attached" = "已連接";

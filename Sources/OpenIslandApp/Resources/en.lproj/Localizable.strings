@@ -380,6 +380,7 @@
 "island.halo.outcome.failed" = "Failed";
 "island.halo.subagents.header" = "Subagents";
 "island.halo.subagents.active" = "%lld active";
+"island.halo.subagents.fanout" = "%lld subagents";
 "island.halo.tasks.progress" = "%1$lld of %2$lld";
 "island.halo.tasks.doing" = "in progress";
 "island.halo.attachment.attached" = "attached";

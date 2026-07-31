@@ -303,6 +303,18 @@ private struct HaloRowContent: View {
                 .truncationMode(.tail)
                 .help(session.spotlightWorkspaceName)
 
+            // G-70: mockup `.tl` = `.ws` + a `.disamb` chip reading "3 subagents".
+            // The fan-out count is a property of the row, not of the sentence —
+            // folding it into the `.act` line ("Orchestrating 3 subagents") spent
+            // the narration slot on a number the title can hold for free.
+            if let subagents = activeSubagents {
+                Text(lang.t("island.halo.subagents.fanout", subagents.count))
+                    .font(.system(size: HaloTypography.branchDisambSize, weight: .regular, design: .monospaced))
+                    .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+
             if let disambiguator = disambiguatorSuffix {
                 HStack(spacing: 4) {
                     Image(systemName: "arrow.triangle.branch")
@@ -390,6 +402,21 @@ private struct HaloRowContent: View {
             return nil
         }
 
+        // G-70: the fan-out count now rides in the title's `.disamb` chip, so an
+        // "Orchestrating 3 subagents" narration would print it twice and say
+        // nothing about the work. The row falls through to its human phrase,
+        // which is what the mockup's `.act` line narrates.
+        if edgeState == .running,
+           activeSubagents != nil,
+           let narrated = session.narratedActivity,
+           narrated.verbToken == .orchestrating {
+            let live = Text(narrated.localizedVerb(lang))
+                .font(.system(size: HaloTypography.activitySize, weight: .medium))
+                .foregroundStyle(tokens.colors.statusRunning)
+            guard let work = orchestratedWorkObject else { return live }
+            return live + Text(verbatim: " " + work).foregroundStyle(primary)
+        }
+
         if edgeState == .running, let narrated = session.narratedActivity {
             let live = Text(narrated.localizedVerb(lang))
                 .font(.system(size: HaloTypography.activitySize, weight: .medium))
@@ -440,9 +467,8 @@ private struct HaloRowContent: View {
                 // The §G′ subagent roll-up (mockup §C running row `3 active`): the
                 // only fan-out count the collapsed row surfaces — the full nest
                 // opens with the row (§5G). Present only with real subagents.
-                if let subagents = activeSubagents {
-                    pin("point.3.connected.trianglepath.dotted", lang.t("island.halo.subagents.active", subagents.count))
-                }
+                // G-70: the fan-out count now rides in the title's `.disamb` chip,
+                // so the meta pin would print it a second time on the same row.
                 pin("clock", session.elapsedRunningLabel(at: referenceDate))
             }
             .padding(.top, 7)
@@ -644,7 +670,9 @@ private struct HaloRowContent: View {
                 todoSection(tasks)
             }
         }
-        .padding(.vertical, 7)
+        // G-59: the nest carries no vertical padding of its own — `.nest-h`,
+        // `.suba` and `.todos` each own their mockup rhythm, and the extra slab
+        // padding was what made the nest taller than the body that owns it.
         .background(nestBackground)
     }
 
@@ -667,18 +695,35 @@ private struct HaloRowContent: View {
             Text(lang.t("island.halo.subagents.header").uppercased())
                 .font(HaloTypography.nestHeader)
                 .tracking(HaloTypography.nestHeaderTracking)
-            Text(lang.t("island.halo.subagents.active", subagents.count))
-                .font(.system(size: HaloTypography.nestHeaderSize, weight: .semibold).monospacedDigit())
-            Spacer(minLength: 0)
+            Spacer(minLength: 6)
+            // `.nest-h .nn{margin-left:auto}` — the count sits at the far edge, at
+            // the same 10/700 tertiary tier as the label (G-51).
+            Text(lang.t("island.halo.subagents.active", subagents.count).uppercased())
+                .font(.system(size: HaloTypography.nestHeaderSize, weight: .bold).monospacedDigit())
+                .tracking(HaloTypography.nestHeaderTracking)
         }
         .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
+        // `.nest-h{padding:8px 11px 6px}`.
         .padding(.horizontal, 11)
-        .padding(.top, 4)
-        .padding(.bottom, 4)
+        .padding(.top, 8)
+        .padding(.bottom, 6)
 
-        ForEach(subagents, id: \.agentID) { sub in
+        // G-58: `.suba + .suba{border-top:1px solid var(--hair)}` — a full-width
+        // 8%-white divider between adjacent subagents, so three fan-out rows read
+        // as three rows rather than one paragraph.
+        ForEach(Array(subagents.enumerated()), id: \.element.agentID) { index, sub in
+            if index > 0 {
+                nestHairline
+            }
             subagentRow(sub, referenceDate: referenceDate)
         }
+    }
+
+    /// The nest's shared 1pt `white@.08` divider (mockup `--hair`).
+    private var nestHairline: some View {
+        Rectangle()
+            .fill(tokens.colors.paper.opacity(tokens.colors.hairlineOpacity))
+            .frame(height: 1)
     }
 
     /// A single subagent (mockup `.suba`): a running-light glyph + the type (12/600)
@@ -689,11 +734,21 @@ private struct HaloRowContent: View {
         let isRunning = sub.summary == nil
         let tint = isRunning ? tokens.colors.statusRunning : tokens.colors.statusCompleted
         return HStack(alignment: .top, spacing: 10) {
-            Circle()
-                .fill(tint)
-                .frame(width: 6, height: 6)
-                .shadow(color: tint.opacity(0.5), radius: 3)
-                .padding(.top, 3)
+            // G-66/M-28: `.gly run sg` — the SAME three-bar wave the pill draws,
+            // at the mockup's 15×12 slot. A running subagent is alive, so it
+            // waves; a finished one settles to the static outcome dot.
+            Group {
+                if isRunning {
+                    HaloLivenessGlyph(kind: .running, tint: tint, box: HaloRowContent.subagentGlyphBox)
+                } else {
+                    Circle()
+                        .fill(tint)
+                        .frame(width: 6, height: 6)
+                        .shadow(color: tint.opacity(0.5), radius: 3)
+                }
+            }
+            .frame(width: 15, height: 12)
+            .padding(.top, 2)
                 // Keep status as a child of the combined row, matching Poured:
                 // an explicit parent label would replace the type, task, and
                 // elapsed-time children in the resulting VoiceOver label.
@@ -718,10 +773,18 @@ private struct HaloRowContent: View {
 
             subagentElapsed(sub, isRunning: isRunning)
         }
+        // G-59: `.suba{padding:8px 11px}` — the nest is a subordinate surface, so
+        // its rows keep the mockup's rhythm (6 rather than 8 vertically: the type
+        // over task stack already carries a point more leading than the CSS box).
         .padding(.horizontal, 11)
         .padding(.vertical, 6)
         .accessibilityElement(children: .combine)
     }
+
+    /// The `.gly run sg` design box. The glyph's bars are authored in a 24pt box
+    /// (crest 14); 18 scales them to the mockup's ~10.5pt crest inside the 15×12
+    /// nest slot without re-authoring the shared silhouette.
+    private static let subagentGlyphBox: CGFloat = 18
 
     private func subagentTypeText(_ sub: ClaudeSubagentInfo) -> String {
         let type = sub.agentType?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -753,25 +816,25 @@ private struct HaloRowContent: View {
         // If subagents already drew a header above, keep a faint divider so the two
         // lists read as one grouped nest but stay legibly separate.
         if activeSubagents != nil {
-            Rectangle()
-                .fill(.white.opacity(0.05))
-                .frame(height: 1)
-                .padding(.horizontal, 11)
-                .padding(.vertical, 4)
+            // `.todos{border-top:1px solid var(--hair)}` — the same full-width
+            // divider the subagent rows use, with no padding of its own (G-59).
+            nestHairline
         }
 
         // G-60: the mockup's `.todos` has **no** header of its own — "2 of 5" is
         // caption prose, not UI. The nest's only count is `.nest-h .nn` ("3 active"),
         // drawn by `subagentSection` above. The stray right-aligned progress line is
         // gone; the checked/unchecked icons carry the roll-up.
-        VStack(alignment: .leading, spacing: 3) {
+        // `.todos{padding:7px 11px 9px}`, `.todo{padding:3px 0}` (G-59).
+        VStack(alignment: .leading, spacing: 0) {
             ForEach(tasks) { task in
                 todoRow(task)
+                    .padding(.vertical, 3)
             }
         }
         .padding(.horizontal, 11)
-        .padding(.top, 2)
-        .padding(.bottom, 3)
+        .padding(.top, 7)
+        .padding(.bottom, 9)
     }
 
     /// A single todo (mockup `.todo`): the state carried by **icon** — a check for
@@ -791,8 +854,11 @@ private struct HaloRowContent: View {
 
             if task.status == .inProgress {
                 Spacer(minLength: 6)
+                // G-53: `.todo .tsp{font-size:10px;color:var(--cyan)}` — a quiet
+                // 10pt label at book weight; the clock icon carries the state,
+                // so the tag must not be the loudest string in the nest.
                 Text(lang.t("island.halo.tasks.doing"))
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.system(size: 10, weight: .regular))
                     .foregroundStyle(tokens.colors.statusRunning)
             }
         }
@@ -1365,6 +1431,23 @@ private struct HaloRowContent: View {
         let summary = session.summary.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !summary.isEmpty else { return nil }
         return HaloActivityNarration.headline(summary) ?? summary
+    }
+
+    /// G-70: the object half of an orchestration narration once the fan-out count
+    /// has moved to the title chip — the session's own summary of the work
+    /// ("Orchestrating **the overlay redesign rollout**", mockup §G). A summary that
+    /// already opens with its own gerund ("Coordinating the …") drops that word so
+    /// the line never stacks two verbs.
+    private var orchestratedWorkObject: String? {
+        let summary = HaloActivityNarration.headline(session.summary) ?? session.summary
+        var words = summary.trimmingCharacters(in: .whitespacesAndNewlines)
+            .split(separator: " ", omittingEmptySubsequences: true)
+        guard !words.isEmpty else { return nil }
+        if words.count > 1, words[0].lowercased().hasSuffix("ing") {
+            words.removeFirst()
+        }
+        let object = words.joined(separator: " ")
+        return object.isEmpty ? nil : object
     }
 
     /// G-74: true when the expanded body's quoted block already carries whatever the
