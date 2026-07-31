@@ -114,6 +114,12 @@ enum HaloTypography {
     /// the mockup sets the meter label a half-point below the row metadata value
     /// (`.mv` 12.5) so the 22pt numeral stays the dial's only loud element (G-05).
     static let meterLabelSize: CGFloat = 12
+    /// §B hover-peek title (`06-halo.html:713`) — sans, 13 / 600.
+    static let peekTitleSize: CGFloat = 13
+    /// §B hover-peek command (`06-halo.html:714`) — **mono**, 11.5 (command).
+    static let peekDetailSize: CGFloat = 11.5
+    /// §B hover-peek click hint (`06-halo.html:718`) — sans, 11 @ t3.
+    static let peekHintSize: CGFloat = 11
     /// Empty title (`.et`) — sans, 14 / 600.
     static let emptyTitleSize: CGFloat = 14
     /// Empty subtitle (`.es`) — sans, 12.

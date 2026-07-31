@@ -408,6 +408,14 @@
 "island.halo.question.multiSelect" = "多选";
 "island.halo.question.progress" = "第 %1$lld / %2$lld 题";
 
+/* Halo §B 悬停预览 (G-62/M-27) */
+"island.halo.peek.wantsToRun" = "%@ 想执行一条命令";
+"island.halo.peek.wantsPermission" = "%@ 需要授权";
+"island.halo.peek.hasQuestion" = "%@ 有一个问题";
+"island.halo.peek.reviewApprove" = "点击查看并批准";
+"island.halo.peek.reviewAnswer" = "点击查看并回答";
+"island.halo.peek.moreWaiting" = "还有 %lld 个在等待";
+
 /* Island Panel - Annual theme rows (AB-317) */
 "island.annual.row.jump" = "跳转";
 

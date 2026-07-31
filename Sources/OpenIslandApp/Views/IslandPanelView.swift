@@ -263,6 +263,12 @@ struct IslandPanelView: View {
     /// open with a close just reverses from wherever it got to) exactly as the
     /// frame animation did.
     @State private var morphProgress: CGFloat = 0
+    /// G-62/M-27 (halo parity V2 · mockup §B): whether the hover dwell has
+    /// elapsed and the narrated peek is showing. Separate from `isHovering`
+    /// because the board gates the peek on a **0.15s dwell** — a pointer merely
+    /// crossing the pill gets the 1.03 scale bump and nothing else.
+    @State private var showsHoverPeek = false
+    @State private var hoverPeekDwell: DispatchWorkItem?
     @State private var showingQuitConfirmation = false
     @State private var keepsOpenedSurfaceMounted = false
     @State private var openedSurfaceMountGeneration: UInt64 = 0
@@ -373,6 +379,14 @@ struct IslandPanelView: View {
         .onChange(of: model.notchStatus) { _, status in
             syncOpenedSurfaceMount(with: status)
             syncMorphProgress(with: status)
+            // G-62 handoff: the peek belongs to the closed pill only. Opening
+            // (by click, hotkey or notification) retires it in the same
+            // transaction the morph starts in, so the two never overlap.
+            if status != .closed {
+                hoverPeekDwell?.cancel()
+                hoverPeekDwell = nil
+                showsHoverPeek = false
+            }
         }
     }
 
@@ -412,6 +426,13 @@ struct IslandPanelView: View {
                 .frame(maxWidth: .infinity, alignment: .top)
         }
         .scaleEffect(usesOpenedVisualState ? 1 : (isHovering ? tokens.metrics.closedHoverScale : 1), anchor: .top)
+        // G-62/M-27 · mockup §B: the narrated peek hangs BELOW the pill, outside
+        // the hover scale (the board's peek is a surface of its own, not a
+        // magnified pill) and outside the surface's clip, so it can be taller
+        // than the closed silhouette. Chrome only — see `HaloHoverPeek`.
+        .overlay(alignment: .top) {
+            hoverPeekOverlay(availableWidth: openedWidth)
+        }
         .padding(.horizontal, panelShadowHorizontalInset)
         .padding(.bottom, panelShadowBottomInset)
         .animation(notchTransitionAnimation, value: model.notchStatus)
@@ -420,12 +441,84 @@ struct IslandPanelView: View {
             withAnimation(.spring(response: 0.38, dampingFraction: 0.8)) {
                 isHovering = hovering
             }
+            syncHoverPeek(hovering: hovering)
         }
         .onTapGesture {
             if model.notchStatus != .opened {
                 model.notchOpen(reason: .click)
             }
         }
+    }
+
+    // MARK: - §B hover peek (G-62/M-27)
+
+    /// The peek content for the current island, or `nil` when the theme draws no
+    /// peek (every theme but Halo) or nothing is waiting on the user.
+    private var hoverPeekContent: HaloHoverPeekContent? {
+        guard theme.id == "halo" else { return nil }
+        return HaloHoverPeekContent.resolve(sessions: model.surfacedSessions, lang: lang)
+    }
+
+    /// The peek layer, faded out by the morph.
+    ///
+    /// The handoff to V3 is deliberately one-directional and owns no morph
+    /// state: the peek's opacity is a plain function of `morphProgress`, which
+    /// the open gesture already drives, so the peek has vanished by the time the
+    /// silhouette has grown a fifth of the way and the morph itself is untouched
+    /// (M-24's single interpolant keeps exactly one owner). `showsHoverPeek` is
+    /// additionally cleared on the status change, so an interrupted open can
+    /// never leave a stale peek hanging under a reopened pill.
+    @ViewBuilder
+    private func hoverPeekOverlay(availableWidth: CGFloat) -> some View {
+        if let content = hoverPeekContent, showsHoverPeek {
+            // Deliberately NOT `if !usesOpenedVisualState` — unmounting the peek
+            // on the status flip hands its removal to the ancestor
+            // `.animation(notchTransitionAnimation, value: model.notchStatus)`,
+            // which fades it over the whole ~0.3s open. It then floats, fully
+            // painted, on top of the growing silhouette (measured: still opaque
+            // 120ms in). Driving opacity from the morph interpolant instead
+            // makes the peek retire in the growth's first fifth — and
+            // `.animation(nil, value:)` below keeps the status flip itself out
+            // of the ancestor's spring.
+            let fade = usesOpenedVisualState
+                ? 0
+                : Double(max(0, min(1, 1 - morphProgress / 0.2)))
+            HaloHoverPeek(content: content, lang: lang, availableWidth: availableWidth)
+                // Hangs directly off the pill's bottom edge — near enough to
+                // read as the pill's own drawer, clear enough that the 19pt
+                // bottom radius isn't overlapped. The pill keeps the pointer
+                // and the click.
+                .padding(.top, closedNotchHeight)
+                .opacity(fade)
+                .scaleEffect(0.98 + 0.02 * fade, anchor: .top)
+                .animation(nil, value: usesOpenedVisualState)
+                .allowsHitTesting(false)
+                .transition(.opacity)
+        }
+    }
+
+    /// Starts (or cancels) the board's 0.15s dwell. Only a dwell that survives
+    /// the whole window shows the peek; leaving hides it immediately, because a
+    /// peek that lingers after the pointer has gone reads as a stuck panel.
+    private func syncHoverPeek(hovering: Bool) {
+        hoverPeekDwell?.cancel()
+        hoverPeekDwell = nil
+
+        guard hovering, !usesOpenedVisualState, hoverPeekContent != nil else {
+            if showsHoverPeek {
+                withAnimation(.easeOut(duration: 0.14)) { showsHoverPeek = false }
+            }
+            return
+        }
+
+        let work = DispatchWorkItem {
+            guard isHovering, model.notchStatus != .opened else { return }
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.86)) {
+                showsHoverPeek = true
+            }
+        }
+        hoverPeekDwell = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: work)
     }
 
     /// Retargets the single morph interpolant on every status change, under the

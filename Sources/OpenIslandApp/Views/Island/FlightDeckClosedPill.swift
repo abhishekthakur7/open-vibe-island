@@ -198,7 +198,10 @@ struct FlightDeckClosedPill: View {
                         isStandby: isStandbyLabel,
                         maxWidth: V6NotchLaneLabelView.intrinsicWidth(
                             of: effectiveLabel,
-                            cappedAt: V6ClosedPill.notchLaneLabelMaxWidth
+                            cappedAt: V6ClosedPill.notchLaneLabelWidth(
+                                physicalNotchWidth: physicalNotchWidth,
+                                height: height
+                            )
                         )
                     )
                     .padding(.leading, Self.notchLaneLabelGap)

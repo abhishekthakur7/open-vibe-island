@@ -312,4 +312,32 @@ struct HaloClosedPillWidthRegressionTests {
         #expect(macbook("Editing AppModel.swift", notch: 180) >= macbook(nil, notch: 180))
         #expect(abs(macbook(nil, notch: 200) - macbook(nil, notch: 200)) < Self.tolerance)
     }
+
+    /// G-20/G-46/G-47: the notch lane is budgeted from the hardware, not from a
+    /// fixed 84. It grows to whatever wing the machine's own notch leaves before
+    /// the closed pill would outgrow the opened panel — and the pill at a
+    /// full-width label lands EXACTLY on that panel width, never past it, so the
+    /// morph only ever grows.
+    @Test
+    func notchLaneLabelWidthIsBudgetedFromTheHardware() {
+        // This MacBook (measured live: 193.5pt cutout, Halo's 38pt pill).
+        let lane = V6ClosedPill.notchLaneLabelWidth(physicalNotchWidth: 193.5, height: Self.height)
+        #expect(abs(lane - 120.25) < Self.tolerance)
+        #expect(lane > V6ClosedPill.notchLaneLabelMaxWidth)
+
+        // A pill whose label fills the lane is exactly the opened panel's width.
+        let filled = 2 * (Self.height / 2 + 24 + 4 + 6 + lane) + 193.5
+        #expect(abs(filled - V6ClosedPill.macbookMaxOuterWidth) < Self.tolerance)
+
+        // A narrower cutout frees more lane; an absurd one can never take the
+        // lane below the original v6 floor.
+        #expect(
+            V6ClosedPill.notchLaneLabelWidth(physicalNotchWidth: 180, height: Self.height)
+                > lane
+        )
+        #expect(
+            V6ClosedPill.notchLaneLabelWidth(physicalNotchWidth: 460, height: Self.height)
+                == V6ClosedPill.notchLaneLabelMaxWidth
+        )
+    }
 }

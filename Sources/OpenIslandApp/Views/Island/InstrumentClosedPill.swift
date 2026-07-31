@@ -129,7 +129,13 @@ struct InstrumentClosedPill: View {
                 glyphOrPlaceholder
 
                 if let label {
-                    V6NotchLaneLabelView(text: label, maxWidth: V6ClosedPill.notchLaneLabelMaxWidth)
+                    V6NotchLaneLabelView(
+                        text: label,
+                        maxWidth: V6ClosedPill.notchLaneLabelWidth(
+                            physicalNotchWidth: physicalNotchWidth,
+                            height: height
+                        )
+                    )
                         .padding(.leading, Self.notchLaneLabelGap)
                         .transition(.opacity.combined(with: .move(edge: .leading)))
                 }

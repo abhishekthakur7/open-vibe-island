@@ -1614,7 +1614,9 @@ private struct HaloRowContent: View {
 /// same-hue bloom behind it (inset −3 → a 14pt circle, blur 2). Never a flat
 /// circle — the void's only in-row light besides the rail. Isolated so the blur
 /// stays cheap and the row's `.drawingGroup = false` reasoning is local here.
-private struct HaloStatusDot: View {
+/// Internal (not `private`) so the §B hover peek (`HaloHoverPeek`) draws the
+/// same light as the §C row rather than a second, subtly different dot.
+struct HaloStatusDot: View {
     let tint: Color
     let bloomOpacity: Double
 
@@ -1640,7 +1642,9 @@ private struct HaloStatusDot: View {
 /// The achromatic agent monogram (mockup `.mono-tag`): a 16pt rounded chip carrying
 /// the agent's identity initial in sans at t2, on a whisper-faint white@.07 fill.
 /// Identity is a grey whisper — **never** brand-colored (brief §7).
-private struct HaloAgentMonogram: View {
+/// Internal (not `private`) for the same reason as `HaloStatusDot` above — the
+/// §B peek's `.mono-tag` is this exact chip.
+struct HaloAgentMonogram: View {
     let text: String
     let tokens: IslandThemeTokens
     let increasesContrast: Bool

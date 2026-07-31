@@ -156,7 +156,10 @@ struct PouredClosedPill: View {
         PouredClosedPillLabel(
             text: text,
             ambient: ambient,
-            maxWidth: V6ClosedPill.notchLaneLabelMaxWidth
+            maxWidth: V6ClosedPill.notchLaneLabelWidth(
+                physicalNotchWidth: physicalNotchWidth,
+                height: height
+            )
         )
     }
 

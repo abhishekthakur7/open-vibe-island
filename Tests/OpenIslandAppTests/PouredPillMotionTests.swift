@@ -258,10 +258,21 @@ struct PouredClosedPillWidthRegressionTests {
     /// MacBook / notch layout — outer width does NOT fold in the right slot
     /// (the wings straddle the physical notch), so it depends only on the label
     /// and the notch width. Pinned so the notch-lane math stays put.
+    ///
+    /// **Halo parity V2 · G-20 (owner-sanctioned, 2026-07-31).** The long-label
+    /// golden moved 454 → 540. The notch lane's cap is no longer the fixed 84pt
+    /// constant — which truncated every narrated label the redesign asks the
+    /// pill to speak — but `V6ClosedPill.notchLaneLabelWidth(physicalNotchWidth:
+    /// height:)`, the lane the hardware actually admits before the closed pill
+    /// would outgrow the opened panel. At a 180pt cutout and a 38pt pill that is
+    /// 127pt, so a 22-character label now lands the pill exactly on
+    /// `macbookMaxOuterWidth`. The other two goldens are untouched: a pill with
+    /// no label never consults the lane, and `hi` is far under the old 84 floor
+    /// — i.e. every short-label pill in every theme is byte-identical.
     @Test
     func macbookOuterWidthGoldensAreUnchanged() {
         #expect(abs(macbook(nil, notch: 180) - 274) < Self.tolerance)
-        #expect(abs(macbook("Editing AppModel.swift", notch: 180) - 454) < Self.tolerance)
+        #expect(abs(macbook("Editing AppModel.swift", notch: 180) - 540) < Self.tolerance)
         #expect(abs(macbook("hi", notch: 200) - 340.4) < Self.tolerance)
     }
 

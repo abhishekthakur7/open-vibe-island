@@ -407,6 +407,14 @@
 "island.halo.question.multiSelect" = "multi-select";
 "island.halo.question.progress" = "%1$lld of %2$lld";
 
+/* Halo §B hover peek (G-62/M-27) — the narrated surface a pointer dwell reveals under the collapsed pill. */
+"island.halo.peek.wantsToRun" = "%@ wants to run a command";
+"island.halo.peek.wantsPermission" = "%@ wants permission";
+"island.halo.peek.hasQuestion" = "%@ has a question";
+"island.halo.peek.reviewApprove" = "Click to review & approve";
+"island.halo.peek.reviewAnswer" = "Click to review & answer";
+"island.halo.peek.moreWaiting" = "+%lld more waiting";
+
 /* Island Panel - Annual theme rows (AB-317) */
 "island.annual.row.jump" = "Jump";
 

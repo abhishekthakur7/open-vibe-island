@@ -141,7 +141,13 @@ struct AnnualClosedPill: View {
                 glyphOrPlaceholder
 
                 if let displayLabel {
-                    V6NotchLaneLabelView(text: displayLabel, maxWidth: V6ClosedPill.notchLaneLabelMaxWidth)
+                    V6NotchLaneLabelView(
+                        text: displayLabel,
+                        maxWidth: V6ClosedPill.notchLaneLabelWidth(
+                            physicalNotchWidth: physicalNotchWidth,
+                            height: height
+                        )
+                    )
                         .padding(.leading, Self.notchLaneLabelGap)
                         .transition(.opacity.combined(with: .move(edge: .leading)))
                 }

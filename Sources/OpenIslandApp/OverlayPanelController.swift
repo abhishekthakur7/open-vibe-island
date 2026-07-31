@@ -6,7 +6,11 @@ import OpenIslandCore
 
 @MainActor
 final class OverlayPanelController {
-    private static let preferredNotchOpenedPanelWidth: CGFloat = 540
+    /// Single source of truth with `V6ClosedPill.macbookMaxOuterWidth`, which
+    /// budgets the closed pill's notch-lane label against exactly this number
+    /// (G-20) — the closed silhouette must never be wider than the panel it
+    /// grows into.
+    private static let preferredNotchOpenedPanelWidth: CGFloat = V6ClosedPill.macbookMaxOuterWidth
     private static let preferredTopBarOpenedPanelWidth: CGFloat = 520
     private static let openedContentWidthPadding: CGFloat = 0
     private static let openedContentBottomPadding: CGFloat = 0

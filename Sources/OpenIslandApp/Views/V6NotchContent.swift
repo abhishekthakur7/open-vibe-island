@@ -525,10 +525,47 @@ struct V6ClosedPill: View {
     private static let macbookBaseHalfReserve: CGFloat = 44
     private static let notchLaneLabelGap: CGFloat = 6
     private static let notchLaneLabelTrailingMargin: CGFloat = 4
-    /// Hard cap on the notch-lane label's width — keeps the pill's growth
-    /// bounded so a very long activity string truncates (ViewThatFits)
-    /// instead of pushing the pill arbitrarily wide.
+    /// Floor on the notch-lane label's width — the original v6 spec constant,
+    /// kept as the value every layout is guaranteed at least. Read it directly
+    /// only where the real geometry isn't available; live pills go through
+    /// ``notchLaneLabelWidth(physicalNotchWidth:height:)`` below.
     static let notchLaneLabelMaxWidth: CGFloat = 84
+
+    /// The widest the notch-wrapping pill may ever grow: the opened panel's own
+    /// width. A closed pill wider than the panel it morphs into would have to
+    /// *shrink* on open — the one thing the §B′ filmstrip says never happens
+    /// ("the single black shape begins to grow"). `OverlayPanelController`
+    /// reads this same constant for `preferredNotchOpenedPanelWidth`, so the
+    /// two can't drift.
+    static let macbookMaxOuterWidth: CGFloat = 540
+
+    /// Width budget for the notch-lane label on *this* hardware (G-20/G-46/G-47).
+    ///
+    /// The old fixed 84pt cap was set when the lane was a nicety; it truncates
+    /// every narrated label the redesign asks the pill to speak — `Running sed…`
+    /// instead of the activity, `Approve swift build?` clipped to its verb. The
+    /// lane's real constraint was never 84: it is how much wing the pill can
+    /// grow before the whole silhouette outgrows the opened panel. That budget
+    /// depends on the machine's physical notch and the theme's pill height, so
+    /// compute it instead of guessing:
+    ///
+    ///     halfReserve ≤ (macbookMaxOuterWidth − physicalNotchWidth) / 2
+    ///
+    /// and the lane is whatever is left of that half after the pill's own
+    /// leading pad, glyph, gap and pre-notch safety margin
+    /// (`macbookOuterWidth`'s `leftContentWidth`, inverted). Floored at the
+    /// original 84 so no display can ever end up with *less* lane than it had.
+    ///
+    /// Shared by all six themes on purpose: the lane is one physical fact about
+    /// the notch, not a look. Widening it changes only how far a long label may
+    /// run before truncating — a theme that renders short labels is unaffected.
+    static func notchLaneLabelWidth(physicalNotchWidth: CGFloat, height: CGFloat) -> CGFloat {
+        let pad = height / 2
+        let halfReserveBudget = (macbookMaxOuterWidth - physicalNotchWidth) / 2
+        let lane = halfReserveBudget
+            - (pad + glyphSize + notchLaneLabelTrailingMargin + notchLaneLabelGap)
+        return max(notchLaneLabelMaxWidth, lane)
+    }
 
     /// Intrinsic outer pill width for the MacBook layout — shared with
     /// `IslandPanelView`'s notch-morph container (AB-243); see
@@ -540,7 +577,13 @@ struct V6ClosedPill: View {
     ) -> CGFloat {
         let pad = height / 2
         let labelWidth = label.map {
-            V6NotchLaneLabelView.intrinsicWidth(of: $0, cappedAt: notchLaneLabelMaxWidth)
+            V6NotchLaneLabelView.intrinsicWidth(
+                of: $0,
+                cappedAt: notchLaneLabelWidth(
+                    physicalNotchWidth: physicalNotchWidth,
+                    height: height
+                )
+            )
         }
 
         // Left wing must fit: leading pad + glyph + (gap + label, if any) +
@@ -570,7 +613,13 @@ struct V6ClosedPill: View {
                 glyphOrPlaceholder
 
                 if let label {
-                    V6NotchLaneLabelView(text: label, maxWidth: Self.notchLaneLabelMaxWidth)
+                    V6NotchLaneLabelView(
+                        text: label,
+                        maxWidth: Self.notchLaneLabelWidth(
+                            physicalNotchWidth: physicalNotchWidth,
+                            height: height
+                        )
+                    )
                         .padding(.leading, Self.notchLaneLabelGap)
                         .transition(.opacity.combined(with: .move(edge: .leading)))
                 }

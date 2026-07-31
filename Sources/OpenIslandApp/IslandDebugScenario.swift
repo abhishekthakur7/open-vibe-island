@@ -30,6 +30,16 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
     case closed
     case closedAttention
     case closedCritical
+    // Halo parity V2 · G-45: the sanctioned multi-running enabler. Every other
+    // closed fixture has exactly one running session, so Halo's agents-grid
+    // right slot (its `.count` default above 1 running — `AppModel
+    // .islandPreferredRightSlotContent()`) was never reachable and the pill
+    // correctly kept showing `×N`.
+    case closedMultiRunning
+    // Halo parity V2 · G-62/M-27: the §B peek's `+N more` chip only exists when
+    // more than one session is waiting on the user, and `closedAttention` (the
+    // A3 fixture, deliberately left alone) has exactly one.
+    case closedAttentionQueue
     case sessionList
     case approvalCard
     case questionCard
@@ -60,6 +70,10 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
             "Closed Notch — Permission"
         case .closedCritical:
             "Closed Notch — Critical Usage"
+        case .closedMultiRunning:
+            "Closed Notch — Several Running"
+        case .closedAttentionQueue:
+            "Closed Notch — Permission Queue"
         case .sessionList:
             "Session List"
         case .approvalCard:
@@ -99,6 +113,10 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
             "Collapsed notch spotlighting a permission request — the A3 amber attention glow bleeding outside the pill."
         case .closedCritical:
             "Collapsed notch with no running/waiting sessions and one usage window past 90% — the only state that surfaces the I′ usage filament in the pill."
+        case .closedMultiRunning:
+            "Collapsed notch with three sessions running at once — the only state that surfaces Halo's §A2′ agents grid in the right wing (and the aggregate \"N working\" label)."
+        case .closedAttentionQueue:
+            "Collapsed notch with two sessions blocked on the user at once — the only state that surfaces the §B hover peek's \"+N more waiting\" chip."
         case .sessionList:
             "Manual expanded list with running, active, and inactive session rows."
         case .approvalCard:
@@ -184,6 +202,47 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
                 sessions: sessions,
                 selectedSessionID: sessions.first?.id,
                 usageProviders: AppearancePreviewFixtures.usageProviders(now: now)
+            )
+
+        case .closedMultiRunning:
+            // Halo parity V2 · G-45 (mockup §A2′): the agents grid is Halo's
+            // right wing whenever MORE than one session is running — a state
+            // `closed` cannot reach (`listSessions` runs exactly one). Same
+            // shape as `closed` otherwise: collapsed notch, the real list, the
+            // running spotlight selected. The two extra runners are ordinary
+            // demo sessions, not a special payload — the grid reads
+            // `phase == .running` off the surfaced list like it does live.
+            let sessions = DebugSessionFactory.multiRunningSessions(now: now)
+            return IslandDebugSnapshot(
+                title: title,
+                summary: summary,
+                previewHeight: 78,
+                notchStatus: .closed,
+                notchOpenReason: nil,
+                islandSurface: .sessionList(),
+                sessions: sessions,
+                selectedSessionID: sessions.first?.id
+            )
+
+        case .closedAttentionQueue:
+            // Halo parity V2 · G-62/M-27: `closedAttention` plus a *second*
+            // blocked session (a question behind the permission), so the §B
+            // peek has something to compress into `+1 more waiting`. Both are
+            // the existing `approvalSession`/`questionSession` fixtures — no new
+            // payload shapes, only a second one in the same list.
+            let approval = DebugSessionFactory.approvalSession(now: now)
+            let question = DebugSessionFactory.questionSession(now: now)
+            var sessions = DebugSessionFactory.notificationSessions(lead: approval, now: now)
+            if sessions.count > 1 { sessions[1] = question }
+            return IslandDebugSnapshot(
+                title: title,
+                summary: summary,
+                previewHeight: 78,
+                notchStatus: .closed,
+                notchOpenReason: nil,
+                islandSurface: .sessionList(),
+                sessions: sessions,
+                selectedSessionID: approval.id
             )
 
         case .sessionList:
@@ -453,6 +512,83 @@ private enum DebugSessionFactory {
         }
         sessions[0] = lead
         return sessions
+    }
+
+    /// `listSessions` with two of its idle rows replaced by live runners, so the
+    /// island surfaces three `.running` sessions at once (Halo parity V2 · G-45).
+    /// Substituting rather than appending keeps the list's own length, ordering
+    /// and workspace vocabulary identical to `closed`'s, so the only difference
+    /// the pill can see is the running count.
+    static func multiRunningSessions(now: Date) -> [AgentSession] {
+        var sessions = listSessions(now: now)
+        let extras = [
+            secondaryRunningSession(
+                id: "session-running-hooks",
+                workspace: "hooks",
+                initialPrompt: "把 hook 的安装流程整理成一条命令。",
+                lastPrompt: "顺便看看 uninstall 的分支。",
+                assistant: "正在核对 settings.json 里已注册的 hook。",
+                currentCommandPreview: "rg -n \"hooks\" Sources/OpenIslandCore",
+                startedSecondsAgo: 12,
+                now: now
+            ),
+            secondaryRunningSession(
+                id: "session-running-voice",
+                workspace: "voice-input",
+                initialPrompt: "看看 voice-input 这个仓库，重点关注模型选型。",
+                lastPrompt: "先把实时链路跑通。",
+                assistant: "正在读取音频管线的采样率配置。",
+                currentCommandPreview: "swift build -c debug",
+                startedSecondsAgo: 96,
+                now: now
+            ),
+        ]
+
+        for (offset, extra) in extras.enumerated() {
+            // Slots 2 and 3 are the first two completed rows after the running
+            // spotlight and the fresh completion — replacing them keeps the
+            // spotlight ordering (`attention → running → first`) intact.
+            let index = 2 + offset
+            guard sessions.indices.contains(index) else { continue }
+            sessions[index] = extra
+        }
+        return sessions
+    }
+
+    static func secondaryRunningSession(
+        id: String,
+        workspace: String,
+        initialPrompt: String,
+        lastPrompt: String,
+        assistant: String,
+        currentCommandPreview: String,
+        startedSecondsAgo: TimeInterval,
+        now: Date
+    ) -> AgentSession {
+        AgentSession(
+            id: id,
+            title: "Codex · \(workspace)",
+            tool: .codex,
+            origin: .demo,
+            attachmentState: .attached,
+            phase: .running,
+            summary: assistant,
+            updatedAt: now.addingTimeInterval(-startedSecondsAgo),
+            jumpTarget: JumpTarget(
+                terminalApp: "Ghostty",
+                workspaceName: workspace,
+                paneTitle: "codex ~/Personal/\(workspace)",
+                workingDirectory: "/Users/wangruobing/Personal/\(workspace)",
+                terminalSessionID: "ghostty-\(id)"
+            ),
+            codexMetadata: CodexSessionMetadata(
+                initialUserPrompt: initialPrompt,
+                lastUserPrompt: lastPrompt,
+                lastAssistantMessage: assistant,
+                currentTool: "exec_command",
+                currentCommandPreview: currentCommandPreview
+            )
+        )
     }
 
     static func runningSession(now: Date) -> AgentSession {

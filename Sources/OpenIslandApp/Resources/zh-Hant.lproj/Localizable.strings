@@ -408,6 +408,14 @@
 "island.halo.question.multiSelect" = "多選";
 "island.halo.question.progress" = "第 %1$lld / %2$lld 題";
 
+/* Halo §B 懸停預覽 (G-62/M-27) */
+"island.halo.peek.wantsToRun" = "%@ 想執行一條命令";
+"island.halo.peek.wantsPermission" = "%@ 需要授權";
+"island.halo.peek.hasQuestion" = "%@ 有一個問題";
+"island.halo.peek.reviewApprove" = "點擊查看並批准";
+"island.halo.peek.reviewAnswer" = "點擊查看並回答";
+"island.halo.peek.moreWaiting" = "還有 %lld 個在等待";
+
 /* Island Panel - Annual theme rows (AB-317) */
 "island.annual.row.jump" = "跳轉";
 
