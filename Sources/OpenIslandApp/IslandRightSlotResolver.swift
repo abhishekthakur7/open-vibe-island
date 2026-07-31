@@ -99,11 +99,24 @@ enum IslandRightSlotResolver {
         var windowLabel: String
         /// The provider it belongs to (`Claude`, `Codex`).
         var providerTitle: String
+        /// When the window refills, or `nil` when the provider didn't report one
+        /// (halo parity V9 · G-32). Carried as the raw `Date` rather than a
+        /// formatted string so the *view* owns the clock: a pill that renders it
+        /// through `UsageCountdownFormatter` can be handed a frozen `now` in
+        /// previews and tests, and stays correct as the countdown ticks down,
+        /// which a string frozen at resolve time would not.
+        var resetsAt: Date?
 
-        init(percent: Double, windowLabel: String, providerTitle: String) {
+        init(
+            percent: Double,
+            windowLabel: String,
+            providerTitle: String,
+            resetsAt: Date? = nil
+        ) {
             self.percent = percent
             self.windowLabel = windowLabel
             self.providerTitle = providerTitle
+            self.resetsAt = resetsAt
         }
     }
 
@@ -144,7 +157,8 @@ enum IslandRightSlotResolver {
             return .usage(
                 percent: Int(usage.percent.rounded()),
                 windowLabel: usage.windowLabel,
-                providerTitle: usage.providerTitle
+                providerTitle: usage.providerTitle,
+                resetsAt: usage.resetsAt
             )
         }
 
@@ -186,7 +200,8 @@ enum IslandRightSlotResolver {
                 worst = UsageReading(
                     percent: window.usedPercentage,
                     windowLabel: window.label,
-                    providerTitle: provider.title
+                    providerTitle: provider.title,
+                    resetsAt: window.resetsAt
                 )
             }
         }

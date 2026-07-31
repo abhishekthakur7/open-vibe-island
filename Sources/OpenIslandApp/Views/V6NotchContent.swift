@@ -38,7 +38,33 @@ enum IslandRightSlotContent: Equatable {
     /// AB-322: the worst rate-limit window once it turns critical
     /// (`IslandRightSlotResolver.usageAlertThreshold`). `percent` is already
     /// rounded for display.
-    case usage(percent: Int, windowLabel: String, providerTitle: String)
+    ///
+    /// `resetsAt` (halo parity V9 · G-32) is when the window refills, or `nil`
+    /// when the provider reported none — additive, and every theme but Halo
+    /// ignores it, so their pills are byte-identical. Halo's §I′ pill spends it
+    /// on the board's third token (the `19h` countdown) instead of the window
+    /// label. It stays a `Date`, not a formatted string, so the *view* owns the
+    /// clock — see `IslandRightSlotResolver.UsageReading.resetsAt`.
+    case usage(percent: Int, windowLabel: String, providerTitle: String, resetsAt: Date?)
+}
+
+extension IslandRightSlotContent {
+    /// The pre-G-32 three-token `.usage` payload, for the call sites (and
+    /// fixtures/tests) that have no reset time to report. Exactly
+    /// `.usage(…, resetsAt: nil)` — kept as an overload so adding the fourth
+    /// value didn't churn every construction site in the app.
+    static func usage(
+        percent: Int,
+        windowLabel: String,
+        providerTitle: String
+    ) -> IslandRightSlotContent {
+        .usage(
+            percent: percent,
+            windowLabel: windowLabel,
+            providerTitle: providerTitle,
+            resetsAt: nil
+        )
+    }
 }
 
 extension IslandRightSlotContent {
@@ -61,7 +87,7 @@ extension IslandRightSlotContent {
             // The todo list is the headline; a pure fan-out falls back to the
             // number of subagents so the badge is never a bare "×0".
             return total > 0 ? total : subagents
-        case .usage(let percent, _, _):
+        case .usage(let percent, _, _, _):
             return percent
         }
     }
@@ -85,7 +111,7 @@ extension IslandRightSlotContent {
                 return lang.t("a11y.rightSlot.tasks", completed, total)
             }
             return lang.t("a11y.rightSlot.subagents", subagents)
-        case .usage(let percent, let windowLabel, let providerTitle):
+        case .usage(let percent, let windowLabel, let providerTitle, _):
             return lang.t("a11y.rightSlot.usage", providerTitle, windowLabel, percent)
         }
     }
@@ -593,7 +619,7 @@ private enum RightSlotKey: Hashable {
             self = .attention(count, kind)
         case .taskCounter(let completed, let total, let subagents):
             self = .tasks(completed, total, subagents)
-        case .usage(let percent, let window, let provider):
+        case .usage(let percent, let window, let provider, _):
             self = .usage(percent, window, provider)
         }
     }

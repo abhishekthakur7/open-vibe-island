@@ -128,6 +128,83 @@ struct HaloUsageTests {
         #expect(HaloHeaderControls.headerControlButtonSize == 26)
     }
 
+    /// Parity V9 — the right-of-notch filament's geometry budget, pinned so a
+    /// future tweak to any one knob can't silently starve the lane back to zero.
+    ///
+    /// Real hardware (14" notch, 540pt header frame, measured by
+    /// `HaloHeaderControls`' own instrumentation): `rawRightWidth` is 131.5pt at
+    /// the shared 46pt padding. Halo's trailing gutter of 36 lifts that to 141.5;
+    /// its own 6pt notch inset, 22pt controls and 6pt spacing leave **51.5pt** —
+    /// over the theme's 45pt floor, so the lane renders (`HaloUsageLaneRung`
+    /// then picks the richest form that fits, `.minimal` at this width).
+    /// At the *shared* constants the same geometry yields 17.5pt and no lane at
+    /// all — the parked V1 residual this batch resolved.
+    @Test
+    func notchProfileGeometryLeavesTheRightLaneAFilamentToDraw() {
+        let buttonsWidth = (HaloHeaderControls.notchHeaderControlButtonSize * 3)
+            + (HaloHeaderControls.notchHeaderControlSpacing * 2)
+        #expect(buttonsWidth == 78)
+
+        // The 10pt the trailing gutter frees (46 − 36) lands in `rawRightWidth`.
+        let rawRightWidth: CGFloat = 131.5
+            + (IslandHeaderLaneLayout.notchHeaderHorizontalPadding
+                - HaloHeaderControls.notchHeaderTrailingPadding)
+        #expect(rawRightWidth == 141.5)
+
+        let halo = IslandHeaderLaneLayout.notchAwareMetrics(
+            contentWidth: 540
+                - IslandHeaderLaneLayout.notchHeaderHorizontalPadding
+                - HaloHeaderControls.notchHeaderTrailingPadding,
+            rawLeftWidth: 131.5,
+            rawRightWidth: rawRightWidth,
+            openedHeaderButtonsWidth: buttonsWidth,
+            headerControlSpacing: HaloHeaderControls.notchHeaderControlSpacing,
+            controlsLaneArrangement: .rowPacked,
+            notchLaneSafetyInset: HaloHeaderControls.notchLaneSafetyInset,
+            minimumRightLaneWidth: HaloHeaderControls.minimumRightFilamentLaneWidth
+        )
+        #expect(halo.rightUsageWidth == 51.5)
+        #expect(halo.rightUsageWidth >= HaloHeaderControls.minimumRightFilamentLaneWidth)
+        // The left lane keeps the board's full form (30pt arc + 9pt gap + a
+        // ~65pt `CLAUDE 5H` kicker ≈ 104pt) with room to spare.
+        #expect(halo.leftUsageWidth == 125.5)
+
+        // The shared defaults, on the same hardware: nothing to draw.
+        let shared = IslandHeaderLaneLayout.notchAwareMetrics(
+            contentWidth: 540 - (2 * IslandHeaderLaneLayout.notchHeaderHorizontalPadding),
+            rawLeftWidth: 131.5,
+            rawRightWidth: 131.5,
+            openedHeaderButtonsWidth: (HaloHeaderControls.headerControlButtonSize * 3)
+                + (HaloHeaderControls.headerControlSpacing * 2),
+            headerControlSpacing: HaloHeaderControls.headerControlSpacing,
+            controlsLaneArrangement: .rowPacked
+        )
+        #expect(shared.rightUsageWidth == 0)
+    }
+
+    /// The degrade ladder only ever trades *down*: each rung's arc is no larger
+    /// than the profile it was fitted to, the kicker sheds the provider before
+    /// the window, and the last rung drops the readout entirely so
+    /// `ViewThatFits` — which renders its final candidate whether or not it fits
+    /// — can never overflow a lane into the physical cutout.
+    @Test
+    func filamentLaneRungsDegradeMonotonically() {
+        let profile = HaloUsageMetrics.headerFilamentNotch
+        let ladder: [HaloUsageLaneRung] = [.full, .shortTitle, .windowOnly, .compact, .minimal, .arcOnly]
+
+        for (earlier, later) in zip(ladder, ladder.dropFirst()) {
+            #expect(later.filamentDiameter(profile: profile) <= earlier.filamentDiameter(profile: profile))
+        }
+
+        #expect(HaloUsageLaneRung.full.filamentDiameter(profile: profile) == 30)
+        #expect(HaloUsageLaneRung.compact.filamentDiameter(profile: profile) == HaloUsageMetrics.headerFilamentTopBar)
+        #expect(HaloUsageLaneRung.minimal.filamentDiameter(profile: profile) == HaloUsageMetrics.pillFilament)
+        #expect(HaloUsageLaneRung.full.showsProvider && HaloUsageLaneRung.shortTitle.usesShortTitle)
+        #expect(HaloUsageLaneRung.windowOnly.showsProvider == false)
+        #expect(HaloUsageLaneRung.minimal.showsKicker == false)
+        #expect(HaloUsageLaneRung.arcOnly.showsReadout == false)
+    }
+
     // MARK: - Theme wiring (slots return Halo surfaces, not the interim delegate)
 
     /// The §I meter card slot returns a Halo surface when providers exist and nil

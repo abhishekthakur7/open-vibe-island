@@ -395,7 +395,7 @@ private enum FlightDeckRightSlotKey: Hashable {
             self = .attention(count, kind)
         case .taskCounter(let completed, let total, let subagents):
             self = .tasks(completed, total, subagents)
-        case .usage(let percent, let window, let provider):
+        case .usage(let percent, let window, let provider, _):
             self = .usage(percent, window, provider)
         }
     }
@@ -449,7 +449,7 @@ struct FlightDeckRightSlotView: View {
             // (question, 1.2s pulse).
             FlightDeckAttentionSegment(count: count, kind: kind, lang: lang)
                 .accessibilityLabel(content.fallbackBadgeAccessibilityLabel(lang))
-        case .usage(let percent, let window, _):
+        case .usage(let percent, let window, _, _):
             // AB-338 · SPEC §4A: the worst-window usage mini-tape (`7D 92%`).
             // Arrives only at ≥90 per the shared T04 rule (see the divergence
             // note in `FlightDeckUsageMiniTape`), so in practice this is the red

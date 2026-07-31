@@ -175,7 +175,7 @@ private enum InstrumentRightSlotKey: Hashable {
             self = .attention(count, kind)
         case .taskCounter(let completed, let total, let subagents):
             self = .tasks(completed, total, subagents)
-        case .usage(let percent, let window, let provider):
+        case .usage(let percent, let window, let provider, _):
             self = .usage(percent, window, provider)
         }
     }

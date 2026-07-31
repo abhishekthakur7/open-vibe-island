@@ -223,12 +223,25 @@ enum IslandHeaderLaneLayout {
     /// controls + their 8pt gap take 94 + 8 — leaving the gauge **17.5pt**, not
     /// the ~52 the parity notes assumed. No value of this constant admits a
     /// legible gauge into 17.5pt, and the themes' own header gauges need *more*
-    /// than 58, not less: Halo's §C filament is a 30pt arc + 9pt gap + an 11pt
-    /// percent readout ≈ 64pt (≈56pt even at the 22pt top-bar arc with the
-    /// kicker dropped). Freeing the missing ~35–45pt means changing the header
-    /// itself — `notchHeaderHorizontalPadding` (46 here; the Halo board's
-    /// `.p-head` says 16, which alone recovers 30pt), the control size, or
-    /// column-stacking the lane — never this floor.
+    /// than 58, not less: Halo's §C filament is a 30pt arc + 9pt gap + a 64pt
+    /// `CLAUDE 5H` kicker ≈ 104pt (≈65pt with the kicker cut to the bare window
+    /// label). Freeing the missing width means changing the header itself —
+    /// never this floor.
+    ///
+    /// **What Halo did (parity V9, owner-sanctioned).** Two theme-scoped
+    /// geometry knobs, both passed *into* `metrics(...)` rather than lowering
+    /// anything here, so the other five themes are bit-for-bit unaffected:
+    /// 1. a 16pt **trailing** gutter (`trailingPadding:` — the Halo board's own
+    ///    `.p-head{padding:11px 16px 10px}`) while the leading gutter stays 46,
+    ///    because only the leading one hosts the traveling glyph. That is the
+    ///    full 30pt this comment predicted: `rawRightWidth` 131.5 → 161.5.
+    /// 2. 22pt notch-profile controls instead of 26 (`HaloHeaderControls
+    ///    .notchHeaderControlButtonSize`), buying another 12pt.
+    /// Net: `161.5 − 12 (inset) − 82 (3×22 + 2×8) − 8 (gap) = 59.5pt`, cleared
+    /// against Halo's own `minimumRightLaneWidth` floor (46 — the width of its
+    /// narrowest legible filament rung, a 15pt arc + 6pt gap + an 11pt percent
+    /// readout), and spent on the richest rung that fits: a 22pt arc + 9pt gap
+    /// + the `7D`/`78%` stack ≈ 56.6pt (`HaloUsageLaneRung`).
     static let minimumRightUsageLaneWidth: CGFloat = 58
 
     /// How the right lane's control buttons share their lane with the usage
@@ -431,16 +444,40 @@ enum IslandHeaderLaneLayout {
     /// per-theme `openedHeaderMetrics`, computed once and shared. Entirely
     /// independent of usage-provider content — `laneGroups` consumes this
     /// result's `rightUsageWidth`, not the other way around.
+    ///
+    /// - `trailingPadding` (halo parity V9, default `nil` — the symmetric shared
+    ///   padding, unchanged for the other five themes): lets a theme spend a
+    ///   *narrower* trailing gutter than its leading one. The leading gutter is
+    ///   not free to shrink — on the notch profile it is the landing strip for
+    ///   `IslandPanelView.openedGlyphLeadingInset`'s traveling glyph (26pt +
+    ///   its 24pt box ends exactly at 46) — but nothing lands in the trailing
+    ///   one, so a theme whose right-of-notch lane is starved can recover the
+    ///   difference there without moving a single pixel of its left lane.
+    ///   **Careful**: this is a *layout* gutter, not the one you see —
+    ///   `NotchShape` paints the silhouette's walls `openedTopRadius` inside the
+    ///   frame, so the drawn gutter is `padding − openedTopRadius` (see
+    ///   `HaloHeaderControls.notchHeaderTrailingPadding`).
+    /// - `notchLaneSafetyInset` (default the shared 12): each lane's clearance
+    ///   from the physical cutout's edge.
+    /// - `minimumRightLaneWidth` (default the shared floor): the floor this
+    ///   call's right lane must clear, so a theme whose own gauge degrades to a
+    ///   narrower form than the shared 58pt assumption can admit it. See
+    ///   `minimumRightUsageLaneWidth`'s doc comment for why lowering the shared
+    ///   constant itself is never the answer.
     static func metrics(
         totalWidth: CGFloat,
         usesNotchAwareLayout: Bool,
         targetScreen: NSScreen?,
         openedHeaderButtonsWidth: CGFloat,
         headerControlSpacing: CGFloat,
-        controlsLaneArrangement: ControlsLaneArrangement = .rowPacked
+        controlsLaneArrangement: ControlsLaneArrangement = .rowPacked,
+        trailingPadding: CGFloat? = nil,
+        notchLaneSafetyInset: CGFloat = notchLaneSafetyInset,
+        minimumRightLaneWidth: CGFloat = minimumRightUsageLaneWidth
     ) -> Metrics {
-        let horizontalPadding = horizontalPadding(usesNotchAwareLayout: usesNotchAwareLayout)
-        let contentWidth = max(0, totalWidth - (horizontalPadding * 2))
+        let leadingPadding = horizontalPadding(usesNotchAwareLayout: usesNotchAwareLayout)
+        let trailingPadding = trailingPadding ?? leadingPadding
+        let contentWidth = max(0, totalWidth - leadingPadding - trailingPadding)
         guard usesNotchAwareLayout, let screen = targetScreen else {
             switch controlsLaneArrangement {
             case .rowPacked:
@@ -471,8 +508,8 @@ enum IslandHeaderLaneLayout {
 
         let panelMinX = screen.frame.midX - (totalWidth / 2)
         let panelMaxX = panelMinX + totalWidth
-        let contentMinX = panelMinX + horizontalPadding
-        let contentMaxX = panelMaxX - horizontalPadding
+        let contentMinX = panelMinX + leadingPadding
+        let contentMaxX = panelMaxX - trailingPadding
 
         let fallbackNotchHalfWidth = screen.notchSize.width / 2
         let notchLeftEdge = screen.frame.midX - fallbackNotchHalfWidth
@@ -489,7 +526,9 @@ enum IslandHeaderLaneLayout {
             rawRightWidth: rawRightWidth,
             openedHeaderButtonsWidth: openedHeaderButtonsWidth,
             headerControlSpacing: headerControlSpacing,
-            controlsLaneArrangement: controlsLaneArrangement
+            controlsLaneArrangement: controlsLaneArrangement,
+            notchLaneSafetyInset: notchLaneSafetyInset,
+            minimumRightLaneWidth: minimumRightLaneWidth
         )
     }
 
@@ -510,7 +549,9 @@ enum IslandHeaderLaneLayout {
         rawRightWidth: CGFloat,
         openedHeaderButtonsWidth: CGFloat,
         headerControlSpacing: CGFloat,
-        controlsLaneArrangement: ControlsLaneArrangement
+        controlsLaneArrangement: ControlsLaneArrangement,
+        notchLaneSafetyInset: CGFloat = notchLaneSafetyInset,
+        minimumRightLaneWidth: CGFloat = minimumRightUsageLaneWidth
     ) -> Metrics {
         let leftUsageWidth = max(0, rawLeftWidth - notchLaneSafetyInset)
         let rightAvailableWidth = max(0, rawRightWidth - notchLaneSafetyInset)
@@ -528,7 +569,7 @@ enum IslandHeaderLaneLayout {
         case .columnStacked:
             proposedRightUsageWidth = rightAvailableWidth
         }
-        let rightUsageWidth = proposedRightUsageWidth >= minimumRightUsageLaneWidth
+        let rightUsageWidth = proposedRightUsageWidth >= minimumRightLaneWidth
             ? proposedRightUsageWidth
             : 0
 

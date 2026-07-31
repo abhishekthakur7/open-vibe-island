@@ -25,6 +25,11 @@ enum HaloUsageMetrics {
     static let headerFilamentTopBar: CGFloat = 22
     /// Header filament stroke — the mockup's 2.2px arc on the 30pt filament.
     static let headerFilamentLineWidth: CGFloat = 2.2
+    /// The I′ closed-pill filament (mockup §I′: a 15pt `svg` box, `r 9`,
+    /// `stroke 2.4`). Named here beside its siblings because the header's
+    /// narrowest lane rung (`HaloUsageLaneRung.minimal`) borrows exactly this
+    /// size — it is the theme's proven "smallest arc that still reads".
+    static let pillFilament: CGFloat = 15
     /// Full §I meter-card filament dial.
     static let meterFilament: CGFloat = 52
     /// The §I dial stroke — the mockup's 3px arc on the 52pt dial.
@@ -197,16 +202,99 @@ struct HaloUsageFilamentArc: View {
     }
 }
 
+/// How much of the §C filament a header lane has room to draw (parity V9).
+///
+/// The board gives each lane ~196pt (a 520pt panel, a 96pt `.ngap`); this
+/// MacBook's physical notch is ~185pt, so the real right-of-notch lane is
+/// ~59.5pt even after Halo spends both of its geometry knobs (see
+/// `HaloHeaderControls.notchHeaderTrailingPadding` /
+/// `.notchHeaderControlButtonSize`). Rather than pick one fixed compromise for
+/// every display, the lane walks this ladder through `ViewThatFits` and renders
+/// the **richest rung its measured width admits** — the left lane (~150pt) keeps
+/// the board's full `CLAUDE 5H` / `34%` form, the starved right lane degrades to
+/// a smaller arc and a shorter kicker rather than vanishing (which is what it did
+/// before: `rightUsageWidth` snapped to 0 and the window silently moved to the §I
+/// meter card).
+///
+/// Widths at the notch profile, measured at Halo's own type sizes (10pt kicker
+/// with `.07em` tracking, 11pt value): full 103.7 · shortTitle 72.0 ·
+/// windowOnly 64.6 · compact 56.6 · minimal 46.6.
+enum HaloUsageLaneRung: CaseIterable {
+    /// The board's own form: `CLAUDE 5H` over `34%`, profile-size arc.
+    case full
+    /// `CL 5H` — the shared `shortTitle` abbreviation (F7).
+    case shortTitle
+    /// `5H` — the window label alone; the provider is inferable from the lane
+    /// beside it (and always carried by the `.help()` / VoiceOver summary).
+    case windowOnly
+    /// `5H` over `34%` on the smaller top-bar arc — the first rung that fits a
+    /// real notch's right lane.
+    case compact
+    /// Percent only, on the pill's own 15pt filament size (`HaloUsageFilament`,
+    /// §I′) — the narrowest form that still carries a number.
+    case minimal
+    /// The bare arc. The last resort so `ViewThatFits` — which renders its final
+    /// candidate whether or not it fits — can never overflow a lane into the
+    /// physical cutout: the fill fraction still reads as a gauge without colour
+    /// doing the work alone, and the exact number stays one hover (`.help`) and
+    /// one §I meter card away.
+    case arcOnly
+
+    /// Whether the kicker prints the provider, and how.
+    var showsProvider: Bool {
+        switch self {
+        case .full, .shortTitle: true
+        case .windowOnly, .compact, .minimal, .arcOnly: false
+        }
+    }
+
+    /// `false` for `.arcOnly` — the one rung that drops the readout entirely.
+    var showsReadout: Bool { self != .arcOnly }
+
+    /// The `shortTitle` abbreviation (`Cl` / `Cx`) instead of the full name.
+    var usesShortTitle: Bool { self == .shortTitle }
+
+    /// `false` from `.minimal` down, where the kicker line is dropped.
+    var showsKicker: Bool {
+        switch self {
+        case .full, .shortTitle, .windowOnly, .compact: true
+        case .minimal, .arcOnly: false
+        }
+    }
+
+    /// The arc this rung draws, given the profile-fitted diameter the lane was
+    /// handed (30pt under the notch, 22pt on the top bar). Never *grows* the
+    /// profile size — a rung only ever trades size for fit.
+    func filamentDiameter(profile: CGFloat) -> CGFloat {
+        switch self {
+        case .full, .shortTitle, .windowOnly:
+            profile
+        case .compact:
+            min(profile, HaloUsageMetrics.headerFilamentTopBar)
+        case .minimal, .arcOnly:
+            min(profile, HaloUsageMetrics.pillFilament)
+        }
+    }
+
+    /// The board's `.fil{gap:9px}`, tightened only on the narrowest rung.
+    var readoutGap: CGFloat {
+        showsKicker ? 9 : 6
+    }
+}
+
 /// Halo's opened-header usage readout (AB-343 · `SPEC-halo` §5C · mockup §C): one
 /// light-filament and readout per provider window, laid out around the notch by
 /// `HaloHeaderControls`.
 ///
 /// Each window shows the threshold filament beside a two-line readout — the
-/// `Claude 5h` kicker (`.fk`, at floor) over the `34% · 2h 10m` value
-/// (`.fv`, tabular): **percent + resets-in inline**, surfacing `resetsAt` which
-/// today lives only in the `.help()` tooltip (the SPEC's "hardest detail"). The
-/// same per-window summary is kept in the tooltip. Colour is the single
-/// `HaloUsageThreshold` rule.
+/// `CLAUDE 5H` kicker (`.fk`, at floor) over the `34%` value (`.fv`, tabular;
+/// G-54 keeps the reset countdown in the §I meter card, not here). The full
+/// per-window summary, resets included, stays in the `.help()` tooltip and the
+/// single grouped VoiceOver stop. Colour is the single `HaloUsageThreshold` rule.
+///
+/// **V9**: the row is chosen by `ViewThatFits` from the `HaloUsageLaneRung`
+/// ladder, so a lane the physical notch has starved degrades (smaller arc,
+/// shorter kicker) instead of being dropped from the header entirely.
 struct HaloUsageSummary: View {
     let providers: [UsageProviderPresentation]
     let lang: LanguageManager
@@ -217,18 +305,27 @@ struct HaloUsageSummary: View {
     var now: Date = .now
 
     var body: some View {
+        // V9: the ladder replaces the old two-rung (full title / short title)
+        // `ViewThatFits` — same mechanism, three more rungs below it so a lane
+        // the physical notch has starved degrades instead of disappearing.
+        // Spelled out rather than looped: `ViewThatFits` picks between its own
+        // *literal* children, so a `ForEach` would hand it one candidate.
         ViewThatFits(in: .horizontal) {
-            summaryRow(usesShortTitles: false)
-            summaryRow(usesShortTitles: true)
+            summaryRow(.full)
+            summaryRow(.shortTitle)
+            summaryRow(.windowOnly)
+            summaryRow(.compact)
+            summaryRow(.minimal)
+            summaryRow(.arcOnly)
         }
     }
 
-    private func summaryRow(usesShortTitles: Bool) -> some View {
+    private func summaryRow(_ rung: HaloUsageLaneRung) -> some View {
         HStack(spacing: 14) {
             ForEach(providers) { provider in
                 HaloUsageProviderGroup(
                     provider: provider,
-                    usesShortTitle: usesShortTitles,
+                    rung: rung,
                     filamentDiameter: filamentDiameter,
                     now: now,
                     lang: lang
@@ -244,19 +341,22 @@ struct HaloUsageSummary: View {
 /// windows. No box, no pill — set off by the void and type alone (Halo idiom).
 struct HaloUsageProviderGroup: View {
     let provider: UsageProviderPresentation
-    let usesShortTitle: Bool
+    let rung: HaloUsageLaneRung
     let filamentDiameter: CGFloat
     let now: Date
     let lang: LanguageManager
 
     private var providerTitle: String {
-        usesShortTitle ? provider.shortTitle : provider.title
+        rung.usesShortTitle ? provider.shortTitle : provider.title
     }
 
     var body: some View {
+        // The spoken summary never degrades with the rung: whatever the lane has
+        // room to *draw*, VoiceOver and the tooltip still name the provider, its
+        // windows and their resets.
         let summaryText = UsageSummaryAccessibilityFormatter.summary(
             for: provider,
-            usesShortTitle: usesShortTitle,
+            usesShortTitle: false,
             asOf: now,
             lang: lang
         )
@@ -266,6 +366,7 @@ struct HaloUsageProviderGroup: View {
                 HaloUsageWindowFilament(
                     providerTitle: providerTitle,
                     window: window,
+                    rung: rung,
                     filamentDiameter: filamentDiameter,
                     now: now,
                     lang: lang
@@ -280,11 +381,15 @@ struct HaloUsageProviderGroup: View {
     }
 }
 
-/// A single window's header filament and its two-line readout: the `Claude 5h`
-/// kicker over `34% · 2h 10m` (percent + resets-in inline, `.monospacedDigit`).
+/// A single window's header filament and its two-line readout: the `CLAUDE 5H`
+/// kicker over the `34%` value (`.monospacedDigit`), shrunk and shortened per
+/// `HaloUsageLaneRung` when the lane it landed in can't hold the full form.
 struct HaloUsageWindowFilament: View {
     let providerTitle: String
     let window: UsageWindowPresentation
+    /// How much of the readout this lane has room for (V9) — `.full` is the
+    /// board's own form and the default every un-starved lane picks.
+    var rung: HaloUsageLaneRung = .full
     let filamentDiameter: CGFloat
     let now: Date
     let lang: LanguageManager
@@ -305,28 +410,38 @@ struct HaloUsageWindowFilament: View {
         "\(window.roundedUsedPercentage)%"
     }
 
+    /// The kicker this rung prints: the board's `CLAUDE 5H`, its abbreviated
+    /// `CL 5H`, or the bare `5H` once the lane can't hold a provider name.
+    private var kickerText: String {
+        rung.showsProvider ? "\(providerTitle) \(window.label)" : window.label
+    }
+
     var body: some View {
-        HStack(spacing: 9) {
+        HStack(spacing: rung.readoutGap) {
             HaloUsageFilamentArc(
                 fraction: window.usedPercentage / 100,
                 color: threshold.filamentColor,
                 isCritical: threshold.isCritical,
-                diameter: filamentDiameter,
+                diameter: rung.filamentDiameter(profile: filamentDiameter),
                 lineWidth: HaloUsageMetrics.headerFilamentLineWidth,
                 glowRadius: 3
             )
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text("\(providerTitle) \(window.label)")
-                    .font(.system(size: HaloTypography.usageKickerSize, weight: .medium))
-                    .tracking(0.7)
-                    .textCase(.uppercase)
-                    .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
+            if rung.showsReadout {
+                VStack(alignment: .leading, spacing: 1) {
+                    if rung.showsKicker {
+                        Text(kickerText)
+                            .font(.system(size: HaloTypography.usageKickerSize, weight: .medium))
+                            .tracking(0.7)
+                            .textCase(.uppercase)
+                            .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
+                    }
 
-                Text(valueText)
-                    .font(.system(size: HaloTypography.usageValueSize, weight: .semibold))
-                    .monospacedDigit()
-                    .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
+                    Text(valueText)
+                        .font(.system(size: HaloTypography.usageValueSize, weight: .semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
+                }
             }
         }
         .accessibilityHidden(true)

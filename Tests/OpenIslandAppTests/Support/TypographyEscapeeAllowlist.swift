@@ -108,7 +108,7 @@ HaloClosedPill.swift	typography-debt	1	.font(.system(size: HaloTypography.pillLa
 HaloClosedPill.swift	typography-debt	1	.font(.system(size: HaloTypography.pillLabelSize, weight: .semibold, design: .default))
 HaloClosedPill.swift	typography-debt	1	.font(.system(size: HaloTypography.pillLabelSize, weight: .semibold, design: .default))
 HaloClosedPill.swift	typography-debt	1	.font(.system(size: HaloTypography.pillValueSize, weight: .regular, design: .monospaced))
-HaloClosedPill.swift	typography-debt	1	.font(.system(size: HaloTypography.usageKickerSize, weight: .regular, design: .default))
+HaloClosedPill.swift	typography-debt	1	.font(.system(size: HaloTypography.usageValueSize, weight: .regular, design: .default))
 HaloClosedPill.swift	typography-debt	1	return .system(size: HaloTypography.pillLabelSize, weight: .regular, design: .default)
 HaloClosedPill.swift	typography-debt	1	return .system(size: HaloTypography.pillLabelSize, weight: .semibold, design: .default)
 HaloClosedPill.swift	typography-debt	1	return .system(size: HaloTypography.pillValueSize, weight: .regular, design: .monospaced)

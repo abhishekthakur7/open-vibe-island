@@ -44,6 +44,10 @@ struct HaloClosedPill: View {
     var physicalNotchWidth: CGFloat = 0
     var minWidth: CGFloat = 70
     var showsGlyph: Bool = true
+    /// Injected so the I′ pill's reset countdown is deterministic in previews and
+    /// tests (G-32); the live overlay takes the wall clock. Mirrors
+    /// `HaloUsageSummary.now`.
+    var now: Date = .now
 
     @Environment(\.islandTokens) private var tokens
     @Environment(\.islandClosedPillActivity) private var activity
@@ -139,7 +143,7 @@ struct HaloClosedPill: View {
     @ViewBuilder
     private var rightSlotView: some View {
         if let rightSlot {
-            HaloRightSlotView(content: rightSlot)
+            HaloRightSlotView(content: rightSlot, now: now)
                 .transition(.opacity.combined(with: .move(edge: .trailing)))
         }
     }
@@ -238,7 +242,7 @@ private enum HaloRightSlotKey: Hashable {
             self = .attention(count, kind)
         case .taskCounter(let completed, let total, let subagents):
             self = .tasks(completed, total, subagents)
-        case .usage(let percent, let window, let provider):
+        case .usage(let percent, let window, let provider, _):
             self = .usage(percent, window, provider)
         }
     }
@@ -676,6 +680,9 @@ private struct HaloClosedPillLabel: View {
 struct HaloRightSlotView: View {
     let content: IslandRightSlotContent
     var lang: LanguageManager = .shared
+    /// Injected so the I′ reset countdown is deterministic in previews, the
+    /// parity harness and tests; the live pill takes the wall clock (G-32).
+    var now: Date = .now
     @Environment(\.islandTokens) private var tokens
 
     var body: some View {
@@ -693,8 +700,14 @@ struct HaloRightSlotView: View {
         case .taskCounter(let completed, let total, let subagents):
             HaloTaskCounter(form: HaloRightSlotForm.task(completed: completed, total: total, subagents: subagents))
                 .accessibilityLabel(content.fallbackBadgeAccessibilityLabel(lang))
-        case .usage(let percent, let window, let provider):
-            HaloUsageFilament(percent: percent, windowLabel: window, providerTitle: provider)
+        case .usage(let percent, let window, let provider, let resetsAt):
+            HaloUsageFilament(
+                percent: percent,
+                windowLabel: window,
+                providerTitle: provider,
+                resetsAt: resetsAt,
+                now: now
+            )
                 .accessibilityLabel(content.fallbackBadgeAccessibilityLabel(lang))
         }
     }
@@ -936,21 +949,36 @@ private struct HaloTaskCounter: View {
 /// **light-filament** arc (threshold-tinted, with a soft same-hue glow) + the
 /// provider and percent (`Codex 92%`) in the threshold tint + the window label.
 ///
-/// **Deviation (resets-in).** SPEC I′ pairs the percent with an inline resets-in
-/// countdown (`19h`). That needs the window's `resetsAt`, which the shared
-/// `IslandRightSlotContent.usage(percent:windowLabel:providerTitle:)` payload does
-/// **not** carry (it is `.help()`-tooltip-only today — SPEC §5A "hardest detail").
-/// Threading `resetsAt` in would change that shared enum's shape, breaking the
-/// Part-1 width-regression fixture that pins the 3-tuple signature and rippling
-/// across all six themes' pills — out of this Halo-scoped ticket. So the honest
-/// third token is the **window label** (`7d`) the payload does carry, dim; the
-/// full inline countdown lands with the shared payload change (tracked separately).
+/// **Third token (G-32, resolved in parity V9).** The board's §I′ pill reads
+/// `filament · Codex 94% · 19h` (`06-halo.html:1301-1305`: the left wing carries
+/// the 15pt arc and the `12.5pt` `Codex 94%` label, the right wing an `11pt`
+/// tertiary `19h`) — a **reset countdown**, not the window label. The countdown
+/// now arrives with the payload (`IslandRightSlotContent.usage`'s `resetsAt`,
+/// threaded from `IslandRightSlotResolver.UsageReading`) and is formatted here
+/// through the shared `UsageCountdownFormatter`, against an injectable `now`.
+/// When the provider reports no reset time — or it has already passed — the token
+/// falls back to the window label (`7d`) rather than leaving a hole, so every
+/// other caller keeps exactly the pill it had before.
 private struct HaloUsageFilament: View {
     let percent: Int
     let windowLabel: String
     let providerTitle: String
+    var resetsAt: Date?
+    var now: Date = .now
 
     @Environment(\.islandTokens) private var tokens
+
+    /// The board's third token: the countdown when there is one, else the
+    /// window label the payload has always carried.
+    private var trailingToken: String {
+        guard
+            let resetsAt,
+            let remaining = UsageCountdownFormatter.remainingLabel(until: resetsAt, asOf: now)
+        else {
+            return windowLabel
+        }
+        return remaining
+    }
 
     /// Threshold tint — crit `≥90`, warn `70…90`, else fine. Computed from the
     /// value so a fixture at any percent reads truthfully, though in production the
@@ -986,7 +1014,7 @@ private struct HaloUsageFilament: View {
                     .stroke(tint, style: StrokeStyle(lineWidth: 2.4, lineCap: .round))
             }
             .rotationEffect(.degrees(HaloUsageMetrics.arcRotationDegrees))
-            .frame(width: 15, height: 15)
+            .frame(width: HaloUsageMetrics.pillFilament, height: HaloUsageMetrics.pillFilament)
 
             // G-67: the red is spent on the number, not the vendor — the
             // provider name reads dim, only the percent lights the threshold tint.
@@ -999,8 +1027,9 @@ private struct HaloUsageFilament: View {
             .font(.system(size: HaloTypography.pillLabelSize, weight: .semibold, design: .default))
             .monospacedDigit()
 
-            Text(windowLabel)
-                .font(.system(size: HaloTypography.usageKickerSize, weight: .regular, design: .default))
+            // Mockup §I′ right wing: `font-size:11px; color:var(--t3)`.
+            Text(trailingToken)
+                .font(.system(size: HaloTypography.usageValueSize, weight: .regular, design: .default))
                 .monospacedDigit()
                 .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.tertiaryTextOpacity))
         }

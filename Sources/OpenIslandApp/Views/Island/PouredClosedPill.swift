@@ -268,7 +268,7 @@ private enum PouredRightSlotKey: Hashable {
             self = .attention(count, kind)
         case .taskCounter(let completed, let total, let subagents):
             self = .tasks(completed, total, subagents)
-        case .usage(let percent, let window, let provider):
+        case .usage(let percent, let window, let provider, _):
             self = .usage(percent, window, provider)
         }
     }
@@ -542,7 +542,7 @@ struct PouredRightSlotView: View {
         case .taskCounter(let completed, let total, let subagents):
             PouredTaskCounterChip(completed: completed, total: total, subagents: subagents)
                 .accessibilityLabel(content.fallbackBadgeAccessibilityLabel(lang))
-        case .usage(let percent, _, _):
+        case .usage(let percent, _, _, _):
             PouredUsageDialChip(percent: percent)
                 .accessibilityLabel(content.fallbackBadgeAccessibilityLabel(lang))
         case .agents(let cells):

@@ -281,6 +281,48 @@ struct IslandRightSlotResolverTests {
         #expect(IslandRightSlotResolver.worstUsage(in: []) == nil)
     }
 
+    /// G-32 (halo parity V9): the winning window's `resetsAt` rides along, all
+    /// the way into the `.usage` payload, so a pill can render the board's third
+    /// token (the `19h` countdown) instead of the window label. Additive — a
+    /// window without a reset time still produces the three-token payload every
+    /// other theme reads, byte-identical to before.
+    @Test
+    func worstUsageCarriesTheWindowResetTimeIntoTheUsagePayload() {
+        let resetsAt = Date(timeIntervalSince1970: 1_800_000_000)
+        let providers = [
+            UsageProviderPresentation(id: "codex", title: "Codex", windows: [
+                UsageWindowPresentation(id: "codex-7d", label: "7d", usedPercentage: 92, resetsAt: resetsAt),
+            ]),
+        ]
+
+        let worst = IslandRightSlotResolver.worstUsage(in: providers)
+        #expect(worst?.resetsAt == resetsAt)
+
+        let content = IslandRightSlotResolver.content(
+            attention: .init(),
+            spotlightTasks: .init(),
+            worstUsage: worst,
+            preferred: nil
+        )
+        #expect(
+            content == .usage(
+                percent: 92,
+                windowLabel: "7d",
+                providerTitle: "Codex",
+                resetsAt: resetsAt
+            )
+        )
+
+        // No reset time reported ⇒ the pre-G-32 payload, unchanged.
+        let withoutReset = IslandRightSlotResolver.content(
+            attention: .init(),
+            spotlightTasks: .init(),
+            worstUsage: .init(percent: 92, windowLabel: "7d", providerTitle: "Codex"),
+            preferred: nil
+        )
+        #expect(withoutReset == .usage(percent: 92, windowLabel: "7d", providerTitle: "Codex"))
+    }
+
     // MARK: - Themed fallback rendering
 
     /// Every new kind degrades to a number the shipped count badge can draw —
