@@ -61,6 +61,12 @@ struct HaloEdgeLight: View {
         HaloEdgeLightModel.perimeterSuppressesBloom(for: context.state, isOpened: context.isOpened)
     }
 
+    /// G-10: the opened working perimeter settles to the bare hairline, so the
+    /// left gutter belongs to the row rails.
+    private var settlesToHairline: Bool {
+        HaloEdgeLightModel.perimeterSettlesToHairline(for: context.state, isOpened: context.isOpened)
+    }
+
     var body: some View {
         Group {
             switch context.state {
@@ -69,7 +75,23 @@ struct HaloEdgeLight: View {
                 staticEdge(state: context.state, angle: 0)
 
             case .working:
-                if animates {
+                if settlesToHairline {
+                    // G-10 — the board's opened `.isle.panel` carries no state
+                    // class, so its `::before` falls through to `background:
+                    // var(--hair)`: a bare 8% hairline, edge OFF
+                    // (`06-halo.html:130`, and every opened frame in §C/§E/§F/§H
+                    // is a class-less `.isle panel`). The orbiting cyan→violet
+                    // segment is a *closed-pill* signal; once open, the state
+                    // light belongs to the content — and specifically, in §C, to
+                    // the running row's own `.rail.run` cyan→violet, which the
+                    // orbit was drowning as it swept the same 2pt of left gutter
+                    // (measured: perimeter (119,125,249) against a rail of
+                    // (119,139,250), one pixel apart). Painting the idle hairline
+                    // rather than dimming the working ring is what keeps V0's
+                    // hairline edge intact — a floored `white@.05` base would
+                    // have left the silhouette with no edge at all.
+                    staticEdge(state: .idle, angle: 0)
+                } else if animates {
                     HaloWorkingEdge(shape: shape, colors: colors)
                 } else {
                     // Reduce Motion → the full cyan→violet static ring (§3c "keep
@@ -364,6 +386,38 @@ enum HaloEdgeLightModel {
     /// dimmed hairline and casts no glow at all — the hero card's own
     /// `0 0 48px -8px` amber glow is the one loud thing. Same predicate as
     /// `perimeterOpenHandoffOpacity`, kept separate so both ends stay pinnable.
+    /// Whether the perimeter drops this state's own light for the board's **bare
+    /// hairline** this frame (G-10).
+    ///
+    /// Every opened frame in the mockup is a class-less `<div class="isle panel">`
+    /// — §C's list, §E's permission heroes, §F's question, §H's completion — so
+    /// `.isle::before` falls through to its `background:var(--hair)` default:
+    /// "idle: bare 8% hairline, edge OFF" (`06-halo.html:130`). The loud state
+    /// perimeters (`.isle.work` / `.perm` / `.ques` / `.ok` / `.fail`) appear only
+    /// on the **closed pill** and on the mid-morph `.travel` stages. Opened, Halo's
+    /// state light belongs to the content.
+    ///
+    /// Scoped to `.working` because that is the state G-10 is about: its orbiting
+    /// cyan→violet segment sweeps the very 2pt of left gutter that §C's
+    /// `.rail.run` occupies, in the very same hue, so the rail stopped reading
+    /// once every ~6s. The attention states already hand their light to the hero
+    /// through `perimeterOpenHandoffOpacity` + `perimeterSuppressesBloom` (a
+    /// dimmed amber hairline, deliberately still amber — G-36/M-20), and
+    /// `.success` / `.failure` draw no rail to collide with, so both are left
+    /// exactly as judged.
+    static func perimeterSettlesToHairline(
+        for state: IslandSurfaceEdgeState,
+        isOpened: Bool
+    ) -> Bool {
+        guard isOpened else { return false }
+        switch state {
+        case .working:
+            return true
+        case .idle, .permission, .question, .success, .failure:
+            return false
+        }
+    }
+
     static func perimeterSuppressesBloom(
         for state: IslandSurfaceEdgeState,
         isOpened: Bool

@@ -1227,15 +1227,29 @@ struct IslandPanelView: View {
 
     /// AB-298: per-row action surface for the notification card. Built here,
     /// where `model` lives, and handed to `IslandNotificationCard` via its
-    /// `makeActions` closure. No `dismiss` — the notification card isn't
-    /// dismissible.
+    /// `makeActions` closure.
+    ///
+    /// G-57 (parity R3, owner-sanctioned behaviour change): this used to
+    /// carry no `dismiss`, so the four completed-notification states
+    /// (`completionCard` / `longCompletionCard` / `completedInterrupted` /
+    /// `completedFailed`) offered no way to put the card down — the card is the
+    /// *only* surface those states present, and the §H list row that does carry
+    /// Dismiss was a "show all" away. It is now the same dismissal the list row
+    /// uses (`listRowActions` below): `AppModel.dismissSession` already retires
+    /// the notification surface itself (`dismissNotificationSurfaceIfPresent`)
+    /// and suppresses rather than tombstones the session, so the card closes into
+    /// the pill and the row stays undo-safe.
+    ///
+    /// `reply` stays honestly gated on `TerminalTextSender.canReply` — an agent
+    /// that cannot take a follow-up turn must not be offered one.
     private func notificationRowActions(for session: AgentSession) -> RowActions {
         RowActions(
             approve: { model.approvePermission(for: session.id, action: $0) },
             answer: { model.answerQuestion(for: session.id, answer: $0) },
             reply: TerminalTextSender.canReply(to: session, enabled: model.completionReplyEnabled)
                 ? { model.replyToSession(session, text: $0) } : nil,
-            jump: { model.jumpToSession(session) }
+            jump: { model.jumpToSession(session) },
+            dismiss: { model.dismissSession(session.id) }
         )
     }
 

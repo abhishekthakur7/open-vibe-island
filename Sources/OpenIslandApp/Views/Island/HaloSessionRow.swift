@@ -207,9 +207,18 @@ private struct HaloRowContent: View {
         // The 2pt edge-lit rail sits at the row's left edge, inset vertically — a
         // colored glow bleeds off it into the void (mockup `.rail` box-shadow). Only
         // the live / actionable states draw it; a settled or idle row is rail-free.
+        //
+        // G-10: "the row's left edge" is the *layout frame*'s, which on the notch
+        // profile is `openedTopRadius` outside the painted wall — so the rail used
+        // to be drawn in the transparent shoulder and clipped away. It now starts at
+        // the wall, where the board puts it (`HaloSessionRowFormat.railWallInset`).
         .overlay(alignment: .leading) {
             if presentation == .list, let rail {
                 HaloEdgeLitRail(rail: rail, tokens: tokens)
+                    .padding(.leading, HaloSessionRowFormat.railWallInset(
+                        sideInset: sideInset,
+                        openedTopRadius: tokens.metrics.openedTopRadius
+                    ))
             }
         }
         // Row entrance: a single ~0.7s light sweep on insert (never loops; none
@@ -2896,8 +2905,15 @@ private struct HaloScopeRow: View {
                     }
                 }
                 .layoutPriority(1)
+                // G-21 — the board pushes the keycap over with
+                // `.scope .sk{margin-left:auto}` (`06-halo.html:393`), which takes
+                // *no* width of its own: the sentence owns every point the keycap
+                // does not. A `Spacer` is not that — it is a flexible sibling that
+                // competes for the leftover, and it was winning ~14pt that the
+                // trailing scope phrase needed, so "in this project" tail-truncated
+                // while a visible gap sat next to it.
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                Spacer(minLength: 8)
                 if let keycaps {
                     HaloKeycap(glyphs: keycaps)
                 }

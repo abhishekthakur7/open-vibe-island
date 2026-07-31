@@ -145,7 +145,7 @@ public enum ClaudePermissionUpdate: Equatable, Codable, Sendable {
             guard let rule = rules.first else { return "Yes, always allow" }
             let action = Self.actionVerb(for: rule.toolName)
             let path = Self.shortenedPath(rule.ruleContent)
-            let scope = Self.scopeLabel(for: destination)
+            let scope = Self.scopeLabel(for: destination, toolName: rule.toolName)
             if let path {
                 return scope.isEmpty
                     ? "Yes, allow \(action) \(path)"
@@ -181,7 +181,13 @@ public enum ClaudePermissionUpdate: Equatable, Codable, Sendable {
     private static func actionVerb(for toolName: String) -> String {
         switch toolName {
         case "Read": return "reading from"
-        case "Write", "Edit": return "writing to"
+        // The mockup's own scoped-grant copy for an edit grant: "Yes, allow
+        // **edits to** `*.md` in this project" (`06-halo.html:1031`). The old
+        // "writing to" was four characters longer for no extra meaning, and on a
+        // 520pt panel those characters came out of the trailing scope phrase —
+        // Halo's §E scope row tail-truncated to "… AGENTS.md from t…" (parity
+        // G-21 cosmetic).
+        case "Write", "Edit": return "edits to"
         case "Bash": return "running"
         case "Glob", "Grep": return "searching"
         default: return toolName.lowercased()
@@ -197,9 +203,21 @@ public enum ClaudePermissionUpdate: Equatable, Codable, Sendable {
         return path.isEmpty ? nil : path + "/"
     }
 
-    private static func scopeLabel(for destination: ClaudePermissionUpdateDestination) -> String {
+    /// The trailing scope phrase. `.projectSettings` takes its preposition from
+    /// the grant's own verb, because the mockup writes both: a command is allowed
+    /// "running `rtk grep` **from** this project" (`06-halo.html:993`) while an
+    /// edit happens "edits to `*.md` **in** this project" (`:1031`). Every other
+    /// destination is preposition-free and unchanged.
+    private static func scopeLabel(
+        for destination: ClaudePermissionUpdateDestination,
+        toolName: String
+    ) -> String {
         switch destination {
-        case .projectSettings: return "from this project"
+        case .projectSettings:
+            switch toolName {
+            case "Write", "Edit": return "in this project"
+            default: return "from this project"
+            }
         case .userSettings: return "globally"
         case .localSettings: return ""
         case .session: return "for this session"

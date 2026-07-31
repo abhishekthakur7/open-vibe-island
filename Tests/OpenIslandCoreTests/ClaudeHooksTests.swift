@@ -147,6 +147,48 @@ struct ClaudeHooksTests {
         #expect(globalScoped.displayLabel.contains("globally"))
     }
 
+    /// The scoped-grant sentence is copy the overlay renders verbatim, and the
+    /// mockup writes it exactly twice: a command is allowed "running `rtk grep`
+    /// **from** this project" (`docs/design/overlay-redesign/06-halo.html:993`) and
+    /// an edit is "**edits to** `*.md` **in** this project" (`:1031`). The label
+    /// used to say "writing to … from this project" — four characters longer for
+    /// no extra meaning, and on a 520pt panel those characters came out of the
+    /// trailing scope phrase, which tail-truncated (parity G-21).
+    @Test
+    func editGrantLabelsUseTheMockupsShorterPhrasing() {
+        let editScoped = ClaudePermissionUpdate.addRules(
+            destination: .projectSettings,
+            rules: [ClaudePermissionRuleValue(toolName: "Edit", ruleContent: "AGENTS.md")],
+            behavior: .allow
+        )
+        #expect(editScoped.displayLabel == "Yes, allow edits to AGENTS.md/ in this project")
+
+        // `Write` shares the verb; the preposition follows it.
+        let writeScoped = ClaudePermissionUpdate.addRules(
+            destination: .projectSettings,
+            rules: [ClaudePermissionRuleValue(toolName: "Write", ruleContent: "docs")],
+            behavior: .allow
+        )
+        #expect(writeScoped.displayLabel == "Yes, allow edits to docs/ in this project")
+
+        // Every other verb keeps the board's "from this project" — the change is
+        // scoped to the grammar the edit phrasing needs, not a blanket reword.
+        let commandScoped = ClaudePermissionUpdate.addRules(
+            destination: .projectSettings,
+            rules: [ClaudePermissionRuleValue(toolName: "Bash", ruleContent: "swift build")],
+            behavior: .allow
+        )
+        #expect(commandScoped.displayLabel == "Yes, allow running swift build/ from this project")
+
+        // Non-project destinations are preposition-free and unmoved.
+        let editGlobal = ClaudePermissionUpdate.addRules(
+            destination: .userSettings,
+            rules: [ClaudePermissionRuleValue(toolName: "Edit", ruleContent: "AGENTS.md")],
+            behavior: .allow
+        )
+        #expect(editGlobal.displayLabel == "Yes, allow edits to AGENTS.md/ globally")
+    }
+
     // MARK: - AB-235: inline diff source extraction
 
     @Test

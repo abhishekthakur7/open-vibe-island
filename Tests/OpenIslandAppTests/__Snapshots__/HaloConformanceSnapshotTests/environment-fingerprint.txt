@@ -1,1 +1,0 @@
-macos=Version 27.0 (Build 26A5388g) arch=arm64 scale=2x

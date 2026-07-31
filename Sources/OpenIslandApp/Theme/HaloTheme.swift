@@ -295,6 +295,11 @@ enum HaloMetrics {
     static let railWidth: CGFloat = 2
     /// Vertical inset of the rail from the row's top/bottom.
     static let railInsetY: CGFloat = 8
+    /// The side inset the **top-bar** opened profile ships (external-display /
+    /// non-notched Macs) — `IslandPanelView.sessionListSideInset`'s `16`. Rows are
+    /// handed only that number, so it is also the row's only signal for which
+    /// silhouette it is being drawn inside; the notch profile passes `46`.
+    static let topBarProfileSideInset: CGFloat = 16
     /// Status dot diameter.
     static let dot: CGFloat = 8
     /// Permission / question hero-card corner radius.
@@ -491,6 +496,28 @@ enum HaloSessionRowFormat {
         case .question: return .question
         case .success, .interrupted, .failed, .idle: return nil
         }
+    }
+
+    /// G-10 — the leading offset the 2pt rail needs to land on the **painted**
+    /// wall, in points.
+    ///
+    /// The board writes `.rail{position:absolute;left:0}` (`06-halo.html:285`)
+    /// against `.isle.panel`, whose `left:0` *is* its painted border-box edge. Ours
+    /// is not: on the notch profile `NotchShape` draws the silhouette's side walls
+    /// at `rect.minX + topCornerRadius` / `rect.maxX − topCornerRadius`
+    /// (`NotchShape.swift:35-38`) — the row lays out in the full frame, but the
+    /// outer `openedTopRadius` of each side is transparent shoulder that the
+    /// surface's own clip discards. A rail at the row's x=0 is therefore not
+    /// "dominated by the perimeter edge-light", as G-10 assumed: it is **clipped
+    /// away entirely** (measured on this MacBook — frame edge 486pt, painted wall
+    /// 506pt, and every pixel between them is desktop backdrop).
+    ///
+    /// The `.topBar` profile paints from `rect.minX` (`V6ClosedPillShape`), so it
+    /// needs no offset. `sideInset` is the discriminator because it is the only
+    /// profile signal a row is handed (`IslandPanelView.sessionListSideInset` is
+    /// `notchAware ? 46 : 16`).
+    static func railWallInset(sideInset: CGFloat, openedTopRadius: CGFloat) -> CGFloat {
+        sideInset > HaloMetrics.topBarProfileSideInset ? openedTopRadius : 0
     }
 
     /// The achromatic **agent monogram** (mockup `.mono-tag`): a single identity
