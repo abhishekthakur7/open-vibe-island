@@ -148,20 +148,28 @@ private struct HaloRowContent: View {
         let rail = HaloSessionRowFormat.rail(for: edgeState)
         let isExpanded = resolvedIsExpanded(presence: presence)
 
+        let presentsHero = presentsHero(edgeState: edgeState, isExpanded: isExpanded)
+
         return VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 13) {
-                leadColumn(edgeState: edgeState, presence: presence)
+                leadColumn(edgeState: edgeState, presence: presence, presentsHero: presentsHero)
 
                 bodyColumn(
                     edgeState: edgeState,
                     presence: presence,
                     isExpanded: isExpanded,
+                    presentsHero: presentsHero,
                     referenceDate: referenceDate
                 )
 
                 Spacer(minLength: 8)
 
-                trailingColumn(presence: presence, isExpanded: isExpanded, referenceDate: referenceDate)
+                trailingColumn(
+                    edgeState: edgeState,
+                    presence: presence,
+                    isExpanded: isExpanded,
+                    referenceDate: referenceDate
+                )
             }
             .padding(.horizontal, sideInset)
             .padding(.top, 12)
@@ -244,17 +252,27 @@ private struct HaloRowContent: View {
 
     // MARK: - Lead column (status dot + monogram)
 
-    private func leadColumn(edgeState: HaloSessionRowFormat.EdgeState, presence: IslandSessionPresence) -> some View {
+    private func leadColumn(
+        edgeState: HaloSessionRowFormat.EdgeState,
+        presence: IslandSessionPresence,
+        presentsHero: Bool
+    ) -> some View {
         VStack(spacing: 7) {
             HaloStatusDot(
                 tint: dotTint(edgeState),
                 bloomOpacity: dotBloomOpacity(edgeState)
             )
-            HaloAgentMonogram(
-                text: HaloSessionRowFormat.monogram(agentShortName: session.tool.shortName),
-                tokens: tokens,
-                increasesContrast: increasesContrast
-            )
+            // G-22/G-48 residual: while a hero is presented the body column is a
+            // single title line (its `.act` sentence moved into the hero head), so
+            // a second lead slot would leave the badge sitting alone on an empty
+            // line. The hero's own `.who` chip already carries this monogram.
+            if !presentsHero {
+                HaloAgentMonogram(
+                    text: HaloSessionRowFormat.monogram(agentShortName: session.tool.shortName),
+                    tokens: tokens,
+                    increasesContrast: increasesContrast
+                )
+            }
         }
         .padding(.top, 3)
         .accessibilityHidden(true)
@@ -266,12 +284,17 @@ private struct HaloRowContent: View {
         edgeState: HaloSessionRowFormat.EdgeState,
         presence: IslandSessionPresence,
         isExpanded: Bool,
+        presentsHero: Bool,
         referenceDate: Date
     ) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             titleLine(edgeState: edgeState, presence: presence)
 
-            if let activity = activityText(edgeState: edgeState, isExpanded: isExpanded) {
+            if let activity = activityText(
+                edgeState: edgeState,
+                isExpanded: isExpanded,
+                presentsHero: presentsHero
+            ) {
                 activity
                     .font(.system(size: HaloTypography.activitySize, weight: .regular))
                     .lineLimit(1)
@@ -389,7 +412,11 @@ private struct HaloRowContent: View {
     /// turn narrates verb+object with a **"live" cyan verb** (mockup `.act .live`);
     /// every other row speaks a plain human phrase wholly at secondary — never a raw
     /// tool id or a `$ …` command echo. Returns `nil` when there is nothing to say.
-    private func activityText(edgeState: HaloSessionRowFormat.EdgeState, isExpanded: Bool) -> Text? {
+    private func activityText(
+        edgeState: HaloSessionRowFormat.EdgeState,
+        isExpanded: Bool,
+        presentsHero: Bool
+    ) -> Text? {
         let primary = tokens.colors.paper.opacity(contrastText(0.96))
         let secondary = tokens.colors.paper.opacity(contrastText(tokens.colors.secondaryTextOpacity))
 
@@ -402,12 +429,12 @@ private struct HaloRowContent: View {
             return nil
         }
 
-        // G-22/G-48: the §5E hero head *is* the narration ("the-automator wants to
-        // run a command") — the request's own summary phrase, printed one line
-        // below this. Same shape as the G-74 rule above: the row keeps the title
-        // (the target), the hero keeps the sentence, and the panel never prints
-        // one sentence twice. Only suppressed when the hero really carries it.
-        if isExpanded, edgeState == .permission, permissionHeroNarration != nil {
+        // G-22/G-48 (+ the V8 question follow-up): the §5E/§5F hero *is* the
+        // narration — the permission request's own summary phrase, or the question
+        // sentence the §5F interior prints — one line below this. Same shape as the
+        // G-74 rule above: the row keeps the title (the target), the hero keeps the
+        // sentence, and the panel never prints one sentence twice.
+        if presentsHero {
             return nil
         }
 
@@ -503,13 +530,31 @@ private struct HaloRowContent: View {
 
     // MARK: - Trailing column (age + hover-reveal dismiss)
 
-    private func trailingColumn(presence: IslandSessionPresence, isExpanded: Bool, referenceDate: Date) -> some View {
-        HStack(spacing: 6) {
-            Text(ageBadgeText(at: referenceDate))
-                .font(.system(size: HaloTypography.ageSize, weight: .regular).monospacedDigit())
-                .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
-                .lineLimit(1)
-                .frame(minWidth: 30, alignment: .trailing)
+    private func trailingColumn(
+        edgeState: HaloSessionRowFormat.EdgeState,
+        presence: IslandSessionPresence,
+        isExpanded: Bool,
+        referenceDate: Date
+    ) -> some View {
+        let age = ageBadgeText(at: referenceDate)
+        // V4 cosmetic: on a running row the age and the meta clock pin read the
+        // same clock, so both slots can print the identical string. The pin (with
+        // its glyph) is the labelled one — the bare age steps aside when it would
+        // only repeat it.
+        let duplicatesClockPin = metaClockLabel(
+            edgeState: edgeState,
+            isExpanded: isExpanded,
+            referenceDate: referenceDate
+        ) == age
+
+        return HStack(spacing: 6) {
+            if !duplicatesClockPin {
+                Text(age)
+                    .font(.system(size: HaloTypography.ageSize, weight: .regular).monospacedDigit())
+                    .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
+                    .lineLimit(1)
+                    .frame(minWidth: 30, alignment: .trailing)
+            }
 
             // The quiet expand / collapse chevron (mockup §D "tap to expand"): the
             // one affordance the void row keeps for opening the detail in place. Tap
@@ -1468,14 +1513,43 @@ private struct HaloRowContent: View {
             .contains { HaloActivityNarration.flatten($0).hasPrefix(line) }
     }
 
-    /// The sentence the §5E hero head prints as its subtitle — mirrors
-    /// `HaloPermissionHero.heroSubtitle` exactly (the request's own summary,
-    /// trimmed, `nil` when empty). Read by `activityText` so the row only gives up
-    /// its `.act` line when the hero genuinely takes it over (G-22/G-48).
+    /// The sentence the §5E hero head prints as its subtitle — the request's own
+    /// summary, trimmed, `nil` when empty. (The Codex fork replaces that subtitle
+    /// with the mockup's `Codex needs a decision — in-app only` line, but the
+    /// summary is still what the hero's command block spells out, so the seam is
+    /// the same: the hero carries the sentence, not the row.) Read by
+    /// `presentsHero` so the row only gives up its `.act` line — and its second
+    /// lead slot — when the hero genuinely takes it over (G-22/G-48).
     private var permissionHeroNarration: String? {
         guard let summary = session.permissionRequest?.summary
             .trimmingCharacters(in: .whitespacesAndNewlines), !summary.isEmpty else { return nil }
         return summary
+    }
+
+    /// True while the expanded row presents a §5E permission / §5F question hero.
+    /// The hero owns the sentence (its head subtitle, command block, or the shared
+    /// question interior), so the row above it shrinks to a single title line:
+    /// no `.act` echo, and no lone agent badge on the second lead slot.
+    private func presentsHero(edgeState: HaloSessionRowFormat.EdgeState, isExpanded: Bool) -> Bool {
+        guard isExpanded else { return false }
+        switch edgeState {
+        case .permission: return permissionHeroNarration != nil
+        case .question: return session.questionPrompt != nil
+        case .running, .idle, .success, .interrupted, .failed: return false
+        }
+    }
+
+    /// The elapsed string the collapsed `.meta` line's clock pin prints on this
+    /// row, or `nil` when no pin is drawn. The trailing age reads from the same
+    /// clock on a running row, so the two slots can render the identical string
+    /// (`2m` beside `🕐 2m`) — this is what lets the age suppress itself.
+    private func metaClockLabel(
+        edgeState: HaloSessionRowFormat.EdgeState,
+        isExpanded: Bool,
+        referenceDate: Date
+    ) -> String? {
+        guard edgeState == .running, !isExpanded else { return nil }
+        return session.elapsedRunningLabel(at: referenceDate)
     }
 
     private var permissionModeChipText: String? {
@@ -2136,10 +2210,11 @@ private struct HaloHeroPulseRing: View {
 
 /// The §5E permission hero body: forked by the agent's capability (Claude Allow
 /// once / Deny + scoped always-allow vs Codex jump-to-approve) and by body (a
-/// syntax-lit command block vs an inline diff). Every button's keycap tracks the
-/// **real** registered shortcut (⌘Y / ⌘⇧Y / ⌘N); the Codex jump carries none (no
-/// ⌘J handler is registered). The approval calls are the exact `RowActions.approve`
-/// round-trips the shared shortcuts fire, so the hero and the keyboard agree.
+/// syntax-lit command block vs an inline diff). Every **approval** keycap tracks a
+/// real registered shortcut (⌘Y / ⌘⇧Y / ⌘N); the Codex jump prints the board's ⌘J
+/// hint with no handler behind it (owner-sanctioned, see `jumpToApproveAction`).
+/// The approval calls are the exact `RowActions.approve` round-trips the shared
+/// shortcuts fire, so the hero and the keyboard agree.
 private struct HaloPermissionHero: View {
     let session: AgentSession
     let lang: LanguageManager
@@ -2173,7 +2248,11 @@ private struct HaloPermissionHero: View {
             title: heroTitle,
             subtitle: heroSubtitle,
             monogram: HaloSessionRowFormat.monogram(agentShortName: session.tool.shortName),
-            modelName: session.displayModelName,
+            // Mockup `.who` is `mark + label` (`X Codex`). A session with no model
+            // metadata — every Codex approval — would otherwise render a bare
+            // monogram, so the who-line falls back to the agent's own name: still
+            // an honest session field, and the identity the chip exists to state.
+            modelName: session.displayModelName ?? session.tool.displayName,
             tokens: tokens,
             increasesContrast: increasesContrast
         ) {
@@ -2216,7 +2295,17 @@ private struct HaloPermissionHero: View {
 
     /// The subtitle is the request's own human phrase (`the-automator wants to run a
     /// command`) — the honest field, never a fabricated line. Hidden when empty.
+    ///
+    /// The Codex fork is the one exception (mockup `06-halo.html:1049`): a terminal
+    /// approval's summary *is* its command (`Codex wants to run: git push origin
+    /// main`), which the `.cmd` block one line below already prints verbatim, so the
+    /// head would say the same thing twice. The board's copy — `Codex needs a
+    /// decision — in-app only` — states the capability fork instead, which is the
+    /// fact the summary can't carry.
     private var heroSubtitle: String? {
+        if requiresTerminalApproval {
+            return lang.t("island.halo.approval.codexDecision")
+        }
         guard let summary = request?.summary.trimmingCharacters(in: .whitespacesAndNewlines), !summary.isEmpty else {
             return nil
         }
@@ -2327,7 +2416,13 @@ private struct HaloPermissionHero: View {
     private var jumpToApproveAction: some View {
         HaloHeroButton(
             title: lang.t("island.halo.approval.jumpToCodex"),
-            keycaps: nil,   // No ⌘J handler is registered — a glyph must track a real shortcut.
+            // Mockup `06-halo.html:1056` prints a ⌘J keycap on this button. No ⌘J
+            // handler is registered (`OverlayPanelController` owns ⌘Y / ⌘⇧Y / ⌘N
+            // only, and the jump is not an approval round-trip), so this glyph is
+            // the board's affordance hint, not a live binding — owner-sanctioned.
+            // It stays a literal rather than a `HaloHeroFormat.Shortcut` case,
+            // because that enum's contract is "every case tracks a real handler".
+            keycaps: ["⌘", "J"],
             kind: .codex,
             accessibilityLabel: lang.t("island.halo.approval.jumpToCodex"),
             action: { actions.jump() }

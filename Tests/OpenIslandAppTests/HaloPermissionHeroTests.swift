@@ -35,8 +35,9 @@ struct HaloPermissionHeroTests {
     }
 
     /// There is deliberately **no** jump shortcut: `OverlayPanelController`
-    /// registers ⌘Y / ⌘⇧Y / ⌘N only. The Codex jump button prints no keycap, so no
-    /// `Shortcut` case may spell a ⌘J — a glyph must track a real handler.
+    /// registers ⌘Y / ⌘⇧Y / ⌘N only. The Codex jump button prints the mockup's ⌘J
+    /// hint as a view-local literal, so no `Shortcut` case may spell a ⌘J — every
+    /// glyph this enum vends must track a real handler.
     @Test
     func noShortcutAdvertisesAJumpKey() {
         for shortcut in HaloHeroFormat.Shortcut.allCases {

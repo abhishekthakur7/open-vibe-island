@@ -555,7 +555,11 @@ private enum DebugSessionFactory {
                 summary: "Allow exec_command to rewrite SettingsView.swift?",
                 affectedPath: "Sources/OpenIslandApp/Views/SettingsView.swift",
                 primaryActionTitle: "Allow",
-                secondaryActionTitle: "Deny"
+                secondaryActionTitle: "Deny",
+                // The tool this request is actually for — `claudeMetadata.currentTool`
+                // below already says `exec_command`. Without it the always-allow
+                // scope row has no rule to name and never renders (G-21).
+                toolName: "exec_command"
             ),
             jumpTarget: JumpTarget(
                 terminalApp: "Ghostty",
@@ -593,7 +597,13 @@ private enum DebugSessionFactory {
                         question: "Which authentication method should we use?",
                         header: "Auth",
                         options: [
-                            QuestionOption(label: "JWT tokens", description: "Stateless, scalable"),
+                            // Deliberately a full two-line description (G-04): the
+                            // option body wraps at panel width, which is the only
+                            // way the `lineLimit(2)` behaviour is ever exercised.
+                            QuestionOption(
+                                label: "JWT tokens",
+                                description: "Stateless and scalable — no session store to keep, though revoking one early needs a deny list."
+                            ),
                             QuestionOption(label: "Session cookies", description: "Traditional approach"),
                             QuestionOption(label: "OAuth 2.0", description: "Third-party auth"),
                             QuestionOption(label: "Other", description: "", allowsFreeform: true),

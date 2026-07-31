@@ -396,6 +396,7 @@
 "island.halo.approval.deny" = "拒絕";
 "island.halo.approval.jumpToCodex" = "跳轉到 Codex";
 "island.halo.approval.codexNote" = "Codex 的核准在應用程式內完成。跳轉到 Codex 查看此請求。";
+"island.halo.approval.codexDecision" = "Codex 需要一個決定 — 只能在應用程式內完成";
 "island.halo.approval.diffFile" = "%1$@ · 變更 %2$lld 處";
 "island.halo.approval.diffFileFallback" = "檔案";
 "island.halo.question.title" = "有個問題請你決定";

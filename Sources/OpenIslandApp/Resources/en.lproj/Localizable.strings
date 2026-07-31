@@ -395,6 +395,7 @@
 "island.halo.approval.deny" = "Deny";
 "island.halo.approval.jumpToCodex" = "Jump to Codex";
 "island.halo.approval.codexNote" = "Codex approvals happen inside the app. Jump to Codex to review this request.";
+"island.halo.approval.codexDecision" = "Codex needs a decision — in-app only";
 "island.halo.approval.diffFile" = "%1$@ · %2$lld changed";
 "island.halo.approval.diffFileFallback" = "File";
 "island.halo.question.title" = "A question for you";
