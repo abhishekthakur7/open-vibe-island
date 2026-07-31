@@ -2610,8 +2610,10 @@ struct HaloHeroButton: View {
 
     private var foreground: Color {
         switch kind {
-        // G-73: `.codex` shares `.primary`'s `#3A2205` amber ink. See `background`.
-        case .primary, .codex: return Color(red: 0x3A / 255.0, green: 0x22 / 255.0, blue: 0x05 / 255.0)
+        case .primary: return Color(red: 0x3A / 255.0, green: 0x22 / 255.0, blue: 0x05 / 255.0)
+        // G-73 (owner call): mockup E3 inline-styles the Codex jump cool-blue with
+        // `#04233A` ink — the blue *is* the honest-fork signal, matching `.codex-note`.
+        case .codex: return Color(red: 0x04 / 255.0, green: 0x23 / 255.0, blue: 0x3A / 255.0)
         case .deny: return Color(red: 0xF0 / 255.0, green: 0xA6 / 255.0, blue: 0xB0 / 255.0)
         }
     }
@@ -2623,17 +2625,21 @@ struct HaloHeroButton: View {
         startPoint: .topLeading, endPoint: .bottomTrailing
     )
 
+    /// The Codex jump's cool-blue slab (mockup E3 inline style,
+    /// `linear-gradient(135deg,#7ec9ff,#4aa3df)`) — deliberately a second hue so the
+    /// jump reads as "go approve over there", not a Halo Approve.
+    private static let codexBlue = LinearGradient(
+        colors: [Color(red: 0x7E / 255.0, green: 0xC9 / 255.0, blue: 0xFF / 255.0),
+                 Color(red: 0x4A / 255.0, green: 0xA3 / 255.0, blue: 0xDF / 255.0)],
+        startPoint: .topLeading, endPoint: .bottomTrailing
+    )
+
     private var background: AnyShapeStyle {
         switch kind {
-        // G-73: the Codex jump used its own `#7EC9FF→#4AA3DF` cool-blue slab, which
-        // put a second, *louder* accent hue inside an amber attention card — in the
-        // one card the user must act on. The CTA is the hero's primary action
-        // whatever the agent is, so it routes through the same amber seam
-        // (`.primary`) and the card keeps one accent. The honesty of the Codex
-        // fork is carried by the copy and the cool-blue `.codex-note` panel above
-        // it, not by re-hueing the button.
-        case .primary, .codex:
+        case .primary:
             return AnyShapeStyle(Self.amber)
+        case .codex:
+            return AnyShapeStyle(Self.codexBlue)
         case .deny:
             return AnyShapeStyle(Color(red: 224 / 255.0, green: 89 / 255.0, blue: 108 / 255.0).opacity(isHovered ? 0.22 : 0.13))
         }
