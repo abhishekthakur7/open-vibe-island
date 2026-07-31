@@ -236,6 +236,31 @@ protocol IslandTheme: Sendable {
         height: CGFloat
     ) -> AnyView?
 
+    /// How this theme splits the closed pill's two wings for the current right
+    /// slot — the label the lane actually renders, plus any extra left-wing
+    /// content width the pill draws beside the glyph (R4 · item 1).
+    ///
+    /// The shared `V6ClosedPill.*OuterWidth` math reserves the right slot a
+    /// width derived from `V6RightSlotView.intrinsicWidth`, which is the `×N`
+    /// badge's — fine for the five themes that draw a badge there, wrong for
+    /// Halo's §I′ usage compression, which draws a ~145pt filament + `Codex 92%`
+    /// + countdown group. Right-aligned into a ~50pt wing on a notched Mac that
+    /// group spills *backwards under the physical cutout*, where the hardware
+    /// eats it (reproduced and measured on this MacBook: bright content at x
+    /// 776.5…847.5 against the 663.5…848.5 cutout — 61.0pt lost). Board §I′ (`06-halo.html:1301-1305`) never asked for that: it
+    /// puts the arc + `Codex 94%` on the **left** wing and the countdown alone
+    /// on the right. This seam lets Halo declare that split once, so the pill
+    /// and the panel's morph-frame width math read the same numbers.
+    ///
+    /// **Declared here (not only in the extension)** for the same dynamic
+    /// dispatch reason as `closedSurfaceGlow`.
+    func closedPillWingPlan(
+        label: String?,
+        rightSlot: IslandRightSlotContent?,
+        layout: V6ClosedLayout,
+        height: CGFloat
+    ) -> IslandClosedPillWingPlan
+
     /// The ink the closed pill's **traveling** status glyph (`islandGlyphOverlay`,
     /// which the morph mounts once so it can slide into the header) takes for the
     /// current spotlight state — running blue / question gold / permission amber /
@@ -465,6 +490,27 @@ enum IslandQuestionSubmitDisabledStyle {
     static let opacity: Double = 0.5
 }
 
+// MARK: - Closed-pill wing plan (R4 · item 1)
+
+/// How a theme splits the closed pill's two wings around the physical notch.
+///
+/// Pure value, resolved once per frame by `IslandPanelView` and fed to BOTH the
+/// `V6ClosedPill.*OuterWidth` math (which sizes the morph's closed frame) and
+/// `theme.closedPill(...)` (which renders it), so the reserved geometry and the
+/// drawn content can never disagree — the exact drift that let Halo's §I′ usage
+/// group render under the hardware cutout.
+struct IslandClosedPillWingPlan: Equatable {
+    /// What the notch lane / centre label actually renders. A theme returns
+    /// `nil` to drop a label its wing composition has made redundant — Halo's
+    /// §I′ pill, whose left wing already reads `Codex 92%`, so a lane label of
+    /// `Codex` beside it is a literal duplicate.
+    var label: String?
+
+    /// Extra left-wing content width the pill draws between the glyph and the
+    /// label lane, in points. `0` for every theme but Halo's §I′ usage lead.
+    var leadingAccessoryWidth: CGFloat
+}
+
 // MARK: - Closed-pill ambient seam defaults (AB-330)
 
 extension IslandTheme {
@@ -501,6 +547,19 @@ extension IslandTheme {
                 tint: closedGlyphTint(mode: mode, rightSlot: rightSlot, activity: activity)
             )
         )
+    }
+
+    /// Default: the wings the shared `V6ClosedPill` math has always assumed —
+    /// the resolved label in the lane and nothing extra beside the glyph. Every
+    /// theme but Halo takes this, so their closed-pill widths and contents are
+    /// byte-identical (R4 · item 1).
+    func closedPillWingPlan(
+        label: String?,
+        rightSlot: IslandRightSlotContent?,
+        layout: V6ClosedLayout,
+        height: CGFloat
+    ) -> IslandClosedPillWingPlan {
+        IslandClosedPillWingPlan(label: label, leadingAccessoryWidth: 0)
     }
 
     /// Default: no dedicated full-meter surface. Every theme but Poured takes

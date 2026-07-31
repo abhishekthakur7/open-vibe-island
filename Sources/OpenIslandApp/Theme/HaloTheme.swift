@@ -1279,7 +1279,11 @@ struct HaloTheme: IslandTheme {
     ) -> AnyView {
         AnyView(HaloClosedPill(
             mode: mode,
-            label: label,
+            // R4 · item 1: the wing plan owns the label too, so a §I′ pill whose
+            // left wing already reads `Codex 92%` doesn't also print `Codex` in
+            // the lane. Routed through the same pure rule the panel's width math
+            // uses, so the pill and its reserved frame agree.
+            label: HaloClosedPillWings.label(label, rightSlot: rightSlot),
             rightSlot: rightSlot,
             layout: layout,
             height: height,
@@ -1287,6 +1291,26 @@ struct HaloTheme: IslandTheme {
             minWidth: minWidth,
             showsGlyph: showsGlyph
         ))
+    }
+
+    /// R4 · item 1 · board §I′ — Halo's only wing split: the critical-usage
+    /// filament + `Codex 92%` moves to the **left** wing (declaring its width so
+    /// the shared reserve grows to hold it), the countdown stays alone on the
+    /// right, and the now-duplicate lane label is dropped. Every other right-slot
+    /// kind returns the protocol default's plan, unchanged.
+    func closedPillWingPlan(
+        label: String?,
+        rightSlot: IslandRightSlotContent?,
+        layout: V6ClosedLayout,
+        height: CGFloat
+    ) -> IslandClosedPillWingPlan {
+        IslandClosedPillWingPlan(
+            label: HaloClosedPillWings.label(label, rightSlot: rightSlot),
+            leadingAccessoryWidth: HaloClosedPillWings.leadingAccessoryWidth(
+                for: rightSlot,
+                layout: layout
+            )
+        )
     }
 
     /// Opened header (AB-343 · T24 · SPEC §5C · mockup §C): the notch-split lanes

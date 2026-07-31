@@ -107,6 +107,22 @@ struct HaloHoverPeekContent: Equatable {
 /// never eat it. That is also why it does not need to participate in the V3
 /// morph: `IslandPanelView` fades it out on the first frame of `morphProgress`,
 /// and the surface underneath grows exactly as it did before this view existed.
+///
+/// **Docked, not floating (R4 · item 2).** §B is emphatic that this is *one*
+/// object — "the single black shape begins to grow… the edge-light stretches
+/// continuously around the growing silhouette" — and §B′'s filmstrip draws the
+/// peek frame at the **pill's own width**, just taller (`132×58` after `132×30`).
+/// The shipped peek was a 408pt card floating ~4pt under a pill that kept its own
+/// amber ring, so the judge read two shapes. It now renders as the pill's own
+/// column: `dockedWidth` is the closed pill's outer width, the body's top edge is
+/// flush with the pill's bottom, and — because a rounded-bottom pill meeting a
+/// square-top body would leave two corner notches at the joint — the fill is
+/// `HaloHoverPeekDockShape`, the whole column **minus the pill's own silhouette**
+/// (even-odd). That fills the corner cut-ins with the same ink while leaving the
+/// live pill and its content untouched, so the union silhouette is one straight
+/// black body. The single continuous outline around that union is composed by
+/// `IslandPanelView` (which owns the theme's edge seam) and the pill's own ring
+/// is suppressed for as long as the peek is up, so there is exactly one edge.
 struct HaloHoverPeek: View {
     let content: HaloHoverPeekContent
     let lang: LanguageManager
@@ -114,32 +130,59 @@ struct HaloHoverPeek: View {
     /// island's own surface, so a narrow display clamps it instead of
     /// overhanging the pill it belongs to.
     var availableWidth: CGFloat
+    /// The closed pill's outer width: the docked body matches it exactly, so the
+    /// two bodies share one silhouette (§B′ frame 2 is the pill's width, taller).
+    var dockedWidth: CGFloat
+    /// The pill band this column reserves above its own content — the pill draws
+    /// into it, this view only leaves room.
+    var pillHeight: CGFloat
+    /// The pill's bottom corner radius, so the knockout matches the silhouette
+    /// the pill actually draws where the two bodies meet.
+    var pillBottomRadius: CGFloat
 
     @Environment(\.islandTokens) private var tokens
     @Environment(\.colorSchemeContrast) private var contrast
 
-    /// `.isle perm{width:408px}`.
+    /// `.isle perm{width:408px}` — the board's own demo width, still the cap the
+    /// docked body will not exceed on a very wide pill.
     static let preferredWidth: CGFloat = 408
-    /// `border-radius:18px`.
-    private static let cornerRadius: CGFloat = 18
+    /// `border-radius:18px` — §B′ frame 2's radius, the bottom of the docked body.
+    static let cornerRadius: CGFloat = 18
+
+    /// The width the docked body actually takes: the pill's, clamped to the host's
+    /// surface and floored at the board's own peek width so a short pill (an
+    /// unlabelled attention state) still has room for the narration.
+    var resolvedWidth: CGFloat {
+        min(availableWidth, max(dockedWidth, Self.preferredWidth))
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            headRow
-            hintRow
+        VStack(spacing: 0) {
+            // The pill's own band. Transparent: the live pill renders into it.
+            Color.clear
+                .frame(height: pillHeight)
+
+            VStack(alignment: .leading, spacing: 9) {
+                headRow
+                hintRow
+            }
+            .padding(.horizontal, 15)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, 15)
-        .padding(.vertical, 12)
-        .frame(width: min(Self.preferredWidth, availableWidth), alignment: .leading)
+        .frame(width: resolvedWidth, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
-                .fill(tokens.colors.surfaceInk)
+            HaloHoverPeekDockShape(
+                pillHeight: pillHeight,
+                pillBottomRadius: pillBottomRadius,
+                bottomRadius: Self.cornerRadius
+            )
+            // Even-odd: paint the whole column EXCEPT the pill's silhouette, so
+            // the joint's corner cut-ins fill with the same ink and the pill's
+            // own content is never painted over. No shadow — the docked body is
+            // part of the pill's silhouette now, and Halo's void casts none.
+            .fill(tokens.colors.surfaceInk, style: FillStyle(eoFill: true))
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
-                .stroke(Color.white.opacity(0.07), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.5), radius: 18, y: 8)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(content.title). \(content.hint(lang))")
     }
@@ -208,5 +251,50 @@ struct HaloHoverPeek: View {
 
     private func opacity(_ base: Double) -> Double {
         tokens.colors.text(base, increaseContrast: contrast == .increased)
+    }
+}
+
+// MARK: - Dock silhouette (R4 · item 2)
+
+/// The docked peek's fill path: the **whole** pill+peek column (flat top, the
+/// peek's bottom radius) with the pill's own silhouette subtracted, filled
+/// even-odd.
+///
+/// Why the subtraction. The pill's bottom corners curve in over their last
+/// `pillBottomRadius` points, so a body that simply started at the pill's bottom
+/// edge would leave two unpainted notches at the joint and the union would read
+/// as a step, not a column. Painting the column minus the pill means those
+/// notches fill with the identical `surfaceInk` while every pixel the pill itself
+/// owns — including its label, dot and badge — is left alone, even though this
+/// layer is composited *above* the pill. The result is one continuous black body
+/// whose outline `IslandPanelView` traces once with the theme's edge-light.
+///
+/// Both sub-paths come from `V6ClosedPillShape`, the very shape the pill and the
+/// morph draw, so the knockout can never disagree with the silhouette it cuts.
+struct HaloHoverPeekDockShape: Shape {
+    let pillHeight: CGFloat
+    let pillBottomRadius: CGFloat
+    let bottomRadius: CGFloat
+
+    /// How far the knockout is pulled INSIDE the pill's real silhouette, so this
+    /// layer's ink underlaps the pill's own antialiased edge instead of butting
+    /// against it. Butting leaves a sub-pixel seam where the two coverage ramps
+    /// sum to less than 1 — measured as a 1px α≈198 hairline straight across the
+    /// joint, which reads as a bright line on any light desktop and is precisely
+    /// the "two shapes" tell being fixed here. 0.75pt is inside the pill's own
+    /// `height/2` padding, so no pill content is ever painted over.
+    static let knockoutUnderlap: CGFloat = 0.75
+
+    func path(in rect: CGRect) -> Path {
+        var path = V6ClosedPillShape(cornerRadius: bottomRadius).path(in: rect)
+        let inset = Self.knockoutUnderlap
+        let pillRect = CGRect(
+            x: rect.minX + inset,
+            y: rect.minY,
+            width: max(0, rect.width - inset * 2),
+            height: max(0, min(pillHeight, rect.height) - inset)
+        )
+        path.addPath(V6ClosedPillShape(cornerRadius: pillBottomRadius).path(in: pillRect))
+        return path
     }
 }

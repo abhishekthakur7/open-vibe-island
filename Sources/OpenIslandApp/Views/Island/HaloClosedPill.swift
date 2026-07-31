@@ -151,6 +151,24 @@ struct HaloClosedPill: View {
         }
     }
 
+    // MARK: Left-wing accessory (R4 · item 1 · board §I′)
+
+    /// The §I′ usage lead, on the **left** wing: the filament arc + provider +
+    /// crit-tinted percent. Only the countdown stays in the right slot, exactly
+    /// as `06-halo.html:1301-1305` splits the two wings. The width this occupies
+    /// is declared to the shared layout math by
+    /// `HaloTheme.closedPillWingPlan(label:rightSlot:layout:height:)`, which reads the
+    /// same `HaloUsageFilamentLead.estimatedWidth` — so the wing the pill draws
+    /// into is the wing the morph frame reserved.
+    @ViewBuilder
+    private var leadingAccessory: some View {
+        if case .usage(let percent, _, let provider, _) = rightSlot {
+            HaloUsageFilamentLead(percent: percent, providerTitle: provider)
+                .padding(.leading, Self.innerGap)
+                .transition(.opacity.combined(with: .move(edge: .leading)))
+        }
+    }
+
     // MARK: External (fluid)
 
     private var externalBody: some View {
@@ -158,7 +176,8 @@ struct HaloClosedPill: View {
             label: label,
             rightSlot: rightSlot,
             minWidth: minWidth,
-            height: height
+            height: height,
+            leadingAccessoryWidth: HaloClosedPillWings.leadingAccessoryWidth(for: rightSlot, layout: .external)
         )
 
         return ZStack {
@@ -166,6 +185,8 @@ struct HaloClosedPill: View {
 
             HStack(spacing: 0) {
                 leadingIndicator
+
+                leadingAccessory
 
                 if let label {
                     centerLabel(label)
@@ -189,7 +210,8 @@ struct HaloClosedPill: View {
         let outer = V6ClosedPill.macbookOuterWidth(
             label: label,
             physicalNotchWidth: physicalNotchWidth,
-            height: height
+            height: height,
+            leadingAccessoryWidth: HaloClosedPillWings.leadingAccessoryWidth(for: rightSlot, layout: .macbook)
         )
 
         return ZStack {
@@ -197,6 +219,8 @@ struct HaloClosedPill: View {
 
             HStack(spacing: 0) {
                 leadingIndicator
+
+                leadingAccessory
 
                 if let label {
                     notchLaneLabel(label)
@@ -226,6 +250,53 @@ struct HaloClosedPill: View {
             AnyHashable(rightSlot.map(HaloRightSlotKey.init) ?? .none),
             AnyHashable(mode),
         ])
+    }
+}
+
+// MARK: - Wing split (pure · R4 · item 1 · board §I′)
+
+/// The pure Halo-side rule for how the closed pill's two wings are filled — the
+/// single source both `HaloClosedPill` (which draws them) and
+/// `HaloTheme.closedPillWingPlan` (which tells `IslandPanelView`'s morph-frame
+/// width math about them) read, so the drawn wing and the reserved wing are the
+/// same wing.
+///
+/// Only the §I′ usage slot splits: board `06-halo.html:1301-1305` puts the
+/// filament arc + `Codex 94%` on the LEFT wing and the reset countdown alone on
+/// the right. Every other right-slot kind keeps the composition it shipped with
+/// (accessory width 0, label untouched), so no other Halo state moves.
+enum HaloClosedPillWings {
+
+    /// Extra left-wing width beside the glyph, in points. Non-zero only for
+    /// `.usage`.
+    ///
+    /// On `.external` it also carries the **countdown's** shortfall. That layout
+    /// is fluid — its width is the sum of its parts — and the part it reserves
+    /// for the right slot is `V6RightSlotView.intrinsicWidth(of: .usage)`, i.e.
+    /// the `×N` badge's ~22pt, against a `18h 59m` countdown's ~45. Without the
+    /// top-up the pill sizes itself ~23pt short and the countdown overhangs its
+    /// own edge (there is no cutout to hide under on an external display, but
+    /// there is no clip either). `.macbook` needs no top-up: its reserve is
+    /// symmetric, so the wing the lead already bought the LEFT side is handed to
+    /// the right one too — ~125pt of usable wing for a ~45pt countdown.
+    static func leadingAccessoryWidth(
+        for rightSlot: IslandRightSlotContent?,
+        layout: V6ClosedLayout
+    ) -> CGFloat {
+        guard case .usage(let percent, _, let provider, _) = rightSlot else { return 0 }
+        let lead = HaloUsageFilamentLead.estimatedWidth(percent: percent, providerTitle: provider)
+        guard layout == .external, let rightSlot else { return lead }
+        let reserved = V6RightSlotView.intrinsicWidth(of: rightSlot)
+        return lead + max(0, HaloUsageCountdown.reservedWidth - reserved)
+    }
+
+    /// The label the lane should render. `nil` for `.usage`: board §I′ draws no
+    /// separate lane label beside the usage lead, and the resolver's own label in
+    /// that state is the provider name — which the lead already says, so keeping
+    /// it renders a literal `Codex … Codex 92%` duplicate (judge R note).
+    static func label(_ label: String?, rightSlot: IslandRightSlotContent?) -> String? {
+        if case .usage = rightSlot { return nil }
+        return label
     }
 }
 
@@ -703,14 +774,12 @@ struct HaloRightSlotView: View {
         case .taskCounter(let completed, let total, let subagents):
             HaloTaskCounter(form: HaloRightSlotForm.task(completed: completed, total: total, subagents: subagents))
                 .accessibilityLabel(content.fallbackBadgeAccessibilityLabel(lang))
-        case .usage(let percent, let window, let provider, let resetsAt):
-            HaloUsageFilament(
-                percent: percent,
-                windowLabel: window,
-                providerTitle: provider,
-                resetsAt: resetsAt,
-                now: now
-            )
+        case .usage(_, let window, _, let resetsAt):
+            // R4 · item 1 · board §I′: the right wing is the countdown ALONE —
+            // the arc + `Codex 92%` belong to the left wing, and `HaloClosedPill`
+            // draws them there (`HaloUsageFilamentLead`). Rendering the whole
+            // group here is what pushed it under the physical notch cutout.
+            HaloUsageCountdown(windowLabel: window, resetsAt: resetsAt, now: now)
                 .accessibilityLabel(content.fallbackBadgeAccessibilityLabel(lang))
         }
     }
@@ -948,48 +1017,59 @@ private struct HaloTaskCounter: View {
 }
 
 /// The I′ usage compression — the single **worst** window, surfaced only once it
-/// is critical (`IslandRightSlotResolver.usageAlertThreshold == 90`). A thin
-/// **light-filament** arc (threshold-tinted, with a soft same-hue glow) + the
-/// provider and percent (`Codex 92%`) in the threshold tint + the window label.
+/// is critical (`IslandRightSlotResolver.usageAlertThreshold == 90`).
 ///
-/// **Third token (G-32, resolved in parity V9).** The board's §I′ pill reads
-/// `filament · Codex 94% · 19h` (`06-halo.html:1301-1305`: the left wing carries
-/// the 15pt arc and the `12.5pt` `Codex 94%` label, the right wing an `11pt`
-/// tertiary `19h`) — a **reset countdown**, not the window label. The countdown
-/// now arrives with the payload (`IslandRightSlotContent.usage`'s `resetsAt`,
-/// threaded from `IslandRightSlotResolver.UsageReading`) and is formatted here
-/// through the shared `UsageCountdownFormatter`, against an injectable `now`.
-/// When the provider reports no reset time — or it has already passed — the token
-/// falls back to the window label (`7d`) rather than leaving a hole, so every
-/// other caller keeps exactly the pill it had before.
-private struct HaloUsageFilament: View {
+/// **The wing split (R4 · item 1).** The board's §I′ pill
+/// (`06-halo.html:1301-1305`) does not put this group in one wing: the **left**
+/// wing carries the 15pt filament arc and the `12.5pt` `Codex 94%` label, and
+/// the **right** wing carries an `11pt` tertiary `19h` — the reset countdown —
+/// *alone*. Halo used to render all three tokens as one ~145pt right-slot group,
+/// which the shared width math only ever reserved a `×N` badge's ~22pt for; on a
+/// notched Mac that group right-aligned to the pill edge and spilled backwards
+/// **under the physical cutout**, where the hardware ate it (measured: bright
+/// content at x 776.5…847.5 against the 663.5…848.5 cutout — 61pt of the pill's
+/// only critical signal, invisible). So the group is now two leaves:
+/// ``HaloUsageFilamentLead`` on the left wing (arc + provider + crit-tinted
+/// percent) and ``HaloUsageCountdown`` on the right, with
+/// ``HaloUsageFilamentLead/estimatedWidth(percent:providerTitle:)`` telling
+/// `V6ClosedPill`'s width math — through `HaloTheme.closedPillWingPlan` — how
+/// much left wing to reserve.
+///
+/// **Third token (G-32, resolved in parity V9).** The countdown arrives with the
+/// payload (`IslandRightSlotContent.usage`'s `resetsAt`, threaded from
+/// `IslandRightSlotResolver.UsageReading`) and is formatted through the shared
+/// `UsageCountdownFormatter`, against an injectable `now`. When the provider
+/// reports no reset time — or it has already passed — the token falls back to the
+/// window label (`7d`) rather than leaving a hole.
+struct HaloUsageFilamentLead: View {
     let percent: Int
-    let windowLabel: String
     let providerTitle: String
-    var resetsAt: Date?
-    var now: Date = .now
 
     @Environment(\.islandTokens) private var tokens
 
-    /// The board's third token: the countdown when there is one, else the
-    /// window label the payload has always carried.
-    private var trailingToken: String {
-        guard
-            let resetsAt,
-            let remaining = UsageCountdownFormatter.remainingLabel(until: resetsAt, asOf: now)
-        else {
-            return windowLabel
-        }
-        return remaining
-    }
+    /// Gap between the arc and the label (mockup `.wing{gap:5px}`).
+    static let arcLabelGap: CGFloat = 5
 
     /// Threshold tint — crit `≥90`, warn `70…90`, else fine. Computed from the
     /// value so a fixture at any percent reads truthfully, though in production the
     /// pill only ever shows the crit red (usage earns pill space only at ≥90).
-    private var tint: Color {
+    static func tint(percent: Int) -> Color {
         if percent >= 90 { return HaloEdge.usageCrit }
         if percent >= 70 { return HaloEdge.usageWarn }
         return HaloEdge.usageFine
+    }
+
+    /// The lead's laid-out width, estimated the way every other closed-pill
+    /// reservation in this file is (`V6NotchLaneLabelView.intrinsicWidth`'s
+    /// characters × per-character advance): the 15pt arc + gap + `Codex 92%` at
+    /// 12.5pt semibold, whose measured advance is ~7.7pt/character.
+    ///
+    /// Pure so `HaloClosedPillTests` can pin the number the layout reserves, and
+    /// so the panel's morph-frame width and the pill's own frame read one value.
+    static func estimatedWidth(percent: Int, providerTitle: String) -> CGFloat {
+        let text = "\(providerTitle) \(percent)%"
+        let label = CGFloat(Double(text.count) * 7.7 + 2)
+        return HaloUsageMetrics.pillFilament + arcLabelGap + label
     }
 
     private var fraction: Double { min(1, max(0, Double(percent) / 100)) }
@@ -1000,7 +1080,7 @@ private struct HaloUsageFilament: View {
     private var valueTrim: CGFloat { HaloUsageMetrics.arcSpan * CGFloat(fraction) }
 
     var body: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: Self.arcLabelGap) {
             ZStack {
                 // 270° track (mockup `dasharray "75 100"` under `rotate(135)`,
                 // `rgba(255,255,255,.14)`), 2.4pt stroke, in a 15pt box (G-63).
@@ -1014,7 +1094,7 @@ private struct HaloUsageFilament: View {
                     .trim(from: 0, to: valueTrim)
                     // G-68: the 15pt pill filament has no glow — only the §I
                     // card's 52pt ring gets the drop-shadow.
-                    .stroke(tint, style: StrokeStyle(lineWidth: 2.4, lineCap: .round))
+                    .stroke(Self.tint(percent: percent), style: StrokeStyle(lineWidth: 2.4, lineCap: .round))
             }
             .rotationEffect(.degrees(HaloUsageMetrics.arcRotationDegrees))
             .frame(width: HaloUsageMetrics.pillFilament, height: HaloUsageMetrics.pillFilament)
@@ -1025,19 +1105,52 @@ private struct HaloUsageFilament: View {
                 Text(providerTitle)
                     .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.tertiaryTextOpacity))
                     + Text(" \(percent)%")
-                    .foregroundStyle(tint)
+                    .foregroundStyle(Self.tint(percent: percent))
             )
             .font(.system(size: HaloTypography.pillLabelSize, weight: .semibold, design: .default))
             .monospacedDigit()
-
-            // Mockup §I′ right wing: `font-size:11px; color:var(--t3)`.
-            Text(trailingToken)
-                .font(.system(size: HaloTypography.usageValueSize, weight: .regular, design: .default))
-                .monospacedDigit()
-                .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.tertiaryTextOpacity))
         }
         .lineLimit(1)
         .fixedSize(horizontal: true, vertical: false)
+    }
+}
+
+/// The §I′ **right** wing, alone: the reset countdown (mockup
+/// `font-size:11px; color:var(--t3)`), falling back to the window label when the
+/// provider reports no reset time.
+struct HaloUsageCountdown: View {
+    let windowLabel: String
+    var resetsAt: Date?
+    var now: Date = .now
+
+    @Environment(\.islandTokens) private var tokens
+
+    /// The width the fluid layout must hold for this token: the widest label the
+    /// shared `UsageCountdownFormatter` grammar emits (`18h 59m` / `23h 59m`, 7
+    /// characters at 11pt tabular sans) plus a point of slack. Used only to
+    /// top up the `.external` reservation — see `HaloClosedPillWings`.
+    static let reservedWidth: CGFloat = 48
+
+    /// The board's third token: the countdown when there is one, else the
+    /// window label the payload has always carried. Pure, so the copy is
+    /// testable without a view.
+    static func token(windowLabel: String, resetsAt: Date?, now: Date) -> String {
+        guard
+            let resetsAt,
+            let remaining = UsageCountdownFormatter.remainingLabel(until: resetsAt, asOf: now)
+        else {
+            return windowLabel
+        }
+        return remaining
+    }
+
+    var body: some View {
+        Text(Self.token(windowLabel: windowLabel, resetsAt: resetsAt, now: now))
+            .font(.system(size: HaloTypography.usageValueSize, weight: .regular, design: .default))
+            .monospacedDigit()
+            .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.tertiaryTextOpacity))
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
     }
 }
 

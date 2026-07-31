@@ -263,11 +263,17 @@ struct HaloClosedPillTests {
 /// AB-342 renders the six ambient states with new pill-local content (liveness
 /// glyph, ringed dot, outcome marks, two-tone label) and a Part-1 count-badge
 /// right slot, but the shipped `V6ClosedPill.*OuterWidth` math must stay
-/// **byte-identical** — the closed↔opened morph frame (and every theme's pill
-/// silhouette) depends on it, and the Halo wing content must render *inside* the
-/// slot the fluid layout already reserved, never widen it. Mirrors
+/// **byte-identical** at its default arguments — the closed↔opened morph frame
+/// (and every theme's pill silhouette) depends on it. Mirrors
 /// `FlightDeckClosedPillWidthRegressionTests` (the T12/AB-330 precedent) so a
 /// drift in the width math fails the build regardless of what the Halo pill draws.
+///
+/// R4 · item 1 amends exactly one clause of that contract: the §I′ usage pill's
+/// content genuinely does NOT fit the slot the fluid layout reserved (a `×N`
+/// badge's ~22pt for a ~145pt group), which is why it used to render under the
+/// physical notch. `leadingAccessoryWidth` is the declared, opt-in growth that
+/// fixes it — `0` for every other theme and every other Halo state, so every
+/// golden below is unchanged.
 @MainActor
 struct HaloClosedPillWidthRegressionTests {
     private static let height: CGFloat = 38
@@ -339,5 +345,334 @@ struct HaloClosedPillWidthRegressionTests {
             V6ClosedPill.notchLaneLabelWidth(physicalNotchWidth: 460, height: Self.height)
                 == V6ClosedPill.notchLaneLabelMaxWidth
         )
+    }
+}
+
+// MARK: - §I′ wing split (R4 · item 1)
+
+/// The board's §I′ pill (`06-halo.html:1301-1305`) splits the usage compression
+/// across BOTH wings — filament arc + `Codex 94%` on the left, the reset
+/// countdown alone on the right. Halo used to draw all three tokens as one
+/// right-slot group; on a notched Mac that group right-aligned to the pill edge
+/// and spilled backwards **under the physical cutout** (measured on this
+/// hardware: bright content at x 776.5…847.5 against the 663.5…848.5 cutout —
+/// 61pt of the pill's only critical signal, eaten by the notch).
+///
+/// These pin the pure halves of the fix: the wing plan, the lead's declared
+/// width, the countdown's copy, and — the actual bug — that a §I′ pill's left
+/// wing content now *ends before the cutout begins*, computed from the same
+/// numbers the layout uses rather than eyeballed from a screenshot.
+@MainActor
+struct HaloClosedPillWingSplitTests {
+    private static let height: CGFloat = 38
+    private static let pad: CGFloat = 19          // height / 2
+    private static let glyph: CGFloat = 24        // V6ClosedPill.glyphSize
+    private static let gap: CGFloat = 6           // notchLaneLabelGap
+    private static let trailingMargin: CGFloat = 4
+    private static let tolerance: CGFloat = 0.001
+
+    /// This machine's real cutout, from `NSScreen.auxiliaryTop*Area`: 663.5…848.5.
+    private static let cutoutWidth: CGFloat = 848.5 - 663.5
+
+    private static func criticalUsage(percent: Int = 92, provider: String = "Codex") -> IslandRightSlotContent {
+        .usage(percent: percent, windowLabel: "7d", providerTitle: provider)
+    }
+
+    // MARK: The plan
+
+    /// Halo moves the lead to the left wing and drops the now-duplicate lane
+    /// label — the §I′ pill's left wing already says `Codex`, so the resolver's
+    /// own `Codex` label beside it printed the vendor twice.
+    @Test
+    func haloPlansTheUsageSplitAndDropsTheDuplicateLabel() {
+        let plan = HaloTheme().closedPillWingPlan(
+            label: "Codex",
+            rightSlot: Self.criticalUsage(),
+            layout: .macbook,
+            height: Self.height
+        )
+        #expect(plan.label == nil)
+        #expect(plan.leadingAccessoryWidth > 0)
+        #expect(
+            abs(plan.leadingAccessoryWidth
+                - HaloUsageFilamentLead.estimatedWidth(percent: 92, providerTitle: "Codex")) < Self.tolerance
+        )
+    }
+
+    /// Every other Halo state keeps the composition it shipped with: no accessory,
+    /// label untouched.
+    @Test
+    func haloLeavesEveryOtherRightSlotAlone() {
+        let theme = HaloTheme()
+        let slots: [IslandRightSlotContent?] = [
+            nil,
+            .count(3),
+            .attentionCount(count: 2, kind: .permission),
+            .attentionCount(count: 1, kind: .question),
+            .taskCounter(completed: 2, total: 5, subagents: 0),
+            .agents([]),
+        ]
+        for slot in slots {
+            let plan = theme.closedPillWingPlan(
+                label: "Editing AppModel.swift",
+                rightSlot: slot,
+                layout: .macbook,
+                height: Self.height
+            )
+            #expect(plan.label == "Editing AppModel.swift")
+            #expect(plan.leadingAccessoryWidth == 0)
+        }
+    }
+
+    /// The seam is Halo-side: the other five themes take the protocol default, so
+    /// their pills cannot move — including for a `.usage` slot, which they all
+    /// still render as the shared badge.
+    @Test
+    func siblingThemesTakeTheIdentityPlan() {
+        let siblings: [any IslandTheme] = [
+            ClassicTheme(), PouredIslandTheme(), FlightDeckTheme(),
+            AnnualTheme(), InstrumentTheme(),
+        ]
+        for theme in siblings {
+            let plan = theme.closedPillWingPlan(
+                label: "Codex",
+                rightSlot: Self.criticalUsage(),
+                layout: .macbook,
+                height: Self.height
+            )
+            #expect(plan.label == "Codex", "\(theme.id) must keep its label")
+            #expect(plan.leadingAccessoryWidth == 0, "\(theme.id) must reserve no accessory")
+        }
+    }
+
+    // MARK: The width math
+
+    /// `leadingAccessoryWidth` defaults to 0, so every existing caller — and
+    /// therefore every other theme's pill and the morph frame it animates — gets
+    /// the identical number it always did.
+    @Test
+    func accessoryWidthDefaultsToTheShippedGeometry() {
+        for label in [nil, "Editing AppModel.swift", "Approve swift build?"] as [String?] {
+            #expect(
+                V6ClosedPill.macbookOuterWidth(label: label, physicalNotchWidth: 185, height: Self.height)
+                    == V6ClosedPill.macbookOuterWidth(
+                        label: label,
+                        physicalNotchWidth: 185,
+                        height: Self.height,
+                        leadingAccessoryWidth: 0
+                    )
+            )
+            #expect(
+                V6ClosedPill.externalOuterWidth(
+                    label: label, rightSlot: .count(3), minWidth: 70, height: Self.height
+                ) == V6ClosedPill.externalOuterWidth(
+                    label: label, rightSlot: .count(3), minWidth: 70, height: Self.height,
+                    leadingAccessoryWidth: 0
+                )
+            )
+        }
+    }
+
+    /// **The bug, as a number.** On this machine's 185pt cutout, a §I′ pill's
+    /// left-wing content (pad + glyph + gap + lead) must end *before* the cutout
+    /// starts — with exactly the shared layout's own `notchLaneLabelTrailingMargin`
+    /// of clearance, since the accessory is what sets the reserve.
+    @Test
+    func usageLeadEndsBeforeThePhysicalCutout() {
+        let lead = HaloUsageFilamentLead.estimatedWidth(percent: 92, providerTitle: "Codex")
+        let outer = V6ClosedPill.macbookOuterWidth(
+            label: nil,
+            physicalNotchWidth: Self.cutoutWidth,
+            height: Self.height,
+            leadingAccessoryWidth: lead
+        )
+
+        // The pill is centred on the cutout, so each wing is half the surplus.
+        let wing = (outer - Self.cutoutWidth) / 2
+        let contentEnd = Self.pad + Self.glyph + Self.gap + lead
+
+        #expect(contentEnd < wing, "the §I′ lead must not reach the cutout")
+        #expect(abs(wing - contentEnd - Self.trailingMargin) < Self.tolerance)
+
+        // And it only ever grows the pill — never past the panel it morphs into.
+        #expect(outer > V6ClosedPill.macbookOuterWidth(
+            label: nil, physicalNotchWidth: Self.cutoutWidth, height: Self.height
+        ))
+        #expect(outer <= V6ClosedPill.macbookMaxOuterWidth)
+    }
+
+    /// The fluid `.external` layout has no cutout to collide with, but it also has
+    /// no slack: its width is the literal sum of its parts, and the part it
+    /// reserves for the right slot is the `×N` badge's (~22pt) against a
+    /// `18h 59m` countdown's ~45. So the external plan tops the accessory up by
+    /// the shortfall — otherwise the countdown overhangs the pill's own edge.
+    /// `.macbook` needs no top-up: its reserve is symmetric, so the wing the lead
+    /// bought on the left is handed to the right as well.
+    @Test
+    func externalPlanCoversTheCountdownsOwnShortfall() {
+        let theme = HaloTheme()
+        let slot = Self.criticalUsage()
+        let external = theme.closedPillWingPlan(
+            label: nil, rightSlot: slot, layout: .external, height: Self.height
+        ).leadingAccessoryWidth
+        let macbook = theme.closedPillWingPlan(
+            label: nil, rightSlot: slot, layout: .macbook, height: Self.height
+        ).leadingAccessoryWidth
+
+        #expect(macbook == HaloUsageFilamentLead.estimatedWidth(percent: 92, providerTitle: "Codex"))
+        #expect(external > macbook)
+        #expect(
+            abs(external - macbook
+                - (HaloUsageCountdown.reservedWidth - V6RightSlotView.intrinsicWidth(of: slot))) < Self.tolerance
+        )
+
+        // The pill that results genuinely holds every part it draws.
+        let outer = V6ClosedPill.externalOuterWidth(
+            label: nil, rightSlot: slot, minWidth: 70, height: Self.height,
+            leadingAccessoryWidth: external
+        )
+        let needed = Self.pad * 2 + Self.glyph
+            + Self.gap + HaloUsageFilamentLead.estimatedWidth(percent: 92, providerTitle: "Codex")
+            + Self.gap + HaloUsageCountdown.reservedWidth
+        #expect(outer >= needed - Self.tolerance)
+    }
+
+    /// The right wing is left holding only the countdown, which is far narrower
+    /// than the wing the symmetric reserve gives it — so it can never reach back
+    /// under the cutout either.
+    @Test
+    func countdownFitsTheRightWingWithRoomToSpare() {
+        let lead = HaloUsageFilamentLead.estimatedWidth(percent: 92, providerTitle: "Codex")
+        let outer = V6ClosedPill.macbookOuterWidth(
+            label: nil,
+            physicalNotchWidth: Self.cutoutWidth,
+            height: Self.height,
+            leadingAccessoryWidth: lead
+        )
+        let wing = (outer - Self.cutoutWidth) / 2
+        // `18h 59m` at 11pt tabular ≈ 45pt measured; the wing must beat it even
+        // with the trailing pad.
+        #expect(wing - Self.pad > 60)
+    }
+
+    // MARK: The leaves' copy
+
+    /// The lead's width tracks the text it will draw, so a longer provider name
+    /// reserves more wing rather than silently overflowing into the cutout.
+    @Test
+    func leadWidthGrowsWithTheLabelItDraws() {
+        let codex = HaloUsageFilamentLead.estimatedWidth(percent: 92, providerTitle: "Codex")
+        let claude = HaloUsageFilamentLead.estimatedWidth(percent: 92, providerTitle: "Claude")
+        #expect(claude > codex)
+        #expect(HaloUsageFilamentLead.estimatedWidth(percent: 100, providerTitle: "Codex") > codex)
+    }
+
+    /// Threshold tint is unchanged by the split — the percent still lights crit
+    /// at ≥90, warn at 70…90, fine below.
+    @Test
+    func leadKeepsTheThresholdTint() {
+        #expect(HaloUsageFilamentLead.tint(percent: 92) == HaloEdge.usageCrit)
+        #expect(HaloUsageFilamentLead.tint(percent: 78) == HaloEdge.usageWarn)
+        #expect(HaloUsageFilamentLead.tint(percent: 34) == HaloEdge.usageFine)
+    }
+
+    /// The right wing's token: the countdown when the provider reports a reset,
+    /// the window label when it doesn't (never a hole) — the G-32 rule, now owned
+    /// by the countdown leaf alone.
+    @Test
+    func countdownFallsBackToTheWindowLabel() {
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        #expect(HaloUsageCountdown.token(windowLabel: "7d", resetsAt: nil, now: now) == "7d")
+        #expect(
+            HaloUsageCountdown.token(windowLabel: "7d", resetsAt: now.addingTimeInterval(-60), now: now) == "7d"
+        )
+        let ahead = HaloUsageCountdown.token(
+            windowLabel: "7d",
+            resetsAt: now.addingTimeInterval(19 * 3600),
+            now: now
+        )
+        #expect(ahead != "7d")
+    }
+}
+
+// MARK: - §B docked hover peek (R4 · item 2)
+
+/// §B: "the single black shape begins to grow… the edge-light stretches
+/// continuously around the growing silhouette", and §B′'s filmstrip draws the
+/// peek frame at the **pill's own width**, just taller. The shipped peek was a
+/// fixed 408pt card floating ~4pt under a pill that kept its own ring — two
+/// shapes, two outlines. These pin the docking geometry that makes it one.
+@MainActor
+struct HaloHoverPeekDockTests {
+    private static let pillHeight: CGFloat = 44
+    private static let pillRadius: CGFloat = 22
+
+    private static func peek(dockedWidth: CGFloat, availableWidth: CGFloat) -> HaloHoverPeek {
+        HaloHoverPeek(
+            content: HaloHoverPeekContent(
+                kind: .permission,
+                title: "open-island wants to run a command",
+                detail: "swift build",
+                monogram: "C",
+                moreWaiting: 0
+            ),
+            lang: .shared,
+            availableWidth: availableWidth,
+            dockedWidth: dockedWidth,
+            pillHeight: pillHeight,
+            pillBottomRadius: pillRadius
+        )
+    }
+
+    /// The docked body takes the pill's width, so the two share one silhouette.
+    @Test
+    func docksToThePillsOwnWidth() {
+        #expect(Self.peek(dockedWidth: 467, availableWidth: 600).resolvedWidth == 467)
+    }
+
+    /// A short pill (an unlabelled attention state) still gets the board's own
+    /// peek width to narrate in, and the host's surface is always the ceiling.
+    @Test
+    func clampsToTheHostAndFloorsAtTheBoardWidth() {
+        #expect(Self.peek(dockedWidth: 200, availableWidth: 600).resolvedWidth == HaloHoverPeek.preferredWidth)
+        #expect(Self.peek(dockedWidth: 900, availableWidth: 520).resolvedWidth == 520)
+    }
+
+    /// The knockout is pulled inside the pill's silhouette so this layer's ink
+    /// underlaps the pill's antialiased edge. Butting them left a measured 1px
+    /// α≈198 hairline straight across the joint — a bright line on any light
+    /// desktop, and exactly the seam that read as "two shapes".
+    @Test
+    func knockoutUnderlapsThePillEdge() {
+        #expect(HaloHoverPeekDockShape.knockoutUnderlap > 0)
+        // Well inside the pill's own horizontal padding (height / 2), so no pill
+        // content can ever be painted over by the dock's fill.
+        #expect(HaloHoverPeekDockShape.knockoutUnderlap < Self.pillHeight / 2)
+    }
+
+    /// The dock path leaves the pill's interior unpainted (even-odd) while
+    /// covering the column below it: a point in the middle of the pill band is
+    /// inside BOTH sub-paths, a point in the peek body is inside only the outer
+    /// one, and a point in the joint's corner cut-in is inside only the outer one
+    /// too — which is what fills the notches the pill's radius would leave.
+    @Test
+    func dockPathKnocksOutThePillAndFillsTheCornerCutIns() {
+        let shape = HaloHoverPeekDockShape(
+            pillHeight: Self.pillHeight,
+            pillBottomRadius: Self.pillRadius,
+            bottomRadius: HaloHoverPeek.cornerRadius
+        )
+        let rect = CGRect(x: 0, y: 0, width: 467, height: 140)
+        let path = shape.path(in: rect)
+
+        // Peek body: painted.
+        #expect(path.contains(CGPoint(x: 233, y: 100), eoFill: true))
+        // Pill interior: NOT painted — the live pill and its label own it.
+        #expect(!path.contains(CGPoint(x: 233, y: 20), eoFill: true))
+        // The joint's left corner cut-in — outside the pill's rounded corner but
+        // inside the column. Painted, so the union has straight sides.
+        #expect(path.contains(CGPoint(x: 1.5, y: Self.pillHeight - 1), eoFill: true))
+        // Outside the column entirely.
+        #expect(!path.contains(CGPoint(x: -5, y: 100), eoFill: true))
     }
 }

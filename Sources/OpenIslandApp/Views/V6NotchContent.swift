@@ -464,7 +464,8 @@ struct V6ClosedPill: View {
         label: String?,
         rightSlot: IslandRightSlotContent?,
         minWidth: CGFloat,
-        height: CGFloat
+        height: CGFloat,
+        leadingAccessoryWidth: CGFloat = 0
     ) -> CGFloat {
         let pad = height / 2
         let labelW = label.map { V6CenterLabelView.intrinsicWidth(of: $0) } ?? 0
@@ -472,7 +473,8 @@ struct V6ClosedPill: View {
 
         let labelBlock = (label == nil ? 0 : 6 + labelW)
         let rightBlock = (rightSlot == nil ? 0 : innerGap + rightW)
-        let intrinsic = pad * 2 + glyphSize + labelBlock + rightBlock
+        let accessoryBlock = leadingAccessoryWidth > 0 ? innerGap + leadingAccessoryWidth : 0
+        let intrinsic = pad * 2 + glyphSize + accessoryBlock + labelBlock + rightBlock
         return max(minWidth, intrinsic)
     }
 
@@ -570,10 +572,18 @@ struct V6ClosedPill: View {
     /// Intrinsic outer pill width for the MacBook layout — shared with
     /// `IslandPanelView`'s notch-morph container (AB-243); see
     /// `externalOuterWidth` doc above.
+    ///
+    /// `leadingAccessoryWidth` is extra left-wing content a theme draws between
+    /// the glyph and the label lane (R4 · Halo's §I′ usage lead — the filament
+    /// arc + `Codex 92%`, which the board puts on the LEFT wing). It defaults to
+    /// 0, so every theme that draws nothing there gets byte-identical widths.
+    /// It is folded into `leftContentWidth` exactly like the label, i.e. the
+    /// reserve still grows symmetrically and the cutout stays centred.
     static func macbookOuterWidth(
         label: String?,
         physicalNotchWidth: CGFloat,
-        height: CGFloat
+        height: CGFloat,
+        leadingAccessoryWidth: CGFloat = 0
     ) -> CGFloat {
         let pad = height / 2
         let labelWidth = label.map {
@@ -586,13 +596,17 @@ struct V6ClosedPill: View {
             )
         }
 
-        // Left wing must fit: leading pad + glyph + (gap + label, if any) +
-        // a small safety margin before the physical notch. Growing this
-        // symmetrically on both sides (rather than just the left) keeps the
-        // notch gap centered in the pill — the pill is one continuous shape
-        // (see `V6ClosedPillShape` doc), so an asymmetric reserve would slide
-        // the true physical cutout out from under where we think it is.
-        let leftContentWidth = pad + glyphSize + notchLaneLabelTrailingMargin
+        // Left wing must fit: leading pad + glyph + (gap + accessory, if any) +
+        // (gap + label, if any) + a small safety margin before the physical
+        // notch. Growing this symmetrically on both sides (rather than just the
+        // left) keeps the notch gap centered in the pill — the pill is one
+        // continuous shape (see `V6ClosedPillShape` doc), so an asymmetric
+        // reserve would slide the true physical cutout out from under where we
+        // think it is.
+        let accessoryBlock = leadingAccessoryWidth > 0
+            ? notchLaneLabelGap + leadingAccessoryWidth
+            : 0
+        let leftContentWidth = pad + glyphSize + notchLaneLabelTrailingMargin + accessoryBlock
             + (labelWidth.map { notchLaneLabelGap + $0 } ?? 0)
         let halfReserve = max(macbookBaseHalfReserve, leftContentWidth)
         return halfReserve + physicalNotchWidth + halfReserve

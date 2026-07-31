@@ -425,14 +425,18 @@ struct IslandPanelView: View {
             islandSurfaceBody(openedWidth: openedWidth, openedHeight: openedHeight)
                 .frame(maxWidth: .infinity, alignment: .top)
         }
-        .scaleEffect(usesOpenedVisualState ? 1 : (isHovering ? tokens.metrics.closedHoverScale : 1), anchor: .top)
-        // G-62/M-27 · mockup §B: the narrated peek hangs BELOW the pill, outside
-        // the hover scale (the board's peek is a surface of its own, not a
-        // magnified pill) and outside the surface's clip, so it can be taller
-        // than the closed silhouette. Chrome only — see `HaloHoverPeek`.
+        // G-62/M-27 · mockup §B: the narrated peek docks to the pill's bottom
+        // edge, outside the surface's clip so it can be taller than the closed
+        // silhouette. Chrome only — see `HaloHoverPeek`.
+        //
+        // R4 · item 2: composed INSIDE the hover scale (it used to sit outside
+        // it). The two are one silhouette now, so a 1.03 pill over an unscaled
+        // peek column left the joint stepped by ~14pt — the very "two shapes"
+        // reading the dock is meant to kill. One scale, one body.
         .overlay(alignment: .top) {
             hoverPeekOverlay(availableWidth: openedWidth)
         }
+        .scaleEffect(usesOpenedVisualState ? 1 : (isHovering ? tokens.metrics.closedHoverScale : 1), anchor: .top)
         .padding(.horizontal, panelShadowHorizontalInset)
         .padding(.bottom, panelShadowBottomInset)
         .animation(notchTransitionAnimation, value: model.notchStatus)
@@ -483,18 +487,53 @@ struct IslandPanelView: View {
             let fade = usesOpenedVisualState
                 ? 0
                 : Double(max(0, min(1, 1 - morphProgress / 0.2)))
-            HaloHoverPeek(content: content, lang: lang, availableWidth: availableWidth)
-                // Hangs directly off the pill's bottom edge — near enough to
-                // read as the pill's own drawer, clear enough that the 19pt
-                // bottom radius isn't overlapped. The pill keeps the pointer
-                // and the click.
-                .padding(.top, closedNotchHeight)
+            // R4 · item 2 · §B "the single black shape begins to grow… the
+            // edge-light stretches continuously": the peek is the pill's own
+            // column, not a card under it. It takes the pill's width and reserves
+            // the pill's band at the top (transparent — the live pill draws
+            // there), so the two bodies share one silhouette with no gap and no
+            // radius mismatch at the joint. The pill keeps the pointer and the
+            // click.
+            HaloHoverPeek(
+                content: content,
+                lang: lang,
+                availableWidth: availableWidth,
+                dockedWidth: closedPillOuterWidth(),
+                pillHeight: closedNotchHeight,
+                pillBottomRadius: closedNotchHeight / 2
+            )
+                // ONE outline around the combined shape — the same theme edge
+                // seam the pill uses, handed the union's silhouette (flat top,
+                // the peek's bottom radius) and the union's measured size. The
+                // pill's own ring is suppressed for as long as this is up
+                // (`suppressesClosedEdgeForPeek`), so the two never double up.
+                .overlay {
+                    GeometryReader { geo in
+                        surfaceEdgeOverlay(
+                            shape: OpenedIslandSurfaceShape(
+                                topProfile: usesNotchAwareOpenedHeader ? .notch : .topBar,
+                                topCornerRadius: 0,
+                                bottomCornerRadius: HaloHoverPeek.cornerRadius,
+                                filletRadius: tokens.metrics.filletRadius
+                            ),
+                            isOpened: false,
+                            size: geo.size
+                        )
+                    }
+                }
                 .opacity(fade)
-                .scaleEffect(0.98 + 0.02 * fade, anchor: .top)
                 .animation(nil, value: usesOpenedVisualState)
                 .allowsHitTesting(false)
                 .transition(.opacity)
         }
+    }
+
+    /// Whether the closed pill must stand down its own perimeter ring because the
+    /// docked peek is drawing one continuous outline around the combined shape
+    /// (R4 · item 2). Two rings on one silhouette is exactly what made the peek
+    /// read as two objects. Only ever true for the theme that draws a peek at all.
+    private var suppressesClosedEdgeForPeek: Bool {
+        showsHoverPeek && !usesOpenedVisualState && hoverPeekContent != nil
     }
 
     /// Starts (or cancels) the board's 0.15s dwell. Only a dwell that survives
@@ -628,19 +667,40 @@ struct IslandPanelView: View {
     private func closedPillOuterWidth() -> CGFloat {
         let layout: V6ClosedLayout = isExternalDisplayPlacement ? .external : .macbook
         let physicalNotchWidth: CGFloat = targetOverlayScreen?.notchSize.width ?? 180
-        let label = model.islandClosedLabel()
+        let rightSlot = model.islandClosedRightSlotContent()
+        let plan = closedPillWingPlan(rightSlot: rightSlot, layout: layout)
         return layout == .macbook
             ? V6ClosedPill.macbookOuterWidth(
-                label: label,
+                label: plan.label,
                 physicalNotchWidth: physicalNotchWidth,
-                height: closedNotchHeight
+                height: closedNotchHeight,
+                leadingAccessoryWidth: plan.leadingAccessoryWidth
             )
             : V6ClosedPill.externalOuterWidth(
-                label: label,
-                rightSlot: model.islandClosedRightSlotContent(),
+                label: plan.label,
+                rightSlot: rightSlot,
                 minWidth: 70,
-                height: closedNotchHeight
+                height: closedNotchHeight,
+                leadingAccessoryWidth: plan.leadingAccessoryWidth
             )
+    }
+
+    /// The active theme's closed-pill wing split for the current frame (R4 ·
+    /// item 1). Resolved here, once, and fed to BOTH the `V6ClosedPill.*OuterWidth`
+    /// math above/below and `theme.closedPill(...)`, so the width the morph frame
+    /// reserves is the width the pill actually draws into. Every theme but Halo
+    /// returns the protocol default — `label` untouched, accessory width 0 — so
+    /// their pills are byte-identical.
+    private func closedPillWingPlan(
+        rightSlot: IslandRightSlotContent?,
+        layout: V6ClosedLayout
+    ) -> IslandClosedPillWingPlan {
+        theme.closedPillWingPlan(
+            label: model.islandClosedLabel(),
+            rightSlot: rightSlot,
+            layout: layout,
+            height: closedNotchHeight
+        )
     }
 
     /// AB-341: the theme's living perimeter edge-light for the current surface,
@@ -871,7 +931,9 @@ struct IslandPanelView: View {
                 isOpened: false,
                 size: CGSize(width: closedPillOuterWidth(), height: closedNotchHeight)
             )
-            .opacity(usesOpenedVisualState ? 0 : 1)
+            // R4 · item 2: same stand-down as the morph path — the docked peek's
+            // outline is the only one while it is up.
+            .opacity(usesOpenedVisualState || suppressesClosedEdgeForPeek ? 0 : 1)
         }
     }
 
@@ -899,20 +961,22 @@ struct IslandPanelView: View {
     private func morphingIslandSurface(openedWidth: CGFloat, openedHeight: CGFloat) -> some View {
         let layout: V6ClosedLayout = isExternalDisplayPlacement ? .external : .macbook
         let physicalNotchWidth: CGFloat = targetOverlayScreen?.notchSize.width ?? 180
-        let label = model.islandClosedLabel()
         let rightSlot = model.islandClosedRightSlotContent()
+        let plan = closedPillWingPlan(rightSlot: rightSlot, layout: layout)
 
         let closedWidth = layout == .macbook
             ? V6ClosedPill.macbookOuterWidth(
-                label: label,
+                label: plan.label,
                 physicalNotchWidth: physicalNotchWidth,
-                height: closedNotchHeight
+                height: closedNotchHeight,
+                leadingAccessoryWidth: plan.leadingAccessoryWidth
             )
             : V6ClosedPill.externalOuterWidth(
-                label: label,
+                label: plan.label,
                 rightSlot: rightSlot,
                 minWidth: 70,
-                height: closedNotchHeight
+                height: closedNotchHeight,
+                leadingAccessoryWidth: plan.leadingAccessoryWidth
             )
 
         let topProfile: OpenedIslandSurfaceShape.TopProfile = usesNotchAwareOpenedHeader ? .notch : .topBar
@@ -1036,6 +1100,9 @@ struct IslandPanelView: View {
                 isOpened: opened,
                 size: CGSize(width: surfaceWidth, height: surfaceHeight)
             )
+            // R4 · item 2: while the docked peek is up it owns the one continuous
+            // outline around the combined shape, so the pill stands its own down.
+            .opacity(suppressesClosedEdgeForPeek ? 0 : 1)
         }
         .overlay(alignment: .topLeading) {
             islandGlyphOverlay(opened: opened, closedLeadingInset: closedLeadingInset)
