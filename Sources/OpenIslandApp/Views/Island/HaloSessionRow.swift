@@ -414,6 +414,17 @@ private struct HaloRowContent: View {
                 if let mode = permissionModeChipText {
                     chip(mode)
                 }
+                // G-11: with no model / permission metadata (a Codex or hook-less
+                // session) the running row would otherwise carry a lone timer. The
+                // terminal it lives in is data the row already resolves, so it
+                // keeps the `.meta` line populated the way §C draws it.
+                if session.displayModelName == nil && permissionModeChipText == nil {
+                    if session.isRemote {
+                        chip("SSH")
+                    } else if let terminal = session.spotlightTerminalBadge {
+                        chip(terminal)
+                    }
+                }
                 // The §G′ subagent roll-up (mockup §C running row `3 active`): the
                 // only fan-out count the collapsed row surfaces — the full nest
                 // opens with the row (§5G). Present only with real subagents.
@@ -457,7 +468,11 @@ private struct HaloRowContent: View {
             // one affordance the void row keeps for opening the detail in place. Tap
             // still jumps; this toggles. Hidden on non-interactive lists.
             if isInteractive && presentation == .list {
+                // G-12: the mockup's row carries no chevron at rest — it is a
+                // hover affordance, exactly like the dismiss below it.
                 HaloDetailToggle(isOpen: isExpanded, action: { toggleDetail(currentlyOpen: isExpanded) }, lang: lang)
+                    .opacity(isHighlighted || isExpanded ? 1 : 0)
+                    .scaleEffect(isHighlighted || isExpanded ? 1 : 0.82)
                     .accessibilityHidden(true)
             }
 
@@ -1273,9 +1288,20 @@ private struct HaloRowContent: View {
 
     // MARK: - Text helpers
 
+    /// The mockup `.disamb` chip is a **branch** chip (`⑂ feat/bridge-auth`), and the
+    /// age lives only in the row's trailing `.age` slot. G-71: the list-level
+    /// disambiguator falls back to a recency phrase ("3m ago") when it can't name a
+    /// branch, which printed the age twice on one row and never showed the branch.
+    /// So: prefer the real branch whenever the session has one, and drop the
+    /// recency fallback rather than duplicate the age badge.
     private var disambiguatorSuffix: String? {
+        if let branch = SessionDisambiguation.branch(for: session) {
+            return SessionDisambiguation.displayBranch(branch)
+        }
         guard let raw = sessionDisambiguators[session.id]?.trimmingCharacters(in: .whitespacesAndNewlines),
               !raw.isEmpty else { return nil }
+        // `SessionDisambiguation.recencyPhrase` shape — the trailing slot's job.
+        guard !raw.hasSuffix(" ago") else { return nil }
         return raw
     }
 
@@ -1292,6 +1318,9 @@ private struct HaloRowContent: View {
         switch session.claudeMetadata?.permissionMode {
         case .plan: return lang.t("badge.planMode")
         case .bypassPermissions: return lang.t("badge.bypassPermissions")
+        // G-11 (mockup §C running row `acceptEdits`): every non-default mode earns
+        // the chip, verbatim — the same rule the §5D `Permission` cell uses.
+        case .some(let mode) where mode != .default: return mode.rawValue
         default: return nil
         }
     }

@@ -74,13 +74,43 @@ struct HaloSessionListScaffold: View {
 
     // MARK: - Rows (the AB-344 seam)
 
-    @ViewBuilder
+    /// G-09 (mockup §C): Halo's list is **always** grouped — `NEEDS YOU → RUNNING →
+    /// DONE` is the composition, not a preference. When the profile's grouping is
+    /// `.none` (one flat `all` section) the scaffold re-sections by state locally,
+    /// so the headers the file already draws actually render. Any explicit grouping
+    /// the user picked is honoured verbatim.
+    private var displaySections: [IslandSessionSection] {
+        guard group == .none else { return sections }
+        return IslandSessionSectioning.sections(
+            for: sessions,
+            group: .state,
+            sort: .attention,
+            completedStaleThreshold: completedStaleThreshold
+        )
+    }
+
+    /// The identity of the current list, in order — the value M-21's animation
+    /// watches so an insert / reorder / removal (or a phase change that moves a row
+    /// between buckets) animates instead of hard-cutting.
+    private var sessionListIdentity: [String] {
+        displaySections.flatMap { section in section.sessions.map { "\(section.id)/\($0.id)" } }
+    }
+
     private func sessionRowsContent() -> some View {
-        ForEach(sections) { section in
+        VStack(alignment: .leading, spacing: 0) {
+            sessionSectionsContent()
+        }
+        // M-21 (mockup §C / §K "content is still, light moves"): rows fade + slide
+        // from the top on insert / reorder / removal rather than popping. Halo-only
+        // — this scaffold is Halo's alone (`HaloTheme.sessionList`).
+        .animation(.easeInOut(duration: 0.22), value: sessionListIdentity)
+    }
+
+    @ViewBuilder
+    private func sessionSectionsContent() -> some View {
+        ForEach(displaySections) { section in
             VStack(alignment: .leading, spacing: 0) {
-                if group != .none {
-                    sessionSectionHeader(section)
-                }
+                sessionSectionHeader(section)
 
                 ForEach(Array(section.sessions.enumerated()), id: \.element.id) { index, session in
                     SessionRowContainer(isInteractive: isInteractive) { isHighlighted in
@@ -114,6 +144,9 @@ struct HaloSessionListScaffold: View {
                                 .frame(height: 1)
                         }
                     }
+                    // M-21: the per-row insert / removal transition the list-level
+                    // `.animation` above drives.
+                    .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
         }
@@ -128,12 +161,9 @@ struct HaloSessionListScaffold: View {
             threshold: completedStaleThreshold
         )
 
+        // G-06: no list title — the mockup's `.summary` is buckets only, and the
+        // grouped section headers below are what name the list.
         return HStack(spacing: 8) {
-            Text(lang.t("island.sessionList.title").uppercased())
-                .font(.system(size: HaloTypography.sectionHeaderSize, weight: .bold))
-                .tracking(HaloTypography.sectionHeaderSize * 0.10)
-                .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
-
             ViewThatFits(in: .horizontal) {
                 summaryStrip(buckets, spacing: 12)
                 summaryStrip(buckets, spacing: 8)
@@ -143,9 +173,16 @@ struct HaloSessionListScaffold: View {
         }
         .padding(.leading, sideInset)
         .padding(.trailing, sideInset)
-        .frame(height: 36)
+        // G-15 (mockup `.summary{padding:8px 16px}`): intrinsic height with 8pt of
+        // vertical padding, bounded by a hairline **top and bottom**.
+        .padding(.vertical, 8)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(summaryAccessibilityLabel(buckets))
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(tokens.colors.paper.opacity(tokens.colors.hairline(increaseContrast: increasesContrast)))
+                .frame(height: 1)
+        }
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(tokens.colors.paper.opacity(tokens.colors.hairline(increaseContrast: increasesContrast)))
@@ -160,7 +197,7 @@ struct HaloSessionListScaffold: View {
                     if let tint = tint(for: bucket.kind) {
                         Circle()
                             .fill(tint)
-                            .frame(width: 5.5, height: 5.5)
+                            .frame(width: 6, height: 6)
                             .accessibilityHidden(true)
                     }
                     Text("\(bucket.count)")
@@ -192,10 +229,12 @@ struct HaloSessionListScaffold: View {
                 .font(.system(size: HaloTypography.sectionHeaderSize, weight: .bold))
                 .tracking(HaloTypography.sectionHeaderSize * 0.10)
                 .foregroundStyle(sectionLabelColor(for: section))
+            // G-09 (mockup `.gn{margin-left:auto}`): the count is pushed to the
+            // trailing edge, not parked next to the title.
+            Spacer(minLength: 8)
             Text("\(section.sessions.count)")
                 .font(.system(size: HaloTypography.sectionHeaderSize, weight: .medium).monospacedDigit())
                 .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
-            Spacer(minLength: 0)
         }
         .padding(.leading, sideInset)
         .padding(.trailing, sideInset)
