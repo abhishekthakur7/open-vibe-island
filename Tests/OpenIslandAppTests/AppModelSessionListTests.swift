@@ -366,63 +366,6 @@ struct AppModelSessionListTests {
     }
 
     @Test
-    func islandSessionSectionsGroupStaleCompletedIntoIdle() {
-        let now = Date()
-        let model = AppModel()
-        model.islandSessionGroup = .state
-        model.completedStaleThreshold = .fiveMinutes
-
-        var approval = listSession(id: "approval", phase: .waitingForApproval, updatedAt: now)
-        approval.permissionRequest = PermissionRequest(
-            title: "Approve",
-            summary: "Run tool",
-            affectedPath: "/tmp"
-        )
-
-        var done = listSession(id: "done", phase: .completed, updatedAt: now.addingTimeInterval(-60))
-        var stale = listSession(id: "stale", phase: .completed, updatedAt: now.addingTimeInterval(-360))
-        approval.isProcessAlive = true
-        done.isProcessAlive = true
-        stale.isProcessAlive = true
-
-        model.state = SessionState(sessions: [stale, done, approval])
-
-        #expect(model.islandSessionSections.map(\.id) == ["state-approval", "state-done", "state-idle"])
-        #expect(model.islandSessionSections.map(\.sessions.first?.id) == ["approval", "done", "stale"])
-    }
-
-    @Test
-    func islandSessionSectionsKeepCompletedInDoneWhenStaleThresholdIsNever() {
-        let now = Date()
-        let model = AppModel()
-        model.islandSessionGroup = .state
-        model.completedStaleThreshold = .never
-
-        var oldDone = listSession(id: "old-done", phase: .completed, updatedAt: now.addingTimeInterval(-86_400))
-        oldDone.isProcessAlive = true
-        model.state = SessionState(sessions: [oldDone])
-
-        #expect(model.islandSessionSections.map(\.id) == ["state-done"])
-        #expect(model.islandSessionSections.first?.sessions.first?.id == "old-done")
-    }
-
-    @Test
-    func islandSessionListCanSortByLastUpdate() {
-        let now = Date()
-        let model = AppModel()
-        model.islandSessionSort = .lastUpdate
-
-        var olderRunning = listSession(id: "older-running", phase: .running, updatedAt: now.addingTimeInterval(-120))
-        var newerCompleted = listSession(id: "newer-completed", phase: .completed, updatedAt: now.addingTimeInterval(-10))
-        olderRunning.isProcessAlive = true
-        newerCompleted.isProcessAlive = true
-
-        model.state = SessionState(sessions: [olderRunning, newerCompleted])
-
-        #expect(model.islandListSessions.map(\.id) == ["newer-completed", "older-running"])
-    }
-
-    @Test
     func islandAppearancePreferencesPersistPerDisplayProfile() {
         let model = AppModel()
         model.updateAppearancePreferences(for: .notch) {

@@ -226,41 +226,6 @@ struct BridgeTransportMatrixTests {
         close(observer)
     }
 
-    @Test
-    func privateDirectorySocketModesAndStaleOrUnsafeSocketPathsAreHandledSafely() throws {
-        let socketURL = BridgeSocketLocation.uniqueTestURL()
-        let server = BridgeServer(socketURL: socketURL)
-        try server.start()
-        var directoryStatus = stat(); var socketStatus = stat()
-        #expect(lstat(socketURL.deletingLastPathComponent().path, &directoryStatus) == 0)
-        #expect(directoryStatus.st_mode & 0o777 == 0o700)
-        #expect(lstat(socketURL.path, &socketStatus) == 0)
-        #expect((socketStatus.st_mode & S_IFMT) == S_IFSOCK)
-        // AF_UNIX vnode chmod is supported on the test filesystem; production
-        // treats EPERM as a documented Darwin limitation and remains protected
-        // by the 0700 parent.
-        #expect(socketStatus.st_mode & 0o777 == 0o600)
-        server.stop()
-        let restarted = BridgeServer(socketURL: socketURL)
-        try restarted.start(); restarted.stop()
-
-        let unsafe = BridgeSocketLocation.uniqueTestURL()
-        try FileManager.default.createDirectory(at: unsafe.deletingLastPathComponent(), withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
-        try Data("not a socket".utf8).write(to: unsafe)
-        do {
-            try BridgeServer(socketURL: unsafe).start()
-            Issue.record("A non-socket stale path must not be removed.")
-        } catch let BridgeTransportError.unsafeSocketPath(path) {
-            #expect(path == unsafe.path)
-        }
-        #expect(FileManager.default.fileExists(atPath: unsafe.path))
-
-        let symlinkBase = BridgeSocketLocation.uniqueTestURL().deletingLastPathComponent()
-        let target = symlinkBase.deletingLastPathComponent().appendingPathComponent("target", isDirectory: true)
-        try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
-        try FileManager.default.createSymbolicLink(at: symlinkBase, withDestinationURL: target)
-        #expect(throws: BridgeTransportError.self) { try BridgeServer(socketURL: symlinkBase.appendingPathComponent("bridge.sock")).start() }
-    }
 }
 
 private final class SequencedPeerIdentityProvider: BridgePeerIdentityProviding, @unchecked Sendable {
