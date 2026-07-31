@@ -115,6 +115,9 @@ private struct HaloRowContent: View {
     /// reply-capable row; cleared on submit.
     @State private var replyText: String = ""
 
+    /// G-44: pointer state for the collapsed row's `.jump` chip cyan hover wash.
+    @State private var jumpChipHovered = false
+
     /// Harness / preview seam (AB-345 snapshots): when set, an expandable row is
     /// born expanded so a golden can pin the §5D grid / §5G nests / §5H body that
     /// otherwise only open on a tap. Defaults to `false` — production list rows
@@ -268,7 +271,7 @@ private struct HaloRowContent: View {
         VStack(alignment: .leading, spacing: 0) {
             titleLine(edgeState: edgeState, presence: presence)
 
-            if let activity = activityText(edgeState: edgeState) {
+            if let activity = activityText(edgeState: edgeState, isExpanded: isExpanded) {
                 activity
                     .font(.system(size: HaloTypography.activitySize, weight: .regular))
                     .lineLimit(1)
@@ -374,9 +377,18 @@ private struct HaloRowContent: View {
     /// turn narrates verb+object with a **"live" cyan verb** (mockup `.act .live`);
     /// every other row speaks a plain human phrase wholly at secondary — never a raw
     /// tool id or a `$ …` command echo. Returns `nil` when there is nothing to say.
-    private func activityText(edgeState: HaloSessionRowFormat.EdgeState) -> Text? {
+    private func activityText(edgeState: HaloSessionRowFormat.EdgeState, isExpanded: Bool) -> Text? {
         let primary = tokens.colors.paper.opacity(contrastText(0.96))
         let secondary = tokens.colors.paper.opacity(contrastText(tokens.colors.secondaryTextOpacity))
+
+        // G-74: once the row is open, the LAST MESSAGE / RESULT block below quotes
+        // the message in full — and the `.act` line is a narration *of that same
+        // message*, so the row printed one string twice (mockup §D/§H draw the
+        // title, then the block). The running narration is a different fact and
+        // survives; only the echo is suppressed.
+        if isExpanded, edgeState != .running, quotesActivityInDetailBlock {
+            return nil
+        }
 
         if edgeState == .running, let narrated = session.narratedActivity {
             let live = Text(narrated.localizedVerb(lang))
@@ -531,10 +543,18 @@ private struct HaloRowContent: View {
             .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.secondaryTextOpacity)))
             .padding(.horizontal, 9)
             .padding(.vertical, 3)
-            .background(HaloEdge.hair2, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .background(
+                // G-44: `.jump:hover{background:rgba(80,170,255,.16)}` — the chip
+                // picks up the cyan wash under the pointer, at rest it is hairline.
+                jumpChipHovered
+                    ? AnyShapeStyle(Color(red: 80 / 255.0, green: 170 / 255.0, blue: 255 / 255.0).opacity(0.16))
+                    : AnyShapeStyle(HaloEdge.hair2),
+                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+            )
             .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
+        .onHover { jumpChipHovered = $0 }
         .accessibilityLabel(lang.t("island.halo.row.jump"))
     }
 
@@ -730,7 +750,6 @@ private struct HaloRowContent: View {
 
     @ViewBuilder
     private func todoSection(_ tasks: [ClaudeTaskInfo]) -> some View {
-        let rollup = PouredTaskRollup(statuses: tasks.map(\.status))
         // If subagents already drew a header above, keep a faint divider so the two
         // lists read as one grouped nest but stay legibly separate.
         if activeSubagents != nil {
@@ -741,16 +760,10 @@ private struct HaloRowContent: View {
                 .padding(.vertical, 4)
         }
 
-        // Todo progress (`2 of 5`, tabular) — the AC's roll-up over the list.
-        HStack(spacing: 0) {
-            Spacer(minLength: 0)
-            Text(lang.t("island.halo.tasks.progress", rollup.done, rollup.total))
-                .font(.system(size: HaloTypography.nestHeaderSize, weight: .semibold).monospacedDigit())
-                .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
-        }
-        .padding(.horizontal, 11)
-        .padding(.bottom, 2)
-
+        // G-60: the mockup's `.todos` has **no** header of its own — "2 of 5" is
+        // caption prose, not UI. The nest's only count is `.nest-h .nn` ("3 active"),
+        // drawn by `subagentSection` above. The stray right-aligned progress line is
+        // gone; the checked/unchecked icons carry the roll-up.
         VStack(alignment: .leading, spacing: 3) {
             ForEach(tasks) { task in
                 todoRow(task)
@@ -897,7 +910,8 @@ private struct HaloRowContent: View {
                 TranscriptAffordance(
                     path: transcriptPath,
                     workspace: session.spotlightWorkspaceName,
-                    lang: lang
+                    lang: lang,
+                    haloChip: true
                 )
             }
 
@@ -957,11 +971,17 @@ private struct HaloRowContent: View {
             }
         }
 
-        metadataTextCell(
-            key: lang.t("island.halo.done.duration"),
-            value: HaloSessionRowFormat.durationLabel(seconds: completionDurationSeconds),
-            tabular: true
-        )
+        // G-65: `updatedAt − firstSeenAt` is 0 whenever the turn carries no recorded
+        // start (every completed fixture, and any session first seen at completion).
+        // The mockup's grid is a set of facts, so an unknown duration drops its cell
+        // rather than printing an authoritative-looking `0m 00s`.
+        if completionDurationSeconds > 0 {
+            metadataTextCell(
+                key: lang.t("island.halo.done.duration"),
+                value: HaloSessionRowFormat.durationLabel(seconds: completionDurationSeconds),
+                tabular: true
+            )
+        }
 
         if let model = session.displayModelName {
             metadataTextCell(key: lang.t("island.halo.done.model"), value: model, mono: true)
@@ -991,21 +1011,23 @@ private struct HaloRowContent: View {
                 TranscriptAffordance(
                     path: transcriptPath,
                     workspace: session.spotlightWorkspaceName,
-                    lang: lang
+                    lang: lang,
+                    haloChip: true
                 )
             }
 
             Spacer(minLength: 8)
 
+            // G-57: `Dismiss` is a right-aligned ghost chip in §H, the same
+            // `.jump`-family well as Transcript — not a bare word floating at the
+            // rail's edge.
             if let dismiss = actions.dismiss {
-                Button(action: dismiss) {
-                    Text(lang.t("island.halo.row.dismiss"))
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.secondaryTextOpacity)))
-                        .lineLimit(1)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(lang.t("a11y.session.dismiss"))
+                HaloGhostChip(
+                    systemName: "xmark",
+                    label: lang.t("island.halo.row.dismiss"),
+                    accessibilityLabel: lang.t("a11y.session.dismiss"),
+                    action: dismiss
+                )
             }
         }
     }
@@ -1076,7 +1098,7 @@ private struct HaloRowContent: View {
     // MARK: Metadata grid (§5D/§5H · mockup `.mgrid` / `.mcell`)
 
     private func metadataGrid<Cells: View>(@ViewBuilder cells: () -> Cells) -> some View {
-        HaloMetaGridLayout(spacing: 9) {
+        HaloMetaGridLayout(spacing: 8) {
             cells()
         }
     }
@@ -1092,17 +1114,29 @@ private struct HaloRowContent: View {
     }
 
     /// A grid cell (mockup `.mcell`): a 10pt uppercase tertiary key (lifted to the
-    /// Halo floor) over a 12.5pt value. Absent fields never reach here — the cell
-    /// builders emit nothing rather than an em-dash (SPEC §0 honesty).
+    /// Halo floor) over a 12.5pt value, inside its own boxed chip — `padding 8/11`,
+    /// `border-radius 9`, `inset 0 0 0 1px var(--hair2)`, `min-width 86` (G-55). The
+    /// chips are what make the grid read as six discrete facts rather than a bare
+    /// text table. Absent fields never reach here — the cell builders emit nothing
+    /// rather than an em-dash (SPEC §0 honesty).
     private func metadataCell<Content: View>(key: String, @ViewBuilder value: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(key.uppercased())
                 .font(.system(size: HaloTypography.metadataKeySize, weight: .medium))
-                .tracking(HaloTypography.metadataKeySize * 0.08)
+                .tracking(HaloTypography.metadataKeySize * 0.07)
                 .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
             value()
         }
-        .frame(minWidth: 118, alignment: .leading)
+        .padding(.horizontal, 11)
+        .padding(.vertical, 8)
+        .frame(minWidth: 86, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .strokeBorder(
+                    tokens.colors.paper.opacity(increasesContrast ? 0.14 : 0.05),
+                    lineWidth: 1
+                )
+        )
     }
 
     private var metadataValueFont: Font {
@@ -1132,14 +1166,22 @@ private struct HaloRowContent: View {
                 .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
 
             AutoHeightScrollView(maxHeight: 150) {
-                LocalMarkdownText(message, colors: tokens.colors)
+                LocalMarkdownText(message, style: .haloAssistant, colors: tokens.colors)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         }
         .padding(.horizontal, 13)
         .padding(.vertical, 11)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(nestBackground)
+        // G-69: `.assistant` is an **inset hairline**, no fill — the quoted message
+        // is the calmest block in the row, not the loudest.
+        .background(
+            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .strokeBorder(
+                    tokens.colors.paper.opacity(increasesContrast ? 0.14 : 0.05),
+                    lineWidth: 1
+                )
+        )
     }
 
     // MARK: Detail data helpers
@@ -1230,9 +1272,11 @@ private struct HaloRowContent: View {
         .accessibilityLabel(jumpLabel)
     }
 
+    /// G-57: the mockup's chip reads **`Jump to Ghostty`** — a sentence, not the
+    /// `Jump · Ghostty` breadcrumb the chip used to print.
     private var jumpLabel: String {
         if let terminal = session.spotlightTerminalBadge {
-            return lang.t("island.halo.row.jump") + " · " + terminal
+            return lang.t("island.halo.row.jumpTo", terminal)
         }
         return lang.t("island.halo.row.jump")
     }
@@ -1305,13 +1349,31 @@ private struct HaloRowContent: View {
         return raw
     }
 
+    /// G-49/G-74: `spotlightActivityLineText` hands a completed row the **raw last
+    /// assistant message** — markdown source included — which the row then printed
+    /// verbatim and ellipsis-truncated (`[README.md](/Users/…/open-island/R…`). The
+    /// mockup's rows never show a raw message: they show one narrated clause. So the
+    /// message is reduced to its first sentence with the markup rendered away
+    /// (`HaloActivityNarration`) before it reaches the `.act` line. Non-message
+    /// activity ("Approval needed", the running narration) already *is* a phrase and
+    /// passes through untouched.
     private var humanActivityText: String? {
         if let activity = session.spotlightActivityLineText?.trimmingCharacters(in: .whitespacesAndNewlines),
            !activity.isEmpty {
-            return activity
+            return HaloActivityNarration.headline(activity) ?? activity
         }
         let summary = session.summary.trimmingCharacters(in: .whitespacesAndNewlines)
-        return summary.isEmpty ? nil : summary
+        guard !summary.isEmpty else { return nil }
+        return HaloActivityNarration.headline(summary) ?? summary
+    }
+
+    /// G-74: true when the expanded body's quoted block already carries whatever the
+    /// `.act` line would narrate — i.e. the line is a prefix of the block's prose.
+    private var quotesActivityInDetailBlock: Bool {
+        guard let line = humanActivityText, !line.isEmpty else { return false }
+        return [completionMessageForDetail, lastAssistantMessageForDetail]
+            .compactMap { $0 }
+            .contains { HaloActivityNarration.flatten($0).hasPrefix(line) }
     }
 
     private var permissionModeChipText: String? {
@@ -1552,6 +1614,138 @@ private struct HaloDetailToggle: View {
 /// two-up on the narrow panel, more on a wider one, with no fixed column count
 /// baked in. A thin `Layout` mirroring the sibling themes' flow layouts, kept
 /// local so Halo owns its own grid geometry.
+/// Reduces an agent-authored message to the single narrated clause the mockup's
+/// `.act` line carries (G-49/G-74).
+///
+/// This is deliberately *not* a summariser — the row has no model to call. It is
+/// the honest minimum: render the markdown away (so a link never leaks its URL and
+/// a fence never leaks its backticks), then keep the first sentence. Anything that
+/// still overruns the line is cut at a word boundary; SwiftUI's own tail truncation
+/// adds the ellipsis when — and only when — the layout actually needs one.
+enum HaloActivityNarration {
+    /// The longest clause worth putting on one row line before it is cut at a word
+    /// boundary. A `.act` line is one line at 12.5pt in a ~430pt panel.
+    static let maxLength = 110
+
+    static func headline(_ raw: String) -> String? {
+        let flattened = flatten(raw)
+        guard !flattened.isEmpty else { return nil }
+        let sentence = firstSentence(of: flattened)
+        return clip(sentence)
+    }
+
+    /// Markdown source → prose: fenced blocks dropped, links reduced to their label,
+    /// emphasis / code / heading / quote / list markers removed.
+    static func flatten(_ raw: String) -> String {
+        var text = raw
+
+        // Fenced code blocks: the row can never show code, so drop them wholesale.
+        if text.contains("```") {
+            let parts = text.components(separatedBy: "```")
+            text = parts.enumerated().filter { $0.offset % 2 == 0 }.map(\.element).joined(separator: " ")
+        }
+
+        // `[label](url)` → `label`, and `![alt](url)` → `alt`.
+        text = text.replacingOccurrences(
+            of: "!?\\[([^\\]]*)\\]\\([^)]*\\)",
+            with: "$1",
+            options: .regularExpression
+        )
+        // Bare autolinks `<https://…>` → the URL is debris on a one-line summary.
+        text = text.replacingOccurrences(of: "<https?://[^>]*>", with: "", options: .regularExpression)
+
+        // Line-leading block markers (headings, quotes, bullets, ordered items).
+        text = text
+            .components(separatedBy: .newlines)
+            .map { line -> String in
+                var trimmed = line.trimmingCharacters(in: .whitespaces)
+                trimmed = trimmed.replacingOccurrences(
+                    of: "^(#{1,6}\\s+|>\\s*|[-*+]\\s+|\\d+[.)]\\s+)",
+                    with: "",
+                    options: .regularExpression
+                )
+                return trimmed
+            }
+            .joined(separator: " ")
+
+        // Inline emphasis / code markers. Their content stays; the syntax goes.
+        text = text.replacingOccurrences(of: "[`*_~]", with: "", options: .regularExpression)
+
+        // Collapse the whitespace the joins above introduced.
+        text = text.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// The first sentence, terminator dropped. Handles the CJK stops too — the
+    /// fixtures (and real transcripts) are bilingual.
+    static func firstSentence(of text: String) -> String {
+        let terminators: Set<Character> = [".", "!", "?", "。", "！", "？"]
+        var result = ""
+        for character in text {
+            if terminators.contains(character) {
+                // A decimal point / version dot / ellipsis is not a sentence end.
+                let trimmed = result.trimmingCharacters(in: .whitespaces)
+                if character == ".", let last = trimmed.last, last.isNumber {
+                    result.append(character)
+                    continue
+                }
+                if !trimmed.isEmpty { return trimmed }
+                continue
+            }
+            result.append(character)
+        }
+        return result.trimmingCharacters(in: .whitespaces)
+    }
+
+    /// Cuts an over-long clause at the last word boundary — no ellipsis of our own.
+    static func clip(_ text: String) -> String? {
+        guard !text.isEmpty else { return nil }
+        guard text.count > maxLength else { return text }
+        let head = text.prefix(maxLength)
+        if let space = head.lastIndex(of: " "), head.distance(from: head.startIndex, to: space) > maxLength / 2 {
+            return String(head[head.startIndex..<space])
+        }
+        return String(head)
+    }
+}
+
+/// A secondary action chip in the §D/§H action rail (mockup `.jump` without the
+/// blue wash): a `white@.05` well, 11.5/600 ink at `--t2`, brightening to `--t1`
+/// on hover. Used for Dismiss (G-57) — Transcript gets the same treatment through
+/// `TranscriptAffordance(haloChip: true)`.
+private struct HaloGhostChip: View {
+    let systemName: String
+    let label: String
+    var accessibilityLabel: String?
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: systemName)
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .accessibilityHidden(true)
+                Text(label)
+                    .font(.system(size: HaloTypography.jumpChipSize, weight: .semibold))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(Color.white.opacity(isHovered ? 0.95 : 0.63))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(
+                Color.white.opacity(0.05),
+                in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .accessibilityLabel(accessibilityLabel ?? label)
+    }
+}
+
 private struct HaloMetaGridLayout: Layout {
     var spacing: CGFloat
 

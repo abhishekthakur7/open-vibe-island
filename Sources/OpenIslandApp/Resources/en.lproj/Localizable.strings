@@ -359,6 +359,7 @@
 "island.halo.footer.groupedByAgent" = "Grouped by agent";
 "island.halo.footer.groupedByProject" = "Grouped by project";
 "island.halo.row.jump" = "Jump";
+"island.halo.row.jumpTo" = "Jump to %@";
 "island.halo.row.reply" = "Reply";
 "island.halo.row.dismiss" = "Dismiss";
 "island.halo.detail.meta.agent" = "Agent";

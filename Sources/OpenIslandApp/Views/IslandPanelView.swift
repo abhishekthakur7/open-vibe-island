@@ -3761,21 +3761,45 @@ struct TranscriptAffordance: View {
     let path: String
     let workspace: String
     let lang: LanguageManager
+    /// G-57: Halo's §D/§H action rail draws Transcript as a live `.jump`-family
+    /// ghost chip (hairline well, 11.5/600 at `--t2`) beside the primary Jump —
+    /// the 10.5pt 0.4-opacity text form read as a disabled affordance. Every other
+    /// theme keeps the plain text form.
+    var haloChip: Bool = false
     @State private var isHovered = false
 
     var body: some View {
         Button {
             openTranscriptFile(at: path)
         } label: {
-            HStack(spacing: 5) {
-                Image(systemName: "doc.text")
-                    .font(.system(size: 9.5, weight: .medium))
-                    .accessibilityHidden(true)
-                Text(lang.t("island.transcript.label"))
-                    .font(.system(size: 10.5, weight: .medium))
-                    .lineLimit(1)
+            if haloChip {
+                HStack(spacing: 6) {
+                    Image(systemName: "doc.text")
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .accessibilityHidden(true)
+                    Text(lang.t("island.transcript.label"))
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .lineLimit(1)
+                }
+                .foregroundStyle(.white.opacity(isHovered ? 0.95 : 0.63))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(
+                    Color.white.opacity(0.05),
+                    in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            } else {
+                HStack(spacing: 5) {
+                    Image(systemName: "doc.text")
+                        .font(.system(size: 9.5, weight: .medium))
+                        .accessibilityHidden(true)
+                    Text(lang.t("island.transcript.label"))
+                        .font(.system(size: 10.5, weight: .medium))
+                        .lineLimit(1)
+                }
+                .foregroundStyle(.white.opacity(isHovered ? 0.62 : 0.4))
             }
-            .foregroundStyle(.white.opacity(isHovered ? 0.62 : 0.4))
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }

@@ -360,6 +360,7 @@
 "island.halo.footer.groupedByAgent" = "按代理分组";
 "island.halo.footer.groupedByProject" = "按项目分组";
 "island.halo.row.jump" = "跳转";
+"island.halo.row.jumpTo" = "跳转到 %@";
 "island.halo.row.reply" = "回复";
 "island.halo.row.dismiss" = "忽略";
 "island.halo.detail.meta.agent" = "代理";

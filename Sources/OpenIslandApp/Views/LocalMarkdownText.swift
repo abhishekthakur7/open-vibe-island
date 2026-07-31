@@ -12,6 +12,9 @@ struct LocalMarkdownText: View {
     enum Style {
         case completionCard
         case flightDeckAssistant
+        /// Halo `.assistant` (G-69): 12.5 / line-height 1.55 at `--t2`, with inline
+        /// `code` runs on their own `white@.07` chip in `#c8d2e6` ink at 11pt.
+        case haloAssistant
 
         fileprivate var font: Font {
             switch self {
@@ -19,6 +22,8 @@ struct LocalMarkdownText: View {
                 .system(size: 13.5, weight: .medium)
             case .flightDeckAssistant:
                 .system(size: FlightDeckTypography.assistantSize, weight: .regular)
+            case .haloAssistant:
+                .system(size: HaloTypography.assistantSize, weight: .regular)
             }
         }
 
@@ -28,6 +33,8 @@ struct LocalMarkdownText: View {
                 .system(size: 12.5, weight: .regular, design: .monospaced)
             case .flightDeckAssistant:
                 .system(size: FlightDeckTypography.assistantSize - 1, weight: .regular, design: .monospaced)
+            case .haloAssistant:
+                .system(size: HaloTypography.assistantInlineCodeSize, weight: .regular, design: .monospaced)
             }
         }
 
@@ -35,8 +42,30 @@ struct LocalMarkdownText: View {
             switch self {
             case .completionCard: 7
             case .flightDeckAssistant: 6
+            case .haloAssistant: 6
             }
         }
+
+        /// Body ink opacity — Halo's assistant block is a **quote**, so it sits at
+        /// `--t2` (0.63) rather than near-`--t1` like the other two surfaces.
+        fileprivate var bodyOpacity: Double {
+            switch self {
+            case .completionCard: 0.88
+            case .flightDeckAssistant: 0.9
+            case .haloAssistant: 0.63
+            }
+        }
+
+        fileprivate var lineSpacing: CGFloat {
+            switch self {
+            // 12.5 × 1.55 ≈ 19.4pt line box → ≈ 4pt of added leading.
+            case .haloAssistant: 4
+            default: 0
+            }
+        }
+
+        /// Whether inline `code` runs get the mockup's 7% chip.
+        fileprivate var chipsInlineCode: Bool { self == .haloAssistant }
     }
 
     struct OrderedListItem: Equatable {
@@ -124,13 +153,29 @@ struct LocalMarkdownText: View {
     }
 
     private func inlineText(_ source: String, font: Font? = nil) -> some View {
-        Text(Self.attributedText(for: source))
+        Text(styledInline(source))
             .font(font ?? style.font)
-            .foregroundStyle(colors.surfaceText.opacity(style == .completionCard ? 0.88 : 0.9))
+            .lineSpacing(style.lineSpacing)
+            .foregroundStyle(colors.surfaceText.opacity(style.bodyOpacity))
             .tint(style == .flightDeckAssistant ? colors.statusRunning : .blue)
             .textSelection(.enabled)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Gives inline `code` runs the mockup's chip (G-69) where the style asks for
+    /// it — `white@.07` background, `#c8d2e6` ink, 11pt mono. Every other style
+    /// gets the parsed markdown untouched.
+    private func styledInline(_ source: String) -> AttributedString {
+        var attributed = Self.attributedText(for: source)
+        guard style.chipsInlineCode else { return attributed }
+        let ink = Color(red: 0xC8 / 255.0, green: 0xD2 / 255.0, blue: 0xE6 / 255.0)
+        for run in attributed.runs where run.inlinePresentationIntent?.contains(.code) == true {
+            attributed[run.range].font = style.codeFont
+            attributed[run.range].foregroundColor = ink
+            attributed[run.range].backgroundColor = Color.white.opacity(0.07)
+        }
+        return attributed
     }
 
     private func headingFont(for level: Int) -> Font {
