@@ -181,7 +181,7 @@ HaloSessionRow.swift	typography-debt	1	.font(.system(size: HaloTypography.worksp
 HaloSessionRow.swift	typography-debt	1	.system(size: HaloTypography.metadataValueSize, weight: .medium)
 HaloSessionRow.swift	typography-debt	1	.system(size: HaloTypography.metadataValueSize, weight: .medium, design: .monospaced).monospacedDigit()
 HaloSessionRow.swift	typography-debt	1	baseFont: .system(size: HaloTypography.commandSize, weight: .regular, design: .monospaced)
-HaloUsageMeterCard.swift	typography-debt	1	.font(.system(size: HaloTypography.metadataValueSize, weight: .medium))
+HaloUsageMeterCard.swift	typography-debt	1	.font(.system(size: HaloTypography.meterLabelSize, weight: .medium))
 HaloUsageMeterCard.swift	typography-debt	1	.font(.system(size: HaloTypography.meterValueSize, weight: .semibold))
 HaloUsageMeterCard.swift	typography-debt	1	.font(.system(size: HaloTypography.summaryLabelSize, weight: .bold))
 HaloUsageMeterCard.swift	typography-debt	1	.font(.system(size: HaloTypography.thresholdPillSize, weight: .bold))

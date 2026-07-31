@@ -68,6 +68,19 @@ enum HaloUsageThreshold: String, CaseIterable, Sendable {
     /// `true` for the `>= 90` band — the one filament allowed to pulse.
     var isCritical: Bool { self == .critical }
 
+    /// The tint the §I threshold capsule (`.thl`) fills with — the band colour at
+    /// the mockup's per-band alpha (`fine .12` / `warn .13` / `crit .14`).
+    var pillTintOpacity: Double {
+        switch self {
+        case .fine:
+            0.12
+        case .warn:
+            0.13
+        case .critical:
+            0.14
+        }
+    }
+
     /// The Halo filament colour this band lights (`HaloEdge` usage table).
     var filamentColor: Color {
         switch self {
@@ -278,13 +291,11 @@ struct HaloUsageWindowFilament: View {
         HaloUsageThreshold.threshold(for: window.usedPercentage)
     }
 
-    /// `34% · 2h 10m` when a reset is known, else `34%`.
+    /// The mockup's `.fil .fv` is the **percent only** (G-54) — the reset
+    /// countdown belongs to the §I meter card's `resets in …` line, not the
+    /// header lane, which stays a two-token glance (`CLAUDE 5H` / `34%`).
     private var valueText: String {
-        let percent = "\(window.roundedUsedPercentage)%"
-        if let remaining = window.remainingLabel(asOf: now) {
-            return "\(percent) · \(remaining)"
-        }
-        return percent
+        "\(window.roundedUsedPercentage)%"
     }
 
     var body: some View {

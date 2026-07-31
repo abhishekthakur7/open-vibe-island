@@ -977,6 +977,25 @@ struct IslandPanelView: View {
                     .fixedSize(horizontal: false, vertical: true)
             } else {
                 sessionList
+
+                // Halo §I (G-28 / G-34): the full usage meter card, mounted below
+                // the list in the opened panel. Every other theme returns `nil`
+                // here, so their opened surfaces are byte-identical. Skipped in
+                // notification mode, where the panel is a single actionable card.
+                if !isNotificationMode,
+                   let meterCard = theme.panelUsageMeterCard(
+                    providers: openedUsageProviders,
+                    sideInset: sessionListSideInset,
+                    lang: lang
+                   ) {
+                    meterCard
+                        .overlay(alignment: .top) {
+                            Rectangle()
+                                .fill(tokens.colors.paper.opacity(tokens.colors.hairline(increaseContrast: increasesContrast)))
+                                .frame(height: 1)
+                        }
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
         .padding(.bottom, 0)

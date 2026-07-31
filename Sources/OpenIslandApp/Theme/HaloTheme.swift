@@ -110,6 +110,10 @@ enum HaloTypography {
     static let metadataValueSize: CGFloat = 12.5
     /// Meter value (`.mp`) — sans + `.monospacedDigit()`, 22 / 660.
     static let meterValueSize: CGFloat = 22
+    /// §I meter label (`.meter .mx .ml`) — sans, 12 / 550. Its own role because
+    /// the mockup sets the meter label a half-point below the row metadata value
+    /// (`.mv` 12.5) so the 22pt numeral stays the dial's only loud element (G-05).
+    static let meterLabelSize: CGFloat = 12
     /// Empty title (`.et`) — sans, 14 / 600.
     static let emptyTitleSize: CGFloat = 14
     /// Empty subtitle (`.es`) — sans, 12.
@@ -174,6 +178,7 @@ enum HaloTypography {
         ("assistant", .sans, assistantSize),
         ("metadataValue", .sans, metadataValueSize),
         ("meterValue", .sans, meterValueSize),
+        ("meterLabel", .sans, meterLabelSize),
         ("emptyTitle", .sans, emptyTitleSize),
         ("emptySubtitle", .sans, emptySubtitleSize),
         // The lifted-to-floor roles the SPEC pins explicitly.
@@ -1085,6 +1090,23 @@ struct HaloTheme: IslandTheme {
     func usageMeterCard(providers: [UsageProviderPresentation], lang: LanguageManager) -> AnyView? {
         guard !providers.isEmpty else { return nil }
         return AnyView(HaloUsageMeterCard(providers: providers, lang: lang))
+    }
+
+    /// Halo is the one theme that mounts the §I card in the **opened panel** too
+    /// (G-28 / G-34): its header lane shows a single filament per notch lane, so
+    /// this is where the full per-window readout — 52pt dials, the 22pt
+    /// threshold-coloured numerals, `resets in …`, the FINE/WARN/CRITICAL capsules
+    /// — reaches the product. Chromeless (G-31): it sits *inside* the panel's own
+    /// black body and edge ring, seamed off by the shared 8%-white hairline
+    /// exactly like the list's summary strip and footer, so it must not draw a
+    /// second card frame.
+    func panelUsageMeterCard(
+        providers: [UsageProviderPresentation],
+        sideInset: CGFloat,
+        lang: LanguageManager
+    ) -> AnyView? {
+        guard !providers.isEmpty else { return nil }
+        return AnyView(HaloUsageMeterCard(providers: providers, lang: lang, sideInset: sideInset))
     }
 
     // MARK: Question-prompt seams (overlay remediation Phase 2A-follow-up · F1)

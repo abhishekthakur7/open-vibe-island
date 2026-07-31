@@ -197,6 +197,19 @@ protocol IslandTheme: Sendable {
     /// reason as the AB-330 closed-pill seams.
     func usageMeterCard(providers: [UsageProviderPresentation], lang: LanguageManager) -> AnyView?
 
+    /// The same full-meter surface, but mounted **inside the opened panel body**
+    /// (below the session list) rather than in the Settings preview. Returns `nil`
+    /// — the default every theme but Halo takes — so no other theme's opened
+    /// surface changes. Halo mounts it because its header lane deliberately shows
+    /// only one filament per notch lane (G-29), so the meter card is where the
+    /// remaining windows, the `resets in …` countdowns and the 22pt threshold
+    /// numerals actually reach the product (G-28 / G-34).
+    func panelUsageMeterCard(
+        providers: [UsageProviderPresentation],
+        sideInset: CGFloat,
+        lang: LanguageManager
+    ) -> AnyView?
+
     // MARK: Closed-pill ambient seams (AB-330)
 
     /// An ambient glow the theme casts around the **closed** pill that must
@@ -493,6 +506,14 @@ extension IslandTheme {
     /// Default: no dedicated full-meter surface. Every theme but Poured takes
     /// this, so the `meters` preview keeps drawing only the compact header ring.
     func usageMeterCard(providers: [UsageProviderPresentation], lang: LanguageManager) -> AnyView? { nil }
+
+    /// Default: nothing extra in the opened panel body. Every theme but Halo takes
+    /// this, so their opened surfaces are unchanged.
+    func panelUsageMeterCard(
+        providers: [UsageProviderPresentation],
+        sideInset: CGFloat,
+        lang: LanguageManager
+    ) -> AnyView? { nil }
 
     /// Default: no surface edge-light. Every shipped theme takes this, so the
     /// morph / Reduce-Motion surfaces stay byte-identical (AB-341). Halo (Part 2)

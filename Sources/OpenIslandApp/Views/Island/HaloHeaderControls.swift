@@ -56,7 +56,11 @@ struct HaloHeaderControls: View {
                     openedHeaderButtonsWidth: openedHeaderButtonsWidth,
                     headerControlSpacing: Self.headerControlSpacing
                 )
-                let providerGroups = IslandHeaderLaneLayout.laneGroups(
+                // G-29 — the mockup's `.p-head` carries **one** filament per lane
+                // (`Claude 5h` left of the notch gap, `Claude 7d` right of it).
+                // Overflow windows (3rd+) are not crowded into the left lane; they
+                // live in the §I meter card below the list.
+                let providerGroups = Self.laneFilaments(
                     for: providers,
                     hasRightLane: metrics.rightUsageWidth > 0
                 )
@@ -121,13 +125,39 @@ struct HaloHeaderControls: View {
         }
     }
 
+    /// The single-lane (top-bar / external) header carries the same **two**
+    /// filaments the notch profile splits across its lanes (G-29); the rest go to
+    /// the §I meter card.
     @ViewBuilder
     private var openedUsageSummary: some View {
-        if providers.isEmpty == false {
-            HaloUsageSummary(providers: providers, lang: lang, filamentDiameter: filamentDiameter)
+        let lanes = Self.laneFilaments(for: providers, hasRightLane: true)
+        let headerProviders = lanes.left + lanes.right
+        if headerProviders.isEmpty == false {
+            HaloUsageSummary(providers: headerProviders, lang: lang, filamentDiameter: filamentDiameter)
         } else {
             Color.clear
         }
+    }
+
+    /// Halo's **one-filament-per-lane** header split (mockup §C `.p-head`): the
+    /// first flattened `(provider, window)` sits in the left lane, the second in
+    /// the right lane when the notch geometry leaves one, and every further window
+    /// is dropped from the header entirely — it is carried by the §I meter card
+    /// (`HaloUsageMeterCard`) in the panel body instead. Unlike the shared
+    /// balanced `IslandHeaderLaneLayout.laneGroups`, nothing overflows back into a
+    /// lane: the header is a two-token glance, not a full readout.
+    static func laneFilaments(
+        for providers: [UsageProviderPresentation],
+        hasRightLane: Bool
+    ) -> IslandHeaderLaneLayout.LaneGroups {
+        let flattened = IslandHeaderLaneLayout.flatten(providers)
+        guard hasRightLane else {
+            return IslandHeaderLaneLayout.LaneGroups(left: Array(flattened.prefix(1)), right: [])
+        }
+        return IslandHeaderLaneLayout.LaneGroups(
+            left: Array(flattened.prefix(1)),
+            right: Array(flattened.dropFirst(1).prefix(1))
+        )
     }
 
     @ViewBuilder
