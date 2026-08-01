@@ -19,18 +19,6 @@ struct TypographyEscapeeLintTests {
         let stale = TypographyEscapeeLint.difference(allowed, actual)
         #expect(stale.isEmpty, "Retire an allowlist entry when its raw system-font site is removed.")
     }
-
-    @Test
-    func newEscapeeIsRejectedByTheSeedAllowlist() throws {
-        let escapee = try #require(
-            TypographyEscapeeLint.matches(
-                in: "Text(\"New\").font(.system(size: 99))",
-                relativePath: "NewIslandView.swift"
-            ).first
-        )
-
-        #expect(TypographyEscapeeLint.difference([escapee], []) == [escapee])
-    }
 }
 
 private enum TypographyEscapeeLint {

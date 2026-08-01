@@ -39,15 +39,6 @@ struct AnnualThemeTests {
         #expect(model.islandTheme.tokens == .annual)
     }
 
-    @Test
-    func annualRoundTripsThroughDefaults() {
-        let model = AppModel()
-        model.islandThemeID = "annual"
-        let reloaded = AppModel()
-        #expect(reloaded.islandThemeID == "annual")
-        #expect(reloaded.islandTheme.id == "annual")
-    }
-
     // MARK: - One-accent discipline (AC #2 · #6)
 
     /// The core Annual invariant: the theme carries exactly one accent, and it is

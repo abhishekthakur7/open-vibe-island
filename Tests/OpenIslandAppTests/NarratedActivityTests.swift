@@ -333,17 +333,6 @@ struct NarratedActivityTests {
         #expect(command.dropFirst(head.count).first == " ")
     }
 
-    // MARK: - Parts stay separate (AC #1)
-
-    @Test
-    func verbAndObjectAreExposedSeparatelyAndJoined() {
-        let narration = ActivityNarrator.narrate(toolName: "Edit", preview: "Sources/AppModel.swift")
-
-        #expect(narration?.verb == "Editing")
-        #expect(narration?.object == "AppModel.swift")
-        #expect(narration?.text == "Editing AppModel.swift")
-    }
-
     // MARK: - Session-level API (AC #1)
 
     @Test

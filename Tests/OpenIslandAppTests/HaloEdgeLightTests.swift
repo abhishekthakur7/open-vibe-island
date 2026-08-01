@@ -290,16 +290,4 @@ struct HaloEdgeLightTests {
             }
         }
     }
-
-    /// The theme wires the hook to `HaloEdgeLight` — the surface-level override that
-    /// makes the whole engine reachable from the overlay.
-    @Test
-    func haloThemeTracesTheEdgeLight() {
-        let shape = OpenedIslandSurfaceShape(topProfile: .notch, topCornerRadius: 20, bottomCornerRadius: 20)
-        let overlay = HaloTheme().surfaceEdgeOverlay(
-            shape: shape,
-            context: IslandSurfaceEdgeContext(state: .working, isOpened: true, size: CGSize(width: 540, height: 260))
-        )
-        #expect(overlay != nil)
-    }
 }

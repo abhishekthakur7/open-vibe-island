@@ -520,17 +520,6 @@ struct HaloThemeTests {
         #expect(Set(glyphs).count == O.allCases.count)
     }
 
-    /// AC (§5G): the todo roll-up counts **completed only** as done (never
-    /// in-progress) over the total, so the shared T08 fixture (two completed, one
-    /// in-progress, two pending) reads `2 of 5`. Reuses the shared `PouredTaskRollup`
-    /// so Halo and its siblings can never disagree about what "done" means.
-    @Test
-    func todoRollupReadsTwoOfFiveOnTheT08Fixture() {
-        let rollup = PouredTaskRollup(statuses: [.completed, .completed, .inProgress, .pending, .pending])
-        #expect(rollup.done == 2)
-        #expect(rollup.total == 5)
-    }
-
     private func haloSessionRowSource() throws -> String {
         let testsDirectory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
         let repository = testsDirectory

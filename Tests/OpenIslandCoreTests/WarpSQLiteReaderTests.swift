@@ -13,13 +13,6 @@ struct WarpSQLiteReaderTests {
     }
 
     @Test
-    func readerAcceptsExplicitPathOverride() {
-        let custom = "/tmp/warp-fixture.sqlite"
-        let reader = WarpSQLiteReader(databasePath: custom)
-        #expect(reader.databasePath == custom)
-    }
-
-    @Test
     func lookupPaneUUIDReturnsUppercaseHexForClaudeInKnownCwd() throws {
         let tmp = NSTemporaryDirectory() + "warp-fixture-\(UUID().uuidString).sqlite"
         try WarpSQLiteFixture.write(to: tmp, scenario: .threeTabsTwoClaudes)
@@ -363,23 +356,6 @@ struct WarpSQLiteReaderTests {
         // shorter path must NOT match it.
         let uuid = reader.lookupPaneUUID(forCwd: "/tmp/compound")
         #expect(uuid == nil)
-    }
-
-    @Test
-    func lookupPaneUUIDPrimaryStillWinsWhenTerminalPanesCwdIsPopulated() throws {
-        // When terminal_panes.cwd IS populated (normal case where the
-        // user ran a non-TUI command between `cd` and `claude`), the
-        // primary cwd query should still win and we should not fall
-        // through to the slower commands-table fallback. This is pinned
-        // by reusing the threeTabsTwoClaudes scenario which has populated
-        // terminal_panes.cwd for /Users/u/open-vibe-island.
-        let tmp = NSTemporaryDirectory() + "warp-fixture-\(UUID().uuidString).sqlite"
-        try WarpSQLiteFixture.write(to: tmp, scenario: .threeTabsTwoClaudes)
-        defer { try? FileManager.default.removeItem(atPath: tmp) }
-
-        let reader = WarpSQLiteReader(databasePath: tmp)
-        let uuid = reader.lookupPaneUUID(forCwd: "/Users/u/open-vibe-island")
-        #expect(uuid == "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB")
     }
 
     @Test

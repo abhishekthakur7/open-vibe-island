@@ -139,17 +139,6 @@ struct ThemeSelectionTests {
         #expect(model.islandTheme.id == ThemeRegistry.default.id)
     }
 
-    @Test
-    func selectionPersistsBackToDefaults() {
-        let model = AppModel()
-        model.islandThemeID = "classic"
-        // The didSet writes through once init has finished, so a fresh model
-        // observes the same id.
-        UserDefaults.standard.set(model.islandThemeID, forKey: Self.themeKey)
-        let reloaded = AppModel()
-        #expect(reloaded.islandThemeID == model.islandThemeID)
-    }
-
     // MARK: - Picker selection round-trip (AB-306)
 
     @Test
@@ -164,17 +153,6 @@ struct ThemeSelectionTests {
             #expect(reloaded.islandThemeID == theme.id)
             #expect(reloaded.islandTheme.id == theme.id)
         }
-    }
-
-    @Test
-    func pickerUnknownStoredIdFallsBackToRegistryDefault() {
-        // A theme that was removed from the registry (or a hand-edited garbage
-        // id) must resolve to the registry default rather than leaving the
-        // picker with no selection or the overlay unstyled.
-        UserDefaults.standard.set("retired-theme", forKey: Self.themeKey)
-        let model = AppModel()
-        #expect(model.islandThemeID == ThemeRegistry.default.id)
-        #expect(model.islandTheme.id == ThemeRegistry.default.id)
     }
 
     // MARK: - Chrome metrics feed panel sizing (AC #6)

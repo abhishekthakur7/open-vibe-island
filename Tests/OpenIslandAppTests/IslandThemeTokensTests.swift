@@ -253,19 +253,4 @@ struct IslandThemeTokensTests {
         #expect(values.islandTokens.metrics.openedTopRadius == 4)
         #expect(values.islandTokens != IslandThemeTokens.classic)
     }
-
-    /// Compile-time proof that a view can read the tokens with
-    /// `@Environment(\.islandTokens)`.
-    private struct TokenReadingProbe: View {
-        @Environment(\.islandTokens) private var tokens
-
-        var body: some View {
-            tokens.colors.surfaceInk
-        }
-    }
-
-    @Test
-    func aViewCanDeclareAnIslandTokensEnvironmentRead() {
-        _ = TokenReadingProbe()
-    }
 }

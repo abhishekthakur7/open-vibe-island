@@ -38,15 +38,6 @@ struct InstrumentThemeTests {
         #expect(model.islandTheme.tokens == .instrument)
     }
 
-    @Test
-    func instrumentRoundTripsThroughDefaults() {
-        let model = AppModel()
-        model.islandThemeID = "instrument"
-        let reloaded = AppModel()
-        #expect(reloaded.islandThemeID == "instrument")
-        #expect(reloaded.islandTheme.id == "instrument")
-    }
-
     // MARK: - Palette (AC #2)
 
     @Test

@@ -49,10 +49,6 @@ final class TerminalJumpServiceTests: XCTestCase {
         XCTAssertEqual(invocation.activated, "dev.warp.Warp-Stable")
     }
 
-    func testCmuxIsNotASupportedAutomationTarget() {
-        XCTAssertThrowsError(try TerminalJumpService().jump(to: JumpTarget(terminalApp: "cmux", workspaceName: "x", paneTitle: "", terminalSessionID: "123")))
-    }
-
     func testMultiplexerAndUnsupportedTerminalMetadataCannotTriggerAutomation() {
         for terminal in ["cmux", "tmux", "zellij", "wezterm"] {
             XCTAssertThrowsError(

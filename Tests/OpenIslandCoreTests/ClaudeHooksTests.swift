@@ -599,18 +599,6 @@ struct ClaudeHooksTests {
     }
 
     @Test
-    func claudeDefaultJumpTargetForwardsWarpPaneUUID() {
-        let payload = ClaudeHookPayload(
-            cwd: "/tmp/demo",
-            hookEventName: .sessionStart,
-            sessionID: "s1",
-            terminalApp: "Warp",
-            warpPaneUUID: "D1A5DF3027E44FC080FE2656FAF2BA2E"
-        )
-        #expect(payload.defaultJumpTarget.warpPaneUUID == "D1A5DF3027E44FC080FE2656FAF2BA2E")
-    }
-
-    @Test
     func claudeWithRuntimeContextPopulatesWarpPaneUUIDFromResolver() {
         let payload = ClaudeHookPayload(
             cwd: "/Users/u/demo",

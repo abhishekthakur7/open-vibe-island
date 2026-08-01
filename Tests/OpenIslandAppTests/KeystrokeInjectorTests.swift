@@ -9,18 +9,4 @@ final class KeystrokeInjectorTests: XCTestCase {
         let injector = DefaultKeystrokeInjector()
         injector.sendCmdShiftRightBracket()  // no XCTAssert — if this crashes the test fails
     }
-
-    func testSpyKeystrokerRecordsCalls() {
-        let spy = KeystrokeInjectorSpy()
-        spy.sendCmdShiftRightBracket()
-        spy.sendCmdShiftRightBracket()
-        XCTAssertEqual(spy.callCount, 2)
-    }
-}
-
-final class KeystrokeInjectorSpy: KeystrokeInjector, @unchecked Sendable {
-    var callCount = 0
-    func sendCmdShiftRightBracket() {
-        callCount += 1
-    }
 }

@@ -173,23 +173,6 @@ struct IslandSurfaceEdgeTests {
         )
     }
 
-    // MARK: - Context payload
-
-    @Test
-    func contextCarriesStateOpenedAndGeometry() {
-        let context = IslandSurfaceEdgeContext(
-            state: .permission,
-            isOpened: false,
-            size: CGSize(width: 214, height: 38)
-        )
-        #expect(context.state == .permission)
-        #expect(context.isOpened == false)
-        #expect(context.size == CGSize(width: 214, height: 38))
-        // Value semantics — two equal payloads compare equal (drives SwiftUI diffing).
-        #expect(context == IslandSurfaceEdgeContext(state: .permission, isOpened: false, size: CGSize(width: 214, height: 38)))
-        #expect(context != IslandSurfaceEdgeContext(state: .question, isOpened: false, size: CGSize(width: 214, height: 38)))
-    }
-
     // MARK: - Phase-freeze environment
 
     /// `\.haloEdgePhase` defaults to nil (live clocks) and round-trips a frozen

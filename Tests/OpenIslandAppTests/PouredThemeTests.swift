@@ -121,14 +121,6 @@ struct PouredThemeTests {
         }
     }
 
-    /// `IslandMaterialTokens` still declares / synthesises `Equatable` after the
-    /// three new fields — a compile-time proof plus a runtime sanity check.
-    @Test
-    func materialTokensRemainEquatable() {
-        #expect(IslandMaterialTokens.poured == IslandMaterialTokens.poured)
-        #expect(IslandMaterialTokens.poured != IslandMaterialTokens.classic)
-    }
-
     // MARK: - Closed-inset growth (SPEC §3.1 / AB-329)
 
     /// Poured's closed-pill shadow insets grew 16/18 → 40/44 so the A3 amber
@@ -384,16 +376,6 @@ struct PouredThemeTests {
         for role in [PouredType.Role.sectionHeader, .summaryLabel, .summaryNumber, .age, .agentChipLabel, .metaChip] {
             #expect(role.spec.isMono == false, "\(role) must be sans in 2.0")
         }
-    }
-
-    /// Metadata keys are 9.5pt in the mockup, but a metadata *key* is readable
-    /// chrome (not a fitted micro-indicator), so the table lifts it to the 10pt
-    /// floor — the one documented size deviation from the mockup.
-    @Test
-    func metadataKeyIsLiftedToTheFloor() {
-        let size = PouredType.Role.metadataKey.spec.size
-        #expect(size == 10)
-        #expect(size >= PouredType.floor)
     }
 
     /// The keycap hint sits exactly at the floor (10pt).

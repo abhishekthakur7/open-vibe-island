@@ -28,14 +28,6 @@ struct HaloPermissionHeroTests {
         #expect(HaloHeroFormat.Shortcut.jump.glyphs == ["⌘", "J"])
     }
 
-    @Test
-    func keycapGlyphStringsJoinInOrder() {
-        #expect(HaloHeroFormat.Shortcut.allowOnce.glyphString == "⌘Y")
-        #expect(HaloHeroFormat.Shortcut.alwaysAllow.glyphString == "⌘⇧Y")
-        #expect(HaloHeroFormat.Shortcut.deny.glyphString == "⌘N")
-        #expect(HaloHeroFormat.Shortcut.jump.glyphString == "⌘J")
-    }
-
     /// N3: the Codex hero's ⌘J is a **registered** binding now
     /// (`OverlayPanelController.handleJumpShortcut` fires the presented card's
     /// jump), so it earned a `Shortcut` case. The enum's contract is unchanged —

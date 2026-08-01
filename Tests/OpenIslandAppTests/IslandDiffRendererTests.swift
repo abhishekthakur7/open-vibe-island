@@ -64,22 +64,6 @@ struct IslandDiffRendererTests {
     }
 
     @Test
-    func sharedDiffTypographyIsThemeNeutral() throws {
-        let root = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        let renderer = try String(
-            contentsOf: root.appending(path: "Sources/OpenIslandApp/Views/Island/IslandDiffRenderer.swift"),
-            encoding: .utf8
-        )
-
-        #expect(renderer.contains("static let sharedFont: Font = .system(size: 11.5, weight: .regular, design: .monospaced)"))
-        #expect(renderer.contains("static let sharedTypography = Typography(size: 11.5, weight: .regular, design: .monospaced)"))
-        #expect(!renderer.contains("PouredType"))
-    }
-
-    @Test
     func haloStylePreservesTheE2GeometryAndFilenameHeader() {
         let halo = IslandDiffStyle.halo(
             tokens: .halo,

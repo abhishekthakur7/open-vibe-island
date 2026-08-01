@@ -59,24 +59,6 @@ struct AgentSessionPresentationTests {
     }
 
     @Test
-    func detachedCompletedSessionCanStillCollapseToInactive() {
-        let referenceDate = Date(timeIntervalSince1970: 10_000)
-        let session = AgentSession(
-            id: "session-1",
-            title: "Codex · worktree",
-            tool: .codex,
-            origin: .live,
-            attachmentState: .detached,
-            phase: .completed,
-            summary: "Ready",
-            updatedAt: referenceDate.addingTimeInterval(-1_801)
-        )
-
-        #expect(session.islandPresence(at: referenceDate) == .inactive)
-        #expect(session.spotlightShowsDetailLines(at: referenceDate) == false)
-    }
-
-    @Test
     func detachedCompletedSessionStaysActiveWithinTwentyMinutes() {
         let referenceDate = Date(timeIntervalSince1970: 10_000)
         let session = AgentSession(

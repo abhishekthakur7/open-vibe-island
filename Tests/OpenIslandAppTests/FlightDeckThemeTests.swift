@@ -38,15 +38,6 @@ struct FlightDeckThemeTests {
         #expect(model.islandTheme.tokens == .flightDeck)
     }
 
-    @Test
-    func flightDeckRoundTripsThroughDefaults() {
-        let model = AppModel()
-        model.islandThemeID = "flightDeck"
-        let reloaded = AppModel()
-        #expect(reloaded.islandThemeID == "flightDeck")
-        #expect(reloaded.islandTheme.id == "flightDeck")
-    }
-
     // MARK: - Phosphor palette (AC #2)
 
     @Test

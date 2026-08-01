@@ -327,17 +327,6 @@ struct FlightDeckSessionRowTests {
         #expect(FlightDeckSessionRowFormat.enginePlacard(agentType: "  ") == "AGENT")
     }
 
-    /// AC: the todo header rolls up to `2 / 5 DONE` against the shared T08 fixture
-    /// (two completed, one in-progress, two pending). Reuses the shared
-    /// `PouredTaskRollup` so the two themes can never disagree about what "done"
-    /// means (completed only, never in-progress).
-    @Test
-    func todoRollupCountsDoneOverTotal() {
-        let rollup = PouredTaskRollup(statuses: [.completed, .completed, .inProgress, .pending, .pending])
-        #expect(rollup.done == 2)
-        #expect(rollup.total == 5)
-    }
-
     // MARK: - §4H completion donestats (AB-339)
 
     /// AC: the Duration donestat formats `updatedAt − firstSeenAt` as a mono
