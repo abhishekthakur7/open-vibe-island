@@ -89,10 +89,13 @@ struct ThemeSelectionTests {
 
     @Test
     func pouredMaterialSuppliesGlassConfiguration() {
-        // A liquid-glass identity: a specular top edge and a lighter ink tint
-        // than Classic so more of the blur reads through.
+        // A liquid-glass identity: a crisp specular top line, an inner-luminance
+        // body gradient, and a lighter ink tint than Classic so more of the blur
+        // reads through. (PI-M-001 removed the broad soft `specularTopEdge`
+        // sheen — it had no counterpart in the Poured reference.)
         let material = PouredIslandTheme().tokens.material
-        #expect(material.specularTopEdge != nil)
+        #expect(material.specularHardEdge != nil)
+        #expect(material.bodyGradient != nil)
         #expect(material.tintOpacity < IslandMaterialTokens.classic.tintOpacity)
         // Classic stays flat and unlit.
         #expect(IslandMaterialTokens.classic.specularTopEdge == nil)

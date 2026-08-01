@@ -108,6 +108,18 @@ struct IslandMaterialTokens: Equatable, Sendable {
     /// A faint white inner inset stroke just inside the surface edge. `nil`
     /// leaves the surface un-edged.
     var innerHairline: IslandHairlineToken? = nil
+
+    /// The white edge stroke the opened surface's *content* layer carries
+    /// (`IslandPanelView` / `AppearanceSettingsPane`), previously hardcoded as
+    /// `0.07 @ 1pt` for every theme. Defaulted to exactly that value so the five
+    /// non-Poured themes render byte-identically without touching their
+    /// `static let`s; `nil` drops the stroke entirely.
+    ///
+    /// Poured opts out (PI-M-002): the reference glass body
+    /// (`01-poured-island.html:48-53`) declares exactly ONE inner edge — the
+    /// 0.5pt `--hairline-inset` carried by `innerHairline` — so keeping this
+    /// second stroke would double the surface's inner edge.
+    var contentEdgeStroke: IslandHairlineToken? = IslandHairlineToken(opacity: 0.07, width: 1)
 }
 
 // MARK: - Classic
@@ -130,20 +142,23 @@ extension IslandMaterialTokens {
 extension IslandMaterialTokens {
     /// Poured Island's frosted slab: the same always-dark HUD family, but a
     /// lighter ink tint so more of the heavy blur reads through as glass, plus
-    /// three light-carried layers (AB-329) so hierarchy comes from light rather
+    /// the light-carried layers (AB-329) so hierarchy comes from light rather
     /// than chrome — a 3-stop body gradient (inner luminance, lighter top →
-    /// darker bottom), the soft 26pt specular sheen, a crisp 1pt hard specular
-    /// top line, and a faint 0.5pt inner hairline.
+    /// darker bottom), a crisp 1pt hard specular top line, and a faint 0.5pt
+    /// inner hairline.
+    ///
+    /// PI-M-001: `specularTopEdge` is deliberately `nil`. The reference glass
+    /// body (`docs/design/overlay-redesign/01-poured-island.html:48-53`) carries
+    /// only `--specular` (a 1px white@14% top catch), `--hairline-inset` (0.5px
+    /// white@5%) and the drop shadow — there is **no** broad soft sheen anywhere
+    /// in it, so the native 26pt white@50% wash had no reference counterpart and
+    /// is removed.
     static let poured = IslandMaterialTokens(
         material: .hudWindow,
         blendingMode: .behindWindow,
         appearanceName: .vibrantDark,
         tintOpacity: 0.5,
-        specularTopEdge: IslandSpecularEdge(
-            color: .white,
-            opacity: 0.5,
-            sheenHeight: 26
-        ),
+        specularTopEdge: nil,
         bodyGradient: [
             IslandGradientStop(
                 color: Color(red: 26 / 255.0, green: 31 / 255.0, blue: 44 / 255.0),
@@ -169,7 +184,11 @@ extension IslandMaterialTokens {
         innerHairline: IslandHairlineToken(
             opacity: 0.05,
             width: 0.5
-        )
+        ),
+        // PI-M-002: exactly ONE inner edge on the glass body — the 0.5pt
+        // hairline above. The all-theme 0.07/1pt content-layer stroke would be a
+        // second one, so Poured drops it.
+        contentEdgeStroke: nil
     )
 }
 

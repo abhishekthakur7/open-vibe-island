@@ -93,15 +93,33 @@ struct PouredThemeTests {
         #expect(hairline.width == 0.5)
     }
 
-    /// The soft 26pt sheen is unchanged — the two hard layers stack *on top* of
-    /// it rather than replacing it.
+    /// PI-M-001: there is NO broad soft sheen. The reference glass body
+    /// (`docs/design/overlay-redesign/01-poured-island.html:48-53`) declares only
+    /// `--specular` (1px white@14% top catch), `--hairline-inset` (0.5px
+    /// white@5%) and `--shadow` — the native 26pt white@50% wash had no
+    /// counterpart in it and is removed.
     @Test
-    func softSpecularSheenIsUnchanged() throws {
-        let sheen = try #require(IslandMaterialTokens.poured.specularTopEdge)
+    func pouredHasNoBroadSoftSheen() {
+        #expect(IslandMaterialTokens.poured.specularTopEdge == nil)
+    }
 
-        #expect(sheen.color == Color.white)
-        #expect(sheen.opacity == 0.5)
-        #expect(sheen.sheenHeight == 26)
+    /// PI-M-002: the glass body carries exactly ONE inner edge — the 0.5pt
+    /// `--hairline-inset` — so Poured drops the all-theme 0.07/1pt content-layer
+    /// stroke, while the defaulted value keeps every other theme byte-identical.
+    @Test
+    func pouredDropsTheContentEdgeStrokeOthersKeepTheDefault() {
+        #expect(IslandMaterialTokens.poured.contentEdgeStroke == nil)
+
+        let preserved = IslandHairlineToken(opacity: 0.07, width: 1)
+        for material in [
+            IslandMaterialTokens.classic,
+            IslandMaterialTokens.instrument,
+            IslandMaterialTokens.flightDeck,
+            IslandMaterialTokens.annual,
+            IslandMaterialTokens.halo,
+        ] {
+            #expect(material.contentEdgeStroke == preserved)
+        }
     }
 
     /// The four flat themes opt into none of the three new liquid-glass layers —
@@ -230,9 +248,9 @@ struct PouredThemeTests {
     // MARK: - Material tint (SPEC §1d)
 
     /// The ink tint drops to 0.5 (from Classic's 0.6) so more of the heavy blur
-    /// reads through as glass. The soft 26pt sheen's colour / opacity / height
-    /// are pinned by `softSpecularSheenIsUnchanged`; this makes the tint explicit
-    /// too, so the whole material family is nailed down.
+    /// reads through as glass. The absence of any broad sheen is pinned by
+    /// `pouredHasNoBroadSoftSheen`; this makes the tint explicit too, so the
+    /// whole material family is nailed down.
     @Test
     func inkTintOpacityIsHalf() {
         #expect(IslandMaterialTokens.poured.tintOpacity == 0.5)

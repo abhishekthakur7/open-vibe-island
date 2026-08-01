@@ -1,26 +1,810 @@
 {
-  "schema_version":1,
-  "allowed_statuses":["open","implementation-in-progress","implemented-awaiting-capture","metric-fail","review-fail","passed","waived","blocked-unvalidated"],
-  "items":[
-    {"id":"PI-C-001","states":["C"],"title":"Default grouping","reference_expectation":"Needs you, Working, Done groups","current_behavior":"Poured projects Needs you -> Working -> Done by default via PouredSectionTaxonomy (approval+answer merged, terminal Done, fixed order and board-token tints); shared sessionGroup default and other themes untouched; intra-group order fixed to recency-descending (deliberate override of islandSessionSort inside Poured)","exact_delta":"capture/pixel parity unproven pending Gate 0 calibration; stale-window reference conflict resolved by owner ruling R1 (Done never stales in Poured; taxonomy re-sections at .never)","evidence_locations":["REF:C:.summary,.grp:769-913","SRC:PouredSectionTaxonomy.swift","TEST:PouredSectionTaxonomyTests","TEST:PouredProjectionStressTests#c1GroupedSixProjectsToTheBoardsThreeGroupsWithNoIdleGroup","TEST:PouredParityTests(C1, POURED_PARITY_TESTING)","DOC:docs/design/overlay-redesign/poured-owner-rulings.md"],"confidence":"confirmed","severity":"S1","priority":"P1","source_symbols":["IslandSessionSectioning.sections","PouredSessionListScaffold.sessionRowsContent","PouredSectionTaxonomy.project"],"deterministic_scenario":"C1-grouped-six","regions":["header/chrome","rows"],"acceptance":{"static":"required","motion":"n/a","interaction":"required","a11y":"required"},"slice":1,"owner":"projection","status":"implemented-awaiting-capture","review_verdict":null,"waiver":null,"final_artifact_paths":[]},
-    {"id":"PI-C-002","states":["C","J"],"title":"Display cap","reference_expectation":"curated glanceable surface","current_behavior":"6-row display cap per owner ruling R1: collapsed list renders first 6 projected rows with truthful group totals, 'Show all N sessions'/'Collapse list' affordance (island.showAll/island.collapseList); idle disclosure ratified (R3) but unreachable under R1 (idle always empty), retained for a future threshold ruling; footer count projection-fed; scaffold-level only","exact_delta":"capture/pixel parity unproven pending Gate 0 calibration; View All affordance placement/styling is DERIVED (board renders no such control); C2/C3 scenario capture fixtures and the C4 tooling pin remain for Gate 0 work; actionable-session pinning under the cap added this round - interaction acceptance still unproven pending capture","evidence_locations":["REF:C/J","LIVE:40-session observation","TEST:PouredProjectionStressTests","TEST:PouredSectionTaxonomyTests","SRC:PouredSessionListScaffold.idleDisclosureToggle (view-level, no executable coverage)","SRC:PouredSessionListScaffold.listExpansionToggle (view-level, no executable coverage)","DOC:docs/design/overlay-redesign/poured-owner-rulings.md","TEST:PouredSectionTaxonomyTests#sevenRowsRenderSixAndHideOne","TEST:PouredProjectionStressTests#fortySessionsWithOneRunnerKeepDoneVisibleAndRenderOnlySixRows"],"confidence":"confirmed","severity":"S1","priority":"P1","source_symbols":["AppModel.surfacedSessions","PouredSectionTaxonomy.project","PouredSectionTaxonomy.cappedSections"],"deterministic_scenario":"C4-stress-40","regions":["rows"],"acceptance":{"static":"required","motion":"required","interaction":"required","a11y":"required"},"slice":1,"owner":"projection","status":"implemented-awaiting-capture","review_verdict":null,"waiver":null,"final_artifact_paths":[]},
-    {"id":"PI-A-001","states":["A","B"],"title":"Collapsed narrative","reference_expectation":"highest-value narrative visible","current_behavior":"notch label defaults off","exact_delta":"collapsed truth can be omitted","evidence_locations":["REF:A2:591","REF:B:706-761"],"confidence":"confirmed","severity":"S1","priority":"P1","source_symbols":["PouredClosedPill.centerLabel","AppModel.loadAppearancePreferences"],"deterministic_scenario":"A2-working-one","regions":["notch/label"],"acceptance":{"static":"required","motion":"required","interaction":"required","a11y":"required"},"slice":3,"owner":"collapsed","status":"open","review_verdict":null,"waiver":null,"final_artifact_paths":[]},
-    {"id":"PI-C-003","states":["C","D"],"title":"Workspace identity","reference_expectation":"human workspace and disambiguation","current_behavior":"root/empty/tilde cwd resolves to 'Workspace' in WorkspaceNameResolver and the discovery bypass; spotlightWorkspaceName rejects path-punctuation-only candidates at every fallback stage; duplicate fallbacks stay distinguishable via SessionDisambiguation","exact_delta":"capture parity pending Gate 0; residual secondary-surface producers and the raw-title fallback are CLOSED as out of scope by owner ruling R2 (bare-'/' ruled a non-case); merged guards retained","evidence_locations":["REF:C:.ws,.disamb:815-910","LIVE:repeated-slash","TEST:WorkspaceNameResolverTests#workspaceNameSubstitutesFallbackForRootAndMissingPaths","TEST:SessionDisambiguationTests#rootPathWorkspaceNameNeverBecomesTheDisplayName","TEST:SessionDisambiguationTests#twoFallbackWorkspacesStayDistinguishable","DOC:docs/design/overlay-redesign/poured-owner-rulings.md"],"confidence":"confirmed","severity":"S1","priority":"P1","source_symbols":["AgentSession.spotlightDisplayName","WorkspaceNameResolver.workspaceName"],"deterministic_scenario":"C4-stress-40","regions":["rows","text-layout"],"acceptance":{"static":"required","motion":"n/a","interaction":"n/a","a11y":"required"},"slice":1,"owner":"identity","status":"implemented-awaiting-capture","review_verdict":null,"waiver":null,"final_artifact_paths":[]},
-    {"id":"PI-B-001","states":["B","K"],"title":"Hover peek","reference_expectation":"0.15s dwell, actionable preview, overflow","current_behavior":"peek gated to Halo","exact_delta":"Poured scales without preview","evidence_locations":["REF:B:706-761"],"confidence":"confirmed","severity":"S1","priority":"P1","source_symbols":["IslandPanelView.hoverPeekContent"],"deterministic_scenario":"B1-hover-peek","regions":["silhouette/body","status/activity"],"acceptance":{"static":"required","motion":"required","interaction":"required","a11y":"required"},"slice":3,"owner":"interaction","status":"blocked-unvalidated","review_verdict":null,"waiver":null,"final_artifact_paths":[]},
-    {"id":"PI-B-002","states":["B","K"],"title":"One-body morph","reference_expectation":"one liquid body without crossfade","current_behavior":"content and appearances crossfade","exact_delta":"layered transparency risks two bodies","evidence_locations":["REF:B/K"],"confidence":"confirmed","severity":"S1","priority":"P1","source_symbols":["IslandPanelView"],"deterministic_scenario":"K1-open-close","regions":["silhouette/body","backdrop/material"],"acceptance":{"static":"required","motion":"required","interaction":"required","a11y":"required"},"slice":3,"owner":"motion","status":"blocked-unvalidated","review_verdict":null,"waiver":null,"final_artifact_paths":[]},
-    {"id":"PI-B-003","states":["B","K"],"title":"Fillet continuity","reference_expectation":"continuous symmetric fillet evolution","current_behavior":"fillet absent from animatable data","exact_delta":"junction may remain fixed or snap","evidence_locations":["REF:B/K"],"confidence":"confirmed","severity":"S1","priority":"P1","source_symbols":["OpenedIslandSurfaceShape.animatableData"],"deterministic_scenario":"K1-open-close","regions":["edge/inner-stroke"],"acceptance":{"static":"required","motion":"required","interaction":"required","a11y":"n/a"},"slice":3,"owner":"motion","status":"blocked-unvalidated","review_verdict":null,"waiver":null,"final_artifact_paths":[]},
-    {"id":"PI-C-004","states":["C","I"],"title":"List chrome hierarchy","reference_expectation":"shallow full-width summary","current_behavior":"large SESSIONS header and capsule","exact_delta":"chrome displaces first row","evidence_locations":["REF:C:.summary:800-806","LIVE:heavy-header"],"confidence":"confirmed","severity":"S1","priority":"P1","source_symbols":["PouredSessionListScaffold.sessionPanelHeader"],"deterministic_scenario":"C1-grouped-six","regions":["header/chrome"],"acceptance":{"static":"required","motion":"n/a","interaction":"n/a","a11y":"required"},"slice":4,"owner":"list","status":"open","review_verdict":null,"waiver":null,"final_artifact_paths":[]},
-    {"id":"PI-C-005","states":["C"],"title":"Compact row narrative","reference_expectation":"activity/result and metadata in compact rows","current_behavior":"activity shown only when expanded","exact_delta":"normal rows are sparse","evidence_locations":["REF:C:.row:815-910"],"confidence":"confirmed","severity":"S1","priority":"P1","source_symbols":["PouredSessionRow.rowSummary"],"deterministic_scenario":"C1-grouped-six","regions":["rows","text-layout"],"acceptance":{"static":"required","motion":"n/a","interaction":"required","a11y":"required"},"slice":4,"owner":"list","status":"open","review_verdict":null,"waiver":null,"final_artifact_paths":[]},
-    {"id":"PI-C-006","states":["C","E","F"],"title":"Compact attention","reference_expectation":"compact list attention opens deliberately","current_behavior":"actionable rows auto-expand","exact_delta":"hero consumes list context","evidence_locations":["REF:C/E/F"],"confidence":"confirmed","severity":"S1","priority":"P1","source_symbols":["PouredRowExpansion.resolved"],"deterministic_scenario":"C1-grouped-six","regions":["rows","D-J-surface"],"acceptance":{"static":"required","motion":"required","interaction":"required","a11y":"required"},"slice":4,"owner":"list","status":"open","review_verdict":null,"waiver":null,"final_artifact_paths":[]},
-    {"id":"PI-M-001","states":["A","B","C","D","E","F","G","H","I","J","K"],"title":"Material light","reference_expectation":"subtle contour catch on blue-black body","current_behavior":"broad bright soft sheen","exact_delta":"shell reads silver and flat","evidence_locations":["REF:CSS:48-55,131-143","LIVE:broad-wash"],"confidence":"confirmed","severity":"S2","priority":"P1","source_symbols":["IslandMaterialTokens.poured"],"deterministic_scenario":"A1-idle","regions":["backdrop/material","edge/inner-stroke"],"acceptance":{"static":"required","motion":"required","interaction":"n/a","a11y":"required"},"slice":2,"owner":"material","status":"open","review_verdict":null,"waiver":null,"final_artifact_paths":[]},
-    {"id":"PI-M-002","states":["B","C","D","E","F","G","H","I","J","K"],"title":"Contour hairline","reference_expectation":"hairline traces poured contour","current_behavior":"rectangle stroke clipped by shape","exact_delta":"straight fragments do not describe silhouette","evidence_locations":["REF:CSS:131-143"],"confidence":"confirmed","severity":"S1","priority":"P1","source_symbols":["OpenedSurfaceInnerHairline.body"],"deterministic_scenario":"C1-grouped-six","regions":["edge/inner-stroke"],"acceptance":{"static":"required","motion":"required","interaction":"n/a","a11y":"required"},"slice":2,"owner":"material","status":"open","review_verdict":null,"waiver":null,"final_artifact_paths":[]},
-    {"id":"PI-I-001","states":["C","I"],"title":"Usage saliency","reference_expectation":"usage remains subordinate to work","current_behavior":"persistent meters compete with attention","exact_delta":"chrome outranks task narrative","evidence_locations":["REF:C/I","LIVE:prominent-rings"],"confidence":"confirmed","severity":"S2","priority":"P1","source_symbols":["PouredSessionListScaffold"],"deterministic_scenario":"I1-usage-normal","regions":["usage","header/chrome"],"acceptance":{"static":"required","motion":"n/a","interaction":"required","a11y":"required"},"slice":4,"owner":"usage","status":"open","review_verdict":null,"waiver":null,"final_artifact_paths":[]},
-    {"id":"PI-C-007","states":["C"],"title":"Density discipline","reference_expectation":"stable grouping and glanceable height","current_behavior":"grouped list keeps the fixed three-group structure at 6 and 40 sessions; long lists bounded by the 6-row display cap (idle extraction dormant under R1); row rhythm unchanged","exact_delta":"density/cap clauses resolved by owner ruling R1; per-row badge/chip repetition not addressed (no owner ruling yet); legibility numeric targets unvalidated; capture parity pending Gate 0; summary strip and row chrome previously evaluated idle at the profile window while the list ran at never - reconciled by effectiveStaleThreshold in this round; re-verify before any header/chrome capture","evidence_locations":["REF:C","LIVE:40-session observation","TEST:PouredProjectionStressTests","DOC:docs/design/overlay-redesign/poured-owner-rulings.md"],"confidence":"confirmed","severity":"S1","priority":"P1","source_symbols":["PouredSessionListScaffold"],"deterministic_scenario":"C4-stress-40","regions":["rows","header/chrome"],"acceptance":{"static":"required","motion":"required","interaction":"required","a11y":"required"},"slice":1,"owner":"projection","status":"implementation-in-progress","review_verdict":null,"waiver":null,"final_artifact_paths":[]},
-    {"id":"PI-V-001","states":["A","B","C","D","E","F","G","H","I","J","K"],"title":"Poured conformance suite","reference_expectation":"fingerprinted Gates 0A-0C evidence","current_behavior":"no maintained Poured suite","exact_delta":"parity cannot be established","evidence_locations":["SRC:validation survey"],"confidence":"confirmed","severity":"S0","priority":"P0","source_symbols":[],"deterministic_scenario":"all","regions":["all"],"acceptance":{"static":"required","motion":"required","interaction":"required","a11y":"required"},"slice":0,"owner":"validation","status":"blocked-unvalidated","review_verdict":null,"waiver":null,"final_artifact_paths":[]},
-    {"id":"PI-X-001","states":["D","E","F","G","H","I","J"],"title":"D-J coverage","reference_expectation":"every exact fixture has parity evidence","current_behavior":"several native states not exercised","exact_delta":"exact parity is unvalidated","evidence_locations":["REF:D-J","SRC:components"],"confidence":"unvalidated","severity":"S0","priority":"P0","source_symbols":[],"deterministic_scenario":"D1-detail","regions":["D-J-surface"],"acceptance":{"static":"required","motion":"required","interaction":"required","a11y":"required"},"slice":0,"owner":"state-coverage","status":"blocked-unvalidated","review_verdict":null,"waiver":null,"final_artifact_paths":[]},
-    {"id":"PI-A11Y-001","states":["A","C","E","F","I","J","K"],"title":"Accessibility coverage","reference_expectation":"adaptations preserve hierarchy and meaning","current_behavior":"source behavior lacks Poured comparison","exact_delta":"accessibility parity unvalidated","evidence_locations":["SRC:Poured components"],"confidence":"unvalidated","severity":"S0","priority":"P2","source_symbols":[],"deterministic_scenario":"all-adaptations","regions":["all"],"acceptance":{"static":"required","motion":"required","interaction":"required","a11y":"required"},"slice":0,"owner":"accessibility","status":"blocked-unvalidated","review_verdict":null,"waiver":null,"final_artifact_paths":[]},
-    {"id":"PI-REF-001","states":["H","K"],"title":"Success lifecycle conflict","reference_expectation":"owner decides settle-to-quiet or exemplar loop","current_behavior":"prose and infinite CSS conflict","exact_delta":"lifecycle has no acceptance authority","evidence_locations":["REF:HTML:196-201,508-513,1547-1571"],"confidence":"confirmed","severity":"S0","priority":"P0","source_symbols":[],"deterministic_scenario":"H2-post-success","regions":["status/activity"],"acceptance":{"static":"required","motion":"blocked","interaction":"blocked","a11y":"blocked"},"slice":0,"owner":"product-design-owner","status":"blocked-unvalidated","review_verdict":null,"waiver":null,"final_artifact_paths":[]},
-    {"id":"PI-REF-002","states":["B","K"],"title":"Morph timing conflict","reference_expectation":"owner decides spring or CSS exemplar authority","current_behavior":"spring prose conflicts with cubic loop","exact_delta":"interactive timing has no acceptance authority","evidence_locations":["REF:HTML:494-500,1547-1559"],"confidence":"confirmed","severity":"S0","priority":"P0","source_symbols":[],"deterministic_scenario":"K1-open-close","regions":["silhouette/body"],"acceptance":{"static":"required","motion":"blocked","interaction":"blocked","a11y":"blocked"},"slice":0,"owner":"product-design-owner","status":"blocked-unvalidated","review_verdict":null,"waiver":null,"final_artifact_paths":[]},
-    {"id":"PI-REF-003","states":["K"],"title":"Row timing conflict","reference_expectation":"owner supplies row spring timeline","current_behavior":"spring label conflicts with ease-out loop","exact_delta":"row timing has no acceptance authority","evidence_locations":["REF:HTML:501-507,1565-1567"],"confidence":"confirmed","severity":"S0","priority":"P0","source_symbols":[],"deterministic_scenario":"K2-row-entry","regions":["rows"],"acceptance":{"static":"required","motion":"blocked","interaction":"blocked","a11y":"blocked"},"slice":0,"owner":"product-design-owner","status":"blocked-unvalidated","review_verdict":null,"waiver":null,"final_artifact_paths":[]}
+  "schema_version": 1,
+  "allowed_statuses": [
+    "open",
+    "implementation-in-progress",
+    "implemented-awaiting-capture",
+    "metric-fail",
+    "review-fail",
+    "passed",
+    "waived",
+    "blocked-unvalidated"
+  ],
+  "items": [
+    {
+      "id": "PI-C-001",
+      "states": [
+        "C"
+      ],
+      "title": "Default grouping",
+      "reference_expectation": "Needs you, Working, Done groups",
+      "current_behavior": "Poured projects Needs you -> Working -> Done by default via PouredSectionTaxonomy (approval+answer merged, terminal Done, fixed order and board-token tints); shared sessionGroup default and other themes untouched; intra-group order fixed to recency-descending (deliberate override of islandSessionSort inside Poured)",
+      "exact_delta": "capture/pixel parity unproven pending Gate 0 calibration; stale-window reference conflict resolved by owner ruling R1 (Done never stales in Poured; taxonomy re-sections at .never)",
+      "evidence_locations": [
+        "REF:C:.summary,.grp:769-913",
+        "SRC:PouredSectionTaxonomy.swift",
+        "TEST:PouredSectionTaxonomyTests",
+        "TEST:PouredProjectionStressTests#c1GroupedSixProjectsToTheBoardsThreeGroupsWithNoIdleGroup",
+        "TEST:PouredParityTests(C1, POURED_PARITY_TESTING)",
+        "DOC:docs/design/overlay-redesign/poured-owner-rulings.md"
+      ],
+      "confidence": "confirmed",
+      "severity": "S1",
+      "priority": "P1",
+      "source_symbols": [
+        "IslandSessionSectioning.sections",
+        "PouredSessionListScaffold.sessionRowsContent",
+        "PouredSectionTaxonomy.project"
+      ],
+      "deterministic_scenario": "C1-grouped-six",
+      "regions": [
+        "header/chrome",
+        "rows"
+      ],
+      "acceptance": {
+        "static": "required",
+        "motion": "n/a",
+        "interaction": "required",
+        "a11y": "required"
+      },
+      "slice": 1,
+      "owner": "projection",
+      "status": "implemented-awaiting-capture",
+      "review_verdict": null,
+      "waiver": null,
+      "final_artifact_paths": []
+    },
+    {
+      "id": "PI-C-002",
+      "states": [
+        "C",
+        "J"
+      ],
+      "title": "Display cap",
+      "reference_expectation": "curated glanceable surface",
+      "current_behavior": "6-row display cap per owner ruling R1: collapsed list renders first 6 projected rows with truthful group totals, 'Show all N sessions'/'Collapse list' affordance (island.showAll/island.collapseList); idle disclosure ratified (R3) but unreachable under R1 (idle always empty), retained for a future threshold ruling; footer count projection-fed; scaffold-level only",
+      "exact_delta": "capture/pixel parity unproven pending Gate 0 calibration; View All affordance placement/styling is DERIVED (board renders no such control); C2/C3 scenario capture fixtures and the C4 tooling pin remain for Gate 0 work; actionable-session pinning under the cap added this round - interaction acceptance still unproven pending capture",
+      "evidence_locations": [
+        "REF:C/J",
+        "LIVE:40-session observation",
+        "TEST:PouredProjectionStressTests",
+        "TEST:PouredSectionTaxonomyTests",
+        "SRC:PouredSessionListScaffold.idleDisclosureToggle (view-level, no executable coverage)",
+        "SRC:PouredSessionListScaffold.listExpansionToggle (view-level, no executable coverage)",
+        "DOC:docs/design/overlay-redesign/poured-owner-rulings.md",
+        "TEST:PouredSectionTaxonomyTests#sevenRowsRenderSixAndHideOne",
+        "TEST:PouredProjectionStressTests#fortySessionsWithOneRunnerKeepDoneVisibleAndRenderOnlySixRows"
+      ],
+      "confidence": "confirmed",
+      "severity": "S1",
+      "priority": "P1",
+      "source_symbols": [
+        "AppModel.surfacedSessions",
+        "PouredSectionTaxonomy.project",
+        "PouredSectionTaxonomy.cappedSections"
+      ],
+      "deterministic_scenario": "C4-stress-40",
+      "regions": [
+        "rows"
+      ],
+      "acceptance": {
+        "static": "required",
+        "motion": "required",
+        "interaction": "required",
+        "a11y": "required"
+      },
+      "slice": 1,
+      "owner": "projection",
+      "status": "implemented-awaiting-capture",
+      "review_verdict": null,
+      "waiver": null,
+      "final_artifact_paths": []
+    },
+    {
+      "id": "PI-A-001",
+      "states": [
+        "A",
+        "B"
+      ],
+      "title": "Collapsed narrative",
+      "reference_expectation": "highest-value narrative visible",
+      "current_behavior": "notch label defaults off",
+      "exact_delta": "collapsed truth can be omitted",
+      "evidence_locations": [
+        "REF:A2:591",
+        "REF:B:706-761"
+      ],
+      "confidence": "confirmed",
+      "severity": "S1",
+      "priority": "P1",
+      "source_symbols": [
+        "PouredClosedPill.centerLabel",
+        "AppModel.loadAppearancePreferences"
+      ],
+      "deterministic_scenario": "A2-working-one",
+      "regions": [
+        "notch/label"
+      ],
+      "acceptance": {
+        "static": "required",
+        "motion": "required",
+        "interaction": "required",
+        "a11y": "required"
+      },
+      "slice": 3,
+      "owner": "collapsed",
+      "status": "open",
+      "review_verdict": null,
+      "waiver": null,
+      "final_artifact_paths": []
+    },
+    {
+      "id": "PI-C-003",
+      "states": [
+        "C",
+        "D"
+      ],
+      "title": "Workspace identity",
+      "reference_expectation": "human workspace and disambiguation",
+      "current_behavior": "root/empty/tilde cwd resolves to 'Workspace' in WorkspaceNameResolver and the discovery bypass; spotlightWorkspaceName rejects path-punctuation-only candidates at every fallback stage; duplicate fallbacks stay distinguishable via SessionDisambiguation",
+      "exact_delta": "capture parity pending Gate 0; residual secondary-surface producers and the raw-title fallback are CLOSED as out of scope by owner ruling R2 (bare-'/' ruled a non-case); merged guards retained",
+      "evidence_locations": [
+        "REF:C:.ws,.disamb:815-910",
+        "LIVE:repeated-slash",
+        "TEST:WorkspaceNameResolverTests#workspaceNameSubstitutesFallbackForRootAndMissingPaths",
+        "TEST:SessionDisambiguationTests#rootPathWorkspaceNameNeverBecomesTheDisplayName",
+        "TEST:SessionDisambiguationTests#twoFallbackWorkspacesStayDistinguishable",
+        "DOC:docs/design/overlay-redesign/poured-owner-rulings.md"
+      ],
+      "confidence": "confirmed",
+      "severity": "S1",
+      "priority": "P1",
+      "source_symbols": [
+        "AgentSession.spotlightDisplayName",
+        "WorkspaceNameResolver.workspaceName"
+      ],
+      "deterministic_scenario": "C4-stress-40",
+      "regions": [
+        "rows",
+        "text-layout"
+      ],
+      "acceptance": {
+        "static": "required",
+        "motion": "n/a",
+        "interaction": "n/a",
+        "a11y": "required"
+      },
+      "slice": 1,
+      "owner": "identity",
+      "status": "implemented-awaiting-capture",
+      "review_verdict": null,
+      "waiver": null,
+      "final_artifact_paths": []
+    },
+    {
+      "id": "PI-B-001",
+      "states": [
+        "B",
+        "K"
+      ],
+      "title": "Hover peek",
+      "reference_expectation": "0.15s dwell, actionable preview, overflow",
+      "current_behavior": "peek gated to Halo",
+      "exact_delta": "Poured scales without preview",
+      "evidence_locations": [
+        "REF:B:706-761"
+      ],
+      "confidence": "confirmed",
+      "severity": "S1",
+      "priority": "P1",
+      "source_symbols": [
+        "IslandPanelView.hoverPeekContent"
+      ],
+      "deterministic_scenario": "B1-hover-peek",
+      "regions": [
+        "silhouette/body",
+        "status/activity"
+      ],
+      "acceptance": {
+        "static": "required",
+        "motion": "required",
+        "interaction": "required",
+        "a11y": "required"
+      },
+      "slice": 3,
+      "owner": "interaction",
+      "status": "blocked-unvalidated",
+      "review_verdict": null,
+      "waiver": null,
+      "final_artifact_paths": []
+    },
+    {
+      "id": "PI-B-002",
+      "states": [
+        "B",
+        "K"
+      ],
+      "title": "One-body morph",
+      "reference_expectation": "one liquid body without crossfade",
+      "current_behavior": "content and appearances crossfade",
+      "exact_delta": "layered transparency risks two bodies",
+      "evidence_locations": [
+        "REF:B/K"
+      ],
+      "confidence": "confirmed",
+      "severity": "S1",
+      "priority": "P1",
+      "source_symbols": [
+        "IslandPanelView"
+      ],
+      "deterministic_scenario": "K1-open-close",
+      "regions": [
+        "silhouette/body",
+        "backdrop/material"
+      ],
+      "acceptance": {
+        "static": "required",
+        "motion": "required",
+        "interaction": "required",
+        "a11y": "required"
+      },
+      "slice": 3,
+      "owner": "motion",
+      "status": "blocked-unvalidated",
+      "review_verdict": null,
+      "waiver": null,
+      "final_artifact_paths": []
+    },
+    {
+      "id": "PI-B-003",
+      "states": [
+        "B",
+        "K"
+      ],
+      "title": "Fillet continuity",
+      "reference_expectation": "continuous symmetric fillet evolution",
+      "current_behavior": "fillet absent from animatable data",
+      "exact_delta": "junction may remain fixed or snap",
+      "evidence_locations": [
+        "REF:B/K"
+      ],
+      "confidence": "confirmed",
+      "severity": "S1",
+      "priority": "P1",
+      "source_symbols": [
+        "OpenedIslandSurfaceShape.animatableData"
+      ],
+      "deterministic_scenario": "K1-open-close",
+      "regions": [
+        "edge/inner-stroke"
+      ],
+      "acceptance": {
+        "static": "required",
+        "motion": "required",
+        "interaction": "required",
+        "a11y": "n/a"
+      },
+      "slice": 3,
+      "owner": "motion",
+      "status": "blocked-unvalidated",
+      "review_verdict": null,
+      "waiver": null,
+      "final_artifact_paths": []
+    },
+    {
+      "id": "PI-C-004",
+      "states": [
+        "C",
+        "I"
+      ],
+      "title": "List chrome hierarchy",
+      "reference_expectation": "shallow full-width summary",
+      "current_behavior": "large SESSIONS header and capsule",
+      "exact_delta": "chrome displaces first row",
+      "evidence_locations": [
+        "REF:C:.summary:800-806",
+        "LIVE:heavy-header"
+      ],
+      "confidence": "confirmed",
+      "severity": "S1",
+      "priority": "P1",
+      "source_symbols": [
+        "PouredSessionListScaffold.sessionPanelHeader"
+      ],
+      "deterministic_scenario": "C1-grouped-six",
+      "regions": [
+        "header/chrome"
+      ],
+      "acceptance": {
+        "static": "required",
+        "motion": "n/a",
+        "interaction": "n/a",
+        "a11y": "required"
+      },
+      "slice": 4,
+      "owner": "list",
+      "status": "open",
+      "review_verdict": null,
+      "waiver": null,
+      "final_artifact_paths": []
+    },
+    {
+      "id": "PI-C-005",
+      "states": [
+        "C"
+      ],
+      "title": "Compact row narrative",
+      "reference_expectation": "activity/result and metadata in compact rows",
+      "current_behavior": "activity shown only when expanded",
+      "exact_delta": "normal rows are sparse",
+      "evidence_locations": [
+        "REF:C:.row:815-910"
+      ],
+      "confidence": "confirmed",
+      "severity": "S1",
+      "priority": "P1",
+      "source_symbols": [
+        "PouredSessionRow.rowSummary"
+      ],
+      "deterministic_scenario": "C1-grouped-six",
+      "regions": [
+        "rows",
+        "text-layout"
+      ],
+      "acceptance": {
+        "static": "required",
+        "motion": "n/a",
+        "interaction": "required",
+        "a11y": "required"
+      },
+      "slice": 4,
+      "owner": "list",
+      "status": "open",
+      "review_verdict": null,
+      "waiver": null,
+      "final_artifact_paths": []
+    },
+    {
+      "id": "PI-C-006",
+      "states": [
+        "C",
+        "E",
+        "F"
+      ],
+      "title": "Compact attention",
+      "reference_expectation": "compact list attention opens deliberately",
+      "current_behavior": "actionable rows auto-expand",
+      "exact_delta": "hero consumes list context",
+      "evidence_locations": [
+        "REF:C/E/F"
+      ],
+      "confidence": "confirmed",
+      "severity": "S1",
+      "priority": "P1",
+      "source_symbols": [
+        "PouredRowExpansion.resolved"
+      ],
+      "deterministic_scenario": "C1-grouped-six",
+      "regions": [
+        "rows",
+        "D-J-surface"
+      ],
+      "acceptance": {
+        "static": "required",
+        "motion": "required",
+        "interaction": "required",
+        "a11y": "required"
+      },
+      "slice": 4,
+      "owner": "list",
+      "status": "open",
+      "review_verdict": null,
+      "waiver": null,
+      "final_artifact_paths": []
+    },
+    {
+      "id": "PI-M-001",
+      "states": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K"
+      ],
+      "title": "Material light",
+      "reference_expectation": "subtle contour catch on blue-black body",
+      "current_behavior": "broad bright soft sheen",
+      "exact_delta": "shell reads silver and flat",
+      "evidence_locations": [
+        "REF:CSS:48-55,131-143",
+        "LIVE:broad-wash"
+      ],
+      "confidence": "confirmed",
+      "severity": "S2",
+      "priority": "P1",
+      "source_symbols": [
+        "IslandMaterialTokens.poured",
+        "PouredClosedPill.glassBackground"
+      ],
+      "deterministic_scenario": "A1-idle",
+      "regions": [
+        "backdrop/material",
+        "edge/inner-stroke"
+      ],
+      "acceptance": {
+        "static": "required",
+        "motion": "required",
+        "interaction": "n/a",
+        "a11y": "required"
+      },
+      "slice": 2,
+      "owner": "material",
+      "status": "implemented-awaiting-capture",
+      "review_verdict": "PASS",
+      "waiver": null,
+      "final_artifact_paths": [
+        "artifacts/poured-parity-analysis/2026-08-01/slice2/cmp-closed.png",
+        "artifacts/poured-parity-analysis/2026-08-01/slice2/panel-top-cmp.png",
+        "artifacts/poured-parity-analysis/2026-08-01/slice2/fillet-tl-boost.png",
+        "artifacts/poured-parity-analysis/2026-08-01/slice2/after/panel.png"
+      ]
+    },
+    {
+      "id": "PI-M-002",
+      "states": [
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K"
+      ],
+      "title": "Contour hairline",
+      "reference_expectation": "hairline traces poured contour",
+      "current_behavior": "rectangle stroke clipped by shape",
+      "exact_delta": "straight fragments do not describe silhouette",
+      "evidence_locations": [
+        "REF:CSS:131-143"
+      ],
+      "confidence": "confirmed",
+      "severity": "S1",
+      "priority": "P1",
+      "source_symbols": [
+        "OpenedSurfaceInnerHairline.body",
+        "OpenedSurfaceBackground.surfaceShape",
+        "IslandMaterialTokens.contentEdgeStroke"
+      ],
+      "deterministic_scenario": "C1-grouped-six",
+      "regions": [
+        "edge/inner-stroke"
+      ],
+      "acceptance": {
+        "static": "required",
+        "motion": "required",
+        "interaction": "n/a",
+        "a11y": "required"
+      },
+      "slice": 2,
+      "owner": "material",
+      "status": "implemented-awaiting-capture",
+      "review_verdict": "PASS",
+      "waiver": null,
+      "final_artifact_paths": [
+        "artifacts/poured-parity-analysis/2026-08-01/slice2/panel-tl-cmp.png",
+        "artifacts/poured-parity-analysis/2026-08-01/slice2/panel-bl-cmp.png",
+        "artifacts/poured-parity-analysis/2026-08-01/slice2/fillet-tl-boost.png",
+        "artifacts/poured-parity-analysis/2026-08-01/slice2/fillet-tr-boost.png"
+      ]
+    },
+    {
+      "id": "PI-I-001",
+      "states": [
+        "C",
+        "I"
+      ],
+      "title": "Usage saliency",
+      "reference_expectation": "usage remains subordinate to work",
+      "current_behavior": "persistent meters compete with attention",
+      "exact_delta": "chrome outranks task narrative",
+      "evidence_locations": [
+        "REF:C/I",
+        "LIVE:prominent-rings"
+      ],
+      "confidence": "confirmed",
+      "severity": "S2",
+      "priority": "P1",
+      "source_symbols": [
+        "PouredSessionListScaffold"
+      ],
+      "deterministic_scenario": "I1-usage-normal",
+      "regions": [
+        "usage",
+        "header/chrome"
+      ],
+      "acceptance": {
+        "static": "required",
+        "motion": "n/a",
+        "interaction": "required",
+        "a11y": "required"
+      },
+      "slice": 4,
+      "owner": "usage",
+      "status": "open",
+      "review_verdict": null,
+      "waiver": null,
+      "final_artifact_paths": []
+    },
+    {
+      "id": "PI-C-007",
+      "states": [
+        "C"
+      ],
+      "title": "Density discipline",
+      "reference_expectation": "stable grouping and glanceable height",
+      "current_behavior": "grouped list keeps the fixed three-group structure at 6 and 40 sessions; long lists bounded by the 6-row display cap (idle extraction dormant under R1); row rhythm unchanged",
+      "exact_delta": "density/cap clauses resolved by owner ruling R1; per-row badge/chip repetition not addressed (no owner ruling yet); legibility numeric targets unvalidated; capture parity pending Gate 0; summary strip and row chrome previously evaluated idle at the profile window while the list ran at never - reconciled by effectiveStaleThreshold in this round; re-verify before any header/chrome capture",
+      "evidence_locations": [
+        "REF:C",
+        "LIVE:40-session observation",
+        "TEST:PouredProjectionStressTests",
+        "DOC:docs/design/overlay-redesign/poured-owner-rulings.md"
+      ],
+      "confidence": "confirmed",
+      "severity": "S1",
+      "priority": "P1",
+      "source_symbols": [
+        "PouredSessionListScaffold"
+      ],
+      "deterministic_scenario": "C4-stress-40",
+      "regions": [
+        "rows",
+        "header/chrome"
+      ],
+      "acceptance": {
+        "static": "required",
+        "motion": "required",
+        "interaction": "required",
+        "a11y": "required"
+      },
+      "slice": 1,
+      "owner": "projection",
+      "status": "implementation-in-progress",
+      "review_verdict": null,
+      "waiver": null,
+      "final_artifact_paths": []
+    },
+    {
+      "id": "PI-V-001",
+      "states": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K"
+      ],
+      "title": "Poured conformance suite",
+      "reference_expectation": "fingerprinted Gates 0A-0C evidence",
+      "current_behavior": "no maintained Poured suite",
+      "exact_delta": "parity cannot be established",
+      "evidence_locations": [
+        "SRC:validation survey"
+      ],
+      "confidence": "confirmed",
+      "severity": "S0",
+      "priority": "P0",
+      "source_symbols": [],
+      "deterministic_scenario": "all",
+      "regions": [
+        "all"
+      ],
+      "acceptance": {
+        "static": "required",
+        "motion": "required",
+        "interaction": "required",
+        "a11y": "required"
+      },
+      "slice": 0,
+      "owner": "validation",
+      "status": "blocked-unvalidated",
+      "review_verdict": null,
+      "waiver": null,
+      "final_artifact_paths": []
+    },
+    {
+      "id": "PI-X-001",
+      "states": [
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J"
+      ],
+      "title": "D-J coverage",
+      "reference_expectation": "every exact fixture has parity evidence",
+      "current_behavior": "several native states not exercised",
+      "exact_delta": "exact parity is unvalidated",
+      "evidence_locations": [
+        "REF:D-J",
+        "SRC:components"
+      ],
+      "confidence": "unvalidated",
+      "severity": "S0",
+      "priority": "P0",
+      "source_symbols": [],
+      "deterministic_scenario": "D1-detail",
+      "regions": [
+        "D-J-surface"
+      ],
+      "acceptance": {
+        "static": "required",
+        "motion": "required",
+        "interaction": "required",
+        "a11y": "required"
+      },
+      "slice": 0,
+      "owner": "state-coverage",
+      "status": "blocked-unvalidated",
+      "review_verdict": null,
+      "waiver": null,
+      "final_artifact_paths": []
+    },
+    {
+      "id": "PI-A11Y-001",
+      "states": [
+        "A",
+        "C",
+        "E",
+        "F",
+        "I",
+        "J",
+        "K"
+      ],
+      "title": "Accessibility coverage",
+      "reference_expectation": "adaptations preserve hierarchy and meaning",
+      "current_behavior": "source behavior lacks Poured comparison",
+      "exact_delta": "accessibility parity unvalidated",
+      "evidence_locations": [
+        "SRC:Poured components"
+      ],
+      "confidence": "unvalidated",
+      "severity": "S0",
+      "priority": "P2",
+      "source_symbols": [],
+      "deterministic_scenario": "all-adaptations",
+      "regions": [
+        "all"
+      ],
+      "acceptance": {
+        "static": "required",
+        "motion": "required",
+        "interaction": "required",
+        "a11y": "required"
+      },
+      "slice": 0,
+      "owner": "accessibility",
+      "status": "blocked-unvalidated",
+      "review_verdict": null,
+      "waiver": null,
+      "final_artifact_paths": []
+    },
+    {
+      "id": "PI-REF-001",
+      "states": [
+        "H",
+        "K"
+      ],
+      "title": "Success lifecycle conflict",
+      "reference_expectation": "owner decides settle-to-quiet or exemplar loop",
+      "current_behavior": "prose and infinite CSS conflict",
+      "exact_delta": "lifecycle has no acceptance authority",
+      "evidence_locations": [
+        "REF:HTML:196-201,508-513,1547-1571"
+      ],
+      "confidence": "confirmed",
+      "severity": "S0",
+      "priority": "P0",
+      "source_symbols": [],
+      "deterministic_scenario": "H2-post-success",
+      "regions": [
+        "status/activity"
+      ],
+      "acceptance": {
+        "static": "required",
+        "motion": "blocked",
+        "interaction": "blocked",
+        "a11y": "blocked"
+      },
+      "slice": 0,
+      "owner": "product-design-owner",
+      "status": "blocked-unvalidated",
+      "review_verdict": null,
+      "waiver": null,
+      "final_artifact_paths": []
+    },
+    {
+      "id": "PI-REF-002",
+      "states": [
+        "B",
+        "K"
+      ],
+      "title": "Morph timing conflict",
+      "reference_expectation": "owner decides spring or CSS exemplar authority",
+      "current_behavior": "spring prose conflicts with cubic loop",
+      "exact_delta": "interactive timing has no acceptance authority",
+      "evidence_locations": [
+        "REF:HTML:494-500,1547-1559"
+      ],
+      "confidence": "confirmed",
+      "severity": "S0",
+      "priority": "P0",
+      "source_symbols": [],
+      "deterministic_scenario": "K1-open-close",
+      "regions": [
+        "silhouette/body"
+      ],
+      "acceptance": {
+        "static": "required",
+        "motion": "blocked",
+        "interaction": "blocked",
+        "a11y": "blocked"
+      },
+      "slice": 0,
+      "owner": "product-design-owner",
+      "status": "blocked-unvalidated",
+      "review_verdict": null,
+      "waiver": null,
+      "final_artifact_paths": []
+    },
+    {
+      "id": "PI-REF-003",
+      "states": [
+        "K"
+      ],
+      "title": "Row timing conflict",
+      "reference_expectation": "owner supplies row spring timeline",
+      "current_behavior": "spring label conflicts with ease-out loop",
+      "exact_delta": "row timing has no acceptance authority",
+      "evidence_locations": [
+        "REF:HTML:501-507,1565-1567"
+      ],
+      "confidence": "confirmed",
+      "severity": "S0",
+      "priority": "P0",
+      "source_symbols": [],
+      "deterministic_scenario": "K2-row-entry",
+      "regions": [
+        "rows"
+      ],
+      "acceptance": {
+        "static": "required",
+        "motion": "blocked",
+        "interaction": "blocked",
+        "a11y": "blocked"
+      },
+      "slice": 0,
+      "owner": "product-design-owner",
+      "status": "blocked-unvalidated",
+      "review_verdict": null,
+      "waiver": null,
+      "final_artifact_paths": []
+    }
   ]
 }

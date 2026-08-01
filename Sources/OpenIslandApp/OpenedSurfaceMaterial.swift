@@ -76,17 +76,26 @@ struct OpenedSurfaceHardSpecularLine: View {
 }
 
 /// A faint white inner inset stroke drawn just inside a frosted surface's edge
-/// (AB-329). `Shape.strokeBorder` keeps the whole stroke *inside* the bounds, so
-/// once the caller clips this to the surface shape it lands as a thin hairline
-/// hugging the inner edge along the surface's straight runs (the concave notch
-/// dip is trimmed by that same clip). White by design — it belongs to the same
-/// specular light-catch family as the two edges above.
+/// (AB-329). White by design — it belongs to the same specular light-catch
+/// family as the two edges above.
+///
+/// PI-M-002: the stroke traces the **actual** surface silhouette rather than a
+/// `Rectangle`, so it curves continuously around both concave notch fillets and
+/// every corner instead of being clipped down to straight fragments.
+/// `OpenedIslandSurfaceShape` is a `Shape`, not an `InsettableShape`, so
+/// `.strokeBorder` is unavailable; `.stroke` centres the line on the path, and
+/// because the caller already applies `.clipShape(surfaceShape)` the outer half
+/// is trimmed and exactly `hairline.width` remains visible *inside* the contour
+/// — the double `lineWidth` is what makes that land on CSS's
+/// `inset 0 0 0 .5px` (`01-poured-island.html:52`). Precedent for stroking this
+/// shape: `HaloEdgeLight.swift:303`.
 struct OpenedSurfaceInnerHairline: View {
     var hairline: IslandHairlineToken
+    var surfaceShape: OpenedIslandSurfaceShape
 
     var body: some View {
-        Rectangle()
-            .strokeBorder(Color.white.opacity(hairline.opacity), lineWidth: hairline.width)
+        surfaceShape
+            .stroke(Color.white.opacity(hairline.opacity), lineWidth: hairline.width * 2)
             .allowsHitTesting(false)
     }
 }
@@ -100,6 +109,13 @@ struct OpenedSurfaceInnerHairline: View {
 /// Accessibility → Display → Reduce Transparency.
 struct OpenedSurfaceBackground: View {
     var reduceTransparency: Bool
+
+    /// The silhouette the caller clips this fill to. PI-M-002: handed in so the
+    /// inner hairline can trace the real contour (fillets and corners included)
+    /// instead of a rectangle trimmed by that clip. Callers inside the morph
+    /// must pass the *live* interpolating instance so the hairline stays locked
+    /// to the silhouette mid-morph.
+    var surfaceShape: OpenedIslandSurfaceShape
 
     @Environment(\.islandTokens) private var tokens
 
@@ -150,7 +166,7 @@ struct OpenedSurfaceBackground: View {
                 }
 
                 if let hairline = material.innerHairline {
-                    OpenedSurfaceInnerHairline(hairline: hairline)
+                    OpenedSurfaceInnerHairline(hairline: hairline, surfaceShape: surfaceShape)
                 }
             }
         }

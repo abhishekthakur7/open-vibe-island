@@ -65,27 +65,26 @@ struct PouredClosedPill: View {
 
     // MARK: Background
 
-    /// Dark stem body plus the specular top edge — the "glass treatment" on a
-    /// deliberately dark surface. Under Reduce Transparency the specular is
+    /// Dark stem body plus the crisp specular top line — the "glass treatment"
+    /// on a deliberately dark surface. Under Reduce Transparency the specular is
     /// dropped and only the flat ink remains, keeping every glyph/label legible.
+    ///
+    /// PI-M-001: the light catch is now the theme's `specularHardEdge` — the
+    /// reference `.pill` inherits the same `.glass` rule as `.panel`, whose only
+    /// top light layer is `--specular: inset 0 1px 0 rgba(255,255,255,.14)`
+    /// (`docs/design/overlay-redesign/01-poured-island.html:51,132-134,146`).
+    /// The broad soft sheen that used to ride here had no reference counterpart.
     private var glassBackground: some View {
         ZStack {
             V6ClosedPillShape()
                 .fill(tokens.colors.surfaceInk)
 
-            if !reduceTransparency, let specular = tokens.material.specularTopEdge {
-                LinearGradient(
-                    stops: [
-                        .init(color: specular.color.opacity(specular.opacity * 0.7), location: 0),
-                        .init(color: .clear, location: 1),
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .frame(height: min(specular.sheenHeight, height * 0.55))
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .clipShape(V6ClosedPillShape())
-                .allowsHitTesting(false)
+            if !reduceTransparency, let specular = tokens.material.specularHardEdge {
+                specular.color.opacity(specular.opacity)
+                    .frame(height: specular.sheenHeight)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .clipShape(V6ClosedPillShape())
+                    .allowsHitTesting(false)
             }
         }
     }

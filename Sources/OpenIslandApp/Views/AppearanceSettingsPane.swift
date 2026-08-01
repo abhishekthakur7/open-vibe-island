@@ -1072,7 +1072,10 @@ private struct AppearanceSessionListPreview: View {
         let shadow = tokens.metrics.surfaceShadow
 
         return ZStack(alignment: .top) {
-            OpenedSurfaceBackground(reduceTransparency: reduceTransparency || !theme.usesVibrancy)
+            OpenedSurfaceBackground(
+                reduceTransparency: reduceTransparency || !theme.usesVibrancy,
+                surfaceShape: shape
+            )
                 .clipShape(shape)
                 .shadow(color: shadow.resolvedColor, radius: shadow.radius, y: shadow.yOffset)
 
@@ -1136,7 +1139,11 @@ private struct AppearanceSessionListPreview: View {
             }
             .clipShape(shape)
             .overlay {
-                shape.stroke(Color.white.opacity(0.07), lineWidth: 1)
+                // PI-M-002: token-driven; `nil` (Poured) drops this second inner
+                // edge, every other theme keeps the defaulted 0.07 / 1pt.
+                if let contentEdge = tokens.material.contentEdgeStroke {
+                    shape.stroke(Color.white.opacity(contentEdge.opacity), lineWidth: contentEdge.width)
+                }
             }
         }
         .frame(width: width)
@@ -1197,7 +1204,10 @@ private struct ThemeMiniPreview: View {
 
     private func panel(shape: OpenedIslandSurfaceShape, width: CGFloat) -> some View {
         ZStack(alignment: .top) {
-            OpenedSurfaceBackground(reduceTransparency: reduceTransparency || !theme.usesVibrancy)
+            OpenedSurfaceBackground(
+                reduceTransparency: reduceTransparency || !theme.usesVibrancy,
+                surfaceShape: shape
+            )
                 .clipShape(shape)
 
             VStack(spacing: 0) {
@@ -1220,7 +1230,13 @@ private struct ThemeMiniPreview: View {
                 }
             }
             .clipShape(shape)
-            .overlay { shape.stroke(Color.white.opacity(0.07), lineWidth: 1) }
+            .overlay {
+                // PI-M-002: token-driven; `nil` (Poured) drops this second inner
+                // edge, every other theme keeps the defaulted 0.07 / 1pt.
+                if let contentEdge = theme.tokens.material.contentEdgeStroke {
+                    shape.stroke(Color.white.opacity(contentEdge.opacity), lineWidth: contentEdge.width)
+                }
+            }
         }
         .frame(width: width)
         .fixedSize(horizontal: false, vertical: true)

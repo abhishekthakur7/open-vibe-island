@@ -791,7 +791,10 @@ struct IslandPanelView: View {
             // Settings appearance preview through this same surface, so the two
             // can no longer drift. Falls back to a flat ink fill under Reduce
             // Transparency.
-            OpenedSurfaceBackground(reduceTransparency: reduceTransparency || !theme.usesVibrancy)
+            OpenedSurfaceBackground(
+                reduceTransparency: reduceTransparency || !theme.usesVibrancy,
+                surfaceShape: surfaceShape
+            )
                 .frame(width: openedWidth, height: openedHeight)
                 .clipShape(surfaceShape)
                 .shadow(color: shadow.resolvedColor, radius: shadow.radius, y: shadow.yOffset)
@@ -800,8 +803,13 @@ struct IslandPanelView: View {
             openedSurfaceContent(width: openedWidth, height: openedHeight)
                 .clipShape(surfaceShape)
                 .overlay {
-                    surfaceShape
-                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                    // PI-M-002: token-driven so Poured — whose single inner edge
+                    // is the 0.5pt hairline — drops this second stroke. Every
+                    // other theme keeps the defaulted 0.07 / 1pt, unchanged.
+                    if let contentEdge = tokens.material.contentEdgeStroke {
+                        surfaceShape
+                            .stroke(Color.white.opacity(contentEdge.opacity), lineWidth: contentEdge.width)
+                    }
                 }
         }
         .frame(width: openedWidth, height: openedHeight, alignment: .top)
@@ -1056,9 +1064,12 @@ struct IslandPanelView: View {
             let bodyIsOpaqueInk = reduceTransparency || !theme.usesVibrancy
             ZStack {
                 if bodyIsOpaqueInk {
-                    OpenedSurfaceBackground(reduceTransparency: true)
+                    // PI-M-002: the LIVE interpolating `shape` (not a rest-state
+                    // copy) so the inner hairline stays locked to the silhouette
+                    // for the whole morph.
+                    OpenedSurfaceBackground(reduceTransparency: true, surfaceShape: shape)
                 } else {
-                    OpenedSurfaceBackground(reduceTransparency: false)
+                    OpenedSurfaceBackground(reduceTransparency: false, surfaceShape: shape)
                         .opacity(opened ? 1 : 0)
                     tokens.colors.surfaceInk
                         .opacity(opened ? 0 : 1)
@@ -1085,7 +1096,15 @@ struct IslandPanelView: View {
             .frame(width: surfaceWidth, height: surfaceHeight, alignment: .top)
             .clipShape(shape)
             .overlay {
-                shape.stroke(Color.white.opacity(opened ? 0.07 : 0), lineWidth: 1)
+                // PI-M-002: token-driven; `nil` (Poured) drops this second inner
+                // edge, every other theme keeps the defaulted 0.07 / 1pt and its
+                // fade-out on close.
+                if let contentEdge = tokens.material.contentEdgeStroke {
+                    shape.stroke(
+                        Color.white.opacity(opened ? contentEdge.opacity : 0),
+                        lineWidth: contentEdge.width
+                    )
+                }
             }
         }
         .frame(width: surfaceWidth, height: surfaceHeight, alignment: .top)
