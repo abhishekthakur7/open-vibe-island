@@ -59,8 +59,9 @@ import OpenIslandCore
 ///   profile's `completedStaleThreshold`, so a completed row ages inside `Done`
 ///   instead of falling out to the idle roll-up. Consequences, all
 ///   board-faithful:
-///   - the `state-idle` bucket this projection extracts is **empty in
-///     practice**, so the idle disclosure above is dormant, and
+///   - the `state-idle` bucket this projection extracts is **always empty**
+///     under R1, so the idle disclosure above is *unreachable* — it is retained
+///     for a future threshold ruling, not merely idle-at-the-moment — and
 ///   - the footer's projection-fed readout naturally reads `0 idle` — exactly
 ///     what §C prints beside its 12m / 22m `Done` rows (line 913).
 ///   This is theme-local: the shared `completedStaleThreshold` preference and
@@ -201,10 +202,17 @@ enum PouredSectionTaxonomy {
 
     /// Cuts `sections` to at most `limit` rows in group order.
     ///
-    /// Group order is the projection's, so the attention rows — always first —
-    /// are the last thing a cut can ever reach. Exactly `limit` rows is **not**
-    /// a cut: `hiddenCount` is `0` and the caller shows no affordance, matching
-    /// the board's own six-row frame with no control under it.
+    /// Group order is the projection's, so the cut always eats the *last* groups
+    /// first and attention rows are the last rows it reaches. That is an ordering
+    /// guarantee, not an exemption: a list with more than `limit` attention rows
+    /// still hides attention rows (they are simply the only rows left to hide).
+    /// Reachability is the "Show all" affordance's job, and the one row the
+    /// surface was opened for is pinned separately by
+    /// `PouredSessionListScaffold.pinningActionableSession`.
+    ///
+    /// Exactly `limit` rows is **not** a cut: `hiddenCount` is `0` and the caller
+    /// shows no affordance, matching the board's own six-row frame with no
+    /// control under it.
     static func cappedSections(
         _ sections: [IslandSessionSection],
         limit: Int = displayRowCap

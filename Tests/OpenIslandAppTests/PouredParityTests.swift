@@ -120,12 +120,15 @@ import Testing
         )
         try PouredParityDriver(configuration:configuration).apply(to:model, presentOverlay:false)
 
+        // Read the scaffold's own window rather than restating `never`, so this
+        // parity test follows the shipped surface if the ruling ever changes.
+        #expect(PouredSessionListScaffold.taxonomyStaleThreshold == IslandCompletedStaleThreshold.never.seconds)
         let projected = PouredSectionTaxonomy.project(
             IslandSessionSectioning.sections(
                 for: model.sessions,
                 group: .state,
                 sort: .attention,
-                completedStaleThreshold: IslandCompletedStaleThreshold.never.seconds
+                completedStaleThreshold: PouredSessionListScaffold.taxonomyStaleThreshold
             )
         )
 

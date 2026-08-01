@@ -29,14 +29,18 @@ during Gate 0 work; it does not by itself approve any gate.
   no-ops for every real path and also fixed an empty-cwd discovery bug), but
   all recorded PI-C-003 follow-ups (residual secondary-surface producers,
   raw-title fallback hardening) are closed as out of scope by owner ruling.
+- **Note**: the shipped behaviour substitutes `Workspace` rather than rendering
+  `/`. The ruling is read as *"spend no more work here"*, not as a request to
+  revert to a literal `/` — pending confirmation.
 
 ## R3 — Idle disclosure affordance (PI-C-002)
 
 > "correct"
 
 - The footer roll-up acting as a disclosure toggle is ratified. Under R1 the
-  idle bucket is empty in practice ("0 idle", matching the board frame), so the
-  toggle is dormant unless a future ruling reintroduces idle rows.
+  idle bucket is always empty ("0 idle", matching the board frame), so the
+  disclosure is **unreachable under R1** — retained for a future threshold
+  ruling rather than merely dormant.
 
 ## R4 — PI-A-001 slice alignment
 
@@ -44,6 +48,8 @@ during Gate 0 work; it does not by itself approve any gate.
 
 - The ledger's `slice` tag for PI-A-001 is corrected from 1 to 3, aligning with
   the continuation prompt's canonical order (collapsed narrative work).
+- **Interpretation**: applied to the ledger `slice` field only; re-confirm if
+  the owner meant another doc.
 
 ## R5 — Reference conflicts PI-REF-001 / PI-REF-002 / PI-REF-003, and the
 ## standing rule

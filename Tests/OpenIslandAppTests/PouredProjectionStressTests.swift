@@ -166,11 +166,157 @@ struct PouredProjectionStressTests {
         #expect(rendered.idleCount == 0)
         #expect(rendered.idleSessions.isEmpty)
 
-        // Same list from a profile that carries the 5-minute default: the
-        // scaffold ignores it, so the projected shape is byte-for-byte the same.
-        let fromDefaultProfile = PouredSectionTaxonomy.project(sectioned(Self.listStaleThreshold))
-        #expect(Self.shape(fromDefaultProfile).map(\.0) == Self.shape(rendered).map(\.0))
-        #expect(Self.shape(fromDefaultProfile).map(\.1) == Self.shape(rendered).map(\.1))
+        // The window the scaffold actually runs at reproduces the rendered
+        // projection, and the profile default does *not* — which is the whole
+        // content of R1. (Comparing the `never` projection to itself would have
+        // been a tautology; these two inputs genuinely differ.)
+        let atScaffoldWindow = PouredSectionTaxonomy.project(
+            sectioned(PouredSessionListScaffold.taxonomyStaleThreshold)
+        )
+        #expect(Self.shape(atScaffoldWindow).map(\.0) == Self.shape(rendered).map(\.0))
+        #expect(Self.shape(atScaffoldWindow).map(\.1) == Self.shape(rendered).map(\.1))
+
+        let atProfileDefault = PouredSectionTaxonomy.project(sectioned(Self.profileDefaultStaleThreshold))
+        #expect(Self.shape(atProfileDefault).map(\.1) != Self.shape(rendered).map(\.1))
+        #expect(atProfileDefault.idleCount > 0)
+    }
+
+    /// The scaffold's window *is* `never` — pinned so a future edit to
+    /// `taxonomyStaleThreshold` cannot silently reintroduce staling under R1.
+    @Test
+    func theScaffoldsTaxonomyWindowIsNever_R1() {
+        #expect(PouredSessionListScaffold.taxonomyStaleThreshold == IslandCompletedStaleThreshold.never.seconds)
+        #expect(Self.listStaleThreshold == PouredSessionListScaffold.taxonomyStaleThreshold)
+    }
+
+    /// R1's cross-surface consequence: the summary strip must read the same
+    /// window the list re-sections at, or one frame says `Done` in the table and
+    /// `idle` in the strip. The C1 fixture's Done rows are 12m / 22m old — stale
+    /// under the profile default — and the board prints `6 total / 2 waiting /
+    /// 2 running / 2 done` with no idle bucket at all.
+    @Test
+    func c1SummaryStripReadsTwoDoneAndNoIdleUnderTheEffectiveThreshold_R1() {
+        let sessions = AppearancePreviewFixtures.pouredGroupedSix(now: Self.now)
+
+        let effective = PouredSessionListScaffold.overviewBuckets(
+            sessions: sessions,
+            referenceDate: Self.now,
+            threshold: PouredSessionListScaffold.taxonomyStaleThreshold
+        )
+        #expect(effective == PouredSessionListScaffold.OverviewBuckets(
+            total: 6, waiting: 2, running: 2, done: 2, idle: 0
+        ))
+
+        // The profile window is what the strip used to read, and it disagrees —
+        // so the assertion above is a real fix, not a restatement.
+        let atProfileDefault = PouredSessionListScaffold.overviewBuckets(
+            sessions: sessions,
+            referenceDate: Self.now,
+            threshold: Self.profileDefaultStaleThreshold
+        )
+        #expect(atProfileDefault.idle > 0)
+        #expect(atProfileDefault.done < effective.done)
+    }
+
+    /// R3's idle disclosure is **unreachable** under R1: at the scaffold's window
+    /// the extracted bucket is empty even for rows hours past any profile
+    /// threshold, so the footer toggle can never appear. Pinned so a future
+    /// threshold ruling has to come through this test.
+    @Test
+    func idleDisclosureIsUnreachableUnderR1() {
+        let ancient = (0..<5).map {
+            Self.session(
+                id: "ancient-\($0)",
+                phase: .completed,
+                workspace: "workspace-\($0)",
+                secondsAgo: TimeInterval(6 * 60 * 60 + $0 * 60)
+            )
+        }
+
+        let rendered = Self.projection(ancient, staleThreshold: PouredSessionListScaffold.taxonomyStaleThreshold)
+        #expect(rendered.idleCount == 0)
+        #expect(rendered.idleSessions.isEmpty)
+        #expect(rendered.sections.map(\.id) == [PouredSectionTaxonomy.Group.done.sectionID])
+
+        // Same rows at the profile window do fall into the idle bucket.
+        #expect(Self.projection(ancient, staleThreshold: Self.profileDefaultStaleThreshold).idleCount == 5)
+    }
+
+    /// The cap may never hide the row the surface was opened for. Ten sessions,
+    /// actionable = the last `Done` row (well past the six-row cut) → still
+    /// rendered while collapsed.
+    @Test
+    func theActionableSessionIsAlwaysAmongRenderedRows() throws {
+        var sessions = [Self.session(id: "pin-running", phase: .running, workspace: "runner", secondsAgo: 5)]
+        for index in 0..<9 {
+            sessions.append(
+                Self.session(
+                    id: "pin-done-\(index)",
+                    phase: .completed,
+                    workspace: "done-\(index)",
+                    secondsAgo: TimeInterval(60 * 60 + index * 60)
+                )
+            )
+        }
+
+        let projected = Self.projection(sessions)
+        let actionable = try #require(projected.sections.last?.sessions.last?.id)
+        #expect(actionable == "pin-done-8")
+
+        let capped = PouredSectionTaxonomy.cappedSections(projected.sections)
+        #expect(capped.isCapped)
+        #expect(!capped.visible.contains { $0.sessions.contains { $0.id == actionable } })
+
+        let pinned = PouredSessionListScaffold.pinningActionableSession(
+            capped.visible,
+            projected: projected.sections,
+            actionableSessionID: actionable
+        )
+        #expect(pinned.contains { $0.sessions.contains { $0.id == actionable } })
+        // Its group header is still there, and the frame grew by exactly one row.
+        #expect(pinned.map(\.id) == capped.visible.map(\.id))
+        #expect(pinned.flatMap(\.sessions).count == capped.visible.flatMap(\.sessions).count + 1)
+        // No pinning happens when the actionable row is already on screen.
+        #expect(
+            PouredSessionListScaffold.pinningActionableSession(
+                capped.visible, projected: projected.sections, actionableSessionID: "pin-running"
+            ).flatMap(\.sessions).map(\.id) == capped.visible.flatMap(\.sessions).map(\.id)
+        )
+    }
+
+    /// The other pinning shape: the actionable row's whole group was cut away, so
+    /// the group comes back — header and all — holding just that row, in
+    /// projection order.
+    @Test
+    func pinningReinstatesAGroupThatTheCutRemovedEntirely() throws {
+        var sessions: [AgentSession] = []
+        for index in 0..<7 {
+            sessions.append(
+                Self.session(
+                    id: "pin-attn-\(index)",
+                    phase: .waitingForApproval,
+                    workspace: "attn-\(index)",
+                    secondsAgo: TimeInterval(10 + index)
+                )
+            )
+        }
+        sessions.append(Self.session(id: "pin-tail-done", phase: .completed, workspace: "tail", secondsAgo: 3 * 60 * 60))
+
+        let projected = Self.projection(sessions)
+        let capped = PouredSectionTaxonomy.cappedSections(projected.sections)
+        #expect(capped.visible.map(\.id) == [PouredSectionTaxonomy.Group.needsYou.sectionID])
+
+        let pinned = PouredSessionListScaffold.pinningActionableSession(
+            capped.visible,
+            projected: projected.sections,
+            actionableSessionID: "pin-tail-done"
+        )
+        #expect(pinned.map(\.id) == [
+            PouredSectionTaxonomy.Group.needsYou.sectionID,
+            PouredSectionTaxonomy.Group.done.sectionID,
+        ])
+        #expect(pinned.last?.sessions.map(\.id) == ["pin-tail-done"])
+        #expect(pinned.last?.title == PouredSectionTaxonomy.Group.done.localizationKey)
     }
 
     /// Same input twice → identical output. The projection sorts by recency with

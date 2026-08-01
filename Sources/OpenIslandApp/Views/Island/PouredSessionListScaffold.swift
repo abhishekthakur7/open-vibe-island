@@ -91,9 +91,13 @@ struct PouredSessionListScaffold: View {
     /// `.none` — a completed row ages inside `Done` and never falls out to the
     /// idle roll-up. That is why `.state` re-sections locally instead of taking
     /// the pre-built `sections` from the shared pipeline, which carry the
-    /// profile's threshold. The profile preference itself is untouched: it still
-    /// governs every other theme, the row chrome, and the summary strip's own
-    /// `idle` metric. See `PouredSectionTaxonomy`'s recorded deviations.
+    /// profile's threshold. The profile preference itself is untouched *outside*
+    /// this surface: it still governs every other theme, and it governs the
+    /// Poured list's own chrome under `.agent` / `.project`. Inside the projected
+    /// list the whole surface — rows, footer roll-up and summary strip — reads
+    /// `effectiveStaleThreshold`, so no two parts of one frame disagree about
+    /// whether a completed session is idle. See `PouredSectionTaxonomy`'s
+    /// recorded deviations.
     private var taxonomyProjection: PouredSectionTaxonomy.Projection? {
         switch group {
         case .none, .state:
@@ -111,7 +115,19 @@ struct PouredSessionListScaffold: View {
     }
 
     /// Ruling R1: Done never stales inside the Poured list.
-    private static let taxonomyStaleThreshold = IslandCompletedStaleThreshold.never.seconds
+    static let taxonomyStaleThreshold = IslandCompletedStaleThreshold.never.seconds
+
+    /// The completed-stale window **every** part of the Poured list must read.
+    ///
+    /// R1 is a property of the surface, not of one view: the list re-sections at
+    /// `taxonomyStaleThreshold`, so the row chrome, the footer roll-up and the
+    /// summary strip have to agree or the same frame contradicts itself (an old
+    /// completed session reading `Done` in the list while the strip counts it as
+    /// `idle`). Under `.agent` / `.project` no taxonomy runs, so the profile's
+    /// own preference stays in force — the `nil` branch below.
+    private var effectiveStaleThreshold: TimeInterval {
+        taxonomyProjection == nil ? completedStaleThreshold : Self.taxonomyStaleThreshold
+    }
 
     /// Everything the row area needs for one render pass: the sections to draw,
     /// each group's **full** row count (a capped group renders partially but
@@ -144,11 +160,78 @@ struct PouredSessionListScaffold: View {
 
         let capped = PouredSectionTaxonomy.cappedSections(projected)
         return ListContent(
-            sections: listExpanded ? projected : capped.visible,
+            sections: listExpanded
+                ? projected
+                : Self.pinningActionableSession(
+                    capped.visible,
+                    projected: projected,
+                    actionableSessionID: actionableSessionID
+                ),
             groupTotals: capped.groupTotals,
             totalRows: capped.total,
             showsExpansionAffordance: capped.isCapped
         )
+    }
+
+    /// The display cap must never hide the one row the surface was opened *for*.
+    ///
+    /// The panel opens on a permission / question event with
+    /// `.sessionList(actionableSessionID:)`, and the cap cuts in group order — so
+    /// an actionable row that sorts past the sixth row (a `Done` row the user
+    /// jumped to, or an attention row behind five older ones) would be silently
+    /// absent from the frame that exists to show it.
+    ///
+    /// **Chosen fix: splice, not expand.** Falling back to the expanded list
+    /// would be one line, but it throws away the owner's cap for the exact case
+    /// where focus matters most (a 40-session list would render all forty because
+    /// one row is actionable). Splicing keeps the six-row frame and adds the
+    /// pinned row to it: appended to its own group when that group is already on
+    /// screen, otherwise re-materialising that group — header and all, in
+    /// projection order — with the single pinned row. The group header's count
+    /// still comes from `groupTotals` (the group's full size), so nothing lies.
+    /// The collapsed list can therefore render seven rows in this one case; that
+    /// is the cost of the guarantee, and it is bounded at +1.
+    nonisolated static func pinningActionableSession(
+        _ visible: [IslandSessionSection],
+        projected: [IslandSessionSection],
+        actionableSessionID: String?
+    ) -> [IslandSessionSection] {
+        guard let actionableSessionID else { return visible }
+        guard !visible.contains(where: { $0.sessions.contains { $0.id == actionableSessionID } }) else {
+            return visible
+        }
+        guard
+            let sourceIndex = projected.firstIndex(where: {
+                $0.sessions.contains { $0.id == actionableSessionID }
+            }),
+            let session = projected[sourceIndex].sessions.first(where: { $0.id == actionableSessionID })
+        else {
+            return visible
+        }
+
+        let source = projected[sourceIndex]
+        var spliced = visible
+
+        if let slot = spliced.firstIndex(where: { $0.id == source.id }) {
+            spliced[slot] = IslandSessionSection(
+                id: source.id,
+                title: source.title,
+                sessions: spliced[slot].sessions + [session]
+            )
+            return spliced
+        }
+
+        // The whole group was cut away: reinsert it, holding only the pinned row,
+        // at the position the projection gives it relative to the visible groups.
+        let projectedOrder = projected.map(\.id)
+        let insertion = spliced.firstIndex {
+            (projectedOrder.firstIndex(of: $0.id) ?? .max) > sourceIndex
+        } ?? spliced.endIndex
+        spliced.insert(
+            IslandSessionSection(id: source.id, title: source.title, sessions: [session]),
+            at: insertion
+        )
+        return spliced
     }
 
     /// PI-C-002 (**derived**, pending owner ratification — see
@@ -181,7 +264,7 @@ struct PouredSessionListScaffold: View {
                         theme.sessionRow(
                             session: session,
                             stateIndicator: stateIndicator,
-                            completedStaleThreshold: completedStaleThreshold,
+                            completedStaleThreshold: effectiveStaleThreshold,
                             isActionable: session.phase.requiresAttention || session.id == actionableSessionID,
                             useDrawingGroup: isInteractive,
                             isInteractive: isInteractive,
@@ -413,40 +496,74 @@ struct PouredSessionListScaffold: View {
     /// Idle sessions at `referenceDate` — the same stale/inactive bucket the
     /// summary strip counts, surfaced in the footer's trailing readout.
     private func idleSessionCount(referenceDate: Date) -> Int {
-        sessions.filter {
-            isIdleSessionOverviewItem($0, referenceDate: referenceDate, threshold: completedStaleThreshold)
-        }.count
+        Self.overviewBuckets(
+            sessions: sessions,
+            referenceDate: referenceDate,
+            threshold: effectiveStaleThreshold
+        ).idle
+    }
+
+    /// The summary strip's five tallies, split out of the view so the numbers the
+    /// strip prints are executable (R1's cross-surface agreement is a claim about
+    /// these counts, not about the capsule they render in).
+    nonisolated struct OverviewBuckets: Equatable {
+        var total: Int
+        var waiting: Int
+        var running: Int
+        var done: Int
+        var idle: Int
+    }
+
+    nonisolated static func overviewBuckets(
+        sessions: [AgentSession],
+        referenceDate: Date,
+        threshold: TimeInterval
+    ) -> OverviewBuckets {
+        OverviewBuckets(
+            total: sessions.count,
+            waiting: sessions.filter(\.phase.requiresAttention).count,
+            running: sessions.filter { $0.phase == .running }.count,
+            done: sessions.filter {
+                $0.phase == .completed
+                    && !isIdleSessionOverviewItem($0, referenceDate: referenceDate, threshold: threshold)
+            }.count,
+            idle: sessions.filter {
+                isIdleSessionOverviewItem($0, referenceDate: referenceDate, threshold: threshold)
+            }.count
+        )
     }
 
     private func sessionOverviewItems(referenceDate: Date) -> [PouredSessionOverviewItem] {
         guard !sessions.isEmpty else { return [] }
 
-        let threshold = completedStaleThreshold
-        let waiting = sessions.filter(\.phase.requiresAttention).count
-        let running = sessions.filter { $0.phase == .running }.count
-        let done = sessions.filter {
-            $0.phase == .completed
-                && !isIdleSessionOverviewItem($0, referenceDate: referenceDate, threshold: threshold)
-        }.count
-        let idle = sessions.filter {
-            isIdleSessionOverviewItem($0, referenceDate: referenceDate, threshold: threshold)
-        }.count
+        let buckets = Self.overviewBuckets(
+            sessions: sessions,
+            referenceDate: referenceDate,
+            threshold: effectiveStaleThreshold
+        )
 
         return [
-            PouredSessionOverviewItem(id: "total", title: lang.t("island.sessionOverview.total"), compactTitle: "", count: sessions.count, tint: nil),
-            PouredSessionOverviewItem(id: "waiting", title: lang.t("island.sessionOverview.waiting"), compactTitle: lang.t("island.sessionOverview.waitingCompact"), count: waiting, tint: tokens.colors.statusWaitingAggregate),
-            PouredSessionOverviewItem(id: "running", title: lang.t("island.sessionOverview.running"), compactTitle: lang.t("island.sessionOverview.runningCompact"), count: running, tint: tokens.colors.statusRunning),
-            PouredSessionOverviewItem(id: "done", title: lang.t("island.sessionOverview.done"), compactTitle: lang.t("island.sessionOverview.done"), count: done, tint: tokens.colors.statusCompleted),
-            PouredSessionOverviewItem(id: "idle", title: lang.t("island.sessionOverview.idle"), compactTitle: lang.t("island.sessionOverview.idle"), count: idle, tint: tokens.colors.statusIdle),
+            PouredSessionOverviewItem(id: "total", title: lang.t("island.sessionOverview.total"), compactTitle: "", count: buckets.total, tint: nil),
+            PouredSessionOverviewItem(id: "waiting", title: lang.t("island.sessionOverview.waiting"), compactTitle: lang.t("island.sessionOverview.waitingCompact"), count: buckets.waiting, tint: tokens.colors.statusWaitingAggregate),
+            PouredSessionOverviewItem(id: "running", title: lang.t("island.sessionOverview.running"), compactTitle: lang.t("island.sessionOverview.runningCompact"), count: buckets.running, tint: tokens.colors.statusRunning),
+            PouredSessionOverviewItem(id: "done", title: lang.t("island.sessionOverview.done"), compactTitle: lang.t("island.sessionOverview.done"), count: buckets.done, tint: tokens.colors.statusCompleted),
+            PouredSessionOverviewItem(id: "idle", title: lang.t("island.sessionOverview.idle"), compactTitle: lang.t("island.sessionOverview.idle"), count: buckets.idle, tint: tokens.colors.statusIdle),
         ].filter { $0.id == "total" || $0.count > 0 }
     }
 
-    private func isIdleSessionOverviewItem(
+    nonisolated private static func isIdleSessionOverviewItem(
         _ session: AgentSession,
         referenceDate: Date,
         threshold: TimeInterval
     ) -> Bool {
         guard session.phase == .completed else { return false }
+        // R1: an infinite window means "completed rows never age out", so the
+        // strip's *second* idle clause — a 20-minute presence decay that the
+        // shared state sectioning does not apply at all — must fall away too.
+        // Otherwise the C1 frame reads `Done` for its 22-minute row in the table
+        // and `1 idle` in the strip above it. Every finite window (agent /
+        // project, and every other theme) keeps the wider bucket unchanged.
+        guard threshold.isFinite else { return false }
         return session.isStaleCompletedForIsland(at: referenceDate, threshold: threshold)
             || session.islandPresence(at: referenceDate) == .inactive
     }

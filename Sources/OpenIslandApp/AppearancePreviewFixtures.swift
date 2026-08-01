@@ -812,9 +812,11 @@ enum AppearancePreviewFixtures {
     /// files them under `state-idle`, not `state-done`. The board draws them as
     /// `Done` **and** reads `0 idle` in the same footer, which is only
     /// self-consistent at a ≥22-minute (or `never`) threshold. The fixture
-    /// reproduces the board's recency; the threshold is the caller's choice —
-    /// and `IslandDebugScenario.pouredGroupedSix` scopes it to `.never` so the
-    /// mapped C1 scenario renders §C's three groups (PI-C-001).
+    /// reproduces the board's recency; owner ruling **R1** resolves the rest in
+    /// the scaffold itself — `PouredSessionListScaffold` re-sections the Poured
+    /// list at `never` (`taxonomyStaleThreshold`) whatever the profile carries,
+    /// so no scenario-scoped threshold override is needed (that seam is gone) and
+    /// the mapped C1 scenario renders §C's three groups (PI-C-001).
     static func pouredGroupedSix(now: Date) -> [AgentSession] {
         [
             pouredGroupedSixPermission(now: now),
