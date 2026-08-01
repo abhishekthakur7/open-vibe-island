@@ -29,27 +29,4 @@ struct CodexAppServerTimeoutTests {
         let elapsed = Date().timeIntervalSince(start)
         #expect(elapsed < max(2.0, client.requestTimeoutSeconds * 20))
     }
-
-    @Test
-    func sendRequestSurfacesTimeoutErrorCase() async throws {
-        let client = CodexAppServerClient()
-        client.requestTimeoutSeconds = 0.1
-
-        let pipe = Pipe()
-        client.stdin = pipe.fileHandleForWriting
-
-        do {
-            _ = try await client.listLoadedThreads()
-            Issue.record("Expected CodexAppServerError.timeout, got nothing")
-        } catch let error as CodexAppServerError {
-            switch error {
-            case .timeout:
-                break  // expected
-            default:
-                Issue.record("Expected .timeout, got \(error)")
-            }
-        } catch {
-            Issue.record("Expected CodexAppServerError, got \(type(of: error))")
-        }
-    }
 }

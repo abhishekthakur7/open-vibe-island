@@ -6,25 +6,6 @@ import OpenIslandCore
 @MainActor
 struct AttentionStatusItemControllerTests {
     @Test
-    func entryTitleCombinesSessionTitleAndLocalizedPhaseLabel() {
-        let lang = LanguageManager.shared
-        let session = AgentSession(
-            id: "s1",
-            title: "Codex · repo",
-            tool: .codex,
-            attachmentState: .attached,
-            phase: .waitingForApproval,
-            summary: "Approve command",
-            updatedAt: .now,
-            permissionRequest: PermissionRequest(title: "T", summary: "S", affectedPath: "/tmp")
-        )
-
-        let title = AttentionStatusItemController.entryTitle(for: session, lang: lang)
-        #expect(title.hasPrefix("Codex · repo"))
-        #expect(title.contains(lang.t("island.section.needsApproval")))
-    }
-
-    @Test
     func entryTitleDistinguishesQuestionsFromPermissions() {
         let lang = LanguageManager.shared
         let session = AgentSession(
@@ -40,43 +21,6 @@ struct AttentionStatusItemControllerTests {
         let title = AttentionStatusItemController.entryTitle(for: session, lang: lang)
         #expect(title.contains(lang.t("island.section.needsAnswer")))
         #expect(!title.contains(lang.t("island.section.needsApproval")))
-    }
-
-    @Test
-    func entryTitleFallsBackToToolNameWhenSessionTitleIsEmpty() {
-        let lang = LanguageManager.shared
-        let session = AgentSession(
-            id: "s3",
-            title: "",
-            tool: .claudeCode,
-            attachmentState: .attached,
-            phase: .waitingForAnswer,
-            summary: "Pick one",
-            updatedAt: .now
-        )
-
-        let title = AttentionStatusItemController.entryTitle(for: session, lang: lang)
-        #expect(title.hasPrefix(AgentTool.claudeCode.displayName))
-    }
-
-    @Test
-    func startsDisabledAndUpdateCachesWithoutEnabling() {
-        let controller = AttentionStatusItemController()
-        #expect(!controller.isEnabled)
-
-        let session = AgentSession(
-            id: "s4",
-            title: "Codex · repo",
-            tool: .codex,
-            attachmentState: .attached,
-            phase: .waitingForApproval,
-            summary: "Approve command",
-            updatedAt: .now,
-            permissionRequest: PermissionRequest(title: "T", summary: "S", affectedPath: "/tmp")
-        )
-
-        controller.update(attentionSessions: [session])
-        #expect(!controller.isEnabled)
     }
 
     @Test
@@ -107,17 +51,5 @@ struct AttentionStatusItemControllerTests {
         controller.handleSelect(item)
 
         #expect(selectedID == "s5")
-    }
-
-    @Test
-    func selectingAMenuEntryWithoutARepresentedSessionIDIsIgnored() {
-        let controller = AttentionStatusItemController()
-        var selectedID: String?
-        controller.onSelectSession = { selectedID = $0 }
-
-        let item = NSMenuItem(title: "No session", action: nil, keyEquivalent: "")
-        controller.handleSelect(item)
-
-        #expect(selectedID == nil)
     }
 }

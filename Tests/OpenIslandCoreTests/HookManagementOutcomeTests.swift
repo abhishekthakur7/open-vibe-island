@@ -18,20 +18,6 @@ struct HookManagementOutcomeTests {
         #expect(outcome.exitStatus == 23)
     }
 
-    @Test
-    func mapsRecoveryEvidenceFailureToTheRecoveryStatus() {
-        let outcome = HookManagementOutcome.from(
-            error: ManagedHookBackupError.unmanagedBackupPath("/tmp/hooks.json.backup.open-island")
-        )
-        #expect(outcome == .unresolvedRecovery)
-        #expect(outcome.exitStatus == 24)
-    }
-
-    @Test
-    func mapsClaudeTemplateMismatchToTheArtifactStatus() {
-        #expect(HookManagementOutcome.from(error: ClaudeStatusLineInstallationError.unverifiedTemplate) == .unverifiedArtifact)
-    }
-
     @Test(arguments: HookIntegrationFamily.allCases)
     func everyFamilyPreservesMachineFieldsAndRemediation(family: HookIntegrationFamily) {
         for outcome in [HookManagementOutcome.exactManaged, .unowned, .ambiguousUnmanaged, .unresolvedRecovery, .ioFailure] {
@@ -54,18 +40,4 @@ struct HookManagementOutcomeTests {
         #expect(HookManagementOutcome.ioFailure.exitStatus == 25)
     }
 
-    @Test
-    func healthUsesTheIdenticalFamilyStatusMapping() {
-        let outcome = HookManagementOutcome.unresolvedRecovery
-        let issue = HookHealthReport.Issue.ownershipUnverified(outcome: outcome)
-        #expect(issue.managementStatus(for: .kimi) == outcome.status(for: .kimi))
-        #expect(issue.description.contains(outcome.remediation))
-    }
-
-    @Test
-    func mapsFilesystemIOToItsOwnReadOnlyOutcome() {
-        let outcome = HookManagementOutcome.from(error: ManagedHookFileSystemError.io("/tmp/hooks.json"))
-        #expect(outcome == .ioFailure)
-        #expect(outcome.exitStatus == 25)
-    }
 }

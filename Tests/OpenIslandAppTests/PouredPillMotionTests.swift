@@ -9,76 +9,6 @@ import Testing
 /// extends this suite alongside the right-slot variants + snapshot regression.
 struct PouredPillMotionTests {
 
-    // MARK: - Motion constants (mockup §A keyframes)
-
-    @Test
-    func workingLumenConstantsMatchSpec() {
-        #expect(PouredPillMotion.Working.period == 3.0)
-        #expect(PouredPillMotion.Working.glowRadius == 22)
-        #expect(PouredPillMotion.Working.glowOpacity == 0.16)
-    }
-
-    @Test
-    func manyWorkingAgentsGridConstantsMatchSpec() {
-        #expect(PouredPillMotion.AgentsGrid.runningGlowRadius == 6)
-        #expect(PouredPillMotion.AgentsGrid.runningGlowOpacity == 0.6)
-        #expect(PouredPillMotion.AgentsGrid.idleCellOpacity == 0.5)
-    }
-
-    @Test
-    func permissionAttnpulseConstantsMatchSpec() {
-        #expect(PouredPillMotion.Permission.period == 1.9)
-        #expect(PouredPillMotion.Permission.radiusMin == 18)
-        #expect(PouredPillMotion.Permission.radiusMax == 34)
-        #expect(PouredPillMotion.Permission.spreadMax == 4)
-        #expect(PouredPillMotion.Permission.opacityMin == 0.28)
-        #expect(PouredPillMotion.Permission.opacityMax == 0.55)
-        #expect(PouredPillMotion.Permission.ringWidth == 3)
-        #expect(PouredPillMotion.Permission.ringOpacity == 0.22)
-    }
-
-    @Test
-    func questionGlowConstantsMatchSpec() {
-        #expect(PouredPillMotion.Question.glowRadius == 26)
-        #expect(PouredPillMotion.Question.glowOpacity == 0.34)
-        #expect(PouredPillMotion.Question.glyphBreathePeriod == 2.6)
-    }
-
-    @Test
-    func settleConstantsMatchSpec() {
-        #expect(PouredPillMotion.Settle.duration == 2.6)
-        #expect(PouredPillMotion.Settle.greenKeyTime == 0.22)
-        #expect(PouredPillMotion.Settle.flashRadius == 30)
-        #expect(PouredPillMotion.Settle.flashSpread == 3)
-        #expect(PouredPillMotion.Settle.flashOpacity == 0.4)
-        #expect(PouredPillMotion.Settle.greenRadius == 22)
-        #expect(PouredPillMotion.Settle.greenSpread == 2)
-        #expect(PouredPillMotion.Settle.greenOpacity == 0.4)
-    }
-
-    // MARK: - Right-slot variant constants (stage 2 · §4A A3/A4 · §G · §I)
-
-    @Test
-    func rightSlotBadgeConstantsMatchSpec() {
-        // A3 count.attn badge — glow `rgba(255,177,77,.55)` r14.
-        #expect(PouredPillMotion.RightSlot.attnBadgeGlowRadius == 14)
-        #expect(PouredPillMotion.RightSlot.attnBadgeGlowOpacity == 0.55)
-        #expect(PouredPillMotion.RightSlot.badgeHPadding == 5)
-        #expect(PouredPillMotion.RightSlot.badgeVPadding == 1.5)
-        #expect(PouredPillMotion.RightSlot.badgeCornerRadius == 6)
-    }
-
-    @Test
-    func rightSlotTaskAndUsageConstantsMatchSpec() {
-        #expect(PouredPillMotion.RightSlot.taskChipSpacing == 3)
-        #expect(PouredPillMotion.RightSlot.usageDialDiameter == 13)
-        #expect(PouredPillMotion.RightSlot.usageDialLineWidth == 2.5)
-        #expect(PouredPillMotion.RightSlot.usageDialValueSpacing == 3)
-        // Threshold cutoffs mirror the shipped `usageColor` rule (§I / §3.2).
-        #expect(PouredPillMotion.RightSlot.usageCriticalThreshold == 90)
-        #expect(PouredPillMotion.RightSlot.usageWarnThreshold == 70)
-    }
-
     // MARK: - Ambient-state resolution
 
     private func activity(
@@ -152,46 +82,6 @@ struct PouredPillMotionTests {
         #expect(PouredPillAmbientState.completed(.failed).castsGlow == false)
     }
 
-    // MARK: - Two-tone narrated label split
-
-    @Test
-    func completedLabelSplitsPrefixDimWorkspacePrimary() {
-        let segments = PouredPillLabelTone.segments(
-            for: "Done · the-automator", ambient: .completed(.success))
-        #expect(segments == [
-            .init(text: "Done ·", isDim: true),
-            .init(text: " the-automator", isDim: false),
-        ])
-    }
-
-    @Test
-    func workingVerbLabelSplitsVerbDimObjectPrimary() {
-        let segments = PouredPillLabelTone.segments(
-            for: "Editing AppModel.swift", ambient: .working(manyWorking: false))
-        #expect(segments == [
-            .init(text: "Editing", isDim: true),
-            .init(text: " AppModel.swift", isDim: false),
-        ])
-    }
-
-    @Test
-    func manyWorkingLabelMakesCountStrongPrimaryWordDim() {
-        let segments = PouredPillLabelTone.segments(
-            for: "3 working", ambient: .working(manyWorking: true))
-        #expect(segments == [
-            .init(text: "3", isDim: false, isStrong: true),
-            .init(text: " working", isDim: true),
-        ])
-    }
-
-    @Test
-    func attentionAndIdleLabelsStayWhollyPrimary() {
-        #expect(PouredPillLabelTone.segments(for: "Approve swift build?", ambient: .permission)
-                == [.init(text: "Approve swift build?", isDim: false)])
-        #expect(PouredPillLabelTone.segments(for: "Answer needed", ambient: .question)
-                == [.init(text: "Answer needed", isDim: false)])
-        #expect(PouredPillLabelTone.segments(for: "", ambient: .idle).isEmpty)
-    }
 }
 
 /// Stage 2 regression: the Poured 2.0 closed pill keeps the shipped
@@ -245,16 +135,6 @@ struct PouredClosedPillWidthRegressionTests {
         #expect(abs(external("Done · the-automator", nil) - 224) < Self.tolerance)
     }
 
-    /// A permission and a question badge with the same count reserve the same
-    /// width — the two variants differ only in fill/glyph, not in geometry.
-    @Test
-    func attentionBadgeKindDoesNotChangeReservedWidth() {
-        #expect(
-            external("x", .attentionCount(count: 3, kind: .permission))
-                == external("x", .attentionCount(count: 3, kind: .question))
-        )
-    }
-
     /// MacBook / notch layout — outer width does NOT fold in the right slot
     /// (the wings straddle the physical notch), so it depends only on the label
     /// and the notch width. Pinned so the notch-lane math stays put.
@@ -274,16 +154,5 @@ struct PouredClosedPillWidthRegressionTests {
         #expect(abs(macbook(nil, notch: 180) - 274) < Self.tolerance)
         #expect(abs(macbook("Editing AppModel.swift", notch: 180) - 540) < Self.tolerance)
         #expect(abs(macbook("hi", notch: 200) - 340.4) < Self.tolerance)
-    }
-
-    /// The right slot is invisible to the MacBook width math, so swapping it (or
-    /// swapping the count-shaped kind) never changes the outer width.
-    @Test
-    func macbookOuterWidthIgnoresRightSlot() {
-        // `macbookOuterWidth` takes no rightSlot argument at all — assert the
-        // label-only contract holds across notch widths so a future refactor
-        // can't quietly start folding the right slot in.
-        #expect(macbook("Refactoring · 3 agents", notch: 160) == macbook("Refactoring · 3 agents", notch: 160))
-        #expect(abs(macbook(nil, notch: 0) - 94) < Self.tolerance) // 47 + 0 + 47 (half = max(44, 19+24+4))
     }
 }

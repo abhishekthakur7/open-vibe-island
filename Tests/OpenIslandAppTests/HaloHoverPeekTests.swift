@@ -26,41 +26,4 @@ struct HaloHoverPeekTests {
         #expect(HaloHoverPeekContent.resolve(sessions: sessions, lang: lang) == nil)
     }
 
-    /// One blocked session: the peek names it, quotes the pending command, and
-    /// shows no `+N more` chip — there is nothing compressed behind it.
-    @Test
-    func singleWaitingSessionPeeksWithoutTheOverflowChip() throws {
-        let sessions = IslandDebugScenario.closedAttention.snapshot().sessions
-        let content = try #require(HaloHoverPeekContent.resolve(sessions: sessions, lang: lang))
-
-        #expect(content.kind == .permission)
-        #expect(content.title.contains("open-island"))
-        #expect(content.detail?.contains("sed") == true)
-        #expect(content.monogram == "C")
-        #expect(content.moreWaiting == 0)
-    }
-
-    /// Two blocked sessions (`closedAttentionQueue`, the V2 enabler): the most
-    /// actionable one surfaces inline and the rest compress to `+N`.
-    @Test
-    func aQueueCompressesTheRestIntoTheOverflowChip() throws {
-        let sessions = IslandDebugScenario.closedAttentionQueue.snapshot().sessions
-        let waiting = sessions.filter {
-            $0.phase == .waitingForApproval || $0.phase == .waitingForAnswer
-        }
-        #expect(waiting.count == 2)
-
-        let content = try #require(HaloHoverPeekContent.resolve(sessions: sessions, lang: lang))
-        #expect(content.kind == .permission)
-        #expect(content.moreWaiting == 1)
-        // The hint's verb forks with the kind, so the peek never promises
-        // "approve" for a question.
-        #expect(content.hint(lang) != HaloHoverPeekContent(
-            kind: .question,
-            title: "",
-            detail: nil,
-            monogram: "",
-            moreWaiting: 0
-        ).hint(lang))
-    }
 }

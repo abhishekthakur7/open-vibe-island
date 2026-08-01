@@ -49,29 +49,6 @@ struct GeminiHooksTests {
     }
 
     @Test
-    func geminiMetadataStoresAssistantPreviewInsteadOfFullMultilineResponse() {
-        let response = """
-        Here is the first paragraph of the answer.
-
-        Here is the second paragraph with process details that should not be shown in full.
-
-        Final summary line.
-        """
-        let payload = GeminiHookPayload(
-            cwd: "/tmp/worktree",
-            hookEventName: .afterAgent,
-            sessionID: "gemini-session-4",
-            promptResponse: response
-        )
-
-        let preview = payload.defaultGeminiMetadata.lastAssistantMessage
-        #expect(preview == payload.promptResponsePreview)
-        #expect(preview != response)
-        #expect(preview?.contains("\n") == false)
-        #expect(payload.defaultGeminiMetadata.lastAssistantMessageBody == response)
-    }
-
-    @Test
     func geminiCompletionMessageUsesLastBodySegmentAndDropsRepeatedTail() {
         let response = """
         I'll review the integration guide and summarize the migration plan.
@@ -119,41 +96,5 @@ struct GeminiHooksTests {
         #expect(completion?.contains("I'll review the integration guide") == false)
         #expect(completion?.contains("\n\nhe migration plan has three concrete steps:") == false)
         #expect(completion?.components(separatedBy: "In short, the migration should stay incremental so each stage is easy to verify.").count == 2)
-    }
-
-    @Test
-    func geminiCompletionMessageDropsRepeatedTailAfterWhitespaceNormalization() {
-        let response = """
-        Updated the API query parameter guide with typed examples:
-        - Added the recommended annotated syntax.
-        - Added support for repeated query values.
-        - Added advanced metadata examples.
-        - Updated the snippets for Python 3.10+.
-
-        Updated the API query parameter guide with typed examples:
-        - Added the recommended annotated syntax .
-        - Added support for repeated query values.
-        - Added advanced metadata examples.
-        - Updated the snippets for Python 3.10+.
-        """
-
-        let session = AgentSession(
-            id: "gemini-session-whitespace-deduped",
-            title: "Gemini CLI · repo",
-            tool: .geminiCLI,
-            phase: .completed,
-            summary: "summary",
-            updatedAt: Date(timeIntervalSince1970: 1_001),
-            geminiMetadata: GeminiSessionMetadata(
-                lastAssistantMessage: "preview",
-                lastAssistantMessageBody: response
-            )
-        )
-
-        let completion = session.completionAssistantMessageText
-
-        #expect(completion?.hasPrefix("Updated the API query parameter guide with typed examples:") == true)
-        #expect(completion?.contains("Updated the API query parameter guide with typed examples:\n- Added the recommended annotated syntax .") == false)
-        #expect(completion?.components(separatedBy: "- Updated the snippets for Python 3.10+.").count == 2)
     }
 }

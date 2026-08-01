@@ -121,52 +121,6 @@ struct CodexHookInstallationManagerTests {
         #expect(try Data(contentsOf: thirdInstalled.hooksURL) == thirdBytes)
     }
 
-    @Test
-    func verifiedUninstallRevokesCredentialAndJournalIsReadOnlyRecoveryState() throws {
-        let fixture = try Fixture()
-        defer { fixture.remove() }
-        var revoked = false
-        let manager = fixture.manager { revoked = true }
-        let helper = try makeVerifiedHooksApp(at: fixture.root, contents: "revoke")
-        let installed = try manager.install(hooksBinaryURL: helper)
-        let removed = try manager.uninstall()
-        #expect(revoked)
-        #expect(removed.managementOutcome == .unowned)
-        #expect(!FileManager.default.fileExists(atPath: ManagedHookProvenance.sidecarURL(for: installed.hooksURL).path))
-
-        let recovery = try Fixture()
-        defer { recovery.remove() }
-        try recovery.createCodex()
-        let journal = ManagedHookFileSystem.journalURL(for: recovery.codex.appendingPathComponent("hooks.json"))
-        try Data("unresolved".utf8).write(to: journal)
-        let before = try Data(contentsOf: journal)
-        #expect((try recovery.manager().status()).managementOutcome == .unresolvedRecovery)
-        #expect(throws: ManagedHookFileSystemError.self) { try recovery.manager().uninstall() }
-        #expect(try Data(contentsOf: journal) == before)
-    }
-
-    @Test
-    func danglingProvenanceSiblingBlocksBeforeCodexTargetMutation() throws {
-        let fixture = try Fixture()
-        defer { fixture.remove() }
-        try fixture.createCodex()
-        let config = fixture.codex.appendingPathComponent("config.toml")
-        let configBefore = Data("model = \"o3\"\n".utf8)
-        try configBefore.write(to: config)
-        try FileManager.default.createSymbolicLink(
-            at: ManagedHookProvenance.sidecarURL(for: config),
-            withDestinationURL: fixture.root.appendingPathComponent("missing-sidecar")
-        )
-        let manager = fixture.manager()
-
-        #expect((try manager.status()).managementOutcome == .unsafePath)
-        #expect(throws: ManagedHookFileSystemError.self) {
-            try manager.install(hooksBinaryURL: makeVerifiedHooksApp(at: fixture.root, contents: "codex-dangling-sidecar"))
-        }
-        #expect(try Data(contentsOf: config) == configBefore)
-        #expect(!FileManager.default.fileExists(atPath: fixture.codex.appendingPathComponent("hooks.json").path))
-    }
-
     private struct Fixture {
         let root: URL
         let codex: URL

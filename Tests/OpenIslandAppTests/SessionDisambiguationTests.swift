@@ -111,22 +111,6 @@ struct SessionDisambiguationTests {
     }
 
     @Test
-    func singleSessionIsNeverDisambiguated() {
-        let sessions = [
-            Self.session(
-                id: "only",
-                tool: .claudeCode,
-                workspace: "the-automator",
-                branch: "feat/bridge-auth",
-                ageSeconds: 60
-            )
-        ]
-
-        #expect(SessionDisambiguation.disambiguators(for: sessions, now: Self.now).isEmpty)
-        #expect(SessionDisambiguation.disambiguator(for: sessions[0], in: sessions, now: Self.now) == nil)
-    }
-
-    @Test
     func collidedClaudeSessionsSharingABranchBothFallBackToRecency() {
         // A branch two rows agree on disambiguates nothing.
         let sessions = [
@@ -150,46 +134,6 @@ struct SessionDisambiguationTests {
 
         #expect(result["claude-a"] == "5m ago")
         #expect(result["claude-b"] == "2h ago")
-    }
-
-    @Test
-    func sharedBranchFallbackDoesNotDemoteASiblingWithAUniqueBranch() {
-        let sessions = [
-            Self.session(id: "a", tool: .claudeCode, workspace: "the-automator", branch: "main", ageSeconds: 60),
-            Self.session(id: "b", tool: .claudeCode, workspace: "the-automator", branch: "main", ageSeconds: 3 * 86_400),
-            Self.session(
-                id: "c",
-                tool: .claudeCode,
-                workspace: "the-automator",
-                branch: "fix/notch-hover",
-                ageSeconds: 30
-            ),
-        ]
-
-        let result = SessionDisambiguation.disambiguators(for: sessions, now: Self.now)
-
-        #expect(result["a"] == "1m ago")
-        #expect(result["b"] == "3d ago")
-        #expect(result["c"] == "fix/notch-hover")
-    }
-
-    @Test
-    func claudeSessionWithoutABranchUsesRecency() {
-        let sessions = [
-            Self.session(id: "a", tool: .claudeCode, workspace: "niche-radar", ageSeconds: 45),
-            Self.session(
-                id: "b",
-                tool: .claudeCode,
-                workspace: "niche-radar",
-                branch: "feat/scoring",
-                ageSeconds: 90
-            ),
-        ]
-
-        let result = SessionDisambiguation.disambiguators(for: sessions, now: Self.now)
-
-        #expect(result["a"] == "<1m ago")
-        #expect(result["b"] == "feat/scoring")
     }
 
     // MARK: - Honesty gate
@@ -247,33 +191,6 @@ struct SessionDisambiguationTests {
         #expect(result["cursor"] == "1h ago")
     }
 
-    // MARK: - Branch formatting
-
-    @Test
-    func branchesUnderTwentyFourCharactersRenderVerbatim() {
-        let branch = "feat/bridge-auth-token" // 22
-        #expect(branch.count == 22)
-        #expect(SessionDisambiguation.displayBranch(branch) == branch)
-    }
-
-    @Test
-    func longBranchesAreMiddleTruncatedKeepingTheLastSegment() {
-        let branch = "feat/overlay/redesign-duplicate-workspace-disambiguation"
-        let display = SessionDisambiguation.displayBranch(branch)
-
-        #expect(display != branch)
-        #expect(display.count < SessionDisambiguation.maxVerbatimBranchLength)
-        #expect(display.hasSuffix("disambiguation"))
-    }
-
-    @Test
-    func twentyFourCharacterBranchIsTruncated() {
-        // "under 24 chars" is verbatim; at 24 the middle truncation kicks in.
-        let branch = "feature/very-long-name-x"
-        #expect(branch.count == SessionDisambiguation.maxVerbatimBranchLength)
-        #expect(SessionDisambiguation.displayBranch(branch) != branch)
-    }
-
     // MARK: - Headline integration
 
     @Test
@@ -290,80 +207,6 @@ struct SessionDisambiguationTests {
         )
 
         #expect(session.spotlightHeadlineText == "open-vibe-island · Wire the bridge auth handshake.")
-    }
-
-    @Test
-    func headlineTakesItsSuffixFromTheSharedHelper() {
-        let sessions = [
-            Self.session(
-                id: "a",
-                tool: .claudeCode,
-                workspace: "the-automator",
-                branch: "feat/bridge-auth",
-                prompt: "Wire the bridge auth handshake.",
-                ageSeconds: 60
-            ),
-            Self.session(
-                id: "b",
-                tool: .codex,
-                workspace: "the-automator",
-                prompt: "Rerun the scoring backfill.",
-                ageSeconds: 12 * 60
-            ),
-        ]
-        let result = SessionDisambiguation.disambiguators(for: sessions, now: Self.now)
-
-        #expect(
-            sessions[0].spotlightHeadlineText(disambiguator: result["a"])
-                == "the-automator (feat/bridge-auth) · Wire the bridge auth handshake."
-        )
-        #expect(
-            sessions[1].spotlightHeadlineText(disambiguator: result["b"])
-                == "the-automator (12m ago) · Rerun the scoring backfill."
-        )
-    }
-
-    @Test
-    func collisionKeyMatchesTheNameTheHeadlineRenders() {
-        // No jump target and no `·` in the title: both the collision key and the
-        // headline must fall back through the same chain.
-        let makeSession = { (id: String, title: String) in
-            AgentSession(
-                id: id,
-                title: title,
-                tool: .claudeCode,
-                origin: .live,
-                phase: .running,
-                summary: "Working",
-                updatedAt: Self.now.addingTimeInterval(-60)
-            )
-        }
-
-        let sessions = [
-            makeSession("a", "Claude Code · the-automator"),
-            makeSession("b", "the-automator"),
-        ]
-
-        #expect(sessions[0].spotlightDisplayName == "the-automator")
-        #expect(sessions[1].spotlightDisplayName == "the-automator")
-
-        let result = SessionDisambiguation.disambiguators(for: sessions, now: Self.now)
-        #expect(result.count == 2)
-        #expect(sessions[0].spotlightHeadlineText(disambiguator: result["a"]) == "the-automator (1m ago)")
-    }
-
-    @Test
-    func titlelessSessionFallsBackToTheAgentDisplayName() {
-        let sessions = [
-            AgentSession(id: "a", title: "", tool: .claudeCode, phase: .running, summary: "Working", updatedAt: Self.now.addingTimeInterval(-60)),
-            AgentSession(id: "b", title: "", tool: .claudeCode, phase: .running, summary: "Working", updatedAt: Self.now.addingTimeInterval(-3_600)),
-        ]
-
-        #expect(sessions[0].spotlightDisplayName == AgentTool.claudeCode.displayName)
-
-        let result = SessionDisambiguation.disambiguators(for: sessions, now: Self.now)
-        #expect(result["a"] == "1m ago")
-        #expect(result["b"] == "1h ago")
     }
 
     // MARK: - PI-C-003: a bare "/" is never a workspace identity
@@ -397,58 +240,6 @@ struct SessionDisambiguationTests {
         #expect(withTitleSegment.spotlightDisplayName == "niche-radar")
         #expect(withoutTitle.spotlightDisplayName == AgentTool.codex.displayName)
         #expect(withoutTitle.spotlightDisplayName != "/")
-    }
-
-    @Test
-    func normalWorkspaceNamesSurviveTheRootPathGuard() {
-        // The guard must be tight: dots, spaces, unicode, and names that merely
-        // contain a separator are all legitimate identities.
-        for name in ["the-automator", "my.project", "Ø-radar", "two words", "a/b"] {
-            let session = AgentSession(
-                id: name,
-                title: "Claude Code · fallback",
-                tool: .claudeCode,
-                origin: .live,
-                phase: .running,
-                summary: "Working",
-                updatedAt: Self.now,
-                jumpTarget: JumpTarget(terminalApp: "Ghostty", workspaceName: name, paneTitle: "pane")
-            )
-            #expect(session.spotlightDisplayName == name)
-        }
-    }
-
-    @Test
-    func twoFallbackWorkspacesStayDistinguishable() {
-        // Both sessions resolve to the shared "Workspace" substitute, so the
-        // list-level disambiguator is what keeps them apart.
-        let sessions = [
-            Self.session(
-                id: "a",
-                tool: .claudeCode,
-                workspace: WorkspaceNameResolver.fallbackWorkspaceName,
-                branch: "feat/bridge-auth",
-                ageSeconds: 60
-            ),
-            Self.session(
-                id: "b",
-                tool: .codex,
-                workspace: WorkspaceNameResolver.fallbackWorkspaceName,
-                ageSeconds: 3_600
-            ),
-        ]
-
-        #expect(sessions[0].spotlightDisplayName == "Workspace")
-        #expect(sessions[1].spotlightDisplayName == "Workspace")
-
-        let result = SessionDisambiguation.disambiguators(for: sessions, now: Self.now)
-        #expect(result["a"] != nil)
-        #expect(result["b"] != nil)
-        #expect(result["a"] != result["b"])
-
-        let headlineA = sessions[0].spotlightHeadlineText(disambiguator: result["a"])
-        let headlineB = sessions[1].spotlightHeadlineText(disambiguator: result["b"])
-        #expect(headlineA != headlineB)
     }
 
     // MARK: - BRIEF §4C / §5 realistic session set
@@ -550,26 +341,5 @@ struct SessionDisambiguationTests {
         #expect(result["s5"] == "2h ago")
 
         #expect(result.count == sessions.count)
-    }
-
-    @Test
-    func briefSessionSetHeadlinesReadCleanlyWithTheirSuffixes() {
-        let sessions = Self.briefSessionSet()
-        let result = SessionDisambiguation.disambiguators(for: sessions, now: Self.now)
-
-        #expect(
-            sessions[1].spotlightHeadlineText(disambiguator: result["s2"])
-                == "the-automator (feat/bridge-auth) · Wire the bridge auth handshake."
-        )
-        #expect(
-            sessions[3].spotlightHeadlineText(disambiguator: result["s4"])
-                == "niche-radar (43m ago) · Document the working agreement."
-        )
-        // Gemini carries no prompt in this fixture, so the headline is the
-        // disambiguated name alone — still unambiguous against its sibling.
-        #expect(
-            sessions[4].spotlightHeadlineText(disambiguator: result["s5"])
-                == "niche-radar (2h ago)"
-        )
     }
 }

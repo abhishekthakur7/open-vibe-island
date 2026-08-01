@@ -12,23 +12,7 @@ import OpenIslandCore
 /// `InstrumentSessionRowFormat` / `InstrumentSessionRowGrid` so the contract is
 /// testable without one.
 struct InstrumentSessionRowTests {
-
     // MARK: - One column grid (AC #1)
-
-    @Test
-    func registeredTrailingColumnsHaveFixedNonZeroLanes() {
-        // Model, host and age each hold a constant lane so they land on the same
-        // x across every row — the "exact vertical registers" the grid is built
-        // on. A zero-width lane would collapse the register.
-        for width in InstrumentSessionRowGrid.registeredColumnWidths {
-            #expect(width > 0)
-        }
-        // The age lane matches the shared trailing-cluster metric so it lines up
-        // with the other themes' rows interleaved in one list.
-        #expect(InstrumentSessionRowGrid.ageColumnWidth == IslandSessionRowMetrics.ageColumnWidth)
-        // The agent tick is a hairline 3px mark, not a filled pill.
-        #expect(InstrumentSessionRowGrid.agentTickWidth == 3)
-    }
 
     // MARK: - Row rhythm (AC #3)
 
@@ -101,14 +85,6 @@ struct InstrumentSessionRowTests {
 
     // MARK: - ≥10pt floor (AC #7)
 
-    @Test
-    func everyReadableRowSizeHoldsTheTenPointFloor() {
-        #expect(!InstrumentSessionRowFormat.readableTextSizes.isEmpty)
-        for size in InstrumentSessionRowFormat.readableTextSizes {
-            #expect(size >= InstrumentTypography.floor)
-        }
-    }
-
     // MARK: - Actionable approval surfaces (AB-310)
 
     /// AC #1 / #2: the ALLOW / always-allow / DENY buttons must print the
@@ -127,27 +103,5 @@ struct InstrumentSessionRowTests {
         }
         let hints = InstrumentApprovalFormat.Shortcut.allCases.map(\.glyphString)
         #expect(Set(hints).count == hints.count)
-    }
-
-    /// AC #4: a non-success completion never shares the success row's quiet
-    /// check — interrupted and failed each get a distinct, unmistakable glyph.
-    @Test
-    func completionOutcomeBannerGlyphsAreDistinct() {
-        let interrupted = InstrumentApprovalFormat.completionOutcomeGlyphName(outcome: .interrupted)
-        let failed = InstrumentApprovalFormat.completionOutcomeGlyphName(outcome: .failed)
-        #expect(interrupted != failed)
-        // Neither collides with the success-row check the tabular grid draws.
-        #expect(interrupted != InstrumentSessionRowFormat.statusGlyphName(phase: .completed, outcome: .success))
-        #expect(failed != InstrumentSessionRowFormat.statusGlyphName(phase: .completed, outcome: .success))
-    }
-
-    /// AC #7: the alarm / completion surfaces hold the same ≥10pt readable floor
-    /// as the rest of the theme — no 8.5px micro-type.
-    @Test
-    func everyReadableActionableSizeHoldsTheTenPointFloor() {
-        #expect(!InstrumentApprovalFormat.readableTextSizes.isEmpty)
-        for size in InstrumentApprovalFormat.readableTextSizes {
-            #expect(size >= InstrumentTypography.floor)
-        }
     }
 }

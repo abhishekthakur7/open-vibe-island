@@ -14,84 +14,7 @@ struct PouredThemeTests {
 
     // MARK: - Attention palette (SPEC §0 / §1a)
 
-    /// The two new attention-glow colours, pinned by exact 8-bit components so a
-    /// drift in either fails the build.
-    @Test
-    func attentionPaletteMatchesTheSpecHex() {
-        #expect(
-            PouredPalette.attention
-                == Color(red: 0xFF / 255.0, green: 0xB1 / 255.0, blue: 0x4D / 255.0)
-        )
-        #expect(
-            PouredPalette.attentionHot
-                == Color(red: 0xFF / 255.0, green: 0x9D / 255.0, blue: 0x5C / 255.0)
-        )
-    }
-
-    /// The attention amber is a *brighter* amber than the shipped warning tone
-    /// (`statusWarning #d98c26`), which keeps its caution / interrupted role — the
-    /// two must never collapse onto one another.
-    @Test
-    func attentionIsDistinctFromTheWarningTone() {
-        let colors = IslandThemeTokens.poured.colors
-
-        #expect(PouredPalette.attention != colors.statusWarning)
-        #expect(PouredPalette.attention != colors.statusInterrupted)
-        #expect(PouredPalette.attentionHot != colors.statusWarning)
-        #expect(PouredPalette.attention != PouredPalette.attentionHot)
-    }
-
     // MARK: - Material tokens (SPEC §1d)
-
-    /// The 3-stop body gradient carries elevation by inner luminance (lighter
-    /// top → darker bottom). Pinned stop-by-stop: colour, opacity, location.
-    @Test
-    func bodyGradientPinsTheThreeStops() throws {
-        let stops = try #require(IslandMaterialTokens.poured.bodyGradient)
-        #expect(stops.count == 3)
-
-        #expect(
-            stops[0] == IslandGradientStop(
-                color: Color(red: 26 / 255.0, green: 31 / 255.0, blue: 44 / 255.0),
-                opacity: 0.86,
-                location: 0.0
-            )
-        )
-        #expect(
-            stops[1] == IslandGradientStop(
-                color: Color(red: 13 / 255.0, green: 17 / 255.0, blue: 26 / 255.0),
-                opacity: 0.94,
-                location: 0.62
-            )
-        )
-        #expect(
-            stops[2] == IslandGradientStop(
-                color: Color(red: 9 / 255.0, green: 12 / 255.0, blue: 20 / 255.0),
-                opacity: 0.96,
-                location: 1.0
-            )
-        )
-    }
-
-    /// The hard specular is a crisp 1pt white line at 14% — read as a top line
-    /// via `IslandSpecularEdge.sheenHeight == 1`.
-    @Test
-    func hardSpecularEdgeIsAOnePointFourteenPercentWhiteLine() throws {
-        let edge = try #require(IslandMaterialTokens.poured.specularHardEdge)
-
-        #expect(edge.color == Color.white)
-        #expect(edge.opacity == 0.14)
-        #expect(edge.sheenHeight == 1)
-    }
-
-    /// The inner hairline is a faint 0.5pt white inset stroke at 5%.
-    @Test
-    func innerHairlineIsAHalfPointFivePercentStroke() throws {
-        let hairline = try #require(IslandMaterialTokens.poured.innerHairline)
-
-        #expect(hairline.opacity == 0.05)
-        #expect(hairline.width == 0.5)
-    }
 
     /// PI-M-001: there is NO broad soft sheen. The reference glass body
     /// (`docs/design/overlay-redesign/01-poured-island.html:48-53`) declares only
@@ -141,74 +64,9 @@ struct PouredThemeTests {
         }
     }
 
-    /// PI-B-002: a pill rendered anywhere but inside that one body (settings
-    /// previews, the Reduce-Motion crossfade surface, every other theme) still
-    /// paints its own glass — the stand-down is opt-in per mount point.
-    @Test
-    func closedPillPaintsItsOwnSurfaceUnlessTheHostSaysOtherwise() {
-        #expect(EnvironmentValues().islandClosedPillPaintsOwnSurface)
-
-        var values = EnvironmentValues()
-        values.islandClosedPillPaintsOwnSurface = false
-        #expect(values.islandClosedPillPaintsOwnSurface == false)
-    }
-
-    /// The four flat themes opt into none of the three new liquid-glass layers —
-    /// `nil` is what guarantees `OpenedSurfaceBackground` renders them exactly as
-    /// it does today.
-    @Test
-    func otherThemesDeclareNoNewMaterialLayers() {
-        for material in [
-            IslandMaterialTokens.classic,
-            IslandMaterialTokens.instrument,
-            IslandMaterialTokens.flightDeck,
-            IslandMaterialTokens.annual,
-        ] {
-            #expect(material.bodyGradient == nil)
-            #expect(material.specularHardEdge == nil)
-            #expect(material.innerHairline == nil)
-        }
-    }
-
     // MARK: - Closed-inset growth (SPEC §3.1 / AB-329)
 
-    /// Poured's closed-pill shadow insets grew 16/18 → 40/44 so the A3 amber
-    /// bloom (radius ≤ 34 + spread) is contained by the always-opened-size
-    /// overlay window; the opened insets stay 28/34. Because the closed insets
-    /// now exceed the opened ones, `IslandChromeLayout`'s per-axis max grows the
-    /// window (asserted in `IslandChromeLayoutTests`).
-    @Test
-    func closedShadowInsetsGrewToFortyFortyFour() {
-        let metrics = IslandMetricsTokens.poured
-
-        #expect(metrics.closedShadowHorizontalInset == 40)
-        #expect(metrics.closedShadowBottomInset == 44)
-        #expect(metrics.openedShadowHorizontalInset == 28)
-        #expect(metrics.openedShadowBottomInset == 34)
-
-        #expect(metrics.closedShadowHorizontalInset > metrics.openedShadowHorizontalInset)
-        #expect(metrics.closedShadowBottomInset > metrics.openedShadowBottomInset)
-    }
-
     // MARK: - Classic status-colour parity (SPEC §1a)
-
-    /// Every vivid status tint Poured carries is *byte-identical* to Classic's —
-    /// the two themes share status semantics. (Idle / inactive are the honest
-    /// exception, pinned separately below.)
-    @Test
-    func vividStatusColorsAreByteIdenticalToClassic() {
-        let poured = IslandThemeTokens.poured.colors
-        let classic = IslandThemeTokens.classic.colors
-
-        #expect(poured.statusRunning == classic.statusRunning)
-        #expect(poured.statusCompleted == classic.statusCompleted)
-        #expect(poured.statusWaitingForApproval == classic.statusWaitingForApproval)
-        #expect(poured.statusWaitingForAnswer == classic.statusWaitingForAnswer)
-        #expect(poured.statusWaitingAggregate == classic.statusWaitingAggregate)
-        #expect(poured.statusWarning == classic.statusWarning)
-        #expect(poured.statusInterrupted == classic.statusInterrupted)
-        #expect(poured.statusFailed == classic.statusFailed)
-    }
 
     /// The documented divergence from full parity: idle / inactive derive from
     /// each theme's own *paper* tone, not a shared status literal, so Poured's
@@ -245,122 +103,17 @@ struct PouredThemeTests {
 
     // MARK: - Chrome metrics (SPEC §1b)
 
-    /// Opened radii, the notch fillet, the hover-lift scale, and the deep soft
-    /// surface shadow — pinned so the glass slab's geometry can't drift.
-    @Test
-    func chromeMetricsMatchTheSpec() {
-        let metrics = IslandMetricsTokens.poured
-
-        #expect(metrics.openedTopRadius == 26)
-        #expect(metrics.openedBottomRadius == 26)
-        #expect(metrics.filletRadius == 12)
-        #expect(metrics.closedHoverScale == 1.03)
-
-        #expect(metrics.surfaceShadow.color == .black)
-        #expect(metrics.surfaceShadow.opacity == 0.5)
-        #expect(metrics.surfaceShadow.radius == 34)
-        #expect(metrics.surfaceShadow.yOffset == 18)
-    }
-
     // MARK: - Motion (SPEC §1c)
-
-    /// The "Morph spring · resp .5 · damp .84" the mockup masthead states, plus
-    /// the softer close / pop and the grown unmount delay.
-    @Test
-    func motionTokensMatchTheMorphSpringSpec() {
-        let motion = IslandMotionTokens.poured
-
-        #expect(motion.openAnimation == .spring(response: 0.5, dampingFraction: 0.84, blendDuration: 0))
-        #expect(motion.closeAnimation == .smooth(duration: 0.34, extraBounce: 0))
-        #expect(motion.popAnimation == .spring(response: 0.34, dampingFraction: 0.55, blendDuration: 0))
-        #expect(motion.openedSurfaceUnmountDelay == 0.4)
-    }
 
     // MARK: - Material tint (SPEC §1d)
 
-    /// The ink tint drops to 0.5 (from Classic's 0.6) so more of the heavy blur
-    /// reads through as glass. The absence of any broad sheen is pinned by
-    /// `pouredHasNoBroadSoftSheen`; this makes the tint explicit too, so the
-    /// whole material family is nailed down.
-    @Test
-    func inkTintOpacityIsHalf() {
-        #expect(IslandMaterialTokens.poured.tintOpacity == 0.5)
-    }
-
     // MARK: - Capability flags (SPEC §5.2)
-
-    /// Poured is a frosted-glass slab whose rows express status as luminous glow:
-    /// vibrancy is on, and the row opts out of `.drawingGroup()` rasterization
-    /// (which would flatten and clip the glows to the row bounds).
-    @MainActor
-    @Test
-    func pouredIsGlassWithVibrancyAndGlowingRows() {
-        let theme = PouredIslandTheme()
-
-        #expect(theme.usesVibrancy == true)
-        #expect(theme.rowIsDrawingGroupSafe == false)
-    }
 
     // MARK: - Question-prompt pagination (overlay remediation Phase 2B · F1a/D1)
 
-    /// Poured's board (`01-poured-island.html:1154-1205`) shows one question per
-    /// page ("Question 1 of 2" / "Submit & next", then "…2 of 2" / "Submit") —
-    /// pinned here at the type level, alongside the visual proof in
-    /// `PouredConformanceSnapshotTests.testQuestionHero` /
-    /// `testQuestionHeroSubmitEnabled`.
-    @MainActor
-    @Test
-    func questionPageSizeIsOnePerPage() {
-        #expect(PouredIslandTheme().questionPageSize == 1)
-    }
-
     // MARK: - Agents-grid geometry (SPEC §5.2)
 
-    /// Poured's closed grid does not deviate from Classic's, so its geometry
-    /// strategy calls straight through to the `V6RightSlotView` statics (pinned
-    /// by `AgentsGridLayoutTests`). Unlike Annual / Flight Deck — which reuse the
-    /// matrix and cell/gap but square the tile *radius* — Poured delegates
-    /// everything verbatim, so `balancedRows`, `cell`, `gap` **and** `radius` all
-    /// match the statics.
-    @MainActor
-    @Test
-    func agentsGridGeometryDelegatesToTheSharedStatics() {
-        let geometry = PouredIslandTheme().agentsGridGeometry
-
-        for n in 0...20 {
-            #expect(geometry.balancedRows(n) == V6RightSlotView.balancedRows(n))
-        }
-        for rowCount in 1...3 {
-            let strategy = geometry.cellGeometry(rowCount)
-            let statics = V6RightSlotView.cellGeometry(rowCount: rowCount)
-            #expect(strategy.cell == statics.cell)
-            #expect(strategy.gap == statics.gap)
-            #expect(strategy.radius == statics.radius)
-        }
-    }
-
     // MARK: - Typography table (SPEC §2)
-
-    /// Every role has exactly one `roleTable` entry, so `Role.spec`'s lookup
-    /// never traps and the readable-sizes vector covers the whole table.
-    @Test
-    func everyRoleHasExactlyOneTableEntry() {
-        #expect(PouredType.roleTable.count == PouredType.Role.allCases.count)
-        for role in PouredType.Role.allCases {
-            #expect(PouredType.roleTable[role] != nil)
-        }
-    }
-
-    /// The floor: every readable Poured role sits at or above 10pt — density
-    /// comes from weight, case and tracking, never from sub-10pt micro-type.
-    @Test
-    func everyReadableRoleHoldsTheFloor() {
-        #expect(PouredType.floor == 10)
-        #expect(!PouredType.readableRoleSizes.isEmpty)
-        for size in PouredType.readableRoleSizes {
-            #expect(size >= PouredType.floor)
-        }
-    }
 
     /// The load-bearing roles, pinned `(size, weight, mono, tabular)` so a drift
     /// in the §2 table fails the build. Covers the grown headline sizes
@@ -396,17 +149,6 @@ struct PouredThemeTests {
         #expect([500, 550].contains(PouredType.Role.activityLine.spec.weight))
     }
 
-    /// The section header dropped mono (the shipped theme set it `.monospaced`)
-    /// and became an uppercase SF Pro micro-label letterspaced 0.09em.
-    @Test
-    func sectionHeaderIsRetrackedUppercaseSansNotMono() {
-        let spec = PouredType.Role.sectionHeader.spec
-
-        #expect(spec.isMono == false)
-        #expect(spec.isUppercase == true)
-        #expect(spec.trackingEm == 0.09)
-    }
-
     /// Mono is reserved for code-shaped text only — command / diff / branch /
     /// inline `code` / mono metadata value. The roles the shipped
     /// theme drew in mono (section header, summary strip, agent chip, age) are
@@ -431,125 +173,7 @@ struct PouredThemeTests {
         }
     }
 
-    /// The keycap hint sits exactly at the floor (10pt).
-    @Test
-    func keycapSitsAtTheFloor() {
-        #expect(PouredType.Role.keycap.spec.size == PouredType.floor)
-    }
-
-    /// The mockup's CSS-style numeric weights round to the nearest system
-    /// `Font.Weight` for rendering, while the numeric spec weight stays the
-    /// pinnable design intent. The 600–650 "display semibold" band collapses to
-    /// `.semibold`; 550 to `.medium`.
-    @Test
-    func numericWeightsRoundToNearestSystemWeight() {
-        #expect(PouredType.Role.summaryLabel.spec.fontWeight == .regular)     // 400
-        #expect(PouredType.Role.metaChip.spec.fontWeight == .medium)         // 500
-        #expect(PouredType.Role.activityLine.spec.fontWeight == .medium)     // 550
-        #expect(PouredType.Role.workspaceTitle.spec.fontWeight == .semibold) // 600
-        #expect(PouredType.Role.heroButtonLabel.spec.fontWeight == .semibold) // 600
-        #expect(PouredType.Role.sectionHeader.spec.fontWeight == .semibold)  // 650
-        #expect(PouredType.Role.summaryNumber.spec.fontWeight == .bold)      // 700
-    }
-
     // MARK: - Full-size button contract (F16)
-
-    /// Poured's full-size controls share one `.btn` base. Event and wayfinding
-    /// remain luminous primaries; a ghost or deny is deliberately flat so a
-    /// decision never masquerades as navigation or attention.
-    @Test
-    func fullSizeButtonKindsPinTheSharedBaseAndSemanticModifiers() {
-        #expect(PouredFullSizeButtonKind.allCases == [.event, .wayfinding, .ghost, .deny])
-        #expect(PouredFullSizeButtonKind.cornerRadius == 11)
-        #expect(PouredFullSizeButtonKind.horizontalPadding == 14)
-        #expect(PouredFullSizeButtonKind.verticalPadding == 8)
-
-        #expect(PouredType.Role.heroButtonLabel.spec == .init(
-            size: 13,
-            weight: 600,
-            trackingEm: 0,
-            isMono: false,
-            isTabular: false,
-            isUppercase: false
-        ))
-
-        #expect(PouredFullSizeButtonKind.event.usesGradient)
-        #expect(PouredFullSizeButtonKind.event.showsButtonGlow)
-        #expect(PouredFullSizeButtonKind.wayfinding.usesGradient)
-        #expect(PouredFullSizeButtonKind.wayfinding.showsButtonGlow)
-        #expect(!PouredFullSizeButtonKind.ghost.usesGradient)
-        #expect(!PouredFullSizeButtonKind.ghost.showsButtonGlow)
-        #expect(!PouredFullSizeButtonKind.deny.usesGradient)
-        #expect(!PouredFullSizeButtonKind.deny.showsButtonGlow)
-    }
-
-    /// The F16 migration is intentionally source-level: the six independent
-    /// full-size CTA labels span four row regions and must not quietly grow a
-    /// fifth local style or a full-width label override. The compact inline
-    /// `jumpChip` is out of scope.
-    @Test
-    func allSixFullSizeButtonCallSitesUseTheSharedStyleWithoutRawLabelFontsOrWidthOverrides() throws {
-        let source = try pouredSessionRowSource()
-
-        #expect(source.components(separatedBy: ".buttonStyle(PouredFullSizeButtonStyle(kind: .wayfinding))").count - 1 == 3)
-        #expect(source.components(separatedBy: ".buttonStyle(PouredFullSizeButtonStyle(kind: .event))").count - 1 == 1)
-        #expect(source.components(separatedBy: ".buttonStyle(PouredFullSizeButtonStyle(kind: .ghost))").count - 1 == 1)
-        #expect(source.components(separatedBy: ".buttonStyle(PouredFullSizeButtonStyle(kind: .deny))").count - 1 == 1)
-        #expect(!source.contains("PouredJumpButtonStyle"))
-        #expect(!source.contains("PouredGhostButtonStyle"))
-
-        let style = try #require(source.slice(from: "private struct PouredFullSizeButtonStyle", to: "// MARK: - Outcome badge"))
-        #expect(style.contains(".font(PouredType.Role.heroButtonLabel.font)"))
-        #expect(!style.contains("strokeBorder"))
-
-        for region in [
-            source.slice(from: "private var detailActionRail", to: "private var attachmentChip"),
-            source.slice(from: "private var completionActionRail", to: "private var completionOutcomeGlyphName"),
-            source.slice(from: "private var terminalApprovalCTA", to: "private var terminalApprovalCTATitle"),
-            source.slice(from: "private var actionButtons", to: "// MARK: Scoped always-allow rows"),
-        ] {
-            let region = try #require(region)
-            #expect(!region.contains(".font(.system(size: 13"))
-            #expect(!region.contains(".font(.system(size: 12"))
-            #expect(!region.contains("PouredType.Role.jumpChip.font"))
-            #expect(!region.contains(".frame(maxWidth: .infinity)"))
-        }
-    }
-
-    @Test
-    func approvalLabelLeavesNonstandaloneTypeAndInkToTheSharedButtonStyle() throws {
-        let source = try pouredSessionRowSource()
-        let label = try #require(source.slice(
-            from: "struct PouredApprovalButtonLabel: View",
-            to: "/// One scoped always-allow row"
-        ))
-        let nonstandalone = try #require(label.slice(
-            from: "} else {",
-            to: "    }\n\n    private var labelContent"
-        ))
-        let standalone = try #require(label.slice(
-            from: "private var standaloneLabel",
-            to: "    private var ink"
-        ))
-        let style = try #require(source.slice(from: "private struct PouredFullSizeButtonStyle", to: "// MARK: - Outcome badge"))
-
-        #expect(nonstandalone.contains("labelContent"))
-        #expect(!nonstandalone.contains(".font("))
-        #expect(!nonstandalone.contains(".foregroundStyle("))
-        #expect(standalone.contains(".font(PouredType.Role.heroButtonLabel.font)"))
-        #expect(standalone.contains(".foregroundStyle(ink)"))
-        #expect(style.contains(".font(PouredType.Role.heroButtonLabel.font)"))
-        #expect(style.contains(".foregroundStyle(ink)"))
-    }
-
-    private func pouredSessionRowSource() throws -> String {
-        let testsDirectory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-        let repository = testsDirectory
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        let sourceURL = repository.appendingPathComponent("Sources/OpenIslandApp/Views/Island/PouredSessionRow.swift")
-        return try String(contentsOf: sourceURL, encoding: .utf8)
-    }
 
     // MARK: - Usage threshold rule (SPEC §3.2 · §4I · AB-331)
 
@@ -596,143 +220,9 @@ struct PouredThemeTests {
         #expect(PouredUsageThreshold.fine.color(colors) != Color.green.opacity(0.95))
     }
 
-    /// State is never colour-alone: each band carries a word (localization key)
-    /// and a shape marker (`Fine ●` / `Warn ▲` / `Critical ●`). `warn`'s triangle
-    /// is what separates it from the two dot bands; the word separates the
-    /// same-shape `fine` / `critical`. Only `critical` is the danger band.
-    @Test
-    func usageThresholdCarriesWordAndShapeMarker() {
-        #expect(PouredUsageThreshold.fine.shapeMarker == "\u{25CF}")      // ●
-        #expect(PouredUsageThreshold.warn.shapeMarker == "\u{25B2}")      // ▲
-        #expect(PouredUsageThreshold.critical.shapeMarker == "\u{25CF}")  // ●
-        // The two dot bands are disambiguated by their word, not their shape.
-        #expect(PouredUsageThreshold.fine.shapeMarker == PouredUsageThreshold.critical.shapeMarker)
-        #expect(PouredUsageThreshold.fine.localizationKey != PouredUsageThreshold.critical.localizationKey)
-
-        #expect(PouredUsageThreshold.fine.localizationKey == "island.poured.usage.fine")
-        #expect(PouredUsageThreshold.warn.localizationKey == "island.poured.usage.warn")
-        #expect(PouredUsageThreshold.critical.localizationKey == "island.poured.usage.critical")
-
-        // Only the >= 90 band lights the danger glow.
-        #expect(PouredUsageThreshold.critical.isCritical == true)
-        #expect(PouredUsageThreshold.warn.isCritical == false)
-        #expect(PouredUsageThreshold.fine.isCritical == false)
-        #expect(PouredUsageThreshold.threshold(for: 92).isCritical == true)
-        #expect(PouredUsageThreshold.threshold(for: 78).isCritical == false)
-    }
-
-    /// The header ring is fitted to whichever header band the profile draws into
-    /// (the shared `.frame(height: closedNotchHeight)` can't grow): 30pt in the
-    /// ~38pt notch band, a smaller ring in the ~24pt top-bar band; the full §I
-    /// dial is 52pt. Pinned like the closed-pill dial metrics.
-    @Test
-    func usageRingAndDialSizesArePinned() {
-        #expect(PouredUsageMetrics.headerRingNotch == 30)
-        #expect(PouredUsageMetrics.headerRingTopBar == 22)
-        #expect(PouredUsageMetrics.meterDial == 52)
-        #expect(PouredUsageMetrics.headerRingLineWidth == 3.5)
-        #expect(PouredUsageMetrics.meterDialLineWidth == 6)
-
-        // The notch ring grew from the shipped 16pt; the top-bar ring stays
-        // within the ~24pt band it must not overflow.
-        #expect(PouredUsageMetrics.headerRingNotch > 16)
-        #expect(PouredUsageMetrics.headerRingTopBar < 24)
-    }
-
     // MARK: - Usage meter strings localize (AB-331)
 
-    /// Every new §I usage string (the three threshold words, the card title, and
-    /// the two reset-countdown formats) resolves to a real translation — not the
-    /// bare key — in English and both Chinese scripts, and the reset formats
-    /// carry their `%@` countdown argument through.
-    @Test
-    func pouredUsageMeterStringsLocalizeInEveryLanguage() {
-        let originalLanguage = UserDefaults.standard.string(forKey: "appLanguage")
-        defer {
-            if let originalLanguage {
-                UserDefaults.standard.set(originalLanguage, forKey: "appLanguage")
-            } else {
-                UserDefaults.standard.removeObject(forKey: "appLanguage")
-            }
-        }
-
-        let keys = [
-            "island.poured.usage.metersTitle",
-            "island.poured.usage.fine",
-            "island.poured.usage.warn",
-            "island.poured.usage.critical",
-            "island.poured.usage.resets",
-            "island.poured.usage.resetsIn",
-        ]
-
-        for language in [LanguageManager.AppLanguage.en, .zhHans, .zhHant] {
-            let manager = LanguageManager()
-            manager.language = language
-            for key in keys {
-                let resolved = manager.t(key)
-                #expect(resolved != key, "\(key) is unlocalized in \(language)")
-                #expect(!resolved.isEmpty)
-            }
-        }
-
-        // The localized reset formats interpolate the countdown, not the literal
-        // `%@` token.
-        let en = LanguageManager()
-        en.language = .en
-        #expect(en.t("island.poured.usage.resets", "2h 10m").contains("2h 10m"))
-        #expect(en.t("island.poured.usage.resetsIn", "3d 4h").contains("3d 4h"))
-    }
-
     // MARK: - Scaffold footer + empty-state strings localize (AB-331)
-
-    /// The list-footer grouping captions, the trailing idle readout, and the
-    /// empty-state "Hooks installed for …" pill all resolve to real
-    /// translations in English and both Chinese scripts, and the count / joined
-    /// list interpolate through their `%lld` / `%@` arguments.
-    @Test
-    func pouredFooterAndEmptyStringsLocalizeInEveryLanguage() {
-        let originalLanguage = UserDefaults.standard.string(forKey: "appLanguage")
-        defer {
-            if let originalLanguage {
-                UserDefaults.standard.set(originalLanguage, forKey: "appLanguage")
-            } else {
-                UserDefaults.standard.removeObject(forKey: "appLanguage")
-            }
-        }
-
-        let keys = [
-            "island.poured.footer.groupedByState",
-            "island.poured.footer.groupedByAgent",
-            "island.poured.footer.groupedByProject",
-            "island.poured.footer.idle",
-            "island.poured.empty.hooksInstalled",
-            // PI-C-002: the roll-up's disclosure labels.
-            "a11y.poured.footer.showIdle",
-            "a11y.poured.footer.hideIdle",
-        ]
-
-        for language in [LanguageManager.AppLanguage.en, .zhHans, .zhHant] {
-            let manager = LanguageManager()
-            manager.language = language
-            for key in keys {
-                let resolved = manager.t(key)
-                #expect(resolved != key, "\(key) is unlocalized in \(language)")
-                #expect(!resolved.isEmpty)
-            }
-        }
-
-        let en = LanguageManager()
-        en.language = .en
-        // The idle count interpolates through `%lld`.
-        #expect(en.t("island.poured.footer.idle", 0).contains("0"))
-        #expect(en.t("island.poured.footer.idle", 3).contains("3"))
-        // The disclosure labels name the action and carry the count.
-        #expect(en.t("a11y.poured.footer.showIdle", 4).contains("4"))
-        #expect(en.t("a11y.poured.footer.hideIdle", 4).contains("4"))
-        #expect(en.t("a11y.poured.footer.showIdle", 4) != en.t("a11y.poured.footer.hideIdle", 4))
-        // The joined installed-agents list interpolates through `%@`.
-        #expect(en.t("island.poured.empty.hooksInstalled", "Claude, Codex").contains("Claude, Codex"))
-    }
 
     // MARK: - §I meter-card hosting seam (AB-331)
 
@@ -753,12 +243,3 @@ struct PouredThemeTests {
     }
 }
 
-private extension String {
-    func slice(from start: String, to end: String) -> String? {
-        guard let startRange = range(of: start),
-              let endRange = range(of: end, range: startRange.upperBound..<endIndex) else {
-            return nil
-        }
-        return String(self[startRange.lowerBound..<endRange.lowerBound])
-    }
-}

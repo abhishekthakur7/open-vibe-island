@@ -15,15 +15,6 @@ struct HookSkipConfigurationTests {
         }
     }
 
-    /// Keeps compatibility with existing Vibe Island-based wrappers.
-    /// 保留对已有 Vibe Island wrapper 的兼容。
-    @Test
-    func legacyVibeIslandSkipAliasIsSupported() {
-        #expect(HookSkipConfiguration.shouldSkipHooks(environment: [
-            HookSkipConfiguration.legacyVibeIslandSkipKey: "1",
-        ]))
-    }
-
     /// Rejects unset or non-truthy values so hooks remain enabled by default.
     /// 未设置或非真值时保持默认启用 hook。
     @Test

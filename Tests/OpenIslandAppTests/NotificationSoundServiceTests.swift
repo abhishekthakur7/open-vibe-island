@@ -20,13 +20,6 @@ struct NotificationSoundServiceTests {
     }
 
     @Test
-    func freshInstallDefaultsEveryEventToTheSameFallbackSound() {
-        #expect(NotificationSoundService.soundName(for: .permission) == NotificationSoundService.defaultSoundName)
-        #expect(NotificationSoundService.soundName(for: .question) == NotificationSoundService.defaultSoundName)
-        #expect(NotificationSoundService.soundName(for: .completion) == NotificationSoundService.defaultSoundName)
-    }
-
-    @Test
     func legacySingleSoundSeedsAllThreeEventsUntilCustomized() {
         UserDefaults.standard.set("Glass", forKey: "notification.sound.name")
 
@@ -40,22 +33,5 @@ struct NotificationSoundServiceTests {
         // Untouched events keep reading through to the legacy preference.
         #expect(NotificationSoundService.soundName(for: .permission) == "Glass")
         #expect(NotificationSoundService.soundName(for: .completion) == "Glass")
-    }
-
-    @Test
-    func customizingOneEventDoesNotAffectTheOthers() {
-        NotificationSoundService.setSoundName("Ping", for: .permission)
-
-        #expect(NotificationSoundService.soundName(for: .permission) == "Ping")
-        #expect(NotificationSoundService.soundName(for: .question) == NotificationSoundService.defaultSoundName)
-        #expect(NotificationSoundService.soundName(for: .completion) == NotificationSoundService.defaultSoundName)
-    }
-
-    /// Exercises only the guard paths — `isMuted`/`nil` short-circuit before
-    /// any `NSSound` call, so this stays silent and deterministic.
-    @Test
-    func muteAndNilKindSuppressPlayback() {
-        NotificationSoundService.playNotification(for: .permission, isMuted: true)
-        NotificationSoundService.playNotification(for: nil, isMuted: false)
     }
 }

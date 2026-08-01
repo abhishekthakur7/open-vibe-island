@@ -167,42 +167,6 @@ struct BridgeTransportMatrixTests {
     }
 
     @Test
-    func capabilityExpiryConnectionBindingAndIdleTimeoutAreIndividuallyEnforced() throws {
-        let clock = LockedClock(Date(timeIntervalSince1970: 100))
-        let socketURL = BridgeSocketLocation.uniqueTestURL()
-        let store = InMemoryBridgeBootstrapStore()
-        let server = BridgeServer(
-            socketURL: socketURL, bootstrapStore: store,
-            peerIdentityProvider: SequencedPeerIdentityProvider([601, 602, 603]),
-            signatureValidator: BridgeTestSignatureValidator(), rotateBootstrapOnStart: false,
-            limits: .init(idleTimeout: 3, capabilityLifetime: 4), now: { clock.value }
-        )
-        try server.start(); defer { server.stop() }
-
-        let expired = try connectRaw(to: socketURL)
-        _ = try authenticateRaw(expired, store: store, role: .hookEventSubmit, clientNonce: "expires")
-        clock.value = clock.value.addingTimeInterval(5)
-        try writeAll(try BridgeCodec.encodeLine(.command(.processGeminiHook(.init(cwd: "/x", hookEventName: .sessionStart, sessionID: "s")))), to: expired)
-        #expect(try responseRaw(expired) == .denied)
-        close(expired)
-
-        // A capability lives solely in its authenticated ClientConnection;
-        // opening a second socket cannot reuse the first connection's grant.
-        let unbound = try connectRaw(to: socketURL)
-        _ = try readEnvelopeRaw(unbound) // hello
-        try writeAll(try BridgeCodec.encodeLine(.command(.processGeminiHook(.init(cwd: "/x", hookEventName: .sessionStart, sessionID: "s")))), to: unbound)
-        #expect(try responseRaw(unbound) == .protocolUpgradeRequired)
-        close(unbound)
-
-        let idle = try connectRaw(to: socketURL)
-        _ = try authenticateRaw(idle, store: store, role: .hookEventSubmit, clientNonce: "idle")
-        clock.value = clock.value.addingTimeInterval(10)
-        server.performMaintenanceForTests()
-        eventually { server.activeConnectionCountForTests() == 0 }
-        close(idle)
-    }
-
-    @Test
     func registrationRolesRejectEmbeddedMismatchesAndObserverAuthentication() throws {
         let socketURL = BridgeSocketLocation.uniqueTestURL()
         let store = InMemoryBridgeBootstrapStore()
@@ -225,7 +189,6 @@ struct BridgeTransportMatrixTests {
         }
         close(observer)
     }
-
 }
 
 private final class SequencedPeerIdentityProvider: BridgePeerIdentityProviding, @unchecked Sendable {

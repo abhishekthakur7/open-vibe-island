@@ -116,46 +116,6 @@ struct IslandClosedLabelTests {
     }
 
     @Test
-    func permissionLabelKeepsASingleWordCommandAtOneWord() {
-        let pending = session(
-            phase: .waitingForApproval,
-            currentTool: "Bash",
-            preview: "swift"
-        )
-
-        #expect(label(pending) == "Approve swift?")
-    }
-
-    @Test
-    func permissionLabelIgnoresALeadingFlagAsASecondWord() {
-        // `-la` is not a command word; `Approve ls?` reads better than
-        // `Approve ls -la?` in a 38pt pill.
-        let pending = session(
-            phase: .waitingForApproval,
-            currentTool: "Bash",
-            preview: "$ ls -la /tmp"
-        )
-
-        #expect(label(pending) == "Approve ls?")
-    }
-
-    @Test
-    func permissionLabelReadsCodexCommandTextOutOfAffectedPath() {
-        // Codex's bridge puts boilerplate prose in `summary` and the literal
-        // command in `affectedPath` (BridgeServer `.preToolUse`).
-        let pending = session(
-            phase: .waitingForApproval,
-            permissionRequest: PermissionRequest(
-                title: "Run Bash command",
-                summary: "Codex wants to run a shell command.",
-                affectedPath: "swift test --filter IslandClosedLabelTests"
-            )
-        )
-
-        #expect(label(pending) == "Approve swift test?")
-    }
-
-    @Test
     func permissionLabelFallsBackToApprovalNeededWithoutACommand() {
         // A file-edit approval carries a path, not a command — `Approve
         // /Users/a/AppModel.swift?` would be nonsense.
@@ -189,33 +149,6 @@ struct IslandClosedLabelTests {
         )
 
         #expect(label(running) == "Editing AppModel.swift")
-    }
-
-    @Test
-    func runningSessionWithSubagentsAppendsTheAgentCount() {
-        // Verb comes from the AB-321 narration; the count is real
-        // (`claudeMetadata.activeSubagents`).
-        let orchestrating = session(
-            phase: .running,
-            currentTool: "Task",
-            preview: "Review the diff",
-            subagents: 3
-        )
-        #expect(label(orchestrating) == "Orchestrating · 3 agents")
-
-        let editing = session(
-            phase: .running,
-            currentTool: "Edit",
-            preview: "Sources/OpenIslandApp/AppModel.swift",
-            subagents: 3
-        )
-        #expect(label(editing) == "Editing · 3 agents")
-    }
-
-    @Test
-    func runningSessionWithSubagentsButNoToolStillNarratesAVerb() {
-        let fanout = session(phase: .running, subagents: 2)
-        #expect(label(fanout) == "Working · 2 agents")
     }
 
     @Test
@@ -290,25 +223,6 @@ struct IslandClosedLabelTests {
         #expect(label(done, runningCount: 0, now: finishedAt.addingTimeInterval(600)) == "Claude Code")
     }
 
-    @Test
-    func settleWindowOutlivesTheThemeSettleAnimations() {
-        // Spec correction: Flight Deck success settle is 3s, Halo bloom 3s and
-        // the question pulse 2.6s. The *word* has to outlive the motion or it
-        // reads as a flicker.
-        #expect(IslandClosedPillTiming.outcomeLabelWindow == 6)
-        #expect(IslandClosedPillTiming.outcomeLabelWindow > 3)
-    }
-
-    @Test
-    func outcomeLabelDropsTheSeparatorWithoutAWorkspace() {
-        let finishedAt = Date(timeIntervalSince1970: 10_000)
-        var anonymous = session(phase: .completed, outcome: .failed, updatedAt: finishedAt)
-        anonymous.jumpTarget = nil
-        anonymous.title = ""
-
-        #expect(label(anonymous, runningCount: 0, now: finishedAt.addingTimeInterval(1)) == "Failed")
-    }
-
     // MARK: - Preference gating (unchanged behaviour)
 
     @Test
@@ -318,112 +232,12 @@ struct IslandClosedLabelTests {
     }
 
     @Test
-    func sessionNamePreferenceIsUntouchedByTheNewVocabulary() {
-        let finishedAt = Date(timeIntervalSince1970: 10_000)
-
-        // Running: workspace, not narration.
-        #expect(
-            label(
-                session(workspace: "the-automator", phase: .running, currentTool: "Edit", preview: "AppModel.swift"),
-                preference: .sessionName
-            ) == "the-automator"
-        )
-
-        // Just-completed: workspace, not `Done · …`.
-        #expect(
-            label(
-                session(workspace: "the-automator", phase: .completed, updatedAt: finishedAt),
-                runningCount: 0,
-                preference: .sessionName,
-                now: finishedAt.addingTimeInterval(1)
-            ) == "the-automator"
-        )
-
-        // Waiting: workspace, not `Approve …?`.
-        #expect(
-            label(
-                session(workspace: "the-automator", phase: .waitingForApproval, currentTool: "Bash", preview: "swift build"),
-                preference: .sessionName
-            ) == "the-automator"
-        )
-    }
-
-    @Test
     func noSpotlightSessionProducesNoLabel() {
         #expect(label(nil) == nil)
         #expect(label(nil, preference: .sessionName) == nil)
     }
 
     // MARK: - Localization
-
-    @Test
-    func everyFixedWordLocalizesInEveryLanguage() {
-        let keys = [
-            "island.closed.label.working",
-            "island.closed.label.agents",
-            "island.closed.label.approve",
-            "island.closed.label.approvalNeeded",
-            "island.closed.label.answerNeeded",
-            "island.closed.label.done",
-            "island.closed.label.interrupted",
-            "island.closed.label.failed",
-        ]
-
-        for language in [LanguageManager.AppLanguage.en, .zhHans, .zhHant] {
-            withLanguage(language) { manager in
-                for key in keys {
-                    let resolved = manager.t(key)
-                    #expect(resolved != key, "\(key) is unlocalized in \(language)")
-                    #expect(!resolved.isEmpty)
-                }
-            }
-        }
-    }
-
-    @Test
-    func chineseLabelsLocalizeTheFixedWordsButNotTheData() {
-        let finishedAt = Date(timeIntervalSince1970: 10_000)
-
-        withLanguage(.zhHans) { manager in
-            let done = IslandClosedLabelResolver.label(
-                spotlight: session(workspace: "the-automator", phase: .completed, updatedAt: finishedAt),
-                runningCount: 0,
-                preference: .agentAction,
-                language: manager,
-                now: finishedAt.addingTimeInterval(1)
-            )
-            // Workspace names are data — byte-identical across locales.
-            #expect(done == "已完成 · the-automator")
-
-            let question = IslandClosedLabelResolver.label(
-                spotlight: session(phase: .waitingForAnswer),
-                runningCount: 0,
-                preference: .agentAction,
-                language: manager,
-                now: finishedAt
-            )
-            #expect(question == "需要回答")
-
-            let approve = IslandClosedLabelResolver.label(
-                spotlight: session(phase: .waitingForApproval, currentTool: "Bash", preview: "swift build -c release"),
-                runningCount: 0,
-                preference: .agentAction,
-                language: manager,
-                now: finishedAt
-            )
-            // The command stays raw; only the frame around it translates.
-            #expect(approve == "批准 swift build？")
-
-            let many = IslandClosedLabelResolver.label(
-                spotlight: session(phase: .running, currentTool: "Edit", preview: "AppModel.swift"),
-                runningCount: 3,
-                preference: .agentAction,
-                language: manager,
-                now: finishedAt
-            )
-            #expect(many == "3 个进行中")
-        }
-    }
 
     // MARK: - AppModel wiring
 

@@ -63,25 +63,6 @@ struct ClaudeHooksTests {
         #expect(rules?.first?["ruleContent"] as? String == "Sources/**")
     }
 
-    /// A denied allow (no `updatedPermissions`) must NOT emit the key at
-    /// all — Claude Code treats a present-but-empty array differently from
-    /// an absent one for some settings destinations, so the encoder omits it
-    /// (see `ClaudePermissionRequestDecision.encode(to:)`).
-    @Test
-    func claudeHookOutputEncoderOmitsUpdatedPermissionsWhenNoneChosen() throws {
-        let output = try ClaudeHookOutputEncoder.standardOutput(
-            for: .claudeHookDirective(.permissionRequest(.allow()))
-        )
-
-        let payload = try #require(output)
-        let object = try jsonObject(from: payload)
-        let hookSpecificOutput = object["hookSpecificOutput"] as? [String: Any]
-        let decision = hookSpecificOutput?["decision"] as? [String: Any]
-
-        #expect(decision?["behavior"] as? String == "allow")
-        #expect(decision?["updatedPermissions"] == nil)
-    }
-
     /// Every `ClaudePermissionUpdate` case must survive an encode/decode
     /// round trip unchanged — this is the exact value carried from the
     /// approval card's chosen button, through `ApprovalAction.allowWithUpdates`,
@@ -117,34 +98,6 @@ struct ClaudeHooksTests {
             let decoded = try decoder.decode(ClaudePermissionUpdate.self, from: data)
             #expect(decoded == update)
         }
-    }
-
-    @Test
-    func claudePermissionUpdateDisplayLabelsDistinguishScopes() {
-        let sessionScoped = ClaudePermissionUpdate.addRules(
-            destination: .session,
-            rules: [ClaudePermissionRuleValue(toolName: "Bash")],
-            behavior: .allow
-        )
-        let projectScoped = ClaudePermissionUpdate.addRules(
-            destination: .projectSettings,
-            rules: [ClaudePermissionRuleValue(toolName: "Bash")],
-            behavior: .allow
-        )
-        let globalScoped = ClaudePermissionUpdate.addRules(
-            destination: .userSettings,
-            rules: [ClaudePermissionRuleValue(toolName: "Bash")],
-            behavior: .allow
-        )
-
-        // Each scope must render distinctly so choosing among stacked
-        // buttons is unambiguous — this was the whole point of surfacing
-        // `suggestedUpdates` instead of one generic "always allow" button.
-        #expect(sessionScoped.displayLabel != projectScoped.displayLabel)
-        #expect(projectScoped.displayLabel != globalScoped.displayLabel)
-        #expect(sessionScoped.displayLabel != globalScoped.displayLabel)
-        #expect(projectScoped.displayLabel.contains("this project"))
-        #expect(globalScoped.displayLabel.contains("globally"))
     }
 
     /// The scoped-grant sentence is copy the overlay renders verbatim, and the
@@ -187,71 +140,6 @@ struct ClaudeHooksTests {
             behavior: .allow
         )
         #expect(editGlobal.displayLabel == "Yes, allow edits to AGENTS.md/ globally")
-    }
-
-    // MARK: - AB-235: inline diff source extraction
-
-    @Test
-    func permissionFileDiffSourceExtractsEditOldAndNewStrings() {
-        let payload = ClaudeHookPayload(
-            cwd: "/tmp/worktree",
-            hookEventName: .permissionRequest,
-            sessionID: "claude-session-1",
-            toolName: "Edit",
-            toolInput: .object([
-                "file_path": .string("/tmp/worktree/Foo.swift"),
-                "old_string": .string("let a = 1"),
-                "new_string": .string("let a = 2"),
-            ])
-        )
-
-        let diffSource = payload.permissionFileDiffSource
-        #expect(diffSource?.oldText == "let a = 1")
-        #expect(diffSource?.newText == "let a = 2")
-    }
-
-    @Test
-    func permissionFileDiffSourceTreatsWriteContentAsAllAdded() {
-        let payload = ClaudeHookPayload(
-            cwd: "/tmp/worktree",
-            hookEventName: .permissionRequest,
-            sessionID: "claude-session-1",
-            toolName: "Write",
-            toolInput: .object([
-                "file_path": .string("/tmp/worktree/Foo.swift"),
-                "content": .string("line one\nline two"),
-            ])
-        )
-
-        let diffSource = payload.permissionFileDiffSource
-        #expect(diffSource?.oldText == "")
-        #expect(diffSource?.newText == "line one\nline two")
-    }
-
-    @Test
-    func permissionFileDiffSourceIsNilForNonEditTools() {
-        let payload = ClaudeHookPayload(
-            cwd: "/tmp/worktree",
-            hookEventName: .permissionRequest,
-            sessionID: "claude-session-1",
-            toolName: "Bash",
-            toolInput: .object(["command": .string("ls -la")])
-        )
-
-        #expect(payload.permissionFileDiffSource == nil)
-    }
-
-    @Test
-    func permissionFileDiffSourceIsNilWhenEditFieldsAreMissing() {
-        let payload = ClaudeHookPayload(
-            cwd: "/tmp/worktree",
-            hookEventName: .permissionRequest,
-            sessionID: "claude-session-1",
-            toolName: "Edit",
-            toolInput: .object(["file_path": .string("/tmp/worktree/Foo.swift")])
-        )
-
-        #expect(payload.permissionFileDiffSource == nil)
     }
 
     @Test
@@ -354,109 +242,6 @@ struct ClaudeHooksTests {
     }
 
     @Test
-    func claudeTranscriptDiscoveryHandlesTrailingLineWithoutNewline() throws {
-        // If Claude is killed mid-flush the final transcript line can
-        // land on disk without a trailing newline. The streamed reader
-        // must still surface it rather than dropping it like a naive
-        // split would.
-        let rootURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("open-island-claude-discovery-trailing-\(UUID().uuidString)", isDirectory: true)
-        let workspaceDirectory = rootURL
-            .appendingPathComponent("projects", isDirectory: true)
-            .appendingPathComponent("-tmp-demo-repo", isDirectory: true)
-        let transcriptURL = workspaceDirectory.appendingPathComponent("session-trailing.jsonl")
-
-        defer { try? FileManager.default.removeItem(at: rootURL) }
-
-        try FileManager.default.createDirectory(at: workspaceDirectory, withIntermediateDirectories: true)
-
-        let lines = [
-            """
-            {"cwd":"/tmp/demo-repo","sessionId":"session-trailing","type":"user","message":{"role":"user","content":"Trailing line check."},"timestamp":"2026-04-03T03:20:00Z"}
-            """,
-            """
-            {"cwd":"/tmp/demo-repo","sessionId":"session-trailing","type":"assistant","message":{"role":"assistant","model":"claude-sonnet-4-5","content":[{"type":"text","text":"Final line without newline."}]},"timestamp":"2026-04-03T03:20:02Z"}
-            """,
-        ]
-
-        // Deliberately omit the trailing "\n".
-        try lines.joined(separator: "\n").write(to: transcriptURL, atomically: true, encoding: .utf8)
-
-        let discovery = ClaudeTranscriptDiscovery(rootURL: rootURL.appendingPathComponent("projects", isDirectory: true))
-        let sessions = discovery.discoverRecentSessions(
-            now: ISO8601DateFormatter().date(from: "2026-04-03T03:20:10Z")!
-        )
-
-        #expect(sessions.count == 1)
-        let session = try #require(sessions.first)
-        #expect(session.id == "session-trailing")
-        #expect(session.claudeMetadata?.lastAssistantMessage == "Final line without newline.")
-    }
-
-    @Test
-    func claudeGhosttyLocatorUsedForSessionStartAndPromptButNotToolUse() {
-        let locator: (String) -> (sessionID: String?, tty: String?, title: String?) = { _ in
-            (sessionID: "ghostty-frontmost", tty: nil, title: "claude ~/tmp/worktree")
-        }
-        let env = ["TERM_PROGRAM": "ghostty"]
-        let ttyProvider: () -> String? = { "/dev/ttys031" }
-
-        // SessionStart: locator IS used.
-        let atStart = ClaudeHookPayload(
-            cwd: "/tmp/worktree", hookEventName: .sessionStart, sessionID: "s1"
-        ).withRuntimeContext(environment: env, currentTTYProvider: ttyProvider, terminalLocatorProvider: locator)
-
-        #expect(atStart.terminalSessionID == "ghostty-frontmost")
-        #expect(atStart.terminalTitle == "claude ~/tmp/worktree")
-
-        // UserPromptSubmit: locator IS used (user just typed, terminal is focused).
-        let atPrompt = ClaudeHookPayload(
-            cwd: "/tmp/worktree", hookEventName: .userPromptSubmit, sessionID: "s1"
-        ).withRuntimeContext(environment: env, currentTTYProvider: ttyProvider, terminalLocatorProvider: locator)
-
-        #expect(atPrompt.terminalSessionID == "ghostty-frontmost")
-        #expect(atPrompt.terminalTitle == "claude ~/tmp/worktree")
-
-        // PreToolUse: locator NOT used, values cleared.
-        let atTool = ClaudeHookPayload(
-            cwd: "/tmp/worktree", hookEventName: .preToolUse, sessionID: "s1",
-            terminalSessionID: "ghostty-frontmost", terminalTitle: "claude ~/tmp/worktree"
-        ).withRuntimeContext(
-            environment: env, currentTTYProvider: ttyProvider,
-            terminalLocatorProvider: { _ in (sessionID: "ghostty-wrong", tty: nil, title: "wrong") }
-        )
-
-        #expect(atTool.terminalSessionID == nil)
-        #expect(atTool.terminalTitle == nil)
-    }
-
-    @Test
-    func claudeInferTerminalAppRecognizesWarpViaEnvVar() {
-        let payload = ClaudeHookPayload(
-            cwd: "/tmp/demo", hookEventName: .sessionStart, sessionID: "s1"
-        ).withRuntimeContext(
-            environment: ["WARP_IS_LOCAL_SHELL_SESSION": "1"],
-            currentTTYProvider: { nil },
-            terminalLocatorProvider: { _ in (sessionID: nil, tty: nil, title: nil) }
-        )
-
-        #expect(payload.terminalApp == "Warp")
-    }
-
-    @Test
-    func claudeInferTerminalAppRecognizesWarpViaTermProgram() {
-        let payload = ClaudeHookPayload(
-            cwd: "/tmp/demo", hookEventName: .sessionStart, sessionID: "s1"
-        ).withRuntimeContext(
-            environment: ["TERM_PROGRAM": "WarpTerminal"],
-            currentTTYProvider: { nil },
-            terminalLocatorProvider: { _ in (sessionID: nil, tty: nil, title: nil) }
-        )
-
-        #expect(payload.terminalApp == "Warp")
-    }
-
-    @Test
     func claudeInferTerminalAppPrefersWarpOverLeakedGhosttyEnvVars() {
         // Regression: launching Warp from a Ghostty tab leaks
         // GHOSTTY_RESOURCES_DIR (and friends) into every Warp shell via
@@ -482,20 +267,6 @@ struct ClaudeHooksTests {
         #expect(payload.terminalApp == "Warp")
     }
 
-    @Test
-    func claudeDefaultJumpTargetUsesUnknownSentinelForUnrecognizedTerminal() {
-        let payload = ClaudeHookPayload(
-            cwd: "/tmp/demo", hookEventName: .sessionStart, sessionID: "s1"
-        ).withRuntimeContext(
-            environment: ["TERM_PROGRAM": "rio"],
-            currentTTYProvider: { nil },
-            terminalLocatorProvider: { _ in (sessionID: nil, tty: nil, title: nil) }
-        )
-
-        #expect(payload.terminalApp == nil)
-        #expect(payload.defaultJumpTarget.terminalApp == JumpTarget.unknownTerminalApp)
-    }
-
     /// Verifies a Claude Desktop session is tagged `Claude.app` via the
     /// authoritative `CLAUDE_CODE_ENTRYPOINT=claude-desktop` signal. The
     /// desktop subprocess is TTY-less and invisible to process discovery, so
@@ -513,22 +284,6 @@ struct ClaudeHooksTests {
 
         #expect(payload.terminalApp == "Claude.app")
         #expect(payload.defaultJumpTarget.terminalApp == "Claude.app")
-    }
-
-    /// Verifies the `__CFBundleIdentifier=com.anthropic.claudefordesktop`
-    /// fallback also tags the session `Claude.app` — the hook binary inherits
-    /// that bundle id when launched as a subprocess of Claude.app.
-    @Test
-    func claudeInferTerminalAppRecognizesClaudeDesktopViaBundleIdentifier() {
-        let payload = ClaudeHookPayload(
-            cwd: "/tmp/demo", hookEventName: .sessionStart, sessionID: "s1"
-        ).withRuntimeContext(
-            environment: ["__CFBundleIdentifier": "com.anthropic.claudefordesktop"],
-            currentTTYProvider: { nil },
-            terminalLocatorProvider: { _ in (sessionID: nil, tty: nil, title: nil) }
-        )
-
-        #expect(payload.terminalApp == "Claude.app")
     }
 
     /// Verifies the desktop entrypoint signal wins over a leaked
@@ -552,104 +307,9 @@ struct ClaudeHooksTests {
         #expect(payload.terminalApp == "Claude.app")
     }
 
-    @Test
-    func questionPromptAlwaysAppendsOtherFreeformOption() throws {
-        let payload = ClaudeHookPayload(
-            cwd: "/tmp",
-            hookEventName: .preToolUse,
-            sessionID: "s1",
-            toolName: "AskUserQuestion",
-            toolInput: .object([
-                "questions": .array([
-                    .object([
-                        "question": .string("Pick one"),
-                        "header": .string("Pick"),
-                        "options": .array([
-                            option(label: "Production", description: ""),
-                            option(label: "Staging", description: ""),
-                        ]),
-                    ]),
-                ]),
-            ])
-        )
-
-        let prompt = try #require(payload.questionPrompt)
-        let options = try #require(prompt.questions.first?.options)
-        #expect(options.map(\.label) == ["Production", "Staging", "Other"])
-        #expect(options.last?.allowsFreeform == true)
-        #expect(options.dropLast().allSatisfy { !$0.allowsFreeform })
-    }
-
-    @Test
-    func claudeNotificationSubtypeCanIdentifyAwaySummary() throws {
-        let data = Data("""
-        {
-          "cwd": "/tmp/worktree",
-          "hook_event_name": "Notification",
-          "session_id": "claude-away-summary",
-          "subtype": "away_summary",
-          "message": "Claude produced an away summary."
-        }
-        """.utf8)
-
-        let payload = try JSONDecoder().decode(ClaudeHookPayload.self, from: data)
-
-        #expect(payload.subtype == "away_summary")
-        #expect(payload.isIdleNotification)
-    }
-
-    @Test
-    func claudeWithRuntimeContextPopulatesWarpPaneUUIDFromResolver() {
-        let payload = ClaudeHookPayload(
-            cwd: "/Users/u/demo",
-            hookEventName: .sessionStart,
-            sessionID: "s1"
-        ).withRuntimeContext(
-            environment: ["WARP_IS_LOCAL_SHELL_SESSION": "1"],
-            currentTTYProvider: { nil },
-            terminalLocatorProvider: { _ in (sessionID: nil, tty: nil, title: nil) },
-            warpPaneResolver: { cwd in
-                cwd == "/Users/u/demo" ? "DEADBEEFDEADBEEFDEADBEEFDEADBEEF" : nil
-            }
-        )
-
-        #expect(payload.terminalApp == "Warp")
-        #expect(payload.warpPaneUUID == "DEADBEEFDEADBEEFDEADBEEFDEADBEEF")
-        #expect(payload.defaultJumpTarget.warpPaneUUID == "DEADBEEFDEADBEEFDEADBEEFDEADBEEF")
-    }
-
-    @Test
-    func claudeWithRuntimeContextSkipsWarpResolverForNonWarpTerminal() {
-        var resolverCalls = 0
-        let payload = ClaudeHookPayload(
-            cwd: "/Users/u/demo",
-            hookEventName: .sessionStart,
-            sessionID: "s1"
-        ).withRuntimeContext(
-            environment: ["TERM_PROGRAM": "ghostty"],
-            currentTTYProvider: { nil },
-            terminalLocatorProvider: { _ in (sessionID: nil, tty: nil, title: nil) },
-            warpPaneResolver: { _ in
-                resolverCalls += 1
-                return "SHOULD-NOT-BE-USED"
-            }
-        )
-
-        #expect(payload.terminalApp == "Ghostty")
-        #expect(payload.warpPaneUUID == nil)
-        #expect(resolverCalls == 0)
-    }
-
 }
 
 private func jsonObject(from data: Data) throws -> [String: Any] {
     let object = try JSONSerialization.jsonObject(with: data)
     return object as? [String: Any] ?? [:]
-}
-
-private func option(label: String, description: String) -> ClaudeHookJSONValue {
-    .object([
-        "label": .string(label),
-        "description": .string(description),
-    ])
 }

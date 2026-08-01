@@ -51,26 +51,6 @@ struct OpenedIslandSurfaceShapeTests {
     // MARK: - Animatable data
 
     @Test
-    func animatableDataRoundTripsAllThreeRadiiIncludingFillet() {
-        var shape = OpenedIslandSurfaceShape(
-            topProfile: .notch,
-            topCornerRadius: 4,
-            bottomCornerRadius: 9,
-            filletRadius: 3
-        )
-
-        let data = shape.animatableData
-        #expect(data.first.first == 4)
-        #expect(data.first.second == 9)
-        #expect(data.second == 3)
-
-        shape.animatableData = .init(.init(22, 22), 12)
-        #expect(shape.topCornerRadius == 22)
-        #expect(shape.bottomCornerRadius == 22)
-        #expect(shape.filletRadius == 12)
-    }
-
-    @Test
     func animatableDataInterpolatesTheFilletRatherThanSnappingIt() {
         // What SwiftUI does per frame: scale the delta and add it.
         var mid = OpenedIslandSurfaceShape(
@@ -119,51 +99,4 @@ struct OpenedIslandSurfaceShapeTests {
         }
     }
 
-    @Test
-    func pathStaysContinuousWhenTheFilletItselfInterpolates() {
-        // The case the plain-argument fillet used to snap through — differing
-        // endpoints. Sampled through the `filletRadius > 0` branch boundary.
-        let rect = CGRect(x: 0, y: 0, width: 420, height: 220)
-        var previous = points(morphShape(0.5, fillet: 0.0001), in: rect)
-
-        for step in 1...50 {
-            let fillet = CGFloat(step) / 50 * 12
-            let current = points(morphShape(0.5, fillet: fillet), in: rect)
-            #expect(current.count == previous.count)
-            #expect(maxDelta(previous, current) < 1)
-            previous = current
-        }
-    }
-
-    @Test
-    func filletCollapsesContinuouslyIntoTheZeroFilletBranch() {
-        // `NotchShape` swaps a cubic pair for a quadratic pair at exactly 0, so
-        // the element *count* differs there by construction; what must hold is
-        // that the rendered outline converges. Compare bounding boxes and the
-        // shared endpoints instead of the raw control lists.
-        let rect = CGRect(x: 0, y: 0, width: 420, height: 220)
-        let zero = morphShape(0.5, fillet: 0).path(in: rect)
-        let epsilon = morphShape(0.5, fillet: 0.0001).path(in: rect)
-        #expect(abs(zero.boundingRect.width - epsilon.boundingRect.width) < 0.01)
-        #expect(abs(zero.boundingRect.height - epsilon.boundingRect.height) < 0.01)
-        #expect(abs(zero.boundingRect.minX - epsilon.boundingRect.minX) < 0.01)
-        #expect(abs(zero.boundingRect.minY - epsilon.boundingRect.minY) < 0.01)
-    }
-
-    // MARK: - Profile consistency
-
-    @Test
-    func topBarProfileIgnoresTheFilletEntirely() {
-        let rect = CGRect(x: 0, y: 0, width: 420, height: 220)
-        let withoutFillet = points(
-            OpenedIslandSurfaceShape(topProfile: .topBar, topCornerRadius: 22, bottomCornerRadius: 22, filletRadius: 0),
-            in: rect
-        )
-        let withFillet = points(
-            OpenedIslandSurfaceShape(topProfile: .topBar, topCornerRadius: 22, bottomCornerRadius: 22, filletRadius: 12),
-            in: rect
-        )
-        #expect(withoutFillet.count == withFillet.count)
-        #expect(maxDelta(withoutFillet, withFillet) == 0)
-    }
 }

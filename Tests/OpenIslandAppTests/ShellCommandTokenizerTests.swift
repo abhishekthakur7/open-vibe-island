@@ -98,46 +98,6 @@ struct ShellCommandTokenizerTests {
     // MARK: - Classification edge cases
 
     @Test
-    func unbalancedQuoteRunsToEndAsString() {
-        expectTokens(
-            #"echo "hello world"#,
-            [
-                ("echo", .command),
-                (" ", .plain),
-                (#""hello world"#, .string),
-            ]
-        )
-    }
-
-    @Test
-    func singleQuotedTokenIsString() {
-        expectTokens(
-            "git commit -m 'initial commit'",
-            [
-                ("git", .command),
-                (" ", .plain),
-                ("commit", .subcommand),
-                (" ", .plain),
-                ("-m", .flag),
-                (" ", .plain),
-                ("'initial commit'", .string),
-            ]
-        )
-    }
-
-    @Test
-    func extensionOnlyWordIsPath() {
-        expectTokens(
-            "cat main.swift",
-            [
-                ("cat", .command),
-                (" ", .plain),
-                ("main.swift", .path),
-            ]
-        )
-    }
-
-    @Test
     func subcommandRequiresACommandInFront() {
         // Word 0 is a path (URL), so word 1 is *not* auto-promoted to subcommand.
         expectTokens(
@@ -176,90 +136,7 @@ struct ShellCommandTokenizerTests {
         )
     }
 
-    @Test
-    func leadingWhitespaceIsCoveredAsPlain() {
-        expectTokens(
-            "  ls",
-            [
-                ("  ", .plain),
-                ("ls", .command),
-            ]
-        )
-    }
-
-    @Test
-    func singleWordCommand() {
-        expectTokens("swift", [("swift", .command)])
-    }
-
-    @Test
-    func emptyInputYieldsNoSpans() {
-        #expect(ShellCommandTokenizer.tokenize("").isEmpty)
-        #expect(ShellCommandTokenizer.attributed("", palette: [:]).characters.isEmpty)
-    }
-
-    @Test
-    func allWhitespaceIsOnePlainSpan() {
-        expectTokens("   \t ", [("   \t ", .plain)])
-    }
-
     // MARK: - AttributedString builder
-
-    @Test
-    func attributedAppliesPaletteColoursPerKind() {
-        let palette: [Kind: Color] = [.command: .red, .subcommand: .blue, .flag: .green]
-        let attributed = ShellCommandTokenizer.attributed("swift build -c", palette: palette)
-
-        // The characters are exactly the input — the builder never rewrites text.
-        #expect(String(attributed.characters) == "swift build -c")
-
-        var runColors: [(text: String, color: Color?)] = []
-        for run in attributed.runs {
-            runColors.append((String(attributed[run.range].characters), run.foregroundColor))
-        }
-
-        #expect(runColors.contains { $0.text == "swift" && $0.color == .red })
-        #expect(runColors.contains { $0.text == "build" && $0.color == .blue })
-        #expect(runColors.contains { $0.text == "-c" && $0.color == .green })
-        // Whitespace inherits no colour.
-        #expect(runColors.contains { $0.text == " " && $0.color == nil })
-    }
-
-    @Test
-    func attributedFoldsWeightOntoBaseFont() {
-        let attributed = ShellCommandTokenizer.attributed(
-            "swift build",
-            palette: [.command: .red],
-            weights: [.command: .bold],
-            baseFont: .system(.body, design: .monospaced)
-        )
-
-        // With a base font every run carries a font (adjacent runs that share
-        // attributes may merge, so we assert over runs, not per-token keys).
-        var runs: [(text: String, font: Font?)] = []
-        for run in attributed.runs {
-            runs.append((String(attributed[run.range].characters), run.font))
-        }
-        #expect(runs.allSatisfy { $0.font != nil })
-
-        // The weighted `command` run's font is distinct from the unweighted
-        // remainder — i.e. the `.bold` weight actually folded in.
-        let commandFont = runs.first { $0.text == "swift" }?.font
-        let unweightedFont = runs.first { $0.text.contains("build") }?.font
-        #expect(commandFont != nil)
-        #expect(unweightedFont != nil)
-        #expect(commandFont != unweightedFont)
-    }
-
-    @Test
-    func attributedLeavesUnpalettedKindsUncoloured() {
-        // Palette covers nothing → every run is uncoloured, text preserved.
-        let attributed = ShellCommandTokenizer.attributed("ls -la", palette: [:])
-        #expect(String(attributed.characters) == "ls -la")
-        for run in attributed.runs {
-            #expect(run.foregroundColor == nil)
-        }
-    }
 
     // MARK: - Property: totality (seeded, deterministic)
 

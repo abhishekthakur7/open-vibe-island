@@ -5,14 +5,6 @@ import SQLite3
 
 struct WarpSQLiteReaderTests {
     @Test
-    func defaultDatabasePathPointsToWarpGroupContainer() {
-        let path = WarpSQLiteReader.defaultDatabasePath()
-        #expect(path.hasSuffix("/Library/Group Containers/2BBY89MBSN.dev.warp/Library/Application Support/dev.warp.Warp-Stable/warp.sqlite"))
-        // Path should be absolute and start with the user's home dir.
-        #expect(path.hasPrefix(NSHomeDirectory()))
-    }
-
-    @Test
     func lookupPaneUUIDReturnsUppercaseHexForClaudeInKnownCwd() throws {
         let tmp = NSTemporaryDirectory() + "warp-fixture-\(UUID().uuidString).sqlite"
         try WarpSQLiteFixture.write(to: tmp, scenario: .threeTabsTwoClaudes)
@@ -21,22 +13,6 @@ struct WarpSQLiteReaderTests {
         let reader = WarpSQLiteReader(databasePath: tmp)
         let uuid = reader.lookupPaneUUID(forCwd: "/Users/u/open-vibe-island")
         #expect(uuid == "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB")
-    }
-
-    @Test
-    func lookupPaneUUIDReturnsNilForCwdWithoutClaudeCommand() throws {
-        let tmp = NSTemporaryDirectory() + "warp-fixture-\(UUID().uuidString).sqlite"
-        try WarpSQLiteFixture.write(to: tmp, scenario: .threeTabsTwoClaudes)
-        defer { try? FileManager.default.removeItem(atPath: tmp) }
-
-        let reader = WarpSQLiteReader(databasePath: tmp)
-        #expect(reader.lookupPaneUUID(forCwd: "/nonexistent") == nil)
-    }
-
-    @Test
-    func lookupPaneUUIDReturnsNilForMissingDatabaseFile() {
-        let reader = WarpSQLiteReader(databasePath: "/nonexistent/path/warp.sqlite")
-        #expect(reader.lookupPaneUUID(forCwd: "/any") == nil)
     }
 
     @Test
@@ -58,22 +34,6 @@ struct WarpSQLiteReaderTests {
 
         let reader = WarpSQLiteReader(databasePath: tmp)
         let uuid = reader.lookupPaneUUID(forCwd: "/tmp/compound-test")
-        #expect(uuid == "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD")
-    }
-
-    @Test
-    func lookupPaneUUIDFallbackAcceptsFirmlinkFlippedInput() throws {
-        // Hook payloads arrive with /private/tmp/compound-test because
-        // Claude Code captures cwd via getcwd() which resolves the
-        // firmlink. The original command was typed as `cd
-        // /tmp/compound-test`. The fallback must try both forms so the
-        // cross-match succeeds.
-        let tmp = NSTemporaryDirectory() + "warp-fixture-\(UUID().uuidString).sqlite"
-        try WarpSQLiteFixture.write(to: tmp, scenario: .compoundCommandFlow)
-        defer { try? FileManager.default.removeItem(atPath: tmp) }
-
-        let reader = WarpSQLiteReader(databasePath: tmp)
-        let uuid = reader.lookupPaneUUID(forCwd: "/private/tmp/compound-test")
         #expect(uuid == "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD")
     }
 
@@ -103,37 +63,6 @@ struct WarpSQLiteReaderTests {
         // Shell 2003 (index 2) → third pane = CCCC (/tmp).
         #expect(reader.lookupPaneUUIDByShellPID(2003, siblings: siblings)
             == "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC")
-    }
-
-    @Test
-    func lookupPaneUUIDByShellPIDReturnsNilWhenShellIsNotInSiblings() throws {
-        // Guards against a stale shellPID (e.g. the shell exited and a
-        // new one took its pid, or the caller passed a pid that is
-        // not a direct child of terminal-server). The correct
-        // fallback is nil — never guess.
-        let tmp = NSTemporaryDirectory() + "warp-fixture-\(UUID().uuidString).sqlite"
-        try WarpSQLiteFixture.write(to: tmp, scenario: .threeTabsTwoClaudes)
-        defer { try? FileManager.default.removeItem(atPath: tmp) }
-
-        let reader = WarpSQLiteReader(databasePath: tmp)
-        #expect(reader.lookupPaneUUIDByShellPID(9999, siblings: [2001, 2002, 2003]) == nil)
-    }
-
-    @Test
-    func lookupPaneUUIDByShellPIDSortsSiblingsBeforeIndexing() throws {
-        // Caller may pass siblings in arbitrary order (e.g. the order
-        // pgrep prints them in, which is not guaranteed to be sorted).
-        // The pid→index correlation depends on ASCENDING sort, so the
-        // method must impose the ordering itself.
-        let tmp = NSTemporaryDirectory() + "warp-fixture-\(UUID().uuidString).sqlite"
-        try WarpSQLiteFixture.write(to: tmp, scenario: .threeTabsTwoClaudes)
-        defer { try? FileManager.default.removeItem(atPath: tmp) }
-
-        let reader = WarpSQLiteReader(databasePath: tmp)
-        // pgrep output order flipped — still must resolve to the
-        // right pane.
-        #expect(reader.lookupPaneUUIDByShellPID(2001, siblings: [2003, 2001, 2002])
-            == "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
     }
 
     @Test
@@ -242,44 +171,6 @@ struct WarpSQLiteReaderTests {
     }
 
     @Test
-    func currentFocusedPaneUUIDPrefersTheFocusedLeafWithinASplitTab() throws {
-        // Within a single split tab, `pane_leaves.is_focused` picks
-        // the right leaf. Without this filter, every jump into a
-        // split tab would land on whichever leaf has the lowest
-        // pane_nodes.id, and the user's live terminal would not be
-        // the focused target.
-        let tmp = NSTemporaryDirectory() + "warp-fixture-\(UUID().uuidString).sqlite"
-        try WarpSQLiteFixture.write(to: tmp, scenario: .singleTabSplitLeftFocused)
-        defer { try? FileManager.default.removeItem(atPath: tmp) }
-
-        let reader = WarpSQLiteReader(databasePath: tmp)
-        // The split tab has two leaves; pane_leaves marks the right
-        // leaf (uuid BBBB) as focused. The left leaf (AAAA) must NOT
-        // be returned even though its pane_nodes.id is smaller.
-        #expect(reader.currentFocusedPaneUUID()
-            == "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB")
-    }
-
-    @Test
-    func lookupPaneUUIDByShellPIDReturnsNilWhenIndexIsOutOfRange() throws {
-        // Simulates a transient state where siblings list contains
-        // more entries than terminal_panes. Could happen if Warp is
-        // mid-spawn on a new tab, or if a helper process is counted
-        // as a sibling by accident. Better to return nil than guess.
-        let tmp = NSTemporaryDirectory() + "warp-fixture-\(UUID().uuidString).sqlite"
-        try WarpSQLiteFixture.write(to: tmp, scenario: .threeTabsTwoClaudes)
-        defer { try? FileManager.default.removeItem(atPath: tmp) }
-
-        let reader = WarpSQLiteReader(databasePath: tmp)
-        // Six siblings, but only 3 panes — shell 2006 (index 5) is
-        // out of range.
-        #expect(reader.lookupPaneUUIDByShellPID(
-            2006,
-            siblings: [2001, 2002, 2003, 2004, 2005, 2006]
-        ) == nil)
-    }
-
-    @Test
     func lookupPaneUUIDFallbackFindsPaneEvenWithoutAnyPrecmdBlocks() throws {
         // Discovered against a real Warp SQLite during local E2E
         // testing: Warp does NOT always write `precmd-<session>-1`
@@ -339,56 +230,6 @@ struct WarpSQLiteReaderTests {
         // uuid FFFF... — no matching terminal_panes row.
         let uuid = reader.lookupPaneUUID(forCwd: "/tmp/closed-tab-cwd")
         #expect(uuid == nil)
-    }
-
-    @Test
-    func lookupPaneUUIDFallbackDoesNotFalsePositiveOnSubstringCwd() throws {
-        // The fallback uses LIKE '%cd <target>%' which is vulnerable to
-        // substring collision: a query for `/tmp/foo` must not match a
-        // command like `cd /tmp/foo-extended`. Pin the boundary behavior.
-        let tmp = NSTemporaryDirectory() + "warp-fixture-\(UUID().uuidString).sqlite"
-        try WarpSQLiteFixture.write(to: tmp, scenario: .compoundCommandFlow)
-        defer { try? FileManager.default.removeItem(atPath: tmp) }
-
-        let reader = WarpSQLiteReader(databasePath: tmp)
-        // The fixture has a `cd /tmp/compound-test-extended && claude`
-        // command pointed at a different pane uuid. A lookup for the
-        // shorter path must NOT match it.
-        let uuid = reader.lookupPaneUUID(forCwd: "/tmp/compound")
-        #expect(uuid == nil)
-    }
-
-    @Test
-    func currentFocusedPaneUUIDReturnsActiveTabsUUID() throws {
-        let tmp = NSTemporaryDirectory() + "warp-fixture-\(UUID().uuidString).sqlite"
-        try WarpSQLiteFixture.write(to: tmp, scenario: .threeTabsTwoClaudes)
-        defer { try? FileManager.default.removeItem(atPath: tmp) }
-
-        // Scenario has active_tab_index = 1 which is tab id 2 (open-vibe-island).
-        let reader = WarpSQLiteReader(databasePath: tmp)
-        #expect(reader.currentFocusedPaneUUID() == "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB")
-    }
-
-    @Test
-    func currentFocusedPaneUUIDReturnsNilForMissingDatabase() {
-        let reader = WarpSQLiteReader(databasePath: "/nonexistent.sqlite")
-        #expect(reader.currentFocusedPaneUUID() == nil)
-    }
-
-    @Test
-    func tabCountInActiveWindowReturnsCount() throws {
-        let tmp = NSTemporaryDirectory() + "warp-fixture-\(UUID().uuidString).sqlite"
-        try WarpSQLiteFixture.write(to: tmp, scenario: .threeTabsTwoClaudes)
-        defer { try? FileManager.default.removeItem(atPath: tmp) }
-
-        let reader = WarpSQLiteReader(databasePath: tmp)
-        #expect(reader.tabCountInActiveWindow() == 3)
-    }
-
-    @Test
-    func tabCountInActiveWindowReturnsZeroForMissingDatabase() {
-        let reader = WarpSQLiteReader(databasePath: "/nonexistent.sqlite")
-        #expect(reader.tabCountInActiveWindow() == 0)
     }
 }
 

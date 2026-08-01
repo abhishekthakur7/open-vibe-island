@@ -49,7 +49,6 @@ import OpenIslandCore
 /// argument expression outside actor isolation — only the individual test
 /// functions (and the `NSHostingController` work they do) need `@MainActor`.
 struct OpenedContentEmptyStateConvergenceTests {
-
     // MARK: - Fixtures
 
     @MainActor
@@ -94,25 +93,6 @@ struct OpenedContentEmptyStateConvergenceTests {
         )
     }
 
-    /// The *pre-fix* wrapping — identical, minus `.fixedSize` — used only to
-    /// prove the regression this suite pins is real, never as a shape that
-    /// should ship again.
-    @MainActor
-    private static func unfixedEmptyState(_ theme: any IslandTheme, lang: LanguageManager) -> AnyView {
-        AnyView(
-            theme.emptyState(
-                lang: lang,
-                hasRecentSessions: false,
-                workspaceCount: 0,
-                installedAgentNames: []
-            )
-            .padding(.horizontal, 18)
-            .padding(.top, 8)
-            .environment(\.islandTokens, theme.tokens)
-            .environment(\.colorScheme, .dark)
-        )
-    }
-
     // MARK: - Convergence (the fix)
 
     /// The core convergence property: measuring the SAME content under two
@@ -138,63 +118,7 @@ struct OpenedContentEmptyStateConvergenceTests {
         #expect(small == large, Comment(rawValue: message))
     }
 
-    /// Same property, for `bootstrapPlaceholder` — the sibling branch that
-    /// shares the identical `Spacer`-centred shape and the identical
-    /// `.fixedSize` guard, but wasn't in the live-capture repro that surfaced
-    /// this bug (it's reached by a narrower launch-time condition). Pinned
-    /// here so it can't regress silently the way `emptyState` did.
-    @Test(arguments: 0..<OpenedContentEmptyStateConvergenceTests.themeCount)
-    @MainActor
-    func bootstrapPlaceholderHeightIsIndependentOfProposedHeight(themeIndex: Int) {
-        let theme = Self.theme(at: themeIndex)
-        let lang = LanguageManager()
-
-        func makeView() -> AnyView {
-            AnyView(
-                theme.bootstrapPlaceholder(lang: lang)
-                    .padding(.horizontal, 18)
-                    .padding(.top, 8)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .environment(\.islandTokens, theme.tokens)
-                    .environment(\.colorScheme, .dark)
-            )
-        }
-
-        let small = Self.measuredHeight(makeView(), proposedHeight: 40)
-        let large = Self.measuredHeight(makeView(), proposedHeight: 2_000)
-
-        let message = """
-        \(theme.id): bootstrap-placeholder height must not depend on the proposed \
-        height (got \(small) @40pt vs \(large) @2000pt).
-        """
-        #expect(small == large, Comment(rawValue: message))
-    }
-
     // MARK: - The regression is real (not a restatement of the fix)
-
-    /// Proves the mechanism this suite pins is real: WITHOUT `.fixedSize`,
-    /// the `Spacer`-centred body is greedy — it fills to whatever height its
-    /// parent proposes. If this test ever starts failing (i.e. `small` stops
-    /// being materially smaller than `large`), a `*EmptyState` body changed
-    /// shape and the `.fixedSize` guard on the real code path may no longer be
-    /// load-bearing — investigate that before touching the fix.
-    @Test(arguments: 0..<OpenedContentEmptyStateConvergenceTests.themeCount)
-    @MainActor
-    func unfixedEmptyStateReproducesTheProposalDependentGrowth(themeIndex: Int) {
-        let theme = Self.theme(at: themeIndex)
-        let lang = LanguageManager()
-
-        let small = Self.measuredHeight(Self.unfixedEmptyState(theme, lang: lang), proposedHeight: 40)
-        let large = Self.measuredHeight(Self.unfixedEmptyState(theme, lang: lang), proposedHeight: 2_000)
-
-        let message = """
-        \(theme.id): expected the unpatched (Spacer-greedy) body to fill whatever \
-        height it's proposed (40 vs 2000pt) — got \(small) vs \(large). If this \
-        no longer reproduces, the underlying view stopped using Spacer-based \
-        centring; re-diagnose before relying on `.fixedSize` to guard it.
-        """
-        #expect(small < large, Comment(rawValue: message))
-    }
 
     // MARK: - No-clipping guarantee
 

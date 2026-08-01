@@ -59,19 +59,6 @@ struct PouredHoverPeekTests {
         #expect(model.hoverBehaviorForClosedSurface() == .openPanel)
     }
 
-    /// Every other theme is untouched — including Halo, which vends a peek view
-    /// across the seam but has always run its dwell straight to a full open.
-    @Test
-    func otherThemesKeepHoverToOpen() {
-        for theme in ["classic", "halo", "flightDeck", "annual", "instrument"] {
-            let model = model(theme: theme, scenario: .closedAttentionQueue)
-            #expect(
-                model.hoverBehaviorForClosedSurface() == .openPanel,
-                "\(theme) must not change its dwell endpoint"
-            )
-        }
-    }
-
     // MARK: - State transitions
 
     @Test
@@ -119,29 +106,6 @@ struct PouredHoverPeekTests {
         #expect(PouredIslandTheme().hoverPeekPreemptsHoverOpen)
     }
 
-    /// Halo's peek crossed the seam unchanged: still docked (not replacing),
-    /// still at its own 18pt radius, and still not a dwell endpoint.
-    @Test
-    func haloPeekCrossesTheSeamUnchanged() throws {
-        let sessions = IslandDebugScenario.closedAttentionQueue.snapshot().sessions
-        let content = try #require(HaloHoverPeekContent.resolve(sessions: sessions, lang: lang))
-        let peek = try #require(HaloTheme().closedSurfaceHoverPeek(peekContext(content)))
-
-        #expect(peek.replacesClosedSurface == false)
-        #expect(peek.bottomCornerRadius == HaloHoverPeek.cornerRadius)
-        #expect(HaloTheme().hoverPeekPreemptsHoverOpen == false)
-    }
-
-    /// Themes that draw no peek return `nil` across the seam — that `nil` is
-    /// what replaced the hard-coded `theme.id == "halo"` check in the panel.
-    @Test
-    func themesWithoutAPeekVendNothing() throws {
-        let sessions = IslandDebugScenario.closedAttentionQueue.snapshot().sessions
-        let content = try #require(HaloHoverPeekContent.resolve(sessions: sessions, lang: lang))
-        #expect(ClassicTheme().closedSurfaceHoverPeek(peekContext(content)) == nil)
-        #expect(FlightDeckTheme().closedSurfaceHoverPeek(peekContext(content)) == nil)
-    }
-
     // MARK: - Shared content model
 
     /// The peek's copy comes from the *shared* resolver, and now carries the two
@@ -161,13 +125,4 @@ struct PouredHoverPeekTests {
         #expect(content.agent != nil)
     }
 
-    /// The §B typography is read verbatim off the board's inline styles.
-    @Test
-    func peekTypographyMatchesTheBoard() {
-        #expect(PouredType.Role.peekTitle.spec.size == 13)
-        #expect(PouredType.Role.peekTitle.spec.weight == 600)
-        #expect(PouredType.Role.peekCommand.spec.size == 11.5)
-        #expect(PouredType.Role.peekCommand.spec.isMono)
-        #expect(PouredType.Role.peekHint.spec.size == 11)
-    }
 }

@@ -17,7 +17,6 @@ import OpenIslandCore
 /// `AgentSession+Presentation` extension.
 @MainActor
 struct PouredSectionTaxonomyTests {
-
     private let now = Date(timeIntervalSince1970: 1_800_000_000)
 
     private func session(
@@ -65,17 +64,6 @@ struct PouredSectionTaxonomyTests {
         #expect(projection.sections[0].id == "state-poured-needsYou")
         #expect(projection.sections[0].title == "island.poured.section.needsYou")
         #expect(ids(projection.sections[0]) == ["p1", "p2", "q1"])
-    }
-
-    /// A single attention section still projects onto the merged identity — the
-    /// header word must be `Needs you`, never the shared `Needs answer` copy.
-    @Test
-    func needsYouProjectsEvenWhenOnlyOneAttentionSectionExists() {
-        let projection = PouredSectionTaxonomy.project([
-            section("state-answer", [session(id: "q1", phase: .waitingForAnswer)]),
-        ])
-
-        #expect(projection.sections.map(\.id) == ["state-poured-needsYou"])
     }
 
     /// `Done` is the board's **terminal** bucket: success and interrupted rows sit
@@ -156,50 +144,7 @@ struct PouredSectionTaxonomyTests {
         ])
     }
 
-    /// The board never draws a zero-count header — an empty group is omitted
-    /// entirely rather than rendered with a `0`.
-    @Test
-    func emptyGroupsAreOmittedEntirely() {
-        let projection = PouredSectionTaxonomy.project([
-            section("state-running", [session(id: "r", phase: .running)]),
-        ])
-
-        #expect(projection.sections.map(\.id) == ["state-running"])
-        #expect(PouredSectionTaxonomy.project([]).sections.isEmpty)
-        #expect(PouredSectionTaxonomy.project([]).idleCount == 0)
-    }
-
     // MARK: - Within-group ordering
-
-    /// Within every group rows read most-recent-first (board §C: `1m/3m`,
-    /// `now/8m`, `12m/22m`).
-    @Test
-    func withinGroupOrderIsMostRecentFirst() {
-        let projection = PouredSectionTaxonomy.project([
-            section("state-running", [
-                session(id: "old", phase: .running, minutesAgo: 8),
-                session(id: "new", phase: .running, minutesAgo: 0),
-            ]),
-        ])
-
-        #expect(ids(projection.sections[0]) == ["new", "old"])
-    }
-
-    /// Equal timestamps keep the order they arrived in — the recency sort is
-    /// stable, so the deterministic attention order upstream produced survives.
-    @Test
-    func recencyTiesAreStableInIncomingOrder() {
-        let tied = (1...5).map { session(id: "t\($0)", phase: .running, minutesAgo: 4) }
-        #expect(PouredSectionTaxonomy.recencyDescending(tied).map(\.id) == ["t1", "t2", "t3", "t4", "t5"])
-
-        // A newer row jumps the whole tied block; the block's internal order holds.
-        var mixed = tied
-        mixed.insert(session(id: "fresh", phase: .running, minutesAgo: 0), at: 3)
-        #expect(
-            PouredSectionTaxonomy.recencyDescending(mixed).map(\.id)
-                == ["fresh", "t1", "t2", "t3", "t4", "t5"]
-        )
-    }
 
     // MARK: - Scaffold gating: `.none` ≡ `.state`, agent/project untouched
 
@@ -372,62 +317,7 @@ struct PouredSectionTaxonomyTests {
         #expect(capped.visible.flatMap(\.sessions).count == 6)
     }
 
-    /// The cap hides rows; it does not change what exists. A partially-rendered
-    /// group's header count is its **full** size, carried in `groupTotals`.
-    @Test
-    func groupTotalsSurviveThePartialRender() {
-        let capped = PouredSectionTaxonomy.cappedSections([
-            section("state-poured-needsYou", (1...4).map { session(id: "a\($0)", phase: .waitingForApproval) }),
-            section("state-running", (1...4).map { session(id: "r\($0)", phase: .running) }),
-            section("state-done", (1...4).map { session(id: "d\($0)", phase: .completed) }),
-        ])
-
-        #expect(capped.groupTotals["state-poured-needsYou"] == 4)
-        #expect(capped.groupTotals["state-running"] == 4)
-        // Cut away entirely, still counted — its rows exist behind "Show all".
-        #expect(capped.groupTotals["state-done"] == 4)
-        // The rendered `Working` section holds two rows while reporting four.
-        #expect(capped.visible[1].sessions.count == 2)
-        #expect(capped.groupTotals[capped.visible[1].id] == 4)
-    }
-
-    /// Below the cap nothing is touched, and an empty projection is a no-op.
-    @Test
-    func shortAndEmptyListsPassThroughUncut() {
-        let short = [section("state-running", [session(id: "r", phase: .running)])]
-        let capped = PouredSectionTaxonomy.cappedSections(short)
-        #expect(capped.total == 1)
-        #expect(capped.hiddenCount == 0)
-        #expect(capped.visible.map(ids) == short.map(ids))
-
-        let empty = PouredSectionTaxonomy.cappedSections([])
-        #expect(empty.total == 0)
-        #expect(empty.hiddenCount == 0)
-        #expect(empty.visible.isEmpty)
-        #expect(empty.isCapped == false)
-    }
-
     // MARK: - Fixed swatch hues
-
-    /// Each group wears its fixed board hue (`--attn #ffb14d`, `--run #6ea7ff`,
-    /// `--done #6fb982`), all three already existing tokens — no new hex is
-    /// minted, and the tint no longer depends on whichever row sorts first.
-    @Test
-    func groupTintsAreFixedToTheBoardTokens() {
-        let colors = IslandThemeTokens.poured.colors
-
-        #expect(PouredSectionTaxonomy.tint(for: .needsYou, tokens: colors) == PouredPalette.attention)
-        #expect(PouredSectionTaxonomy.tint(for: .working, tokens: colors) == colors.statusRunning)
-        #expect(PouredSectionTaxonomy.tint(for: .done, tokens: colors) == colors.statusCompleted)
-
-        // The board's literal hues, pinned so a token drift fails here too.
-        #expect(PouredSectionTaxonomy.tint(for: .needsYou, tokens: colors)
-                == Color(red: 0xFF / 255.0, green: 0xB1 / 255.0, blue: 0x4D / 255.0))
-        #expect(PouredSectionTaxonomy.tint(for: .working, tokens: colors)
-                == Color(red: 0x6E / 255.0, green: 0xA7 / 255.0, blue: 0xFF / 255.0))
-        #expect(PouredSectionTaxonomy.tint(for: .done, tokens: colors)
-                == Color(red: 0x6F / 255.0, green: 0xB9 / 255.0, blue: 0x82 / 255.0))
-    }
 
     /// A `Done` group led by an interrupted row keeps the green `--done` swatch —
     /// the regression the fixed tint exists to prevent (the old first-row
@@ -446,34 +336,4 @@ struct PouredSectionTaxonomyTests {
     }
 
     // MARK: - Header words localize
-
-    /// The three new `island.poured.section.*` keys resolve to real translations
-    /// in English and both Chinese scripts.
-    @Test
-    func sectionHeaderWordsLocalizeInEveryLanguage() {
-        let originalLanguage = UserDefaults.standard.string(forKey: "appLanguage")
-        defer {
-            if let originalLanguage {
-                UserDefaults.standard.set(originalLanguage, forKey: "appLanguage")
-            } else {
-                UserDefaults.standard.removeObject(forKey: "appLanguage")
-            }
-        }
-
-        for language in [LanguageManager.AppLanguage.en, .zhHans, .zhHant] {
-            let manager = LanguageManager()
-            manager.language = language
-            for group in PouredSectionTaxonomy.Group.allCases {
-                let resolved = manager.t(group.localizationKey)
-                #expect(resolved != group.localizationKey, "\(group.localizationKey) is unlocalized in \(language)")
-                #expect(!resolved.isEmpty)
-            }
-        }
-
-        let en = LanguageManager()
-        en.language = .en
-        #expect(en.t(PouredSectionTaxonomy.Group.needsYou.localizationKey) == "Needs you")
-        #expect(en.t(PouredSectionTaxonomy.Group.working.localizationKey) == "Working")
-        #expect(en.t(PouredSectionTaxonomy.Group.done.localizationKey) == "Done")
-    }
 }

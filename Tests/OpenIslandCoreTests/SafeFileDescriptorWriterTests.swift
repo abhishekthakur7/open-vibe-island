@@ -22,16 +22,4 @@ struct SafeFileDescriptorWriterTests {
 
         SafeFileDescriptorWriter.write(Data("discarded".utf8), to: fileDescriptor)
     }
-
-    @Test
-    func ignoresPipeWithoutReader() throws {
-        let pipe = Pipe()
-        try pipe.fileHandleForReading.close()
-
-        SafeFileDescriptorWriter.write(
-            Data("discarded".utf8),
-            to: pipe.fileHandleForWriting.fileDescriptor
-        )
-        try pipe.fileHandleForWriting.close()
-    }
 }

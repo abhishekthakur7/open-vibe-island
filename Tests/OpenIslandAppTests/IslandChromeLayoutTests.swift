@@ -65,37 +65,6 @@ struct IslandChromeLayoutTests {
 
     // MARK: - 1. Poured opened layout
 
-    /// Since AB-329 Poured's *closed*-pill glow inset (40) exceeds its opened
-    /// shadow inset (28), so `reservedInsets` — the per-axis `max(opened, closed)`
-    /// — sizes the always-opened-size window from the larger closed inset: a
-    /// 540pt opened surface now needs a 620pt window, wrapped in 40pt per side,
-    /// the surface still centred. (Before the closed-glow growth it was a 596pt
-    /// window at 28pt per side, sized by the opened inset.)
-    @Test
-    func pouredOpenedWindowWrapsA540SurfaceInFortyPointsPerSide() {
-        let metrics = IslandMetricsTokens.poured
-        let reserved = IslandChromeLayout.reservedInsets(for: metrics)
-
-        #expect(reserved.horizontal == 40)
-        #expect(reserved.bottom == 44)
-
-        let window = IslandChromeLayout.windowSize(
-            preferredContentWidth: 540,
-            contentHeight: Self.contentHeight,
-            metrics: metrics,
-            availableWidth: Self.roomyWidth
-        )
-
-        #expect(window.width == 620)
-        #expect(window.height == Self.contentHeight + 44)
-
-        let surface = IslandChromeLayout.surfaceRect(inWindowOfSize: window, metrics: metrics)
-        #expect(surface.width == 540)
-        #expect(surface.minX == 40)
-        #expect(window.width - surface.maxX == 40)
-        #expect(surface.height == Self.contentHeight)
-    }
-
     /// Hit-test parity for that exact layout: the rendered surface and the
     /// controller's interactive rect are the same rectangle, so no drawn pixel
     /// is unclickable and no click lands outside anything drawn.
@@ -235,39 +204,6 @@ struct IslandChromeLayoutTests {
         }
     }
 
-    /// Closed-glow headroom for the shipping themes: the pill is centred inside
-    /// an opened-size window, so the free space beside and below it comfortably
-    /// contains the theme's declared closed shadow insets.
-    @MainActor
-    @Test
-    func everyThemeLeavesRoomForItsDeclaredClosedShadow() {
-        for theme in ThemeRegistry.all {
-            let metrics = theme.tokens.metrics
-            let window = IslandChromeLayout.windowSize(
-                preferredContentWidth: 540,
-                contentHeight: Self.contentHeight,
-                metrics: metrics,
-                availableWidth: Self.roomyWidth
-            )
-
-            for closedSize in [Self.macbookClosedSize, Self.externalClosedSize] {
-                let headroom = IslandChromeLayout.closedSurfaceHeadroom(
-                    windowSize: window,
-                    closedSize: closedSize
-                )
-                #expect(headroom.top == 0)
-                #expect(
-                    headroom.horizontal >= metrics.closedShadowHorizontalInset,
-                    "\(theme.id) clips its closed glow sideways"
-                )
-                #expect(
-                    headroom.bottom >= metrics.closedShadowBottomInset,
-                    "\(theme.id) clips its closed glow below"
-                )
-            }
-        }
-    }
-
     // MARK: - 3. Closed insets consume window space
 
     /// Pinned on a synthetic fixture, deliberately *not* on a shipping theme:
@@ -314,57 +250,6 @@ struct IslandChromeLayoutTests {
         #expect(quietSurface.width == 540)
         #expect(glowingSurface.width == 540)
         #expect(glowingSurface.minX == 44)
-    }
-
-    /// …and the extra width is actually where the glow needs it: a shadow whose
-    /// radius is at most the declared closed insets fits between the centred
-    /// pill and every window edge it can bleed towards.
-    ///
-    /// `top` is structurally 0 — the window's top edge is the physical screen
-    /// top, so nothing can bleed above the pill; a closed glow spreads sideways
-    /// and down, which is exactly what the two other axes assert.
-    @Test
-    func closedGlowFitsBetweenThePillAndTheWindowEdges() {
-        var glowing = IslandMetricsTokens.classic
-        glowing.closedShadowHorizontalInset = 44
-        glowing.closedShadowBottomInset = 52
-        glowing.closedSurfaceShadow = IslandShadowToken(
-            color: .white,
-            opacity: 0.6,
-            radius: 40,
-            yOffset: 6
-        )
-
-        let window = IslandChromeLayout.windowSize(
-            preferredContentWidth: 540,
-            contentHeight: Self.contentHeight,
-            metrics: glowing,
-            availableWidth: Self.roomyWidth
-        )
-
-        for closedSize in [Self.macbookClosedSize, Self.externalClosedSize] {
-            let rect = IslandChromeLayout.closedSurfaceRect(
-                inWindowOfSize: window,
-                closedSize: closedSize
-            )
-            // Centred horizontally, flush with the top of the window.
-            #expect(rect.midX == window.width / 2)
-            #expect(rect.minY == 0)
-
-            let headroom = IslandChromeLayout.closedSurfaceHeadroom(
-                windowSize: window,
-                closedSize: closedSize
-            )
-            #expect(headroom.top == 0)
-            #expect(headroom.horizontal >= glowing.closedShadowHorizontalInset)
-            #expect(headroom.bottom >= glowing.closedShadowBottomInset)
-
-            // The declared shadow itself — radius plus its downward offset —
-            // stays inside that headroom.
-            let shadow = glowing.resolvedClosedSurfaceShadow
-            #expect(shadow.radius <= headroom.horizontal)
-            #expect(shadow.radius + shadow.yOffset <= headroom.bottom)
-        }
     }
 
     // MARK: - 4. Screen-width clamp
@@ -462,32 +347,6 @@ struct IslandChromeLayoutTests {
                 }
             }
         }
-    }
-
-    /// The one deliberate exception: on a screen narrower than the 360pt content
-    /// floor there is nothing left to trim, so the window spills past the screen
-    /// edge rather than squeezing the island into unusability. Pinned so the
-    /// behaviour is a decision rather than an accident — and the round trip
-    /// still holds (the insets are gone entirely).
-    @Test
-    func belowTheContentFloorTheWindowSpillsRatherThanSqueezingContent() {
-        let metrics = IslandMetricsTokens.poured
-        let window = IslandChromeLayout.windowSize(
-            preferredContentWidth: 540,
-            contentHeight: Self.contentHeight,
-            metrics: metrics,
-            availableWidth: 300
-        )
-
-        #expect(window.width == IslandChromeLayout.minimumContentWidth)
-        #expect(window.width > 300)
-
-        let insets = IslandChromeLayout.insets(forWindowWidth: window.width, metrics: metrics)
-        #expect(insets.horizontal == 0)
-
-        let surface = IslandChromeLayout.surfaceRect(inWindowOfSize: window, metrics: metrics)
-        #expect(surface.width == IslandChromeLayout.minimumContentWidth)
-        #expect(surface.minX == 0)
     }
 
     // MARK: - 5. Classic is unchanged

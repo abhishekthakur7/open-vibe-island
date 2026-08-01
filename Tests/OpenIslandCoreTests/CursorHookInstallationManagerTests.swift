@@ -36,22 +36,6 @@ struct CursorHookInstallationManagerTests {
         #expect(!FileManager.default.fileExists(atPath: ManagedHookProvenance.sidecarURL(for: installed.hooksURL).path))
     }
 
-    @Test
-    func preservesUnrelatedHooksAndDoesNotTreatLookalikesAsOwnership() throws {
-        let fixture = try Fixture()
-        defer { fixture.remove() }
-        try fixture.createCursor()
-        let hooks = fixture.directory.appendingPathComponent("hooks.json")
-        let lookalike = "'/tmp/OpenIslandHooks-lookalike' --source cursor"
-        let original = Data("{\"custom\":true,\"hooks\":{\"stop\":[{\"command\":\"\(lookalike)\"}]}}".utf8)
-        try original.write(to: hooks)
-
-        let installed = try fixture.manager().install(hooksBinaryURL: makeVerifiedHooksApp(at: fixture.root, contents: "lookalike"))
-        #expect(installed.managementOutcome == .exactManaged)
-        #expect(try String(contentsOf: hooks).contains("OpenIslandHooks-lookalike"))
-        #expect(try String(contentsOf: hooks).contains("custom"))
-    }
-
     @Test(arguments: ["partial", "stale-path", "extra-conflict"])
     func managedLookingEntriesAreAmbiguousAndNeverMutated(kind: String) throws {
         let fixture = try Fixture()

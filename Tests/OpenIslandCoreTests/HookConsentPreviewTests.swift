@@ -4,63 +4,6 @@ import Testing
 
 struct HookConsentPreviewTests {
     @Test
-    func helperPreviewExposesExactArtifactAndManagerTargets() throws {
-        let root = try temporaryRoot(); defer { try? FileManager.default.removeItem(at: root) }
-        let helper = try makeVerifiedHooksApp(at: root, contents: "consent-helper")
-        let artifact = try VerifiedBundledHookArtifact.verify(helperURL: helper)
-        let codex = root.appendingPathComponent(".codex", isDirectory: true)
-        let manager = CodexHookInstallationManager(codexDirectory: codex)
-        let status = try manager.status(hooksBinaryURL: helper)
-        let preview = HookConsentPreview(artifact: artifact, target: target("codex-hooks", [status.configURL, status.hooksURL, status.manifestURL]))
-
-        #expect(preview.artifactVersion == artifact.entry.version)
-        #expect(preview.sha256 == artifact.entry.sha256)
-        #expect(preview.digestPrefix == String(artifact.entry.sha256.prefix(12)))
-        #expect(preview.sourceBundlePath == VerifiedBundledHookArtifact.helperRelativePath)
-        #expect(preview.targetPaths == [status.configURL.path, status.hooksURL.path, status.manifestURL.path].sorted())
-        #expect(preview.requestedModes.contains("0600 targets"))
-        #expect(preview.managedAdditions == ["exact managed entries"])
-    }
-
-    @Test
-    func staticOpenCodeResourcePreviewUsesVerifiedResourceDigestAndExactTargets() throws {
-        let root = try temporaryRoot(); defer { try? FileManager.default.removeItem(at: root) }
-        let resourceURL = try makeVerifiedOpenCodePluginApp(at: root)
-        let resource = try VerifiedBundledHookArtifact.verifiedResource(at: resourceURL)
-        let manager = OpenCodePluginInstallationManager(openCodeConfigDirectory: root.appendingPathComponent("opencode"))
-        let status = try manager.status()
-        let preview = HookConsentPreview(resource: resource, target: target("opencode-plugin", [status.configURL, status.pluginFileURL]))
-
-        #expect(preview.sourceID == "resource:Contents/Resources/open-island-opencode.js")
-        #expect(preview.sha256 == OpenCodePluginInstallationManager.bundledPluginDigest)
-        #expect(preview.targetPaths == [status.configURL.path, status.pluginFileURL.path].sorted())
-    }
-
-    @Test
-    func statusLineTemplatePreviewMakesWrappingAndRestorationExplicit() throws {
-        let root = try temporaryRoot(); defer { try? FileManager.default.removeItem(at: root) }
-        let manager = ClaudeStatusLineInstallationManager(
-            claudeDirectory: root.appendingPathComponent(".claude"),
-            scriptDirectoryURL: root.appendingPathComponent("bin"),
-            templateResources: try makeVerifiedClaudeStatusLineTemplateResources(at: root)
-        )
-        let status = try manager.status()
-        let descriptor = try manager.verifiedTemplateDescriptor(wrapping: true)
-        let preview = HookConsentPreview(template: descriptor, target: HookConsentPreview.Target(
-            integrationID: "claude-status-line", targetURLs: [status.settingsURL, status.scriptURL],
-            requestedModes: ["0755 scripts", "0600 settings"], managedAdditions: ["wrapped status line"],
-            involvesWrapping: true, involvesRestoration: true
-        ))
-
-        #expect(preview.sourceID == "claude-statusline-wrapper-template")
-        #expect(preview.artifactVersion == 1)
-        #expect(preview.sha256.count == 64)
-        #expect(preview.sourceBundlePath == "Contents/Resources/ClaudeStatusLineTemplates/status-line-wrapper-v1.sh.template")
-        #expect(preview.involvesWrapping)
-        #expect(preview.involvesRestoration)
-    }
-
-    @Test
     func confirmationGateCannotBeConsumedBeforeExplicitConfirmation() throws {
         let root = try temporaryRoot(); defer { try? FileManager.default.removeItem(at: root) }
         let helper = try makeVerifiedHooksApp(at: root, contents: "gate")

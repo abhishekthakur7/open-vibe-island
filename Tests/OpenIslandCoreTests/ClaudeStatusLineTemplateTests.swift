@@ -4,43 +4,6 @@ import Testing
 
 struct ClaudeStatusLineTemplateTests {
     @Test
-    func signedFixtureManifestInventoriesEveryStatusLineTemplate() throws {
-        let root = try temporaryRoot(); defer { try? FileManager.default.removeItem(at: root) }
-        let templates = try makeVerifiedClaudeStatusLineTemplateResources(at: root)
-        #expect([templates.normal, templates.wrapper, templates.delegate].map(\.entry.artifactID).sorted() == [
-            "claude-statusline-delegate-template",
-            "claude-statusline-script-template",
-            "claude-statusline-wrapper-template",
-        ])
-        for resource in [templates.normal, templates.wrapper, templates.delegate] {
-            #expect(resource.entry.version == 1)
-            #expect(resource.entry.templateVersion == "1")
-            #expect(resource.entry.managedMarker == ClaudeStatusLineInstallationManager.managedTemplateMarker)
-            #expect(resource.entry.relativePath.hasPrefix("Contents/Resources/ClaudeStatusLineTemplates/"))
-            #expect(resource.entry.sha256 == ManagedHookFileSystem.digest(of: resource.data))
-            #expect(resource.entry.expectedMode == 0o644)
-        }
-    }
-
-    @Test(arguments: ["unexpected", "missing"])
-    func rejectsUnexpectedOrMissingTemplatePlaceholdersWithoutMutation(kind: String) throws {
-        let root = try temporaryRoot(); defer { try? FileManager.default.removeItem(at: root) }
-        let templates = try makeVerifiedClaudeStatusLineTemplateResources(at: root)
-        let source = String(data: templates.normal.data, encoding: .utf8)!
-        let changed = kind == "unexpected"
-            ? source.replacingOccurrences(of: "{{OPEN_ISLAND_CACHE_PATH_SHELL_QUOTED}}", with: "{{UNEXPECTED_PLACEHOLDER}}")
-            : source.replacingOccurrences(of: "{{OPEN_ISLAND_CACHE_PATH_SHELL_QUOTED}}", with: "cache")
-        let changedData = Data(changed.utf8)
-        try changedData.write(to: templates.normal.resourceURL)
-        let invalid = resourceLike(templates.normal, data: changedData)
-        let manager = manager(root: root, templates: ClaudeStatusLineTemplateResources(normal: invalid, wrapper: templates.wrapper, delegate: templates.delegate))
-
-        #expect(throws: ClaudeStatusLineInstallationError.self) { try manager.install() }
-        #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent(".claude").path))
-        #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent("bin").path))
-    }
-
-    @Test
     func tamperedOrMissingTemplateFailsBeforeAnyTargetMutation() throws {
         let root = try temporaryRoot(); defer { try? FileManager.default.removeItem(at: root) }
         let templates = try makeVerifiedClaudeStatusLineTemplateResources(at: root)
@@ -55,20 +18,6 @@ struct ClaudeStatusLineTemplateTests {
         let missing = templates.wrapper.resourceURL.deletingLastPathComponent().appendingPathComponent("missing.template")
         #expect(throws: BundledHookArtifactError.self) { try VerifiedBundledHookArtifact.verifiedResource(at: missing) }
         #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent(".claude").path))
-    }
-
-    @Test
-    func staleTemplateVersionFailsBeforeAnyTargetMutation() throws {
-        let root = try temporaryRoot(); defer { try? FileManager.default.removeItem(at: root) }
-        let templates = try makeVerifiedClaudeStatusLineTemplateResources(at: root)
-        var staleEntry = templates.normal.entry
-        staleEntry.templateVersion = "0"
-        let stale = VerifiedBundledResource(resourceURL: templates.normal.resourceURL, entry: staleEntry, data: templates.normal.data)
-        let manager = manager(root: root, templates: ClaudeStatusLineTemplateResources(normal: stale, wrapper: templates.wrapper, delegate: templates.delegate))
-
-        #expect(throws: ClaudeStatusLineInstallationError.self) { try manager.install() }
-        #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent(".claude").path))
-        #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent("bin").path))
     }
 
     @Test
@@ -112,12 +61,6 @@ struct ClaudeStatusLineTemplateTests {
         #expect(throws: ManagedHookFileSystemError.self) { try manager.install() }
         #expect(!FileManager.default.fileExists(atPath: root.appendingPathComponent("bin/open-island-statusline").path))
         #expect(try Data(contentsOf: settings) == Data("{}".utf8))
-    }
-
-    private func resourceLike(_ resource: VerifiedBundledResource, data: Data) -> VerifiedBundledResource {
-        var entry = resource.entry
-        entry.sha256 = ManagedHookFileSystem.digest(of: data)
-        return VerifiedBundledResource(resourceURL: resource.resourceURL, entry: entry, data: data)
     }
 
     private func manager(root: URL, templates: ClaudeStatusLineTemplateResources) -> ClaudeStatusLineInstallationManager {

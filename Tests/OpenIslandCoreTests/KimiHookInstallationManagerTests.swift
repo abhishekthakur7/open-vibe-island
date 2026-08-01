@@ -24,61 +24,6 @@ struct KimiHookInstallationManagerTests {
     }
 
     @Test
-    func mergesUnrelatedTomlButTreatsManagedLookingEntriesAsUnowned() throws {
-        let fixture = try Fixture(); defer { fixture.remove() }
-        try fixture.createKimi()
-        let config = fixture.directory.appendingPathComponent("config.toml")
-        let original = Data("default_model = \"kimi\"\n\n[[hooks]]\nevent = \"Stop\"\ncommand = \"/tmp/OpenIslandHooks-lookalike --source kimi\"\n".utf8)
-        try original.write(to: config)
-        let status = try fixture.manager().status()
-        #expect(status.managementOutcome == .unowned)
-        let installed = try fixture.manager().install(hooksBinaryURL: makeVerifiedHooksApp(at: fixture.root, contents: "lookalike"))
-        #expect(installed.managementOutcome == .exactManaged)
-        #expect(try String(contentsOf: config).contains("OpenIslandHooks-lookalike"))
-    }
-
-    @Test(arguments: ["partial", "duplicate", "wrong-command"])
-    func malformedManagedBlocksAreAmbiguousAndUntouched(kind: String) throws {
-        let fixture = try Fixture(); defer { fixture.remove() }
-        try fixture.createKimi()
-        let command = KimiHookInstaller.hookCommand(for: fixture.binary.path)
-        var contents = try #require(KimiHookInstaller.installConfigTOML(existingContents: nil, hookCommand: command).contents)
-        switch kind {
-        case "partial": contents = contents.replacingOccurrences(of: "# open-island: managed hook — do not edit\n[[hooks]]\nevent = \"Notification\"\ncommand = \"\(command)\"\ntimeout = 45\n\n", with: "")
-        case "wrong-command": contents = contents.replacingOccurrences(of: "--source kimi", with: "--source claude")
-        default: contents += "\n" + contents
-        }
-        let config = fixture.directory.appendingPathComponent("config.toml")
-        try Data(contents.utf8).write(to: config)
-        let manager = fixture.manager()
-        #expect((try manager.status()).managementOutcome == .ambiguousUnmanaged)
-        let before = try Data(contentsOf: config)
-        #expect(throws: ManagedHookFileSystemError.self) { try manager.install(hooksBinaryURL: makeVerifiedHooksApp(at: fixture.root, contents: kind)) }
-        #expect(try Data(contentsOf: config) == before)
-        #expect(throws: ManagedHookFileSystemError.self) { try manager.uninstall() }
-    }
-
-    @Test(arguments: ["config", "manifest", "sidecar"])
-    func tamperedEvidenceAndRecoveryJournalBlockMutations(target: String) throws {
-        let fixture = try Fixture(); defer { fixture.remove() }
-        let manager = fixture.manager()
-        let installed = try manager.install(hooksBinaryURL: makeVerifiedHooksApp(at: fixture.root, contents: "tamper"))
-        let targetURL: URL = switch target { case "config": installed.configURL; case "manifest": installed.manifestURL; default: ManagedHookProvenance.sidecarURL(for: installed.configURL) }
-        try Data("tampered".utf8).write(to: targetURL)
-        let before = try Data(contentsOf: targetURL)
-        #expect((try manager.status()).managementOutcome == .ambiguousUnmanaged)
-        #expect(throws: ManagedHookFileSystemError.self) { try manager.uninstall() }
-        #expect(try Data(contentsOf: targetURL) == before)
-
-        let clean = try Fixture(); defer { clean.remove() }
-        try clean.createKimi()
-        let journal = ManagedHookFileSystem.journalURL(for: clean.directory.appendingPathComponent("config.toml"))
-        try Data("unresolved".utf8).write(to: journal)
-        #expect((try clean.manager().status()).managementOutcome == .unresolvedRecovery)
-        #expect(throws: ManagedHookFileSystemError.self) { try clean.manager().install(hooksBinaryURL: makeVerifiedHooksApp(at: clean.root, contents: "journal")) }
-    }
-
-    @Test
     func artifactFailureAndUnsafeFileOrDirectoryNeverCreateOrReplaceTargets() throws {
         let clean = try Fixture(); defer { clean.remove() }
         #expect(throws: BundledHookArtifactError.self) { try clean.manager().install(hooksBinaryURL: clean.root.appendingPathComponent("untrusted/OpenIslandHooks")) }

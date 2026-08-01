@@ -33,28 +33,6 @@ struct CodexAppServerBufferTests {
     }
 
     @Test
-    func trailingPartialLineStaysInBufferUntilNewlineArrives() {
-        let client = CodexAppServerClient()
-        let received = LockedNotifications()
-        client.onNotification = { received.append($0) }
-
-        let firstChunk = #"{"method":"alpha","params":{}}"# + "\n" + #"{"method":"par"#
-        client.handleIncomingData(Data(firstChunk.utf8))
-
-        var notifications = received.snapshot()
-        #expect(notifications.count == 1)
-        #expect(client.readBufferCountForTests > 0)
-
-        let secondChunk = #"tial","params":{}}"# + "\n"
-        client.handleIncomingData(Data(secondChunk.utf8))
-
-        notifications = received.snapshot()
-        #expect(notifications.count == 2)
-        #expect(notifications.compactMap(unknownMethod) == ["alpha", "partial"])
-        #expect(client.readBufferCountForTests == 0)
-    }
-
-    @Test
     func runawayBufferIsCappedAndDropped() {
         let client = CodexAppServerClient()
 

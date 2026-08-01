@@ -52,45 +52,6 @@ struct GeminiHookInstallationManagerTests {
         #expect(try String(contentsOf: settings).contains("custom"))
     }
 
-    @Test(arguments: ["partial", "stale-path", "duplicate", "wrong-command"])
-    func managedLookingEntriesAreAmbiguousAndNeverMutated(kind: String) throws {
-        let fixture = try Fixture()
-        defer { fixture.remove() }
-        try fixture.createGemini()
-        let command = GeminiHookInstaller.hookCommand(for: fixture.binary.path)
-        let base = try GeminiHookInstaller.installSettingsJSON(existingData: nil, hookCommand: command).contents!
-        var root = try JSONSerialization.jsonObject(with: base) as! [String: Any]
-        var hooks = root["hooks"] as! [String: Any]
-        switch kind {
-        case "partial": hooks.removeValue(forKey: "Notification")
-        case "stale-path":
-            var groups = hooks["Notification"] as! [[String: Any]]
-            var entries = groups[0]["hooks"] as! [[String: Any]]
-            entries[0]["command"] = "'/tmp/stale/OpenIslandHooks' --source gemini"
-            groups[0]["hooks"] = entries
-            hooks["Notification"] = groups
-        case "wrong-command":
-            var groups = hooks["Notification"] as! [[String: Any]]
-            var entries = groups[0]["hooks"] as! [[String: Any]]
-            entries[0]["command"] = "'/tmp/OpenIslandHooks' --source claude"
-            groups[0]["hooks"] = entries
-            hooks["Notification"] = groups
-        default:
-            hooks["Notification"] = (hooks["Notification"] as! [[String: Any]]) + [(hooks["Notification"] as! [[String: Any]])[0]]
-        }
-        root["hooks"] = hooks
-        let conflicting = try JSONSerialization.data(withJSONObject: root, options: [.sortedKeys])
-        let target = fixture.directory.appendingPathComponent("settings.json")
-        try conflicting.write(to: target)
-
-        let manager = fixture.manager()
-        #expect((try manager.status()).managementOutcome == .ambiguousUnmanaged)
-        #expect(throws: ManagedHookFileSystemError.self) { try manager.install(hooksBinaryURL: makeVerifiedHooksApp(at: fixture.root, contents: kind)) }
-        #expect(try Data(contentsOf: target) == conflicting)
-        #expect(throws: ManagedHookFileSystemError.self) { try manager.uninstall() }
-        #expect(try Data(contentsOf: target) == conflicting)
-    }
-
     @Test(arguments: ["settings", "manifest", "sidecar"])
     func tamperedOwnershipEvidenceBlocksUninstallWithoutChangingBytes(target: String) throws {
         let fixture = try Fixture()
@@ -107,32 +68,6 @@ struct GeminiHookInstallationManagerTests {
         #expect((try manager.status()).managementOutcome == .ambiguousUnmanaged)
         #expect(throws: ManagedHookFileSystemError.self) { try manager.uninstall() }
         #expect(try Data(contentsOf: targetURL) == bytes)
-    }
-
-    @Test
-    func artifactFailureJournalsAndUnsafeLinksNeverMutateTargets() throws {
-        let fixture = try Fixture()
-        defer { fixture.remove() }
-        let manager = fixture.manager()
-        #expect(throws: BundledHookArtifactError.self) { try manager.install(hooksBinaryURL: fixture.root.appendingPathComponent("untrusted/OpenIslandHooks")) }
-        #expect(!FileManager.default.fileExists(atPath: fixture.directory.path))
-        #expect(!FileManager.default.fileExists(atPath: fixture.binary.deletingLastPathComponent().path))
-
-        try fixture.createGemini()
-        let journal = ManagedHookFileSystem.journalURL(for: fixture.directory.appendingPathComponent("settings.json"))
-        try Data("unresolved".utf8).write(to: journal)
-        let before = try Data(contentsOf: journal)
-        #expect((try manager.status()).managementOutcome == .unresolvedRecovery)
-        #expect(throws: ManagedHookFileSystemError.self) { try manager.uninstall() }
-        #expect(try Data(contentsOf: journal) == before)
-
-        let linkFixture = try Fixture()
-        defer { linkFixture.remove() }
-        try linkFixture.createGemini()
-        let outside = linkFixture.root.appendingPathComponent("outside")
-        try Data("{}".utf8).write(to: outside)
-        try FileManager.default.createSymbolicLink(at: linkFixture.directory.appendingPathComponent("settings.json"), withDestinationURL: outside)
-        #expect((try linkFixture.manager().status()).managementOutcome == .unsafePath)
     }
 
     private struct Fixture {

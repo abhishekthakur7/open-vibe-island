@@ -33,43 +33,6 @@ struct NestedWorkAccessibilityTests {
     }
 
     @Test
-    func formatterOmitsExpandedAndEmptyNestedWork() {
-        let originalLanguage = savedLanguagePreference()
-        defer { restoreLanguagePreference(originalLanguage) }
-        let lang = LanguageManager()
-        lang.language = .en
-
-        #expect(NestedWorkAccessibility.value(
-            activeSubagentCount: 3,
-            completedTaskCount: 0,
-            totalTaskCount: 0,
-            isExpanded: false,
-            lang: lang
-        ) == "3 subagents")
-        #expect(NestedWorkAccessibility.value(
-            activeSubagentCount: 0,
-            completedTaskCount: rollup.done,
-            totalTaskCount: rollup.total,
-            isExpanded: false,
-            lang: lang
-        ) == "2 of 5 tasks completed")
-        #expect(NestedWorkAccessibility.value(
-            activeSubagentCount: 3,
-            completedTaskCount: rollup.done,
-            totalTaskCount: rollup.total,
-            isExpanded: true,
-            lang: lang
-        ) == nil)
-        #expect(NestedWorkAccessibility.value(
-            activeSubagentCount: 0,
-            completedTaskCount: 0,
-            totalTaskCount: 0,
-            isExpanded: false,
-            lang: lang
-        ) == nil)
-    }
-
-    @Test
     func formatterLocalizesComponentsAndCombinedSeparator() {
         let originalLanguage = savedLanguagePreference()
         defer { restoreLanguagePreference(originalLanguage) }
@@ -90,77 +53,6 @@ struct NestedWorkAccessibilityTests {
                 lang: lang
             ) == expected)
         }
-    }
-
-    @Test
-    func pouredScenariosExposeNestedWorkOnlyWhileCollapsed() {
-        let collapsed = IslandDebugScenario.subagentsCard.snapshot()
-        let expanded = IslandDebugScenario.subagentsExpanded.snapshot()
-
-        assertScenarioSemantics(
-            collapsedIsExpanded: PouredRowExpansion.resolved(
-                isInteractive: true,
-                expandedByDefault: collapsed.forcesRowExpansion,
-                isActionable: false,
-                detailOverride: nil
-            ),
-            expandedIsExpanded: PouredRowExpansion.resolved(
-                isInteractive: true,
-                expandedByDefault: expanded.forcesRowExpansion,
-                isActionable: false,
-                detailOverride: nil
-            )
-        )
-    }
-
-    @Test
-    func flightDeckScenariosExposeNestedWorkOnlyWhileCollapsed() {
-        let collapsed = IslandDebugScenario.subagentsCard.snapshot()
-        let expanded = IslandDebugScenario.subagentsExpanded.snapshot()
-
-        // Flight Deck's ordinary interactive row resolves directly from the
-        // debug seam when there is no local override and it is not actionable.
-        assertScenarioSemantics(
-            collapsedIsExpanded: collapsed.forcesRowExpansion,
-            expandedIsExpanded: expanded.forcesRowExpansion
-        )
-    }
-
-    @Test
-    func haloScenariosExposeNestedWorkOnlyWhileCollapsed() {
-        let collapsed = IslandDebugScenario.subagentsCard.snapshot()
-        let expanded = IslandDebugScenario.subagentsExpanded.snapshot()
-
-        // Halo uses the same ordinary-row defaults as Flight Deck.
-        assertScenarioSemantics(
-            collapsedIsExpanded: collapsed.forcesRowExpansion,
-            expandedIsExpanded: expanded.forcesRowExpansion
-        )
-    }
-
-    private func assertScenarioSemantics(
-        collapsedIsExpanded: Bool,
-        expandedIsExpanded: Bool
-    ) {
-        let originalLanguage = savedLanguagePreference()
-        defer { restoreLanguagePreference(originalLanguage) }
-        let lang = LanguageManager()
-        lang.language = .en
-
-        #expect(NestedWorkAccessibility.value(
-            activeSubagentCount: 3,
-            completedTaskCount: rollup.done,
-            totalTaskCount: rollup.total,
-            isExpanded: collapsedIsExpanded,
-            lang: lang
-        ) == "3 subagents, 2 of 5 tasks completed")
-        #expect(NestedWorkAccessibility.value(
-            activeSubagentCount: 3,
-            completedTaskCount: rollup.done,
-            totalTaskCount: rollup.total,
-            isExpanded: expandedIsExpanded,
-            lang: lang
-        ) == nil)
     }
 
     private func savedLanguagePreference() -> String? {

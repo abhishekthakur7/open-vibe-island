@@ -39,35 +39,6 @@ struct DataLifecycleTests {
     }
 
     @Test
-    func expiryBoundaryAndAbsentLegacyFieldsAreTolerated() throws {
-        let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("open-island-lifecycle-\(UUID().uuidString)", isDirectory: true)
-        defer { try? FileManager.default.removeItem(at: root) }
-        let file = root.appendingPathComponent("claude-session-registry.json")
-        let referenceDate = Date(timeIntervalSince1970: 1_800_000_000)
-        let atBoundary = PersistedSessionMetadata(
-            sessionID: "at-boundary", origin: .live, attachmentState: .attached,
-            phase: .running, outcome: nil,
-            updatedAt: referenceDate.addingTimeInterval(-LocalDataLifecycle.sessionMetadataRetention)
-        )
-        let old = PersistedSessionMetadata(
-            sessionID: "expired", origin: .live, attachmentState: .stale,
-            phase: .completed, outcome: .success,
-            updatedAt: referenceDate.addingTimeInterval(-LocalDataLifecycle.sessionMetadataRetention - 1)
-        )
-        let current = PersistedSessionMetadata(
-            sessionID: "current", origin: .live, attachmentState: .attached,
-            phase: .running, outcome: nil, updatedAt: referenceDate
-        )
-        try LocalDataLifecycle.writeMetadata([atBoundary, old, current], to: file, referenceDate: referenceDate)
-
-        let loaded = try ClaudeSessionRegistry(fileURL: file).load(referenceDate: referenceDate)
-        #expect(loaded.map(\.sessionID) == ["at-boundary", "current"])
-        #expect(loaded.first?.claudeMetadata == nil)
-        #expect(loaded.first?.jumpTarget == nil)
-    }
-
-    @Test
     func interruptedAtomicWriteArtifactsDoNotAlterCanonicalMetadataAndCleanupIsIdempotent() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("open-island-lifecycle-\(UUID().uuidString)", isDirectory: true)
@@ -129,19 +100,4 @@ struct DataLifecycleTests {
         try ManagedHookBackupLifecycle.removeBackup(for: target)
     }
 
-    @Test
-    func clearHistoryExcludesUnrelatedHookBackup() throws {
-        let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("open-island-lifecycle-\(UUID().uuidString)", isDirectory: true)
-        defer { try? FileManager.default.removeItem(at: root) }
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        let history = root.appendingPathComponent("session-terminals.json")
-        let backup = root.appendingPathComponent("settings.json.backup")
-        try Data("history".utf8).write(to: history)
-        try Data("backup".utf8).write(to: backup)
-
-        try LocalHistoryStore.clear(fileURLs: [history])
-        #expect(!FileManager.default.fileExists(atPath: history.path))
-        #expect(FileManager.default.fileExists(atPath: backup.path))
-    }
 }

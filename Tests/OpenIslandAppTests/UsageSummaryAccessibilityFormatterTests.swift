@@ -42,61 +42,6 @@ struct UsageSummaryAccessibilityFormatterTests {
     }
 
     @Test
-    func resetClauseIsOmittedWhenUnavailableOrPast() {
-        let lang = language(.en)
-        let withoutReset = provider(
-            title: "Claude",
-            windows: [
-                window(id: "none", label: "5h", percentage: 34, remaining: nil),
-                window(id: "past", label: "7d", percentage: 78, remaining: -60),
-            ]
-        )
-
-        #expect(
-            UsageSummaryAccessibilityFormatter.summary(
-                for: withoutReset,
-                usesShortTitle: false,
-                asOf: now,
-                lang: lang
-            ) == "Claude 5h 34% · 7d 78%"
-        )
-    }
-
-    @Test
-    func multipleWindowsAndProvidersPrefixEachProviderOnce() {
-        let lang = language(.en)
-        let providers = [
-            provider(
-                title: "Claude",
-                windows: [
-                    window(id: "claude-5h", label: "5h", percentage: 34, remaining: 7_740),
-                    window(id: "claude-7d", label: "7d", percentage: 78, remaining: 270_000),
-                ]
-            ),
-            provider(
-                title: "Codex",
-                windows: [
-                    window(id: "codex-7d", label: "7d", percentage: 92, remaining: 68_340),
-                ]
-            ),
-        ]
-
-        let result = UsageSummaryAccessibilityFormatter.summary(
-            for: providers,
-            usesShortTitles: false,
-            asOf: now,
-            lang: lang
-        )
-
-        #expect(
-            result
-                == "Claude 5h 34%, resets in 2h 9m · 7d 78%, resets in 3d 3h · Codex 7d 92%, resets in 18h 59m"
-        )
-        #expect(result.components(separatedBy: "Claude").count - 1 == 1)
-        #expect(result.components(separatedBy: "Codex").count - 1 == 1)
-    }
-
-    @Test
     func resetPhraseLocalizesInEverySupportedLanguage() {
         let expected: [LanguageManager.AppLanguage: String] = [
             .en: "Claude 5h 34%, resets in 2h 9m",

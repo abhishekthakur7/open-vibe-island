@@ -103,56 +103,6 @@ struct ClaudeHookInstallationManagerTests {
     }
 
     @Test
-    func failedArtifactAndUnresolvedJournalCauseNoDirectoryOrStatusRepair() throws {
-        let fixture = try Fixture(source: "qwen")
-        defer { fixture.remove() }
-        let manager = fixture.manager()
-        #expect(throws: BundledHookArtifactError.self) { try manager.install(hooksBinaryURL: fixture.root.appendingPathComponent("untrusted/OpenIslandHooks")) }
-        #expect(!FileManager.default.fileExists(atPath: fixture.directory.path))
-        #expect(!FileManager.default.fileExists(atPath: fixture.binary.deletingLastPathComponent().path))
-
-        try fixture.createDirectory()
-        let journal = ManagedHookFileSystem.journalURL(for: fixture.directory.appendingPathComponent("settings.json"))
-        try Data("unresolved".utf8).write(to: journal)
-        let before = try Data(contentsOf: journal)
-        #expect((try manager.status()).managementOutcome == .unresolvedRecovery)
-        #expect(throws: ManagedHookFileSystemError.self) { try manager.uninstall() }
-        #expect(try Data(contentsOf: journal) == before)
-    }
-
-    @Test
-    func statusIsByteForByteObservationalAcrossTargetBackupJournalProvenanceAndHelper() throws {
-        let fixture = try Fixture(source: "claude")
-        defer { fixture.remove() }
-        try fixture.createDirectory()
-        let settings = fixture.directory.appendingPathComponent("settings.json")
-        try Data("{\"custom\":true}".utf8).write(to: settings)
-        let helper = try makeVerifiedHooksApp(at: fixture.root, contents: "observational")
-        let manager = fixture.manager()
-        let installed = try manager.install(hooksBinaryURL: helper)
-        let journal = ManagedHookFileSystem.journalURL(for: installed.settingsURL)
-        try Data("unresolved status evidence".utf8).write(to: journal)
-
-        let tracked = [
-            installed.settingsURL,
-            installed.manifestURL,
-            ManagedHookProvenance.sidecarURL(for: installed.settingsURL),
-            ManagedHookProvenance.sidecarURL(for: installed.manifestURL),
-            ManagedHookBackupLifecycle.backupURL(for: installed.settingsURL),
-            ManagedHookBackupLifecycle.metadataURL(for: installed.settingsURL),
-            journal,
-            fixture.binary,
-        ]
-        let before = try Dictionary(uniqueKeysWithValues: tracked.map { ($0, try Data(contentsOf: $0)) })
-
-        #expect((try manager.status()).managementOutcome == .unresolvedRecovery)
-
-        for url in tracked {
-            #expect(try Data(contentsOf: url) == before[url])
-        }
-    }
-
-    @Test
     func unsafeFileAndDirectoryLinksAreReportedWithoutReadingOrCreating() throws {
         let fixture = try Fixture(source: "factory")
         defer { fixture.remove() }

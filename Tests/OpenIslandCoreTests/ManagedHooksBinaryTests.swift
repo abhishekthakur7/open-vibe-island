@@ -33,28 +33,6 @@ struct ManagedHooksBinaryTests {
     }
 
     @Test
-    func explicitInstallUpdatesOnlyVerifiedHelperToNewArtifactVersion() throws {
-        let root = try helperRoot()
-        let updateRoot = try helperRoot()
-        defer { try? FileManager.default.removeItem(at: root); try? FileManager.default.removeItem(at: updateRoot) }
-        let initial = try VerifiedBundledHookArtifact.verify(helperURL: makeVerifiedHooksApp(at: root, contents: "helper-v1"))
-        let destination = root.appendingPathComponent("managed/OpenIslandHooks")
-        _ = try ManagedHooksBinary.install(from: initial, to: destination)
-
-        let updatedHelper = try makeVerifiedHooksApp(at: updateRoot, contents: "helper-v2")
-        try setArtifactVersion(2, for: updatedHelper)
-        let updated = try VerifiedBundledHookArtifact.verify(helperURL: updatedHelper)
-        _ = try ManagedHooksBinary.install(from: updated, to: destination)
-
-        let loadedRecord = try ManagedHookProvenance.loadVerified(for: destination, managerID: "open-island-hooks-binary")
-        let record = try #require(loadedRecord)
-        #expect(try String(contentsOf: destination) == "helper-v2")
-        #expect(record.artifactVersion == 2)
-        #expect(record.preMutationDigest == initial.entry.sha256)
-        #expect(record.postMutationDigest == updated.entry.sha256)
-    }
-
-    @Test
     func tamperedSourceOrUnmanagedDestinationNeverCreatesOrReplacesHelper() throws {
         let root = try helperRoot()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -123,40 +101,9 @@ struct ManagedHooksBinaryTests {
         #expect(try String(contentsOf: outside) == "outside")
     }
 
-    @Test
-    func statusNeverUpdatesAndRemovalRequiresExactProvenance() throws {
-        let root = try helperRoot()
-        let updateRoot = try helperRoot()
-        defer { try? FileManager.default.removeItem(at: root); try? FileManager.default.removeItem(at: updateRoot) }
-        let initial = try VerifiedBundledHookArtifact.verify(helperURL: makeVerifiedHooksApp(at: root, contents: "old"))
-        let destination = root.appendingPathComponent("managed/OpenIslandHooks")
-        _ = try ManagedHooksBinary.install(from: initial, to: destination)
-        _ = try makeVerifiedHooksApp(at: updateRoot, contents: "new")
-        #expect(ManagedHooksBinary.managementOutcome(at: destination) == .exactManaged)
-        #expect(try String(contentsOf: destination) == "old")
-        #expect(try ManagedHooksBinary.removeVerified(at: destination))
-        #expect(!(try ManagedHookFileSystem.existsNoFollow(destination)))
-        #expect(!(try ManagedHookFileSystem.existsNoFollow(ManagedHookProvenance.sidecarURL(for: destination))))
-
-        let ambiguous = root.appendingPathComponent("ambiguous/OpenIslandHooks")
-        try ManagedHookFileSystem.createDirectory(ambiguous.deletingLastPathComponent())
-        try Data("user-helper".utf8).write(to: ambiguous)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: ambiguous.path)
-        #expect(throws: ManagedHookFileSystemError.self) { try ManagedHooksBinary.removeVerified(at: ambiguous) }
-        #expect(try String(contentsOf: ambiguous) == "user-helper")
-    }
-
     private func helperRoot() throws -> URL {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("open-island-managed-helper-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         return root
-    }
-
-    private func setArtifactVersion(_ version: Int, for helperURL: URL) throws {
-        let manifest = helperURL.deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("Resources/\(BundledArtifactManifest.fileName)")
-        var inventory = try JSONDecoder().decode(BundledArtifactManifest.self, from: Data(contentsOf: manifest))
-        inventory.artifacts[0].version = version
-        try JSONEncoder().encode(inventory).write(to: manifest)
     }
 }

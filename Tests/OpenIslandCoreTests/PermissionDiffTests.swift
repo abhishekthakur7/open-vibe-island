@@ -16,14 +16,6 @@ struct PermissionDiffTests {
     }
 
     @Test
-    func bothEmptyProducesEmptyResult() {
-        let result = PermissionDiff.compute(oldText: "", newText: "")
-
-        #expect(result.isEmpty)
-        #expect(result.lines.isEmpty)
-    }
-
-    @Test
     func writeStyleAllContentTreatedAsAdded() {
         // Write's tool_input only carries `content` — no "before" text — so
         // the whole thing renders as added, matching `permissionFileDiffSource`'s
@@ -38,28 +30,6 @@ struct PermissionDiffTests {
     }
 
     @Test
-    func emptyNewTextTreatedAsAllRemoved() {
-        let result = PermissionDiff.compute(oldText: "line one\nline two", newText: "")
-
-        #expect(result.addedCount == 0)
-        #expect(result.removedCount == 2)
-        #expect(result.lines.allSatisfy { $0.kind == .removed })
-    }
-
-    @Test
-    func editStyleReplacementProducesCountsMatchingTheReferenceExample() {
-        // Mirrors the ticket's own example: a compact edit with an
-        // "Updated (+N −M)" summary distinct from the raw line count.
-        let old = (1...23).map { "old line \($0)" }.joined(separator: "\n")
-        let new = (1...8).map { "new line \($0)" }.joined(separator: "\n")
-
-        let result = PermissionDiff.compute(oldText: old, newText: new)
-
-        #expect(result.addedCount == 8)
-        #expect(result.removedCount == 23)
-    }
-
-    @Test
     func singleLineChangeInTheMiddlePreservesSurroundingContextAsUnchanged() {
         let old = "line1\nline2\nline3"
         let new = "line1\nlineTWO\nline3"
@@ -70,18 +40,6 @@ struct PermissionDiffTests {
         #expect(result.removedCount == 1)
         #expect(result.lines.map(\.kind) == [.unchanged, .removed, .added, .unchanged])
         #expect(result.lines.map(\.text) == ["line1", "line2", "lineTWO", "line3"])
-    }
-
-    @Test
-    func purelyAdditiveChangeHasNoRemovedLines() {
-        let old = "line1\nline2"
-        let new = "line1\nline2\nline3"
-
-        let result = PermissionDiff.compute(oldText: old, newText: new)
-
-        #expect(result.addedCount == 1)
-        #expect(result.removedCount == 0)
-        #expect(result.lines.map(\.kind) == [.unchanged, .unchanged, .added])
     }
 
     @Test

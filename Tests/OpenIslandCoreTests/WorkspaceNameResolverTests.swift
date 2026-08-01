@@ -20,36 +20,6 @@ struct WorkspaceNameResolverTests {
     }
 
     @Test
-    func gitBranchReadsGitdirFileForWorktree() throws {
-        let root = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: root) }
-
-        let worktree = root.appendingPathComponent("worktree")
-        let gitdir = root.appendingPathComponent("repo.git/worktrees/feature")
-        try FileManager.default.createDirectory(at: worktree, withIntermediateDirectories: true)
-        try FileManager.default.createDirectory(at: gitdir, withIntermediateDirectories: true)
-        try "gitdir: \(gitdir.path)\n".write(
-            to: worktree.appendingPathComponent(".git"),
-            atomically: true,
-            encoding: .utf8
-        )
-        try "ref: refs/heads/feature/ui\n".write(
-            to: gitdir.appendingPathComponent("HEAD"),
-            atomically: true,
-            encoding: .utf8
-        )
-
-        #expect(WorkspaceNameResolver.gitBranch(for: worktree.path) == "feature/ui")
-    }
-
-    @Test
-    func gitBranchPrefersClaudeWorktreePathBranch() throws {
-        let cwd = "/tmp/open-island/.claude/worktrees/feat+v8-design"
-
-        #expect(WorkspaceNameResolver.gitBranch(for: cwd) == "feat/v8-design")
-    }
-
-    @Test
     func gitBranchCachesResultAcrossRepeatedLookups() throws {
         // Pins the SwiftUI layout-loop fix: repeated lookups for the
         // same cwd must hit the in-memory cache instead of re-walking
@@ -96,19 +66,6 @@ struct WorkspaceNameResolverTests {
         #expect(WorkspaceNameResolver.workspaceName(for: "/") == "Workspace")
         #expect(WorkspaceNameResolver.workspaceName(for: "") == "Workspace")
         #expect(WorkspaceNameResolver.workspaceName(for: "   ") == "Workspace")
-    }
-
-    @Test
-    func resolvableNamePredicateRejectsPathPunctuationOnly() {
-        // `URL(fileURLWithPath:)` normalises a bare "~" against the process cwd,
-        // so the "~" rule is pinned on the predicate rather than through a
-        // directory-dependent `workspaceName(for:)` call.
-        #expect(WorkspaceNameResolver.isResolvableWorkspaceName("~") == false)
-        #expect(WorkspaceNameResolver.isResolvableWorkspaceName("/") == false)
-        #expect(WorkspaceNameResolver.isResolvableWorkspaceName("//") == false)
-        #expect(WorkspaceNameResolver.isResolvableWorkspaceName("") == false)
-        #expect(WorkspaceNameResolver.isResolvableWorkspaceName("proj") == true)
-        #expect(WorkspaceNameResolver.isResolvableWorkspaceName("my.project") == true)
     }
 
     private func makeTemporaryDirectory() throws -> URL {

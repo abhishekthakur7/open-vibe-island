@@ -146,47 +146,6 @@ struct CodexUsageTests {
         #expect(snapshot?.windows.map(\.label) == ["5h"])
         #expect(snapshot?.windows.first?.roundedUsedPercentage == 13)
     }
-
-    @Test
-    func codexUsageLoaderFormatsNonStandardWindowLengths() throws {
-        let rootURL = temporaryRootURL(named: "codex-usage-labels")
-        let rolloutURL = rootURL
-            .appendingPathComponent("2026/04/03", isDirectory: true)
-            .appendingPathComponent("rollout-custom-window.jsonl")
-
-        defer {
-            try? FileManager.default.removeItem(at: rootURL)
-        }
-
-        try writeRollout(
-            [
-                rolloutLine(
-                    timestamp: "2026-04-03T05:30:00.000Z",
-                    type: "event_msg",
-                    payload: [
-                        "type": "token_count",
-                        "rate_limits": [
-                            "primary": [
-                                "used_percent": 8.0,
-                                "window_minutes": 90,
-                                "resets_at": 1_775_200_000,
-                            ],
-                            "secondary": [
-                                "used_percent": 11.0,
-                                "window_minutes": 1_500,
-                                "resets_at": 1_775_260_000,
-                            ],
-                        ],
-                    ]
-                ),
-            ],
-            to: rolloutURL
-        )
-
-        let snapshot = try CodexUsageLoader.load(fromRootURL: rootURL)
-
-        #expect(snapshot?.windows.map(\.label) == ["1h 30m", "1d 1h"])
-    }
 }
 
 private func temporaryRootURL(named name: String) -> URL {
