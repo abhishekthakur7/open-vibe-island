@@ -24,14 +24,6 @@ struct IslandDebugSnapshot {
     /// `subagentsCard`, which deliberately keeps documenting the collapsed
     /// row — rendering exactly as before.
     var forcesRowExpansion: Bool = false
-    /// PI-C-001: a scenario-scoped completed-stale window. `nil` (the default)
-    /// leaves the active profile's preference in force, so every pre-existing
-    /// scenario is unaffected. Only `pouredGroupedSix` sets it — the board's own
-    /// `Done` rows are 12 and 22 minutes old while its footer reads `0 idle` in
-    /// the same frame, which under the shipping 5-minute default would file both
-    /// rows as idle and make the mapped scenario render something the reference
-    /// never shows.
-    var completedStaleThreshold: IslandCompletedStaleThreshold? = nil
 }
 
 enum IslandDebugScenario: String, CaseIterable, Identifiable {
@@ -452,13 +444,12 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
                 notchOpenReason: .click,
                 islandSurface: .sessionList(),
                 sessions: sessions,
-                selectedSessionID: sessions.first?.id,
-                // PI-C-001: the board's `Done` rows are 12m / 22m old and its
-                // footer reads `0 idle` in the same frame — self-consistent only
-                // above a 22-minute window. Scoped to this scenario so the
-                // mapped C1 capture reproduces §C instead of a two-group list
-                // with a `2 idle` roll-up.
-                completedStaleThreshold: .never
+                // PI-C-001 / owner ruling R1: the board's `Done` rows are 12m /
+                // 22m old and its footer reads `0 idle` in the same frame. No
+                // scenario-scoped stale window is needed for that any more —
+                // the Poured list itself never stales `Done`
+                // (`PouredSessionListScaffold.taxonomyStaleThreshold`).
+                selectedSessionID: sessions.first?.id
             )
 
         case .emptyState:

@@ -9,9 +9,11 @@ import Testing
 ///
 /// - **PI-C-001** — the two attention sections merge into one `Needs you`, and
 ///   the two terminal outcomes stay together under `Done`.
-/// - **PI-C-002 / PI-C-007** — idle never renders as a group, so an arbitrarily
-///   long idle tail cannot grow into a table below the rows that need the reader
-///   (the `C4-stress-40` shape, exercised here as a unit rather than a capture).
+/// - **PI-C-002 / PI-C-007** — a long tail can never grow into a table below the
+///   rows that need the reader (the `C4-stress-40` shape, exercised here as a
+///   unit rather than a capture). Under **owner ruling R1** that bound is the
+///   **6-row display cap** rather than idle extraction: Done stays visible, and
+///   `PouredSectionTaxonomy.cappedSections` is what keeps the list finite.
 /// - **PI-C-003** — a row's headline is a name a human can act on, never a bare
 ///   filesystem separator. The root-workspace case below asserts the fixed
 ///   behavior (the guard chain in `spotlightWorkspaceName`); residual secondary
@@ -21,7 +23,15 @@ import Testing
 /// `now`; nothing reads the wall clock, the defaults store, or the view layer.
 struct PouredProjectionStressTests {
     private static let now = Date(timeIntervalSince1970: 1_770_000_000)
-    private static let defaultStaleThreshold = IslandCompletedStaleThreshold.fiveMinutes.seconds
+    /// Owner ruling R1 (`docs/design/overlay-redesign/poured-owner-rulings.md`):
+    /// *"done stays visible"* — the Poured list re-sections with `never`
+    /// whatever the profile's `completedStaleThreshold` is, so this is the
+    /// window the rendered projection actually runs under
+    /// (`PouredSessionListScaffold.taxonomyStaleThreshold`).
+    private static let listStaleThreshold = IslandCompletedStaleThreshold.never.seconds
+    /// The shipping profile default, kept only to prove R1 makes the projection
+    /// independent of it.
+    private static let profileDefaultStaleThreshold = IslandCompletedStaleThreshold.fiveMinutes.seconds
 
     // MARK: - Builders
 
@@ -57,7 +67,7 @@ struct PouredProjectionStressTests {
     /// then the Poured taxonomy on top.
     private static func projection(
         _ sessions: [AgentSession],
-        staleThreshold: TimeInterval = defaultStaleThreshold
+        staleThreshold: TimeInterval = listStaleThreshold
     ) -> PouredSectionTaxonomy.Projection {
         PouredSectionTaxonomy.project(
             IslandSessionSectioning.sections(
@@ -79,17 +89,16 @@ struct PouredProjectionStressTests {
     /// The `C1-grouped-six` fixture projects to exactly the board's three groups
     /// with exactly two rows each, and no idle group at all.
     ///
-    /// The threshold is `.never` on purpose: the board's Done rows are 12 and 22
-    /// minutes old *and* its footer reads `0 idle` in the same frame, which is
-    /// only self-consistent above a 22-minute stale window. Under the shipping
-    /// 5-minute default those two rows are stale-completed — asserted separately
-    /// below, so the divergence is recorded rather than hidden.
+    /// The board's Done rows are 12 and 22 minutes old *and* its footer reads
+    /// `0 idle` in the same frame. Owner ruling R1 rules the board correct —
+    /// Done does not stale out — so the Poured list runs at `never` and this is
+    /// simply what §C shows.
     @Test
     func c1GroupedSixProjectsToTheBoardsThreeGroupsWithNoIdleGroup() {
         let sessions = AppearancePreviewFixtures.pouredGroupedSix(now: Self.now)
         #expect(sessions.count == 6)
 
-        let projected = Self.projection(sessions, staleThreshold: IslandCompletedStaleThreshold.never.seconds)
+        let projected = Self.projection(sessions)
 
         #expect(projected.sections.map(\.id) == [
             PouredSectionTaxonomy.Group.needsYou.sectionID,
@@ -123,21 +132,45 @@ struct PouredProjectionStressTests {
             == ["fixture-completed-success", "fixture-poured-c1-interrupted"])
     }
 
-    /// The reference/default divergence the fixture's doc comment records: under
-    /// the shipping 5-minute stale window the board's own Done rows age out of
-    /// `Done` and into the footer roll-up. Pinned so a later slice that changes
-    /// the threshold semantics has to come back through this test.
+    /// **Owner ruling R1** (replaces the recorded reference/default divergence):
+    /// *"done stays visible"*. An old completed row projects to `Done`, not to
+    /// the idle roll-up, and the result no longer depends on which
+    /// `completedStaleThreshold` the profile carries — because the Poured list
+    /// re-sections at `never` regardless
+    /// (`PouredSessionListScaffold.taxonomyStaleThreshold`).
+    ///
+    /// The 22-minute `fixture-poured-c1-interrupted` row is the exact case the
+    /// old test pinned as a divergence; under the shipping 5-minute default the
+    /// shared sectioning still calls it stale, which is the input this asserts
+    /// against, so the test cannot decay into a tautology.
     @Test
-    func c1GroupedSixDoneRowsFallToTheIdleRollUpUnderTheShippingStaleWindow() {
-        let projected = Self.projection(AppearancePreviewFixtures.pouredGroupedSix(now: Self.now))
+    func oldCompletedRowsProjectToDoneWhateverTheProfileThresholdIs_R1() throws {
+        let sessions = AppearancePreviewFixtures.pouredGroupedSix(now: Self.now)
 
-        #expect(projected.sections.map(\.id) == [
-            PouredSectionTaxonomy.Group.needsYou.sectionID,
-            PouredSectionTaxonomy.Group.working.sectionID,
-        ])
-        #expect(projected.idleCount == 2)
-        #expect(projected.idleSessions.map(\.id).sorted()
+        // The shared sectioning genuinely disagrees with itself across the two
+        // windows — the divergence R1 resolves is real, not asserted away.
+        func sectioned(_ threshold: TimeInterval) -> [IslandSessionSection] {
+            IslandSessionSectioning.sections(
+                for: sessions, group: .state, sort: .attention,
+                completedStaleThreshold: threshold, now: Self.now
+            )
+        }
+        #expect(sectioned(Self.profileDefaultStaleThreshold).contains { $0.id == "state-idle" })
+        #expect(!sectioned(Self.listStaleThreshold).contains { $0.id == "state-idle" })
+
+        // What the Poured list renders is the `never` projection either way.
+        let rendered = Self.projection(sessions)
+        let done = try #require(rendered.sections.first { $0.id == PouredSectionTaxonomy.Group.done.sectionID })
+        #expect(done.sessions.map(\.id)
             == ["fixture-completed-success", "fixture-poured-c1-interrupted"])
+        #expect(rendered.idleCount == 0)
+        #expect(rendered.idleSessions.isEmpty)
+
+        // Same list from a profile that carries the 5-minute default: the
+        // scaffold ignores it, so the projected shape is byte-for-byte the same.
+        let fromDefaultProfile = PouredSectionTaxonomy.project(sectioned(Self.listStaleThreshold))
+        #expect(Self.shape(fromDefaultProfile).map(\.0) == Self.shape(rendered).map(\.0))
+        #expect(Self.shape(fromDefaultProfile).map(\.1) == Self.shape(rendered).map(\.1))
     }
 
     /// Same input twice → identical output. The projection sorts by recency with
@@ -146,11 +179,10 @@ struct PouredProjectionStressTests {
     @Test
     func c1GroupedSixProjectionIsStableAcrossRepeatedRuns() {
         let sessions = AppearancePreviewFixtures.pouredGroupedSix(now: Self.now)
-        let threshold = IslandCompletedStaleThreshold.never.seconds
 
-        let first = Self.shape(Self.projection(sessions, staleThreshold: threshold))
+        let first = Self.shape(Self.projection(sessions))
         for _ in 0..<8 {
-            let repeated = Self.shape(Self.projection(sessions, staleThreshold: threshold))
+            let repeated = Self.shape(Self.projection(sessions))
             #expect(repeated.map(\.0) == first.map(\.0))
             #expect(repeated.map(\.1) == first.map(\.1))
         }
@@ -161,11 +193,17 @@ struct PouredProjectionStressTests {
 
     // MARK: - C4: the 40-session stress shape
 
-    /// One live runner behind thirty-nine stale sessions renders **one** row.
-    /// This is the whole point of PI-C-002/PI-C-007: the idle tail is a count in
-    /// the footer, not thirty-nine rows of table.
+    /// One live runner behind thirty-nine old completed sessions.
+    ///
+    /// **Rewritten under owner ruling R1.** This test used to assert the tail
+    /// was extracted as `39 idle` and one row rendered. R1 rules the opposite
+    /// half of that: Done never stales, so all thirty-nine stay in `Done` and
+    /// the idle bucket is empty. The bound PI-C-002 / PI-C-007 promise — that a
+    /// long tail can never grow into an unbounded table — is now kept by the
+    /// **6-row display cap** instead: `Working 1 + Done 5` on screen, thirty-four
+    /// behind "Show all 40 sessions".
     @Test
-    func fortySessionsWithOneRunnerRenderExactlyOneRowAndCountThirtyNineIdle() {
+    func fortySessionsWithOneRunnerKeepDoneVisibleAndRenderOnlySixRows() throws {
         var sessions = [Self.session(id: "stress-running", phase: .running, workspace: "open-vibe-island", secondsAgo: 5)]
         for index in 0..<39 {
             sessions.append(
@@ -184,12 +222,35 @@ struct PouredProjectionStressTests {
 
         let projected = Self.projection(sessions)
 
-        #expect(projected.sections.count == 1)
-        #expect(projected.sections[0].id == PouredSectionTaxonomy.Group.working.sectionID)
-        #expect(projected.sections.flatMap(\.sessions).map(\.id) == ["stress-running"])
-        #expect(projected.idleCount == 39)
+        // R1: two groups, nothing extracted.
+        #expect(projected.sections.map(\.id) == [
+            PouredSectionTaxonomy.Group.working.sectionID,
+            PouredSectionTaxonomy.Group.done.sectionID,
+        ])
+        #expect(projected.sections.map(\.sessions.count) == [1, 39])
+        #expect(projected.idleCount == 0)
+        #expect(projected.idleSessions.isEmpty)
 
-        // Every row in the set headlines with something, rendered or rolled up.
+        // R1's cap: six rows on screen, thirty-four behind "Show all".
+        let capped = PouredSectionTaxonomy.cappedSections(projected.sections)
+        #expect(capped.total == 40)
+        #expect(capped.hiddenCount == 34)
+        #expect(capped.isCapped)
+        #expect(capped.visible.flatMap(\.sessions).count == 6)
+        #expect(capped.visible.map(\.id) == [
+            PouredSectionTaxonomy.Group.working.sectionID,
+            PouredSectionTaxonomy.Group.done.sectionID,
+        ])
+        #expect(capped.visible[0].sessions.map(\.id) == ["stress-running"])
+        #expect(capped.visible[1].sessions.count == 5)
+        // The header still prints the group's real size, not the five it drew.
+        #expect(capped.groupTotals[PouredSectionTaxonomy.Group.done.sectionID] == 39)
+        #expect(capped.groupTotals[PouredSectionTaxonomy.Group.working.sectionID] == 1)
+
+        // Expanding is the way back to every row — no session is unreachable.
+        #expect(projected.sections.flatMap(\.sessions).count == 40)
+
+        // Every row in the set headlines with something, on screen or behind the cap.
         for session in sessions {
             #expect(!session.spotlightDisplayName.trimmingCharacters(in: .whitespaces).isEmpty)
         }
@@ -220,9 +281,14 @@ struct PouredProjectionStressTests {
     }
 
     /// Attention is never curated away. Twelve of forty sessions are blocked on
-    /// the user; all twelve must reach `Needs you`, whatever the idle tail does.
+    /// the user; all twelve must reach `Needs you`, whatever the tail does.
+    ///
+    /// Under owner ruling R1 the twenty-eight completed rows stay in `Done`
+    /// rather than becoming `28 idle`, and the display cap decides what is on
+    /// screen: the six visible rows are **all** attention rows, and the other
+    /// six attention rows are reachable by expanding — never dropped.
     @Test
-    func everyAttentionSessionSurvivesTheProjectionAtStressScale() {
+    func everyAttentionSessionSurvivesTheProjectionAtStressScale() throws {
         var sessions: [AgentSession] = []
         for index in 0..<6 {
             sessions.append(
@@ -259,14 +325,36 @@ struct PouredProjectionStressTests {
         #expect(sessions.count == 40)
 
         let projected = Self.projection(sessions)
-        let needsYou = try? #require(projected.sections.first { $0.id == PouredSectionTaxonomy.Group.needsYou.sectionID })
+        let needsYou = try #require(projected.sections.first { $0.id == PouredSectionTaxonomy.Group.needsYou.sectionID })
 
-        #expect(needsYou?.sessions.count == 12)
-        let surfaced = Set(needsYou?.sessions.map(\.id) ?? [])
-        let expected = Set(sessions.filter { $0.phase == .waitingForApproval || $0.phase == .waitingForAnswer }.map(\.id))
-        #expect(surfaced == expected)
-        #expect(projected.idleCount == 28)
-        // The idle roll-up may never swallow a session that needs the user.
-        #expect(projected.idleSessions.allSatisfy { $0.phase == .completed })
+        #expect(needsYou.sessions.count == 12)
+        let surfaced = Set(needsYou.sessions.map(\.id))
+        let attentionIDs = Set(sessions.filter { $0.phase == .waitingForApproval || $0.phase == .waitingForAnswer }.map(\.id))
+        #expect(surfaced == attentionIDs)
+        // R1: the completed tail stays in `Done`; nothing is extracted at all.
+        #expect(projected.idleCount == 0)
+        #expect(projected.sections.map(\.id) == [
+            PouredSectionTaxonomy.Group.needsYou.sectionID,
+            PouredSectionTaxonomy.Group.done.sectionID,
+        ])
+        #expect(projected.sections.map(\.sessions.count) == [12, 28])
+
+        // The cap can only ever cut into the *tail*: attention is group-first,
+        // so all six visible rows are attention rows.
+        let capped = PouredSectionTaxonomy.cappedSections(projected.sections)
+        #expect(capped.total == 40)
+        #expect(capped.hiddenCount == 34)
+        #expect(capped.visible.map(\.id) == [PouredSectionTaxonomy.Group.needsYou.sectionID])
+        #expect(capped.visible[0].sessions.count == 6)
+        #expect(capped.visible[0].sessions.allSatisfy { attentionIDs.contains($0.id) })
+        // `Done` is cut away entirely while collapsed, yet `Needs you` still
+        // prints twelve — the reader is told six more are waiting on them.
+        #expect(capped.groupTotals[PouredSectionTaxonomy.Group.needsYou.sectionID] == 12)
+        #expect(capped.groupTotals[PouredSectionTaxonomy.Group.done.sectionID] == 28)
+
+        // Expanding reaches the other six attention rows.
+        let expandedAttention = Set(projected.sections.flatMap(\.sessions).map(\.id)).intersection(attentionIDs)
+        #expect(expandedAttention == attentionIDs)
+        #expect(Set(capped.visible.flatMap(\.sessions).map(\.id)).count == 6)
     }
 }

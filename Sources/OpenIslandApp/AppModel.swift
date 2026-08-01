@@ -579,16 +579,9 @@ final class AppModel {
     }
 
     var completedStaleThreshold: IslandCompletedStaleThreshold {
-        get { debugCompletedStaleThresholdOverride ?? appearancePreferences(for: activeAppearanceProfile).completedStaleThreshold }
+        get { appearancePreferences(for: activeAppearanceProfile).completedStaleThreshold }
         set { updateAppearancePreferences(for: activeAppearanceProfile) { $0.completedStaleThreshold = newValue } }
     }
-
-    /// PI-C-001: a scenario-scoped completed-stale window, populated from
-    /// `IslandDebugSnapshot.completedStaleThreshold` by `loadDebugSnapshot`.
-    /// `nil` on every other path (every other scenario, and the shipping app),
-    /// so the stored profile preference is the only source of truth in
-    /// production. Only `pouredGroupedSix` sets it, to `.never`.
-    var debugCompletedStaleThresholdOverride: IslandCompletedStaleThreshold?
 
     @ObservationIgnored
     var openSettingsWindow: (() -> Void)?
@@ -1701,7 +1694,6 @@ final class AppModel {
         selectedSessionID = snapshot.selectedSessionID ?? snapshot.sessions.first?.id
         debugUsageProvidersOverride = snapshot.usageProviders
         debugForcesRowExpansion = snapshot.forcesRowExpansion
-        debugCompletedStaleThresholdOverride = snapshot.completedStaleThreshold
         lastActionMessage = "Loaded debug scenario: \(snapshot.title)."
         harnessRuntimeMonitor?.recordMilestone("scenarioLoaded", message: snapshot.title)
 

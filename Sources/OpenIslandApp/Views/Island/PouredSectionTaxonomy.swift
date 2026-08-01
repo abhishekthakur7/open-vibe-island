@@ -43,15 +43,33 @@ import OpenIslandCore
 ///   a known **preference override**: a user who picked another sort still sees
 ///   it honoured in the section *composition* upstream and in every other theme,
 ///   but not in the order of rows within a Poured group.
-/// - **The expanded idle group is a DERIVED decision**, pending owner
-///   ratification. The board never renders an idle group at all — its roll-up is
-///   an interactive link (line 913) with no visible destination. Extraction with
-///   no way back would make those rows unreachable, so
-///   `PouredSessionListScaffold` renders the extracted rows as one additional
-///   group below `Done` while the footer roll-up is disclosed, using the shared
-///   `island.section.idle` title and the idle tint. Nothing about that
-///   presentation is attested by the reference; it is the minimum honest
-///   affordance for rows this projection removes.
+/// - **The expanded idle group is DERIVED presentation, owner-ratified**
+///   (ruling R3, `docs/design/overlay-redesign/poured-owner-rulings.md`). The
+///   board never renders an idle group at all — its roll-up is an interactive
+///   link (line 913) with no visible destination. Extraction with no way back
+///   would make those rows unreachable, so `PouredSessionListScaffold` renders
+///   the extracted rows as one additional group below `Done` while the footer
+///   roll-up is disclosed, using the shared `island.section.idle` title and the
+///   idle tint. The affordance itself is ratified; its exact presentation is
+///   still unattested by the reference.
+/// - **Done never stales inside the Poured list** — owner ruling **R1**
+///   (PI-C-001): *"done stays visible just we will show max 6 on screen, rest
+///   can be behind 'View All' button"*. `PouredSessionListScaffold` therefore
+///   re-sections with `IslandCompletedStaleThreshold.never` regardless of the
+///   profile's `completedStaleThreshold`, so a completed row ages inside `Done`
+///   instead of falling out to the idle roll-up. Consequences, all
+///   board-faithful:
+///   - the `state-idle` bucket this projection extracts is **empty in
+///     practice**, so the idle disclosure above is dormant, and
+///   - the footer's projection-fed readout naturally reads `0 idle` — exactly
+///     what §C prints beside its 12m / 22m `Done` rows (line 913).
+///   This is theme-local: the shared `completedStaleThreshold` preference and
+///   every other theme are untouched, and the wider stale bucket still drives
+///   the summary strip's own `idle` metric.
+/// - **The 6-row display cap** (`displayRowCap` / `cappedSections`) is the other
+///   half of ruling R1 and of the board's own frame: §C draws exactly six rows.
+///   The ruling fixes *"max 6 + View All"*; the affordance's placement and
+///   styling are DERIVED (see `PouredSessionListScaffold`).
 enum PouredSectionTaxonomy {
 
     // MARK: - Groups
@@ -153,6 +171,75 @@ enum PouredSectionTaxonomy {
                 return l > r
             }
             .map(\.element)
+    }
+
+    // MARK: - Display cap (owner ruling R1 · PI-C-002 / PI-C-007)
+
+    /// How many rows the collapsed Poured list shows at once. Six is the board's
+    /// own frame (§C draws exactly six rows) and the number the owner fixed:
+    /// *"we will show max 6 on screen, rest can be behind 'View All' button"*.
+    static let displayRowCap = 6
+
+    /// The result of cutting a projection down to the display cap.
+    struct CappedSections {
+        /// The sections to render while collapsed, in projection order. A group
+        /// can be rendered **partially** (the cut falls inside it) and a group
+        /// whose rows are entirely past the cut is omitted.
+        let visible: [IslandSessionSection]
+        /// Rows the cut removed — `0` when nothing was cut.
+        let hiddenCount: Int
+        /// Rows across every projected section, before the cut.
+        let total: Int
+        /// Section id → that group's **full** row count, before the cut. The
+        /// header count renders from this so a partially-rendered group still
+        /// tells the truth about how many rows it holds: the cap hides rows, it
+        /// does not change what exists.
+        let groupTotals: [String: Int]
+
+        var isCapped: Bool { hiddenCount > 0 }
+    }
+
+    /// Cuts `sections` to at most `limit` rows in group order.
+    ///
+    /// Group order is the projection's, so the attention rows — always first —
+    /// are the last thing a cut can ever reach. Exactly `limit` rows is **not**
+    /// a cut: `hiddenCount` is `0` and the caller shows no affordance, matching
+    /// the board's own six-row frame with no control under it.
+    static func cappedSections(
+        _ sections: [IslandSessionSection],
+        limit: Int = displayRowCap
+    ) -> CappedSections {
+        let totals = Dictionary(
+            sections.map { ($0.id, $0.sessions.count) },
+            uniquingKeysWith: +
+        )
+        let total = sections.reduce(0) { $0 + $1.sessions.count }
+
+        guard total > limit else {
+            return CappedSections(visible: sections, hiddenCount: 0, total: total, groupTotals: totals)
+        }
+
+        var remaining = max(0, limit)
+        var visible: [IslandSessionSection] = []
+        for section in sections {
+            guard remaining > 0 else { break }
+            let take = min(remaining, section.sessions.count)
+            visible.append(
+                IslandSessionSection(
+                    id: section.id,
+                    title: section.title,
+                    sessions: Array(section.sessions.prefix(take))
+                )
+            )
+            remaining -= take
+        }
+
+        return CappedSections(
+            visible: visible,
+            hiddenCount: total - max(0, limit),
+            total: total,
+            groupTotals: totals
+        )
     }
 
     // MARK: - Lookups

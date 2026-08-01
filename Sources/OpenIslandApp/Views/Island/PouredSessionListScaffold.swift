@@ -42,6 +42,14 @@ struct PouredSessionListScaffold: View {
     /// Hover state for the roll-up toggle, mirroring `PouredInstallHooksHint`.
     @State private var idleDisclosureHovering = false
 
+    /// Owner ruling R1 (PI-C-002 / PI-C-007): whether the list is showing every
+    /// projected row instead of the first `PouredSectionTaxonomy.displayRowCap`.
+    /// Collapsed by default — six rows is the board's frame and the owner's cap.
+    @State private var listExpanded = false
+
+    /// Hover state for the show-all / collapse affordance.
+    @State private var listExpansionHovering = false
+
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     private var increasesContrast: Bool { colorSchemeContrast == .increased }
 
@@ -77,30 +85,70 @@ struct PouredSessionListScaffold: View {
     /// `PouredSectionTaxonomy`, so attention floats to the top and the idle tail
     /// leaves the table for the footer roll-up. An explicit `.agent` / `.project`
     /// grouping the user picked is honoured verbatim.
+    ///
+    /// **Owner ruling R1** (PI-C-001): the re-section always runs with
+    /// `IslandCompletedStaleThreshold.never`, for `.state` exactly as for
+    /// `.none` — a completed row ages inside `Done` and never falls out to the
+    /// idle roll-up. That is why `.state` re-sections locally instead of taking
+    /// the pre-built `sections` from the shared pipeline, which carry the
+    /// profile's threshold. The profile preference itself is untouched: it still
+    /// governs every other theme, the row chrome, and the summary strip's own
+    /// `idle` metric. See `PouredSectionTaxonomy`'s recorded deviations.
     private var taxonomyProjection: PouredSectionTaxonomy.Projection? {
         switch group {
-        case .none:
+        case .none, .state:
             return PouredSectionTaxonomy.project(
                 IslandSessionSectioning.sections(
                     for: sessions,
                     group: .state,
                     sort: .attention,
-                    completedStaleThreshold: completedStaleThreshold
+                    completedStaleThreshold: Self.taxonomyStaleThreshold
                 )
             )
-        case .state:
-            return PouredSectionTaxonomy.project(sections)
         case .agent, .project:
             return nil
         }
     }
 
-    private var displaySections: [IslandSessionSection] {
-        guard let projection = taxonomyProjection else { return sections }
-        guard idleDisclosureExpanded, let idle = idleDisclosureSection(projection) else {
-            return projection.sections
+    /// Ruling R1: Done never stales inside the Poured list.
+    private static let taxonomyStaleThreshold = IslandCompletedStaleThreshold.never.seconds
+
+    /// Everything the row area needs for one render pass: the sections to draw,
+    /// each group's **full** row count (a capped group renders partially but
+    /// still counts truthfully), and whether the show-all affordance belongs
+    /// under them.
+    private struct ListContent {
+        var sections: [IslandSessionSection]
+        var groupTotals: [String: Int]
+        var totalRows: Int
+        var showsExpansionAffordance: Bool
+    }
+
+    private var listContent: ListContent {
+        guard let projection = taxonomyProjection else {
+            // `.agent` / `.project`: the user's own grouping, passed through
+            // verbatim — no taxonomy, no cap (ruling R1 scopes the cap to the
+            // state-projected list the board draws).
+            return ListContent(
+                sections: sections,
+                groupTotals: [:],
+                totalRows: sections.reduce(0) { $0 + $1.sessions.count },
+                showsExpansionAffordance: false
+            )
         }
-        return projection.sections + [idle]
+
+        var projected = projection.sections
+        if idleDisclosureExpanded, let idle = idleDisclosureSection(projection) {
+            projected.append(idle)
+        }
+
+        let capped = PouredSectionTaxonomy.cappedSections(projected)
+        return ListContent(
+            sections: listExpanded ? projected : capped.visible,
+            groupTotals: capped.groupTotals,
+            totalRows: capped.total,
+            showsExpansionAffordance: capped.isCapped
+        )
     }
 
     /// PI-C-002 (**derived**, pending owner ratification — see
@@ -122,9 +170,11 @@ struct PouredSessionListScaffold: View {
 
     @ViewBuilder
     private func sessionRowsContent() -> some View {
-        ForEach(displaySections) { section in
+        let content = listContent
+
+        ForEach(content.sections) { section in
             VStack(alignment: .leading, spacing: 0) {
-                sessionSectionHeader(section)
+                sessionSectionHeader(section, totalRowCount: content.groupTotals[section.id])
 
                 ForEach(section.sessions) { session in
                     SessionRowContainer(isInteractive: isInteractive) { isHighlighted in
@@ -160,6 +210,70 @@ struct PouredSessionListScaffold: View {
                 value: section.sessions.map(\.id)
             )
         }
+
+        if content.showsExpansionAffordance {
+            listExpansionToggle(total: content.totalRows)
+        }
+    }
+
+    /// Owner ruling R1 (PI-C-002 / PI-C-007): *"we will show max 6 on screen,
+    /// rest can be behind 'View All' button"*. The collapsed list renders the
+    /// first `PouredSectionTaxonomy.displayRowCap` rows in group order; this row
+    /// is the way to the rest, and reads `Collapse list` once expanded.
+    ///
+    /// **DERIVED placement and styling** — the board renders no such control at
+    /// all (§C's frame simply *is* six rows), so only the behaviour is attested
+    /// by the ruling. This mirrors `idleDisclosureToggle`: a `.plain` `Button`
+    /// (focusable, space/return-activated under Full Keyboard Access) whose
+    /// hover only lifts existing paper opacity — no new colour, no new surface.
+    /// It sits inside the scroll content, below the last visible group, as a
+    /// full-width quiet row on the same side inset and hairline rhythm as a
+    /// section header, so it reads as part of the list rather than as chrome
+    /// bolted under it. The visible strings are the existing full-phrase
+    /// `island.showAll` / `island.collapseList`, so they double as the
+    /// accessibility label with no new keys.
+    private func listExpansionToggle(total: Int) -> some View {
+        let title = listExpanded
+            ? lang.t("island.collapseList")
+            : lang.t("island.showAll", total)
+
+        return Button {
+            listExpanded.toggle()
+        } label: {
+            HStack(spacing: 5) {
+                Text(title)
+                    .font(.system(size: 11))
+                    .foregroundStyle(
+                        tokens.colors.paper.opacity(
+                            tokens.colors.text(
+                                listExpansionHovering ? 0.92 : tokens.colors.secondaryTextOpacity,
+                                increaseContrast: increasesContrast
+                            )
+                        )
+                    )
+                Image(systemName: listExpanded ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(tokens.colors.paper.opacity(listExpansionHovering ? 0.6 : 0.4))
+                    .accessibilityHidden(true)
+                Spacer(minLength: 0)
+            }
+            .lineLimit(1)
+            .padding(.leading, sideInset)
+            .padding(.trailing, sideInset)
+            .padding(.top, 10)
+            .padding(.bottom, 9)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(.white.opacity(tokens.colors.hairline(increaseContrast: increasesContrast)))
+                    .frame(height: 1)
+            }
+        }
+        .buttonStyle(.plain)
+        .onHover { listExpansionHovering = $0 }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.14), value: listExpansionHovering)
+        .accessibilityLabel(title)
     }
 
     private func sessionPanelHeader(referenceDate: Date) -> some View {
@@ -389,7 +503,14 @@ struct PouredSessionListScaffold: View {
         return compact ? item.compactTitle : item.title
     }
 
-    private func sessionSectionHeader(_ section: IslandSessionSection) -> some View {
+    /// `totalRowCount` is the group's row count **before** the display cap, so a
+    /// partially-rendered group still prints how many rows it holds (ruling R1:
+    /// View All hides rows, it does not change what exists). `nil` for agent /
+    /// project groupings, which are never capped.
+    private func sessionSectionHeader(
+        _ section: IslandSessionSection,
+        totalRowCount: Int? = nil
+    ) -> some View {
         HStack(spacing: 8) {
             Circle()
                 .fill(sectionTint(for: section))
@@ -401,7 +522,7 @@ struct PouredSessionListScaffold: View {
                 .font(PouredType.Role.sectionHeader.font)
                 .tracking(PouredType.Role.sectionHeader.spec.trackingPoints)
                 .foregroundStyle(sectionLabelColor(for: section))
-            Text("\(section.sessions.count)")
+            Text("\(totalRowCount ?? section.sessions.count)")
                 // Drop mono, keep the digits tabular so counts line up column-wise.
                 .font(.system(size: 10.5, weight: .medium).monospacedDigit())
                 .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))

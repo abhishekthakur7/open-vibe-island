@@ -316,6 +316,97 @@ struct PouredSectionTaxonomyTests {
         #expect(projected.idleCount != wideIdleCount)
     }
 
+    // MARK: - Display cap (owner ruling R1 · PI-C-002 / PI-C-007)
+
+    /// Six rows is the board's own frame and the owner's cap, so exactly six is
+    /// **not** a cut: nothing is hidden and the caller shows no affordance.
+    @Test
+    func exactlySixRowsAreNotCut() {
+        let sections = [
+            section("state-poured-needsYou", (1...2).map { session(id: "a\($0)", phase: .waitingForApproval) }),
+            section("state-running", (1...2).map { session(id: "r\($0)", phase: .running) }),
+            section("state-done", (1...2).map { session(id: "d\($0)", phase: .completed) }),
+        ]
+
+        let capped = PouredSectionTaxonomy.cappedSections(sections)
+
+        #expect(PouredSectionTaxonomy.displayRowCap == 6)
+        #expect(capped.total == 6)
+        #expect(capped.hiddenCount == 0)
+        #expect(capped.isCapped == false)
+        #expect(capped.visible.map(ids) == sections.map(ids))
+    }
+
+    /// One row past the cap hides exactly one.
+    @Test
+    func sevenRowsRenderSixAndHideOne() {
+        let capped = PouredSectionTaxonomy.cappedSections([
+            section("state-running", (1...7).map { session(id: "r\($0)", phase: .running, minutesAgo: Double($0)) }),
+        ])
+
+        #expect(capped.total == 7)
+        #expect(capped.hiddenCount == 1)
+        #expect(capped.isCapped)
+        #expect(capped.visible.count == 1)
+        #expect(ids(capped.visible[0]) == ["r1", "r2", "r3", "r4", "r5", "r6"])
+    }
+
+    /// A cut that falls *inside* a group renders that group partially, keeps the
+    /// projection's group order, and drops any group entirely past the cut — so
+    /// the attention rows, which are always first, are the last thing the cap
+    /// can ever reach.
+    @Test
+    func aCutInsideAGroupKeepsGroupOrderAndAttentionRowsFirst() {
+        let capped = PouredSectionTaxonomy.cappedSections([
+            section("state-poured-needsYou", (1...4).map { session(id: "a\($0)", phase: .waitingForApproval) }),
+            section("state-running", (1...4).map { session(id: "r\($0)", phase: .running) }),
+            section("state-done", (1...4).map { session(id: "d\($0)", phase: .completed) }),
+        ])
+
+        #expect(capped.total == 12)
+        #expect(capped.hiddenCount == 6)
+        // `Done` never renders; `Working` renders two of its four.
+        #expect(capped.visible.map(\.id) == ["state-poured-needsYou", "state-running"])
+        #expect(ids(capped.visible[0]) == ["a1", "a2", "a3", "a4"])
+        #expect(ids(capped.visible[1]) == ["r1", "r2"])
+        #expect(capped.visible.flatMap(\.sessions).count == 6)
+    }
+
+    /// The cap hides rows; it does not change what exists. A partially-rendered
+    /// group's header count is its **full** size, carried in `groupTotals`.
+    @Test
+    func groupTotalsSurviveThePartialRender() {
+        let capped = PouredSectionTaxonomy.cappedSections([
+            section("state-poured-needsYou", (1...4).map { session(id: "a\($0)", phase: .waitingForApproval) }),
+            section("state-running", (1...4).map { session(id: "r\($0)", phase: .running) }),
+            section("state-done", (1...4).map { session(id: "d\($0)", phase: .completed) }),
+        ])
+
+        #expect(capped.groupTotals["state-poured-needsYou"] == 4)
+        #expect(capped.groupTotals["state-running"] == 4)
+        // Cut away entirely, still counted — its rows exist behind "Show all".
+        #expect(capped.groupTotals["state-done"] == 4)
+        // The rendered `Working` section holds two rows while reporting four.
+        #expect(capped.visible[1].sessions.count == 2)
+        #expect(capped.groupTotals[capped.visible[1].id] == 4)
+    }
+
+    /// Below the cap nothing is touched, and an empty projection is a no-op.
+    @Test
+    func shortAndEmptyListsPassThroughUncut() {
+        let short = [section("state-running", [session(id: "r", phase: .running)])]
+        let capped = PouredSectionTaxonomy.cappedSections(short)
+        #expect(capped.total == 1)
+        #expect(capped.hiddenCount == 0)
+        #expect(capped.visible.map(ids) == short.map(ids))
+
+        let empty = PouredSectionTaxonomy.cappedSections([])
+        #expect(empty.total == 0)
+        #expect(empty.hiddenCount == 0)
+        #expect(empty.visible.isEmpty)
+        #expect(empty.isCapped == false)
+    }
+
     // MARK: - Fixed swatch hues
 
     /// Each group wears its fixed board hue (`--attn #ffb14d`, `--run #6ea7ff`,

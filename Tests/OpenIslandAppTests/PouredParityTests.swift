@@ -103,12 +103,15 @@ import Testing
     }
 
     /// PI-C-001: the mapped C1 scenario must actually reproduce §C. Its `Done`
-    /// rows are 12m / 22m old, so under the shipping 5-minute default they would
-    /// fall to the idle roll-up and the scenario would render a two-group list
-    /// the board never shows. `IslandDebugScenario.pouredGroupedSix` therefore
-    /// carries a scenario-scoped `completedStaleThreshold` of `.never`; every
-    /// other scenario leaves the profile preference alone.
-    @Test @MainActor func c1_scenario_projects_the_boards_three_groups_under_its_scoped_stale_window() throws {
+    /// rows are 12m / 22m old while the footer reads `0 idle` in the same frame.
+    ///
+    /// **Owner ruling R1** — *"done stays visible"* — resolves that: the Poured
+    /// list re-sections with `IslandCompletedStaleThreshold.never`
+    /// (`PouredSessionListScaffold.taxonomyStaleThreshold`) whatever the
+    /// profile's preference is, so the scenario needs no scoped override any
+    /// more (the whole `debugCompletedStaleThresholdOverride` seam is gone).
+    /// This mirrors the scaffold's own call.
+    @Test @MainActor func c1_scenario_projects_the_boards_three_groups_with_done_never_stale() throws {
         let model = AppModel()
         model.pouredParityBootstrapIsolation = .init(runtimeStateLoadingDisabled:true, bridgeStartupDisabled:true)
         let configuration = PouredParityConfiguration(
@@ -117,14 +120,12 @@ import Testing
         )
         try PouredParityDriver(configuration:configuration).apply(to:model, presentOverlay:false)
 
-        #expect(model.completedStaleThreshold == .never)
-
         let projected = PouredSectionTaxonomy.project(
             IslandSessionSectioning.sections(
                 for: model.sessions,
                 group: .state,
                 sort: .attention,
-                completedStaleThreshold: model.completedStaleThreshold.seconds
+                completedStaleThreshold: IslandCompletedStaleThreshold.never.seconds
             )
         )
 
@@ -133,12 +134,22 @@ import Testing
             PouredSectionTaxonomy.Group.working.sectionID,
             PouredSectionTaxonomy.Group.done.sectionID,
         ])
+        #expect(projected.sections.map(\.title) == [
+            "island.poured.section.needsYou",
+            "island.poured.section.working",
+            "island.poured.section.done",
+        ])
         #expect(projected.sections.map(\.sessions.count) == [2, 2, 2])
         #expect(projected.idleCount == 0)
+        #expect(projected.idleSessions.isEmpty)
 
-        // The override is scenario-scoped: loading any other scenario clears it.
-        model.loadDebugSnapshot(IslandDebugScenario.emptyState.snapshot(at:Date(timeIntervalSince1970:0)), presentOverlay:false)
-        #expect(model.debugCompletedStaleThresholdOverride == nil)
+        // R1's other half: six rows is exactly the cap, so C1 renders whole and
+        // shows no "Show all" affordance — the board's own six-row frame.
+        let capped = PouredSectionTaxonomy.cappedSections(projected.sections)
+        #expect(capped.total == 6)
+        #expect(capped.hiddenCount == 0)
+        #expect(capped.isCapped == false)
+        #expect(capped.visible.map(\.sessions.count) == [2, 2, 2])
     }
 
     @Test func sidecar_writer_is_fail_closed_and_manifest_is_last() throws {
