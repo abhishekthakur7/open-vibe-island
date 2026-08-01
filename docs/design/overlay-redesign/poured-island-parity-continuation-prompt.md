@@ -160,9 +160,9 @@ Run this loop for every coherent visual change, including correction rounds:
 
 1. Root selects ledger IDs, scenarios, regions, expected differences, hard invariants, and applicable gates.
 2. Root writes a complete executor packet and creates its branch/worktree from current `origin/main`.
-3. Executor confirms scope, reads assigned source, implements only those IDs, runs targeted regression checks, and commits.
-4. Root inspects the full diff and commit for scope, correctness, and unexpected changes.
-5. Root builds/restarts the exact commit and captures the candidate in the frozen environment. It captures the direct HTML reference only for rendered states; otherwise it supplies the approved invariant/derived/adaptation manifest and related canonical reference regions. Every change still requires visual candidate evidence.
+3. Executor confirms scope, reads assigned source, implements only those IDs, runs targeted regression checks, and commits. A round may contain several sequential executor commits; only the last executor of the round runs the full suite.
+4. Root inspects the full diff and every commit for scope, correctness, and unexpected changes. Root does NOT build or capture at intermediate executor commits.
+5. Root builds/restarts exactly once per review round, at the round's FINAL commit, immediately before review, and captures the candidate in the frozen environment against that latest build — reviews always adjudicate the newest build, never a stale intermediate one. It captures the direct HTML reference only for rendered states; otherwise it supplies the approved invariant/derived/adaptation manifest and related canonical reference regions. Every change still requires visual candidate evidence.
 6. Root produces registered side-by-side, blink, overlay, diff/heatmap, silhouette/geometry/light/text reports, and 60 fps video/frame strips when shape, state, attention, reveal, or motion can be affected.
 7. Root creates a separate read-only reviewer checkout at that commit and sends a fresh independent Sol-medium reviewer the full asset packet.
 8. Reviewer directly inspects the assets at realtime, frame-step, and 0.25× where applicable and returns:
