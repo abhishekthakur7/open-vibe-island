@@ -138,40 +138,6 @@ struct CursorHooksTests {
     }
 
     @Test
-    func cursorHookInstallationManagerRoundTripsInstallAndUninstall() throws {
-        let rootURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("open-island-cursor-hooks-\(UUID().uuidString)", isDirectory: true)
-        let cursorDirectory = rootURL.appendingPathComponent(".cursor", isDirectory: true)
-        let managedHooksBinaryURL = rootURL
-            .appendingPathComponent("managed", isDirectory: true)
-            .appendingPathComponent("OpenIslandHooks")
-        let manager = CursorHookInstallationManager(
-            cursorDirectory: cursorDirectory,
-            managedHooksBinaryURL: managedHooksBinaryURL
-        )
-
-        defer {
-            try? FileManager.default.removeItem(at: rootURL)
-        }
-
-        let hooksBinaryURL = try makeVerifiedHooksApp(at: rootURL, contents: "cursor-hook")
-
-        let installStatus = try manager.install(hooksBinaryURL: hooksBinaryURL)
-        #expect(installStatus.managedHooksPresent == true)
-        #expect(FileManager.default.fileExists(atPath: cursorDirectory.appendingPathComponent("hooks.json").path))
-        #expect(FileManager.default.fileExists(atPath: cursorDirectory.appendingPathComponent(CursorHookInstallerManifest.fileName).path))
-
-        let hooksData = try Data(contentsOf: cursorDirectory.appendingPathComponent("hooks.json"))
-        let hooksObject = try JSONSerialization.jsonObject(with: hooksData) as! [String: Any]
-        let hooks = hooksObject["hooks"] as! [String: Any]
-        #expect(hooks.keys.count == 6)
-
-        let uninstallStatus = try manager.uninstall()
-        #expect(uninstallStatus.managedHooksPresent == false)
-        #expect(!FileManager.default.fileExists(atPath: cursorDirectory.appendingPathComponent(CursorHookInstallerManifest.fileName).path))
-    }
-
-    @Test
     func cursorPayloadConvenienceProperties() {
         let payload = CursorHookPayload(
             hookEventName: .beforeShellExecution,

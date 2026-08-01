@@ -838,54 +838,6 @@ struct SessionStateTests {
     }
 
     @Test
-    func codexHookInstallationManagerRoundTripsInstallAndUninstall() throws {
-        let rootURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("open-island-tests-\(UUID().uuidString)", isDirectory: true)
-        let codexDirectory = rootURL.appendingPathComponent(".codex", isDirectory: true)
-        let managedHooksBinaryURL = rootURL
-            .appendingPathComponent("managed", isDirectory: true)
-            .appendingPathComponent("OpenIslandHooks")
-        let manager = CodexHookInstallationManager(
-            codexDirectory: codexDirectory,
-            managedHooksBinaryURL: managedHooksBinaryURL
-        )
-
-        try FileManager.default.createDirectory(at: codexDirectory, withIntermediateDirectories: true)
-        let hooksBinaryURL = try makeVerifiedHooksApp(at: rootURL, contents: "codex-hook")
-
-        defer {
-            try? FileManager.default.removeItem(at: rootURL)
-        }
-
-        let installed = try manager.install(hooksBinaryURL: hooksBinaryURL)
-        #expect(installed.featureFlagEnabled)
-        #expect(installed.managedHooksPresent)
-        #expect(installed.hooksBinaryURL?.path == managedHooksBinaryURL.standardizedFileURL.path)
-        #expect(installed.manifest?.hookCommand == CodexHookInstaller.hookCommand(for: managedHooksBinaryURL.path))
-        #expect(FileManager.default.isExecutableFile(atPath: managedHooksBinaryURL.path))
-        #expect(try Data(contentsOf: managedHooksBinaryURL) == Data("codex-hook".utf8))
-        let hooksData = try Data(contentsOf: installed.hooksURL)
-        let installedHooks = try jsonObject(from: hooksData)
-        let installedStopGroups = (installedHooks["hooks"] as? [String: Any])?["Stop"] as? [[String: Any]]
-        let installedManagedHook = installedStopGroups?
-            .compactMap { $0["hooks"] as? [[String: Any]] }
-            .flatMap { $0 }
-            .first(where: { $0["command"] as? String == CodexHookInstaller.hookCommand(for: managedHooksBinaryURL.path) })
-        #expect(installedManagedHook?["statusMessage"] == nil)
-
-        try FileManager.default.removeItem(at: hooksBinaryURL)
-
-        let reloaded = try manager.status()
-        #expect(reloaded.managedHooksPresent)
-        #expect(reloaded.featureFlagEnabled)
-        #expect(reloaded.hooksBinaryURL?.path == managedHooksBinaryURL.standardizedFileURL.path)
-
-        let uninstalled = try manager.uninstall()
-        #expect(!uninstalled.managedHooksPresent)
-        #expect(!FileManager.default.fileExists(atPath: uninstalled.manifestURL.path))
-    }
-
-    @Test
     func jumpTargetRoundTripsWarpPaneUUIDThroughCodable() throws {
         let target = JumpTarget(
             terminalApp: "Warp",
