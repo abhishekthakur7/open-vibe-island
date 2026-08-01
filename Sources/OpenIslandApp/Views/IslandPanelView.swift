@@ -468,12 +468,23 @@ struct IslandPanelView: View {
         .onPreferenceChange(HoverPeekSizeKey.self) { size in
             model.hoverPeekSurfaceSize = size
         }
-        // PI-B-001 · `01-poured-island.html:706` ("0.15s dwell, scale 1.03"): the
-        // model-driven peek lifts the collapsed island by the same
-        // `closedHoverScale` the pointer-driven `isHovering` path uses, so the
-        // dwell reads as one gesture on one shape.
+        // PI-B-001 · R6 ruling (N-3): the **rendered** board is the golden rule,
+        // and it draws the peek frame at `transform:scale(1.0)`
+        // (`01-poured-island.html:717`). The `scale 1.03` in the §B prose
+        // (`:707`) and the `.pill.hover-lift` rule (`:157`) are applied to no
+        // element in the document, so the model-driven peek no longer lifts:
+        // while `model.hoverPeekActive` is up the closed surface renders at 1.
+        //
+        // The transient pointer-only `isHovering` bump keeps the
+        // `closedHoverScale` token — the board renders no bare-hover state at
+        // all, so nothing rendered contradicts the prose invariant there.
         .scaleEffect(
-            usesOpenedVisualState ? 1 : ((isHovering || model.hoverPeekActive) ? tokens.metrics.closedHoverScale : 1),
+            Self.closedSurfaceScale(
+                opened: usesOpenedVisualState,
+                isHovering: isHovering,
+                hoverPeekActive: model.hoverPeekActive,
+                hoverScale: tokens.metrics.closedHoverScale
+            ),
             anchor: .top
         )
         .animation(Self.hoverPeekAnimation, value: model.hoverPeekActive)
@@ -499,6 +510,29 @@ struct IslandPanelView: View {
     /// The show/hide animation for the model-driven peek — the same spring the
     /// pointer-driven dwell below has always used.
     private static let hoverPeekAnimation = Animation.spring(response: 0.34, dampingFraction: 0.86)
+
+    /// The collapsed surface's scale for a given gesture state (PI-B-001 · R6
+    /// ruling N-3). Pure, so the ruling can be pinned without standing up a
+    /// view.
+    ///
+    /// - The opened panel never scales.
+    /// - The **model-driven peek** (`hoverPeekActive`) renders at `1`: the
+    ///   rendered board draws its §B peek frame at `transform:scale(1.0)`
+    ///   (`01-poured-island.html:717`), and under R6 the rendered mockup
+    ///   overrides the §B prose's "scale 1.03" (`:707`) and the
+    ///   `.pill.hover-lift` rule (`:157`), which is applied to no element.
+    /// - A bare pointer hover still lifts by the theme's `closedHoverScale`.
+    ///   The board renders no bare-hover frame at all, so nothing rendered
+    ///   contradicts the prose there and the shipped token stands.
+    static func closedSurfaceScale(
+        opened: Bool,
+        isHovering: Bool,
+        hoverPeekActive: Bool,
+        hoverScale: CGFloat
+    ) -> CGFloat {
+        if opened { return 1 }
+        return isHovering ? hoverScale : 1
+    }
 
     /// The peek content for the current island, or `nil` when nothing is waiting
     /// on the user.
@@ -739,6 +773,19 @@ struct IslandPanelView: View {
         ) {
             glow
         }
+    }
+
+    /// R6 · N-1 (PI-M-002): whether the active theme's **closed** surface drops
+    /// the body's inner contour hairline for the current ambient state. `false`
+    /// for every theme but Poured, and for Poured only while it is casting the
+    /// A3/A4 attention or A5 settle bloom — see
+    /// `PouredPillAmbientState.suppressesInnerHairline`.
+    private var closedSurfaceDropsInnerHairline: Bool {
+        theme.closedSurfaceSuppressesInnerHairline(
+            mode: model.islandClosedMode,
+            rightSlot: model.islandClosedRightSlotContent(),
+            activity: model.islandClosedActivity()
+        )
     }
 
     /// The closed pill's own outer width for the current display placement —
@@ -1001,6 +1048,10 @@ struct IslandPanelView: View {
                 // Motion. Applied only when the theme opts in, so the Classic
                 // (and every other shipped theme's) render tree is untouched.
                 .modifier(OptionalShadow(token: tokens.metrics.closedSurfaceShadow))
+                // R6 · N-10: same flares as the morph path, so the collapsed
+                // pill keeps its concave shoulders under Reduce Motion too.
+                // Inside the closed layer's own opacity, so they retire with it.
+                .islandCornerFilletFlares(tokens.material.cornerFillet)
                 .opacity(usesOpenedVisualState ? 0 : 1)
                 .allowsHitTesting(!usesOpenedVisualState)
 
@@ -1168,7 +1219,18 @@ struct IslandPanelView: View {
                     // for the whole morph.
                     OpenedSurfaceBackground(reduceTransparency: true, surfaceShape: shape)
                 } else if bodyIsOneMaterial {
-                    OpenedSurfaceBackground(reduceTransparency: false, surfaceShape: shape)
+                    // R6 · N-1: while the surface is still the *closed* pill and
+                    // its ambient state casts the attention/settle bloom, the
+                    // one body drops its inner hairline — the rendered
+                    // `attnpulse` / `settle` / A4-inline stacks omit
+                    // `--hairline-inset` where quiet `.glass` and `lumen` keep
+                    // it. `false` the moment the panel opens, so the opened
+                    // surface always traces its contour.
+                    OpenedSurfaceBackground(
+                        reduceTransparency: false,
+                        surfaceShape: shape,
+                        suppressesInnerHairline: !opened && closedSurfaceDropsInnerHairline
+                    )
                 } else {
                     OpenedSurfaceBackground(reduceTransparency: false, surfaceShape: shape)
                         .opacity(opened ? 1 : 0)
@@ -1236,6 +1298,14 @@ struct IslandPanelView: View {
         .overlay(alignment: .topLeading) {
             islandGlyphOverlay(opened: opened, closedLeadingInset: closedLeadingInset)
         }
+        // R6 · N-10 (PI-B-003): the concave top-outer-corner flares every
+        // rendered `.pill` carries (`01-poured-island.html:136-143`). Drawn
+        // outside the silhouette in an overlay, so the surface's layout width —
+        // and every closed-pill width golden — is unchanged. Faded out as the
+        // morph runs, because past `topCornerRadius > 0` the panel's own
+        // `NotchShape` shoulders occupy the same corner. `nil` for every theme
+        // but Poured.
+        .islandCornerFilletFlares(tokens.material.cornerFillet, opacity: Double(1 - morph))
     }
 
     // MARK: - Closed state

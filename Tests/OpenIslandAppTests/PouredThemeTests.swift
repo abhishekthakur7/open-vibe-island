@@ -64,6 +64,85 @@ struct PouredThemeTests {
         }
     }
 
+    /// R6 · N-1 (PI-M-002): the rendered board splits the ambient states on the
+    /// contour hairline. Quiet `.glass` (`01-poured-island.html:134`) and the
+    /// working `lumen` keyframes (`:187-188`) write `--hairline-inset` into
+    /// their `box-shadow` stack; `attnpulse` (`:193-194`), `settle`
+    /// (`:198-200`) and A4's inline question glow (`:640`) all omit it. So the
+    /// attention and settle blooms drop the inner hairline and everything else
+    /// keeps it — deliberately NOT the same set as `castsGlow`, which working
+    /// is also in.
+    @Test @MainActor
+    func attentionAndSettleDropTheContourHairlineWhileQuietAndWorkingKeepIt() {
+        #expect(PouredPillAmbientState.idle.suppressesInnerHairline == false)
+        #expect(PouredPillAmbientState.working(manyWorking: false).suppressesInnerHairline == false)
+        #expect(PouredPillAmbientState.working(manyWorking: true).suppressesInnerHairline == false)
+        #expect(PouredPillAmbientState.permission.suppressesInnerHairline)
+        #expect(PouredPillAmbientState.question.suppressesInnerHairline)
+        #expect(PouredPillAmbientState.completed(.success).suppressesInnerHairline)
+        // A6 rests with no glow at all, so there is nothing to trade the edge for.
+        #expect(PouredPillAmbientState.completed(.interrupted).suppressesInnerHairline == false)
+        #expect(PouredPillAmbientState.completed(.failed).suppressesInnerHairline == false)
+        // `working` glows but keeps the hairline — the one place the two differ.
+        #expect(PouredPillAmbientState.working(manyWorking: false).castsGlow)
+
+        // Theme seam: Poured folds the spotlight's phase into the decision …
+        let poured = PouredIslandTheme()
+        #expect(poured.closedSurfaceSuppressesInnerHairline(mode: .waiting, rightSlot: nil, activity: nil))
+        #expect(poured.closedSurfaceSuppressesInnerHairline(mode: .running, rightSlot: nil, activity: nil) == false)
+        #expect(poured.closedSurfaceSuppressesInnerHairline(mode: .idle, rightSlot: nil, activity: nil) == false)
+        // … while every other theme takes the protocol default and never drops
+        // an edge it drew.
+        for theme in [ClassicTheme(), HaloTheme()] as [any IslandTheme] {
+            #expect(theme.closedSurfaceSuppressesInnerHairline(mode: .waiting, rightSlot: nil, activity: nil) == false)
+        }
+    }
+
+    /// R6 · N-10 (PI-B-003): every rendered `.pill` and the §B peek body carry
+    /// two concave `.fillet` spans at their top OUTER corners — a `--fillet`
+    /// (12px) square filled with `--glass-fillet` `rgba(20,25,36,.92)`, masked
+    /// by a radial gradient centred on the square's own outer corner
+    /// (`01-poured-island.html:50,56,136-143,718`).
+    ///
+    /// Pins the token and the mask's *concavity*: the outer corner is carved
+    /// away, the inner corner (the one hugging the body wall) survives.
+    @Test
+    func pouredDrawsConcaveTopCornerFilletFlaresAndOtherThemesDrawNone() throws {
+        let fillet = try #require(IslandMaterialTokens.poured.cornerFillet)
+        #expect(fillet.size == 12)
+        #expect(fillet.opacity == 0.92)
+        #expect(fillet.color == Color(red: 20 / 255.0, green: 25 / 255.0, blue: 36 / 255.0))
+        #expect(fillet.resolvedColor == fillet.color.opacity(0.92))
+
+        for material in [
+            IslandMaterialTokens.classic,
+            IslandMaterialTokens.instrument,
+            IslandMaterialTokens.flightDeck,
+            IslandMaterialTokens.annual,
+            IslandMaterialTokens.halo,
+        ] {
+            #expect(material.cornerFillet == nil)
+        }
+
+        // Geometry: a 12×12 piece whose filled region is the square minus the
+        // quarter disc centred on the outer top corner.
+        let box = CGRect(x: 0, y: 0, width: fillet.size, height: fillet.size)
+        let leading = IslandCornerFilletShape(side: .leading).path(in: box)
+        let trailing = IslandCornerFilletShape(side: .trailing).path(in: box)
+
+        #expect(leading.boundingRect.width <= fillet.size)
+        #expect(leading.boundingRect.height <= fillet.size)
+        // Outer top corner carved away; the inner bottom corner (against the
+        // body wall) filled — that is what makes the curve concave.
+        #expect(leading.contains(CGPoint(x: 1, y: 1)) == false)
+        #expect(leading.contains(CGPoint(x: 11, y: 11)))
+        #expect(trailing.contains(CGPoint(x: 11, y: 1)) == false)
+        #expect(trailing.contains(CGPoint(x: 1, y: 11)))
+        // The arc itself: the point one fillet away from the outer corner along
+        // the bottom edge sits ON the boundary, so just inside it is still cut.
+        #expect(leading.contains(CGPoint(x: 0.5, y: 11.5)) == false)
+    }
+
     // MARK: - Closed-inset growth (SPEC §3.1 / AB-329)
 
     // MARK: - Classic status-colour parity (SPEC §1a)

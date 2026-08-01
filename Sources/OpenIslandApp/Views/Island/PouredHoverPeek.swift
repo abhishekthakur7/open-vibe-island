@@ -89,6 +89,12 @@ struct PouredHoverPeek: View {
         .padding(.horizontal, Self.paddingHorizontal)
         .frame(width: resolvedWidth, alignment: .leading)
         .background(glassBody)
+        // R6 · N-10 (PI-B-003): the board's peek body carries the same two
+        // `.fillet` spans every pill does (`01-poured-island.html:718`), so the
+        // grown surface keeps the concave shoulders the pill grew out of instead
+        // of snapping square. Overlay-drawn and offset outward, so `resolvedWidth`
+        // — the number the host hit-tests and measures against — is unchanged.
+        .islandCornerFilletFlares(tokens.material.cornerFillet)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(peekTitle). \(peekHint)")
     }

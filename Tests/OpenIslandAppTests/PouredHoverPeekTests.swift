@@ -106,6 +106,34 @@ struct PouredHoverPeekTests {
         #expect(PouredIslandTheme().hoverPeekPreemptsHoverOpen)
     }
 
+    /// R6 ruling on N-3 (PI-B-001): the **rendered** board is golden, and it
+    /// draws the §B peek frame at `transform:scale(1.0)`
+    /// (`01-poured-island.html:717`). The `scale 1.03` in the §B prose (`:707`)
+    /// and the `.pill.hover-lift` rule (`:157`) are applied to no element in the
+    /// document, so a model-driven peek no longer lifts the collapsed surface.
+    ///
+    /// The transient pointer-only hover keeps the `closedHoverScale` token —
+    /// the board renders no bare-hover frame, so the prose invariant stands
+    /// there uncontradicted.
+    @Test
+    func peekRendersAtTheBoardsScaleOfOneWhileBareHoverKeepsTheLift() {
+        let lift = IslandThemeTokens.poured.metrics.closedHoverScale
+        #expect(lift == 1.03)
+
+        // Peek up, pointer not over the (event-transparent) closed window: 1.
+        #expect(IslandPanelView.closedSurfaceScale(
+            opened: false, isHovering: false, hoverPeekActive: true, hoverScale: lift
+        ) == 1)
+        // Bare hover, no peek: the shipped lift.
+        #expect(IslandPanelView.closedSurfaceScale(
+            opened: false, isHovering: true, hoverPeekActive: false, hoverScale: lift
+        ) == lift)
+        // Opened never scales, whatever the pointer is doing.
+        #expect(IslandPanelView.closedSurfaceScale(
+            opened: true, isHovering: true, hoverPeekActive: true, hoverScale: lift
+        ) == 1)
+    }
+
     // MARK: - Shared content model
 
     /// The peek's copy comes from the *shared* resolver, and now carries the two

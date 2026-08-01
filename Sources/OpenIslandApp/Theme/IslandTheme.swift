@@ -236,6 +236,24 @@ protocol IslandTheme: Sendable {
         height: CGFloat
     ) -> AnyView?
 
+    /// R6 · N-1 (PI-M-002): whether the **closed** surface's ambient state
+    /// suppresses the body's inner contour hairline for as long as it glows.
+    ///
+    /// The reference's quiet `.glass` rule (`01-poured-island.html:134`) and its
+    /// `lumen` working keyframes (`:187-188`) both carry `--hairline-inset`,
+    /// while `attnpulse` (`:193-194`), `settle` (`:198-200`) and A4's inline
+    /// glow (`:640`) all OMIT it — the loud states trade the contour edge for
+    /// the bloom. Returns `false` — the default every theme but Poured takes —
+    /// so their closed surface keeps whatever edge it always drew.
+    ///
+    /// **Declared here (not only in the extension)** for the same dynamic
+    /// dispatch reason as `closedSurfaceGlow`.
+    func closedSurfaceSuppressesInnerHairline(
+        mode: UnifiedBars.Mode,
+        rightSlot: IslandRightSlotContent?,
+        activity: IslandClosedPillActivity?
+    ) -> Bool
+
     /// The theme's **hover peek**: the narrated surface a 0.15s pointer dwell
     /// reveals on the *collapsed* island, before any click (PI-B-001, mockup
     /// `01-poured-island.html:706-736` for Poured / `06-halo.html:709-721` for
@@ -614,6 +632,14 @@ extension IslandTheme {
         width: CGFloat,
         height: CGFloat
     ) -> AnyView? { nil }
+
+    /// Default: the closed surface's inner edge never changes with the ambient
+    /// state. Every theme but Poured takes this.
+    func closedSurfaceSuppressesInnerHairline(
+        mode: UnifiedBars.Mode,
+        rightSlot: IslandRightSlotContent?,
+        activity: IslandClosedPillActivity?
+    ) -> Bool { false }
 
     /// Default: leave the traveling glyph on its own paper tone.
     func closedGlyphTint(

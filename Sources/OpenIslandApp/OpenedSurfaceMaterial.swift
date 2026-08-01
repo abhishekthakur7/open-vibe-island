@@ -117,6 +117,15 @@ struct OpenedSurfaceBackground: View {
     /// to the silhouette mid-morph.
     var surfaceShape: OpenedIslandSurfaceShape
 
+    /// R6 · N-1 (PI-M-002): drops the material's inner hairline for this
+    /// instance only. Set by the closed surface while its ambient state casts an
+    /// attention/settle glow — the rendered `attnpulse` / `settle` / A4-inline
+    /// `box-shadow` stacks omit `--hairline-inset` where quiet `.glass` and
+    /// `lumen` keep it (`01-poured-island.html:134,187-188,193-194,198-200,640`).
+    /// Defaulted `false`, so the opened panel, the hover peek, the Settings
+    /// preview and every non-Poured surface are byte-identical.
+    var suppressesInnerHairline: Bool = false
+
     @Environment(\.islandTokens) private var tokens
 
     var body: some View {
@@ -165,7 +174,7 @@ struct OpenedSurfaceBackground: View {
                     OpenedSurfaceHardSpecularLine(edge: hardEdge)
                 }
 
-                if let hairline = material.innerHairline {
+                if let hairline = material.innerHairline, !suppressesInnerHairline {
                     OpenedSurfaceInnerHairline(hairline: hairline, surfaceShape: surfaceShape)
                 }
             }

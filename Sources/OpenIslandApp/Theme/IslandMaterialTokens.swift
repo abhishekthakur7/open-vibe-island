@@ -56,6 +56,39 @@ struct IslandHairlineToken: Equatable, Sendable {
     var width: CGFloat
 }
 
+/// The concave quarter-round corner piece a surface flares into at its **top
+/// outer** corners, where the slab fuses back up into the menu-bar/notch line.
+///
+/// The reference draws it as two absolutely-positioned `.fillet.l` / `.fillet.r`
+/// spans hanging OUTSIDE the body (`01-poured-island.html:136-143`): a
+/// `--fillet` (12px) square at `left:-12px` / `right:-12px`, filled with
+/// `--glass-fillet` (`rgba(20,25,36,.92)`, `:50`) and masked by a
+/// `radial-gradient` centred on its own outer top corner so the remaining
+/// opaque region is concave. Because they are positioned out of flow, they add
+/// nothing to the pill's layout width — the native flares mirror that exactly
+/// (drawn in an `.overlay`, offset outward), so every closed-pill width golden
+/// is untouched.
+///
+/// `nil` on a theme means "no flares" — the square-topped surface every theme
+/// but Poured has always drawn (Slice-2 nullable-token precedent).
+struct IslandCornerFilletToken: Equatable, Sendable {
+    /// Base fill tone, before `opacity` is applied. Body tone, **not** a sheen —
+    /// the flare is a continuation of the slab, not a light layer.
+    var color: Color
+
+    /// Opacity applied to `color`.
+    var opacity: Double
+
+    /// Side of the square quarter-round piece, in points (the reference's
+    /// `--fillet`).
+    var size: CGFloat
+
+    /// `color` with `opacity` folded in — the value handed to the fill.
+    var resolvedColor: Color {
+        color.opacity(opacity)
+    }
+}
+
 /// Material half of the island theme token layer (AB-300).
 ///
 /// The opened surface's vibrancy was hardcoded in `OpenedSurfaceMaterial.swift`
@@ -141,6 +174,11 @@ struct IslandMaterialTokens: Equatable, Sendable {
     /// Transparency still wins: the opaque-ink branch is already a single
     /// layer.
     var morphsAsOneBody: Bool = false
+
+    /// R6 · N-10 (PI-B-003): the concave top-outer-corner flares the closed pill
+    /// and the hover peek draw. `nil` (every theme but Poured) keeps the
+    /// square-topped surface they have always rendered.
+    var cornerFillet: IslandCornerFilletToken? = nil
 }
 
 // MARK: - Classic
@@ -212,7 +250,15 @@ extension IslandMaterialTokens {
         contentEdgeStroke: nil,
         // PI-B-002: pill → peek → panel is one continuous blue-black glass
         // body, so the morph paints one material for the whole interpolant.
-        morphsAsOneBody: true
+        morphsAsOneBody: true,
+        // R6 · N-10: `--glass-fillet: rgba(20,25,36,.92)` at `--fillet: 12px`
+        // (`01-poured-island.html:50,56,136-143`) — every rendered `.pill` and
+        // the §B peek body carry the two concave flares.
+        cornerFillet: IslandCornerFilletToken(
+            color: Color(red: 20 / 255.0, green: 25 / 255.0, blue: 36 / 255.0),
+            opacity: 0.92,
+            size: 12
+        )
     )
 }
 

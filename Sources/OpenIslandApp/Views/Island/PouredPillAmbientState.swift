@@ -86,6 +86,28 @@ enum PouredPillAmbientState: Equatable {
             return outcome == .success
         }
     }
+
+    /// R6 · N-1: whether this state drops the body's inner contour hairline for
+    /// as long as it glows.
+    ///
+    /// The rendered board is explicit about the split. Quiet `.glass`
+    /// (`01-poured-island.html:134`) and the working `lumen` keyframes
+    /// (`:187-188`) write `--hairline-inset` into their `box-shadow` stack;
+    /// `attnpulse` (`:193-194` — A3 permission), `settle` (`:198-200` — A5
+    /// success) and A4's inline question glow (`:640`) all omit it. So exactly
+    /// the *attention* and *settle* glows trade the contour edge for the bloom —
+    /// `working` glows but keeps its hairline, which is why this is deliberately
+    /// **not** `castsGlow`.
+    var suppressesInnerHairline: Bool {
+        switch self {
+        case .idle, .working:
+            return false
+        case .permission, .question:
+            return true
+        case .completed(let outcome):
+            return outcome == .success
+        }
+    }
 }
 
 // MARK: - Narrated label two-tone split

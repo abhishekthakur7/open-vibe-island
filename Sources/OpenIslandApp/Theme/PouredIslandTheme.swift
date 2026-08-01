@@ -123,6 +123,23 @@ struct PouredIslandTheme: IslandTheme {
         return AnyView(PouredClosedGlow(ambient: ambient, width: width, height: height))
     }
 
+    /// R6 · N-1: the attention (A3/A4) and settle (A5) glows drop the body's
+    /// inner contour hairline, exactly as the rendered `attnpulse` / `settle` /
+    /// A4-inline `box-shadow` stacks do (`01-poured-island.html:193-194`,
+    /// `:198-200`, `:640`). Quiet and working keep it (`:134`, `:187-188`).
+    /// Scoped by the caller to the **closed** surface — the opened panel and the
+    /// hover peek keep their hairline always, since the board's peek body
+    /// carries plain class `glass` (`:717`).
+    func closedSurfaceSuppressesInnerHairline(
+        mode: UnifiedBars.Mode,
+        rightSlot: IslandRightSlotContent?,
+        activity: IslandClosedPillActivity?
+    ) -> Bool {
+        PouredPillAmbientState
+            .resolve(activity: activity, mode: mode, rightSlot: rightSlot)
+            .suppressesInnerHairline
+    }
+
     /// PI-B-001 · board §B: Poured's dwell endpoint is the **peek**, not a full
     /// open — "the single continuously-morphing shape begins to grow and
     /// surfaces the one actionable item — *before* a full open"
