@@ -120,6 +120,27 @@ struct IslandMaterialTokens: Equatable, Sendable {
     /// 0.5pt `--hairline-inset` carried by `innerHairline` — so keeping this
     /// second stroke would double the surface's inner edge.
     var contentEdgeStroke: IslandHairlineToken? = IslandHairlineToken(opacity: 0.07, width: 1)
+
+    /// PI-B-002: the closed pill, the hover peek and the opened panel are ONE
+    /// continuous glass body, so the open/close morph must paint exactly ONE
+    /// background at rest and at every point of the interpolant.
+    ///
+    /// When `false` (every theme but Poured, so their render trees are
+    /// untouched) a vibrancy theme's morph stacks two materials and crossfades
+    /// them by opacity — two layers at `o` and `1 - o` composite to
+    /// `1 - o + o²`, i.e. the body is only ~75% opaque at the midpoint and the
+    /// desktop reads straight through it (the M-23 defect, previously fixed
+    /// only for opaque-ink themes). It also parks the theme's inner hairline
+    /// inside the opacity-gated layer, so the one edge the reference declares
+    /// is only partially painted mid-morph.
+    ///
+    /// When `true` the morph renders a single `OpenedSurfaceBackground` over
+    /// the live interpolating shape — no underlay, no opacity stack — and the
+    /// closed pill stands its own fill down (`\.islandClosedPillPaintsOwnSurface`)
+    /// so the rest-state pill is painted by that same one body. Reduce
+    /// Transparency still wins: the opaque-ink branch is already a single
+    /// layer.
+    var morphsAsOneBody: Bool = false
 }
 
 // MARK: - Classic
@@ -188,7 +209,10 @@ extension IslandMaterialTokens {
         // PI-M-002: exactly ONE inner edge on the glass body — the 0.5pt
         // hairline above. The all-theme 0.07/1pt content-layer stroke would be a
         // second one, so Poured drops it.
-        contentEdgeStroke: nil
+        contentEdgeStroke: nil,
+        // PI-B-002: pill → peek → panel is one continuous blue-black glass
+        // body, so the morph paints one material for the whole interpolant.
+        morphsAsOneBody: true
     )
 }
 

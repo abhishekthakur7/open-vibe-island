@@ -382,12 +382,17 @@ final class OverlayPanelController {
     private func handleMouseMoved(_ screenLocation: NSPoint) {
         guard let model else { return }
 
+        // PI-B-001: while the peek is up the *grown* body is the island, so the
+        // dwell area grows with it — otherwise a pointer moving a few points
+        // down onto the surface the dwell just revealed would read as "left the
+        // island" and retire it a tenth of a second after it appeared.
         let inClosedSurfaceArea = isPointInClosedSurfaceArea(screenLocation)
+            || isPointInHoverPeekArea(screenLocation, model: model)
 
         if model.notchStatus == .closed && inClosedSurfaceArea {
             scheduleHoverOpen()
         } else if model.notchStatus == .closed && !inClosedSurfaceArea {
-            cancelHoverOpen()
+            cancelHoverIntent()
         }
 
         let shouldTrackNotificationPointer = model.notchStatus == .opened
@@ -406,10 +411,18 @@ final class OverlayPanelController {
     private func handleMouseDown(_ screenLocation: NSPoint) {
         guard let model else { return }
 
+        // PI-B-001: the peek's own body is part of the collapsed island's click
+        // target — its hint literally reads "Click to review & approve", so a
+        // click that lands on the narration must open, not fall through.
         let inClosedSurfaceArea = isPointInClosedSurfaceArea(screenLocation)
+            || isPointInHoverPeekArea(screenLocation, model: model)
 
         if model.notchStatus == .closed && inClosedSurfaceArea {
             cancelHoverOpenImmediately()
+            // PI-B-001: the click the peek's hint promises is this very gesture.
+            // Retire the peek first, without grace, so the open starts from the
+            // collapsed silhouette and the two surfaces never overlap.
+            model.endHoverPeek()
             model.notchOpen(reason: .click)
         } else if model.notchStatus == .opened {
             if !isPointInExpandedArea(screenLocation), !isPointInsidePanelWindow(screenLocation) {
@@ -444,7 +457,11 @@ final class OverlayPanelController {
         hoverCancelGrace?.cancel()
         hoverCancelGrace = nil
 
-        guard model != nil else { return }
+        guard let model else { return }
+
+        // PI-B-001: the dwell has already been served — the peek is up. Nothing
+        // further to schedule until the pointer leaves and comes back.
+        guard !model.hoverPeekActive else { return }
 
         guard hoverTimer == nil else { return }
 
@@ -461,6 +478,16 @@ final class OverlayPanelController {
     private func performHoverOpen(_ model: AppModel) {
         guard model.notchStatus == .closed else { return }
 
+        // PI-B-001 · board §B: for a theme whose reference specifies the peek as
+        // the dwell endpoint, the same 0.15s dwell grows the collapsed shape and
+        // surfaces the one actionable item *instead of* opening. Every other
+        // theme — and this one with nothing waiting on the user — opens exactly
+        // as before.
+        if model.hoverBehaviorForClosedSurface() == .peek {
+            model.beginHoverPeek()
+            return
+        }
+
         if model.hapticFeedbackEnabled {
             NSHapticFeedbackManager.defaultPerformer.perform(
                 NSHapticFeedbackManager.FeedbackPattern.alignment,
@@ -471,8 +498,41 @@ final class OverlayPanelController {
         model.notchOpen(reason: .hover)
     }
 
-    private func cancelHoverOpen() {
-        guard hoverTimer != nil else { return }
+    /// The peek's live outer rect: the measured body, top-aligned with the
+    /// collapsed island and centred on the same axis (`IslandPanelView` mounts
+    /// it as a top-anchored overlay on a window centred on the notch).
+    /// `.zero`-sized — i.e. no peek up — always answers `false`.
+    ///
+    /// PI-B-001 round-2 correction: the anchor is the *same* geometry the pill
+    /// hit-test uses — `closedSurfaceRect(for:)` when a target screen resolves,
+    /// falling back to `notchRect` exactly like `isPointInClosedSurfaceArea`.
+    /// Anchoring straight to `notchRect` made the peek's hit-rect depend on a
+    /// physical notch, so on top-bar placements the dwell could die over the
+    /// grown body while the pointer was still inside the visible peek.
+    private func isPointInHoverPeekArea(_ screenPoint: NSPoint, model: AppModel) -> Bool {
+        guard model.hoverPeekActive else { return false }
+        let size = model.hoverPeekSurfaceSize
+        guard size.width > 0, size.height > 0 else { return false }
+
+        let anchor = closedSurfaceRect(for: model) ?? notchRect
+        let rect = NSRect(
+            x: anchor.midX - size.width / 2,
+            y: anchor.maxY - size.height,
+            width: size.width,
+            height: size.height
+        )
+        return Self.rectContainsIncludingEdges(rect, point: screenPoint)
+    }
+
+    /// Cancels a pending hover dwell **and** retires a raised peek, both after
+    /// the same jitter grace period.
+    ///
+    /// PI-B-001 folded the peek into what used to be `cancelHoverOpen`: the two
+    /// are the same intent ("the pointer has left the island"), and they must
+    /// share the grace window or a pointer skimming the notch edge would flicker
+    /// the peek off and on.
+    private func cancelHoverIntent() {
+        guard hoverTimer != nil || model?.hoverPeekActive == true else { return }
 
         // Don't cancel immediately — allow a short grace period so that
         // mouse jitter at the notch edge doesn't restart the timer.
@@ -482,6 +542,7 @@ final class OverlayPanelController {
             self?.hoverTimer?.cancel()
             self?.hoverTimer = nil
             self?.hoverCancelGrace = nil
+            self?.model?.endHoverPeek()
         }
 
         hoverCancelGrace = grace

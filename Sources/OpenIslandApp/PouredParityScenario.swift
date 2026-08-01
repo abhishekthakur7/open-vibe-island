@@ -10,6 +10,10 @@ enum PouredParityScenario: String, CaseIterable, Codable, Sendable {
     // PI-V-001: the §C grouped list. `diagnostic-partial` like every other case
     // — a deterministic fixture is not capture authority.
     case c1GroupedSix = "C1-grouped-six"
+    // PI-B-001: the §B hover peek. `diagnostic-partial` like every other case —
+    // and doubly so here, because the driver reaches the peek *endpoint*
+    // directly and never runs the 0.15s dwell (see `applyConfiguredEvent`).
+    case b1HoverPeek = "B1-hover-peek"
 }
 
 enum PouredParityProfile: String, CaseIterable, Codable, Sendable { case notch = "notch-v1"; case topBar = "top-bar-v1" }

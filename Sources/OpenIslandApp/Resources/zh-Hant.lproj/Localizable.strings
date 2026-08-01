@@ -421,6 +421,14 @@
 "island.halo.peek.reviewAnswer" = "點擊查看並回答";
 "island.halo.peek.moreWaiting" = "還有 %lld 個在等待";
 
+/* Poured §B 懸停預覽 (PI-B-001) */
+"island.poured.peek.wantsToRun" = "%@ 想執行一條命令";
+"island.poured.peek.wantsPermission" = "%@ 需要授權";
+"island.poured.peek.hasQuestion" = "%@ 有一個問題";
+"island.poured.peek.reviewApprove" = "點擊查看並批准";
+"island.poured.peek.reviewAnswer" = "點擊查看並回答";
+"island.poured.peek.moreSessions" = "還有 %lld 個工作階段";
+
 /* Island Panel - Annual theme rows (AB-317) */
 "island.annual.row.jump" = "跳轉";
 

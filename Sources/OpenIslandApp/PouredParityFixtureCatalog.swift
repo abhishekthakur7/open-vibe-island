@@ -9,6 +9,10 @@ enum PouredParityFixtureCatalog {
     static func resolve(_ configuration:PouredParityConfiguration)->PouredParityFixture {
         let debug:IslandDebugScenario = switch configuration.scenario {
         case .a2WorkingOne:.closed; case .a2mWorkingMany:.closedMultiRunning; case .a3Permission:.closedAttention; case .e1CommandPermission:.approvalCard; case .h1Completed:.completionCard; case .c1GroupedSix:.pouredGroupedSix
+        // PI-B-001: two sessions waiting on the user — an approval lead plus a
+        // question — so the peek surfaces one and compresses the rest into the
+        // board's `+N more sessions` chip.
+        case .b1HoverPeek:.closedAttentionQueue
         }
         let now=Date(timeIntervalSince1970:Double(configuration.epochMilliseconds)/1000)
         let snapshot=debug.snapshot(at:now)

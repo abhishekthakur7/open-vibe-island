@@ -22,11 +22,24 @@ struct OpenedIslandSurfaceShape: Shape {
     /// fillet regardless of this value.
     var filletRadius: CGFloat = 0
 
-    var animatableData: AnimatablePair<CGFloat, CGFloat> {
-        get { AnimatablePair(topCornerRadius, bottomCornerRadius) }
+    /// PI-B-003: all three silhouette radii travel together.
+    ///
+    /// `filletRadius` used to sit outside `animatableData`, which made it a
+    /// *plain* argument on an otherwise animatable shape: on any implicit
+    /// animation whose endpoints differ in fillet (the Reduce-Motion closed
+    /// surface, the docked hover peek, or any future theme whose closed and
+    /// opened fillets are not equal) the two corner radii would interpolate
+    /// while the fillet snapped to its final value on the first frame — a
+    /// topology break exactly where the reference demands one continuous body.
+    /// Nesting it here removes that whole class of snap. For Poured today both
+    /// endpoints pass the same token fillet (12), so this is behaviour-neutral
+    /// at the current values and correct for differing ones.
+    var animatableData: AnimatablePair<AnimatablePair<CGFloat, CGFloat>, CGFloat> {
+        get { AnimatablePair(AnimatablePair(topCornerRadius, bottomCornerRadius), filletRadius) }
         set {
-            topCornerRadius = newValue.first
-            bottomCornerRadius = newValue.second
+            topCornerRadius = newValue.first.first
+            bottomCornerRadius = newValue.first.second
+            filletRadius = newValue.second
         }
     }
 

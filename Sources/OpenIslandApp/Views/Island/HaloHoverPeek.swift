@@ -8,6 +8,16 @@ import OpenIslandCore
 /// Pure value — every field is resolved from the surfaced sessions by
 /// ``resolve(sessions:lang:)`` before any view exists, so the peek's *copy* is
 /// testable without standing up an overlay and the view stays a renderer.
+///
+/// **Naming debt (PI-B-001).** Despite the `Halo…` prefix this value is now the
+/// *shared* peek content model: Poured's §B peek
+/// (`01-poured-island.html:706-736`) resolves through the very same
+/// `resolve(sessions:lang:)`, and the theme seam
+/// (`IslandTheme.closedSurfaceHoverPeek`) hands it to whichever theme draws the
+/// peek. Renaming it to `IslandHoverPeekContent` was deliberately left out of
+/// the slice that introduced the seam (a rename would churn the Halo view, its
+/// tests and its strings for no pixel change); it should be done as its own
+/// refactor.
 struct HaloHoverPeekContent: Equatable {
 
     /// Which attention the peek is speaking for. Drives the dot hue and the
@@ -30,6 +40,21 @@ struct HaloHoverPeekContent: Equatable {
     /// How many OTHER sessions are also waiting on the user. `0` hides the
     /// `+N more` chip — there is nothing compressed behind this one.
     var moreWaiting: Int
+
+    /// The lead session's workspace — the one substitution `title` was built
+    /// from. Carried alongside the resolved sentence so a theme whose board
+    /// specifies its **own** peek copy (Poured's `island.poured.peek.*`) can
+    /// phrase the line itself instead of inheriting Halo's wording. Defaulted so
+    /// every existing construction site is unchanged.
+    var workspace: String = ""
+
+    /// The lead session's agent. Halo's peek never reads it (it draws the
+    /// `.mono-tag` monogram above), but Poured's §B head row ends in a full
+    /// agent chip — brand dot + display name (`01-poured-island.html:723`) —
+    /// and that identity has to come from the same resolved content so the two
+    /// peeks can never disagree about *whose* request is being surfaced.
+    /// Defaulted so every existing construction site is unchanged.
+    var agent: AgentTool? = nil
 
     /// The one actionable session the peek surfaces, or `nil` when nothing is
     /// waiting on the user (hover then stays the bare 1.03 scale bump — the
@@ -65,7 +90,9 @@ struct HaloHoverPeekContent: Equatable {
             title: title,
             detail: command ?? (kind == .question ? questionPreview(for: lead) : nil),
             monogram: HaloSessionRowFormat.monogram(agentShortName: lead.tool.shortName),
-            moreWaiting: waiting.count - 1
+            moreWaiting: waiting.count - 1,
+            workspace: workspace,
+            agent: lead.tool
         )
     }
 

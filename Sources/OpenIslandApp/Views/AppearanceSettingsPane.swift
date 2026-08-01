@@ -476,14 +476,24 @@ struct AppearanceSettingsPane: View {
     }
 
     private func centerLabelCard(_ option: IslandCenterLabel, sample: String) -> some View {
-        let selected = editingPreferences.centerLabel == option
+        // PI-A-001 round-2 correction: read the *effective* label, not the raw
+        // stored preference. Under Poured on the notch the stored default is
+        // `.off` while the pill actually narrates (`.agentAction`), so reading
+        // the stored value showed "Off" selected while the island visibly
+        // disagreed. The write passes `explicitCenterLabelChoice: true` so a
+        // no-op re-pick (clicking "Off" when `.off` is already stored) still
+        // records the choice and turns the label off for real.
+        let selected = model.effectiveCenterLabel(for: editingProfile) == option
         let title: String = switch option {
         case .agentAction: lang.t("settings.appearance.centerLabel.agentAction")
         case .sessionName: lang.t("settings.appearance.centerLabel.sessionName")
         case .off:         lang.t("settings.appearance.centerLabel.off")
         }
         return Button {
-            model.updateAppearancePreferences(for: editingProfile) { $0.centerLabel = option }
+            model.updateAppearancePreferences(
+                for: editingProfile,
+                explicitCenterLabelChoice: true
+            ) { $0.centerLabel = option }
         } label: {
             VStack(spacing: 10) {
                 ZStack {

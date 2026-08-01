@@ -134,6 +134,11 @@ enum PouredType {
         case optionNumber            // .opt .num — option number (tabular)
         case questionChip            // .q-chip — question kicker chip
 
+        // §B hover peek (PI-B-001)
+        case peekTitle               // §B head row — "<name> wants to run a command"
+        case peekCommand             // §B head row — the pending command (mono)
+        case peekHint                // §B hint row — "Click to review & approve"
+
         // Subagents / tasks
         case subagentType            // .sa-type — subagent type
         case subagentTask            // .sa-task — subagent task
@@ -205,6 +210,12 @@ enum PouredType {
         .optionDesc:            Spec(size: 11.5, weight: 400, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
         .optionNumber:          Spec(size: 11,   weight: 700, trackingEm: 0,     isMono: false, isTabular: true,  isUppercase: false),
         .questionChip:          Spec(size: 10,   weight: 700, trackingEm: 0.05,  isMono: false, isTabular: false, isUppercase: true),
+
+        // §B peek, read verbatim off the board's own inline styles
+        // (`01-poured-island.html:718,721,727`): 13/600, 11.5 mono, 11.
+        .peekTitle:             Spec(size: 13,   weight: 600, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
+        .peekCommand:           Spec(size: 11.5, weight: 400, trackingEm: 0,     isMono: true,  isTabular: false, isUppercase: false),
+        .peekHint:              Spec(size: 11,   weight: 400, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
 
         .subagentType:          Spec(size: 12,   weight: 600, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
         .subagentTask:          Spec(size: 11,   weight: 400, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),

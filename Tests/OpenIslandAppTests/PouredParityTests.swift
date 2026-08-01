@@ -27,9 +27,9 @@ import Testing
     @Test @MainActor func driver_rejects_wrong_a11y_and_unsupported_events() throws {
         let model=AppModel(); let mismatch=PouredParityDriver(configuration:configuration(),accessibilityMatches:{_ in false})
         #expect(throws:PouredParityError.accessibilityMismatch(.standard)){try mismatch.apply(to:model,presentOverlay:false)}
-        let hover=PouredParityDriver(configuration:configuration(event:.hover)); try hover.apply(to:model,presentOverlay:false)
-        #expect(throws:PouredParityError.unsupportedEvent(.hover)){try hover.applyConfiguredEvent(to:model)}
-        #expect(hover.acknowledgedEvents.isEmpty)
+        let reverse=PouredParityDriver(configuration:configuration(event:.reverse)); try reverse.apply(to:model,presentOverlay:false)
+        #expect(throws:PouredParityError.unsupportedEvent(.reverse)){try reverse.applyConfiguredEvent(to:model)}
+        #expect(reverse.acknowledgedEvents.isEmpty)
     }
 
     @Test @MainActor func manual_clock_never_claims_canonical_pixels() throws {
@@ -50,6 +50,37 @@ import Testing
         #expect(throws:PouredParityError.staleExecutable){try driver.captureManifest(model:model,executablePath:"/tmp/app",executableSHA256:"abc",gitRevision:"deadbeef",sourceTreeDirty:true,bundleIdentifier:"app",signingIdentity:nil,windowServerPlacement:"window-1")}
         #expect(throws:PouredParityError.missingPlacement){try driver.captureManifest(model:model,executablePath:"/tmp/app",executableSHA256:"abc",gitRevision:"deadbeef",sourceTreeDirty:false,bundleIdentifier:"app",signingIdentity:nil,windowServerPlacement:nil)}
         #expect(throws:PouredParityError.partialFixture(.a2WorkingOne)){try driver.captureManifest(model:model,executablePath:"/tmp/app",executableSHA256:"abc",gitRevision:"deadbeef",sourceTreeDirty:false,bundleIdentifier:"app",signingIdentity:nil,windowServerPlacement:"window-1")}
+    }
+
+    /// PI-B-001: `B1-hover-peek` now has a native driver. `.hover` reaches the
+    /// peek **endpoint** — the state the board's §B frame renders — and nothing
+    /// else: no 0.15s dwell, no mouse monitor, no growth animation. The fixture
+    /// therefore stays `diagnostic-partial`, and the island stays `.closed`
+    /// (a peek is explicitly "before a full open").
+    @Test @MainActor func driver_reaches_the_b1_peek_endpoint_without_claiming_the_dwell() throws {
+        let model = AppModel()
+        model.pouredParityBootstrapIsolation = .init(runtimeStateLoadingDisabled:true, bridgeStartupDisabled:true)
+        let configuration = PouredParityConfiguration(
+            scenario:.b1HoverPeek, profile:.notch, accessibility:.standard, event:.hover,
+            seed:42, epochMilliseconds:1_700_000_000_000, manualTimeMilliseconds:nil
+        )
+        let driver = PouredParityDriver(configuration:configuration)
+        try driver.apply(to:model, presentOverlay:false)
+
+        #expect(driver.fixture.record.canonicalDisposition == "diagnostic-partial")
+        #expect(driver.fixture.record.sourceScenario == "closedAttentionQueue")
+        #expect(model.sessions.allSatisfy { $0.origin == .demo })
+        // Two sessions blocked on the user: one surfaces, the rest compress into
+        // the board's `+N more sessions` chip.
+        let content = try #require(model.closedSurfaceHoverPeekContent())
+        #expect(content.moreWaiting == 1)
+        #expect(model.hoverBehaviorForClosedSurface() == .peek)
+
+        try driver.applyConfiguredEvent(to:model)
+        #expect(driver.acknowledgedEvents == [.hover])
+        #expect(model.hoverPeekActive)
+        #expect(model.notchStatus == .closed)
+        #expect(model.pouredParityStateDump?.presentation == "closed")
     }
 
     /// PI-V-001: `C1-grouped-six` now has a native driver. The seam must load it

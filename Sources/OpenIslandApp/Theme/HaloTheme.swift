@@ -1293,6 +1293,35 @@ struct HaloTheme: IslandTheme {
         ))
     }
 
+    /// G-62/M-27 · board §B — Halo's docked peek, moved verbatim behind the
+    /// PI-B-001 theme seam. Identical inputs, identical view, identical
+    /// composition by the host (`replacesClosedSurface: false` keeps the pill
+    /// drawn and the host's edge overlay tracing the union outline), so Halo's
+    /// render tree is byte-identical to what `IslandPanelView` built inline
+    /// behind a `theme.id == "halo"` check before the seam existed.
+    ///
+    /// `hoverPeekPreemptsHoverOpen` deliberately stays at the protocol default
+    /// (`false`): Halo's dwell has always run to a full open, and changing that
+    /// is not part of the Poured slice that introduced this seam.
+    var themeDrawsHoverPeek: Bool { true }
+
+    func closedSurfaceHoverPeek(_ context: IslandClosedHoverPeekContext) -> IslandClosedHoverPeek? {
+        IslandClosedHoverPeek(
+            body: AnyView(
+                HaloHoverPeek(
+                    content: context.content,
+                    lang: context.lang,
+                    availableWidth: context.availableWidth,
+                    dockedWidth: context.closedPillWidth,
+                    pillHeight: context.closedPillHeight,
+                    pillBottomRadius: context.closedPillHeight / 2
+                )
+            ),
+            bottomCornerRadius: HaloHoverPeek.cornerRadius,
+            replacesClosedSurface: false
+        )
+    }
+
     /// R4 · item 1 · board §I′ — Halo's only wing split: the critical-usage
     /// filament + `Codex 92%` moves to the **left** wing (declaring its width so
     /// the shared reserve grows to hold it), the countdown stays alone on the

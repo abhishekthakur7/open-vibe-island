@@ -123,6 +123,36 @@ struct PouredIslandTheme: IslandTheme {
         return AnyView(PouredClosedGlow(ambient: ambient, width: width, height: height))
     }
 
+    /// PI-B-001 · board §B: Poured's dwell endpoint is the **peek**, not a full
+    /// open — "the single continuously-morphing shape begins to grow and
+    /// surfaces the one actionable item — *before* a full open"
+    /// (`01-poured-island.html:706-709`).
+    var hoverPeekPreemptsHoverOpen: Bool { true }
+
+    /// The §B peek body. `replacesClosedSurface: true` because the board's
+    /// rendered frame (`:712-736`) shows the grown body with **no wings**: the
+    /// peek IS the collapsed island while it is up, so the host hides the pill
+    /// underneath and this one body carries the whole glass treatment. That is
+    /// what keeps pill → peek → panel one continuous silhouette with a single
+    /// contour-traced edge.
+    var themeDrawsHoverPeek: Bool { true }
+
+    func closedSurfaceHoverPeek(_ context: IslandClosedHoverPeekContext) -> IslandClosedHoverPeek? {
+        IslandClosedHoverPeek(
+            body: AnyView(
+                PouredHoverPeek(
+                    content: context.content,
+                    lang: context.lang,
+                    availableWidth: context.availableWidth,
+                    closedPillWidth: context.closedPillWidth,
+                    topProfile: context.topProfile
+                )
+            ),
+            bottomCornerRadius: PouredHoverPeek.cornerRadius,
+            replacesClosedSurface: true
+        )
+    }
+
     /// Tints the closed pill's traveling glyph by ambient state (AB-330 stage 2).
     /// In the live morph path the left indicator *is* this traveling
     /// `UnifiedBars` overlay (the pill draws a transparent placeholder), so

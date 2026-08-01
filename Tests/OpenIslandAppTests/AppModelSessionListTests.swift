@@ -14,6 +14,8 @@ struct AppModelSessionListTests {
             "appearance.island.v8.completedStaleThreshold",
             "appearance.island.v8.notch.rightSlot",
             "appearance.island.v8.notch.centerLabel",
+            "appearance.island.v8.notch.centerLabel.explicit",
+            "appearance.island.v8.topBar.centerLabel.explicit",
             "appearance.island.v8.notch.stateIndicator",
             "appearance.island.v8.notch.sessionGroup",
             "appearance.island.v8.notch.sessionSort",
@@ -413,13 +415,46 @@ struct AppModelSessionListTests {
         // untouched install has to keep looking exactly as it did. The
         // topBar (external) profile keeps its pre-existing `.agentAction`
         // default untouched.
+        //
+        // PI-A-001 (Poured parity, owner rulings R4/R5) narrows the notch
+        // `.off` default to *non-Poured* themes: every §A frame of the Poured
+        // board narrates in the collapsed pill, so Poured's effective notch
+        // default is `.agentAction`.
+        //
+        // PI-A-001 review correction: the "user chose" sentinel is the dedicated
+        // `centerLabel.explicit` marker, NOT absence of the persisted
+        // `centerLabel` value — `persistAppearancePreferences` writes all seven
+        // notch keys on any notch change, so key-absence was destroyed by
+        // unrelated writes. Arm (a) below is the regression that pins it.
+        let notchLabelKey = "appearance.island.v8.notch.centerLabel"
+        let notchLabelMarkerKey = "appearance.island.v8.notch.centerLabel.explicit"
+        let themeKey = "appearance.island.v8.theme"
+        let previous = [notchLabelKey, notchLabelMarkerKey, themeKey]
+            .map { ($0, UserDefaults.standard.object(forKey: $0)) }
+        defer {
+            for (key, value) in previous {
+                if let value {
+                    UserDefaults.standard.set(value, forKey: key)
+                } else {
+                    UserDefaults.standard.removeObject(forKey: key)
+                }
+            }
+        }
+        UserDefaults.standard.removeObject(forKey: notchLabelKey)
+        UserDefaults.standard.removeObject(forKey: notchLabelMarkerKey)
+
         let now = Date(timeIntervalSince1970: 5_000)
         let model = AppModel()
+        UserDefaults.standard.removeObject(forKey: notchLabelKey)
+        UserDefaults.standard.removeObject(forKey: notchLabelMarkerKey)
+        model.islandThemeID = "classic"
 
         var running = listSession(id: "running", phase: .running, updatedAt: now)
         running.isProcessAlive = true
         model.state = SessionState(sessions: [running])
 
+        // (c1) a non-Poured theme on the notch still defaults `.off`, and the
+        // topBar (external) profile keeps its pre-existing `.agentAction`.
         model.overlayPlacementDiagnostics = placementDiagnostics(mode: .notch)
         #expect(model.islandCenterLabel == .off)
         #expect(model.islandClosedLabel() == nil)
@@ -428,10 +463,72 @@ struct AppModelSessionListTests {
         #expect(model.islandCenterLabel == .agentAction)
         #expect(model.islandClosedLabel() != nil)
 
-        // Explicitly opting in on the notch profile surfaces the label
-        // there too, independent of the topBar profile's own preference.
-        model.updateAppearancePreferences(for: .notch) { $0.centerLabel = .agentAction }
+        // (c2) PI-A-001: Poured on the notch defaults `.agentAction` — the
+        // collapsed narrative the board's §A frames all show.
+        model.islandThemeID = "poured"
         model.overlayPlacementDiagnostics = placementDiagnostics(mode: .notch)
+        #expect(model.islandCenterLabel == .agentAction)
+        #expect(model.islandClosedLabel() != nil)
+
+        // (a) REGRESSION: an unrelated notch preference write (right slot) makes
+        // `persistAppearancePreferences` materialise `centerLabel=off` on disk.
+        // That is not a user choice, so the Poured override must survive it.
+        model.updateAppearancePreferences(for: .notch) { $0.rightSlot = .agents }
+        #expect(UserDefaults.standard.string(forKey: notchLabelKey) == IslandCenterLabel.off.rawValue)
+        #expect(UserDefaults.standard.object(forKey: notchLabelMarkerKey) == nil)
+        #expect(model.islandCenterLabel == .agentAction)
+        #expect(model.islandClosedLabel() != nil)
+
+        // (a2) PI-A-001 round-2: stored and effective disagree by design on a
+        // fresh Poured notch install, and `effectiveCenterLabel(for:)` — what
+        // the settings pane's centre-label card now reads — reports the value
+        // the pill actually renders, not the raw stored `.off`.
+        #expect(model.appearancePreferences(for: .notch).centerLabel == .off)
+        #expect(model.effectiveCenterLabel(for: .notch) == .agentAction)
+
+        // (a3) PI-A-001 round-2 REGRESSION: the settings-card "Off" pick is
+        // explicit intent with NO stored change (stored already is `.off`).
+        // Before this fix that click planted no marker and was a silent no-op —
+        // the user could not turn the label off at all. It must now record the
+        // choice, flip the effective value, and survive a fresh `AppModel`.
+        model.updateAppearancePreferences(
+            for: .notch,
+            explicitCenterLabelChoice: true
+        ) { $0.centerLabel = .off }
+        #expect(UserDefaults.standard.bool(forKey: notchLabelMarkerKey))
+        #expect(model.effectiveCenterLabel(for: .notch) == .off)
+        #expect(model.islandCenterLabel == .off)
+        #expect(model.islandClosedLabel() == nil)
+
+        let afterExplicitOff = AppModel()
+        afterExplicitOff.islandThemeID = "poured"
+        afterExplicitOff.overlayPlacementDiagnostics = placementDiagnostics(mode: .notch)
+        afterExplicitOff.state = SessionState(sessions: [running])
+        #expect(afterExplicitOff.effectiveCenterLabel(for: .notch) == .off)
+        #expect(afterExplicitOff.islandClosedLabel() == nil)
+
+        // (b) an explicit `.off` — a real change through the user path — wins
+        // under Poured and survives a fresh `AppModel`. The round-trip through
+        // `.agentAction` is deliberate: it also pins that an actual stored
+        // change still records the choice on its own, with no intent flag.
+        model.updateAppearancePreferences(for: .notch) { $0.centerLabel = .agentAction }
+        model.updateAppearancePreferences(for: .notch) { $0.centerLabel = .off }
+        #expect(UserDefaults.standard.string(forKey: notchLabelKey) == IslandCenterLabel.off.rawValue)
+        #expect(UserDefaults.standard.bool(forKey: notchLabelMarkerKey))
+        #expect(model.islandCenterLabel == .off)
+        #expect(model.islandClosedLabel() == nil)
+
+        let reloaded = AppModel()
+        reloaded.islandThemeID = "poured"
+        reloaded.overlayPlacementDiagnostics = placementDiagnostics(mode: .notch)
+        reloaded.state = SessionState(sessions: [running])
+        #expect(reloaded.islandCenterLabel == .off)
+        #expect(reloaded.islandClosedLabel() == nil)
+
+        // (c3) explicitly opting in on the notch profile surfaces the label
+        // under a non-Poured theme too, independent of the topBar profile.
+        model.islandThemeID = "classic"
+        model.updateAppearancePreferences(for: .notch) { $0.centerLabel = .agentAction }
         #expect(model.islandClosedLabel() != nil)
     }
 

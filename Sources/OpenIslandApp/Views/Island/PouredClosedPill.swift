@@ -45,6 +45,7 @@ struct PouredClosedPill: View {
     @Environment(\.islandTokens) private var tokens
     @Environment(\.islandClosedPillActivity) private var activity
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.islandClosedPillPaintsOwnSurface) private var paintsOwnSurface
 
     private static let glyphSize: CGFloat = 24
     private static let innerGap: CGFloat = 6
@@ -74,17 +75,27 @@ struct PouredClosedPill: View {
     /// top light layer is `--specular: inset 0 1px 0 rgba(255,255,255,.14)`
     /// (`docs/design/overlay-redesign/01-poured-island.html:51,132-134,146`).
     /// The broad soft sheen that used to ride here had no reference counterpart.
+    ///
+    /// PI-B-002: skipped entirely when the host surface already paints the one
+    /// continuous glass body under the pill (`\.islandClosedPillPaintsOwnSurface`
+    /// is `false`, which only the morph container sets, and only for a theme
+    /// whose material declares `morphsAsOneBody`). That body carries the very
+    /// same `specularHardEdge` catch at the very same top edge, so the pill's
+    /// treatment is unchanged — it is simply no longer painted twice.
+    @ViewBuilder
     private var glassBackground: some View {
-        ZStack {
-            V6ClosedPillShape()
-                .fill(tokens.colors.surfaceInk)
+        if paintsOwnSurface {
+            ZStack {
+                V6ClosedPillShape()
+                    .fill(tokens.colors.surfaceInk)
 
-            if !reduceTransparency, let specular = tokens.material.specularHardEdge {
-                specular.color.opacity(specular.opacity)
-                    .frame(height: specular.sheenHeight)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    .clipShape(V6ClosedPillShape())
-                    .allowsHitTesting(false)
+                if !reduceTransparency, let specular = tokens.material.specularHardEdge {
+                    specular.color.opacity(specular.opacity)
+                        .frame(height: specular.sheenHeight)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .clipShape(V6ClosedPillShape())
+                        .allowsHitTesting(false)
+                }
             }
         }
     }
@@ -434,7 +445,10 @@ private struct PouredPillGlow: ViewModifier {
 /// (`.dot.approve.ring`). The ring is drawn as a wider filled disc behind the
 /// dot so its translucency reads like the mockup's `box-shadow` spread rather
 /// than a hard stroke.
-private struct PouredPillRingedDot: View {
+/// PI-B-001: internal (was `private`) so the §B hover peek can draw the *same*
+/// 8pt dot + 3pt ring the A3 pill draws, instead of a second copy that could
+/// drift from `PouredPillMotion.Permission`.
+struct PouredPillRingedDot: View {
     let fill: Color
     let ring: Color
     let ringWidth: CGFloat

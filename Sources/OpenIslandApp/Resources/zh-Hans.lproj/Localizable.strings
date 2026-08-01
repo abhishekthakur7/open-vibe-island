@@ -421,6 +421,14 @@
 "island.halo.peek.reviewAnswer" = "点击查看并回答";
 "island.halo.peek.moreWaiting" = "还有 %lld 个在等待";
 
+/* Poured §B 悬停预览 (PI-B-001) */
+"island.poured.peek.wantsToRun" = "%@ 想执行一条命令";
+"island.poured.peek.wantsPermission" = "%@ 需要授权";
+"island.poured.peek.hasQuestion" = "%@ 有一个问题";
+"island.poured.peek.reviewApprove" = "点击查看并批准";
+"island.poured.peek.reviewAnswer" = "点击查看并回答";
+"island.poured.peek.moreSessions" = "还有 %lld 个会话";
+
 /* Island Panel - Annual theme rows (AB-317) */
 "island.annual.row.jump" = "跳转";
 

@@ -236,6 +236,45 @@ protocol IslandTheme: Sendable {
         height: CGFloat
     ) -> AnyView?
 
+    /// The theme's **hover peek**: the narrated surface a 0.15s pointer dwell
+    /// reveals on the *collapsed* island, before any click (PI-B-001, mockup
+    /// `01-poured-island.html:706-736` for Poured / `06-halo.html:709-721` for
+    /// Halo).
+    ///
+    /// Returns `nil` — the default every theme but Poured and Halo takes — so
+    /// their closed-surface render tree stays byte-identical. The content model
+    /// (`HaloHoverPeekContent`) is theme-agnostic and resolved once by the host;
+    /// this seam only decides how it is *drawn*.
+    ///
+    /// **Declared here (not only in the extension)** for the same dynamic
+    /// dispatch reason as `closedSurfaceGlow`.
+    func closedSurfaceHoverPeek(_ context: IslandClosedHoverPeekContext) -> IslandClosedHoverPeek?
+
+    /// Whether a dwell over the *collapsed* island should raise this theme's
+    /// peek **instead of** opening the panel (PI-B-001).
+    ///
+    /// Separate from `closedSurfaceHoverPeek` on purpose. Halo vends a peek view
+    /// (so its render path lives in the seam like everyone else's) but keeps
+    /// `false` here: its dwell has always run straight to a full open, and
+    /// flipping that is a Halo behaviour change no Poured ledger item covers.
+    /// Poured's board specifies the peek *as* the dwell endpoint, so it returns
+    /// `true`.
+    var hoverPeekPreemptsHoverOpen: Bool { get }
+
+    /// Whether this theme draws a hover peek at all (PI-B-001 review
+    /// correction · latent S3).
+    ///
+    /// A cheap, allocation-free capability answer to the question the host used
+    /// to answer by asking `closedSurfaceHoverPeek(_:)` — which builds an
+    /// `AnyView` and must never be called per-frame just to test a flag. Both
+    /// closed-edge gates (`suppressesClosedEdgeForPeek`, `syncHoverPeek`) now
+    /// require it, so a theme that draws *no* peek can never zero its own
+    /// closed edge with nothing drawn in its place: content availability alone
+    /// (`hoverPeekContent != nil`) is theme-agnostic and was not a sufficient
+    /// gate. `true` for exactly the two themes that vend a peek view (Halo,
+    /// Poured), so their behaviour is unchanged.
+    var themeDrawsHoverPeek: Bool { get }
+
     /// How this theme splits the closed pill's two wings for the current right
     /// slot — the label the lane actually renders, plus any extra left-wing
     /// content width the pill draws beside the glyph (R4 · item 1).
@@ -511,9 +550,62 @@ struct IslandClosedPillWingPlan: Equatable {
     var leadingAccessoryWidth: CGFloat
 }
 
+// MARK: - Closed-surface hover peek seam (PI-B-001)
+
+/// Everything a theme needs to draw its collapsed-island hover peek. Resolved
+/// once by `IslandPanelView` (which owns the geometry and the language) and
+/// handed across the seam by value, so a theme's peek view never reaches back
+/// into the host for layout.
+struct IslandClosedHoverPeekContext {
+    /// The one actionable session the peek narrates, already resolved from the
+    /// surfaced sessions. Theme-agnostic despite the `Halo…` name — see the
+    /// naming-debt note on `HaloHoverPeekContent`.
+    var content: HaloHoverPeekContent
+    var lang: LanguageManager
+    /// Upper bound from the host: the peek never renders wider than the
+    /// island's own surface, so a narrow display clamps it.
+    var availableWidth: CGFloat
+    /// The closed pill's outer width for this placement.
+    var closedPillWidth: CGFloat
+    /// The closed pill's band height (its own silhouette height).
+    var closedPillHeight: CGFloat
+    /// Which top edge the collapsed island has here — a notched Mac's concave
+    /// fillet junction, or a plain top-bar pill.
+    var topProfile: OpenedIslandSurfaceShape.TopProfile
+}
+
+/// A theme's rendered hover peek plus the two facts the host needs to compose
+/// the frame around it.
+struct IslandClosedHoverPeek {
+    /// The peek body itself.
+    var body: AnyView
+
+    /// The bottom radius of the silhouette the peek presents, so the host's
+    /// perimeter edge overlay (Halo's edge-light) traces the same outline the
+    /// body draws.
+    var bottomCornerRadius: CGFloat
+
+    /// `true` → the peek IS the collapsed island for as long as it is up (the
+    /// board's §B frame draws the grown body with **no** wings), so the host
+    /// hides the closed pill underneath it and the peek carries the whole glass
+    /// treatment. `false` → the peek docks *under* a still-visible pill and
+    /// leaves the pill's own body alone (Halo).
+    var replacesClosedSurface: Bool
+}
+
 // MARK: - Closed-pill ambient seam defaults (AB-330)
 
 extension IslandTheme {
+    /// Default: the theme draws no hover peek at all.
+    func closedSurfaceHoverPeek(_ context: IslandClosedHoverPeekContext) -> IslandClosedHoverPeek? { nil }
+
+    /// Default: a dwell opens the panel, exactly as it always has.
+    var hoverPeekPreemptsHoverOpen: Bool { false }
+
+    /// Default: the theme draws no hover peek, so no peek-driven closed-edge
+    /// suppression can ever apply to it.
+    var themeDrawsHoverPeek: Bool { false }
+
     /// Default: no external closed-pill glow. Every theme but Poured takes this.
     func closedSurfaceGlow(
         mode: UnifiedBars.Mode,

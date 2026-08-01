@@ -14,6 +14,19 @@ private struct OpenedContentHeightKey: PreferenceKey {
     }
 }
 
+/// PI-B-001: the raised §B hover peek's outer size, published to
+/// `AppModel.hoverPeekSurfaceSize` so `OverlayPanelController` — which owns the
+/// dwell through a *global* mouse monitor, because the collapsed panel window
+/// ignores mouse events — can treat the grown body as part of the island for
+/// hover retention and for the click the peek's own hint promises.
+private struct HoverPeekSizeKey: PreferenceKey {
+    static let defaultValue: CGSize = .zero
+    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
+        let next = nextValue()
+        if next != .zero { value = next }
+    }
+}
+
 private struct ContentHeightKey: PreferenceKey {
     static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
@@ -386,6 +399,10 @@ struct IslandPanelView: View {
                 hoverPeekDwell?.cancel()
                 hoverPeekDwell = nil
                 showsHoverPeek = false
+                // PI-B-001: same handoff for the model-driven peek — a hotkey or
+                // notification open bypasses the controller's click path, so the
+                // flag has to be cleared here too.
+                model.endHoverPeek()
             }
         }
     }
@@ -421,9 +438,21 @@ struct IslandPanelView: View {
         let openedWidth = max(0, layoutWidth - outerHorizontalPadding)
         let openedHeight = max(closedNotchHeight, layoutHeight - outerBottomPadding)
 
+        // PI-B-001: resolved once per frame and used twice — to draw the peek,
+        // and to decide whether the collapsed pill stands down underneath it.
+        let peekPlan = hoverPeekPlan(availableWidth: openedWidth)
+        let hoverPeekReplacesClosedSurface = !usesOpenedVisualState
+            && peekPlan?.replacesClosedSurface == true
+
         VStack(spacing: 0) {
             islandSurfaceBody(openedWidth: openedWidth, openedHeight: openedHeight)
                 .frame(maxWidth: .infinity, alignment: .top)
+                // PI-B-001: for a theme whose peek *replaces* the collapsed
+                // surface (Poured — board §B draws the grown body with no
+                // wings), the pill stands down entirely while the peek is up,
+                // so there is one body and one edge rather than a pill sitting
+                // inside a wider one.
+                .opacity(hoverPeekReplacesClosedSurface ? 0 : 1)
         }
         // G-62/M-27 · mockup §B: the narrated peek docks to the pill's bottom
         // edge, outside the surface's clip so it can be taller than the closed
@@ -434,9 +463,20 @@ struct IslandPanelView: View {
         // peek column left the joint stepped by ~14pt — the very "two shapes"
         // reading the dock is meant to kill. One scale, one body.
         .overlay(alignment: .top) {
-            hoverPeekOverlay(availableWidth: openedWidth)
+            hoverPeekOverlay(peekPlan)
         }
-        .scaleEffect(usesOpenedVisualState ? 1 : (isHovering ? tokens.metrics.closedHoverScale : 1), anchor: .top)
+        .onPreferenceChange(HoverPeekSizeKey.self) { size in
+            model.hoverPeekSurfaceSize = size
+        }
+        // PI-B-001 · `01-poured-island.html:706` ("0.15s dwell, scale 1.03"): the
+        // model-driven peek lifts the collapsed island by the same
+        // `closedHoverScale` the pointer-driven `isHovering` path uses, so the
+        // dwell reads as one gesture on one shape.
+        .scaleEffect(
+            usesOpenedVisualState ? 1 : ((isHovering || model.hoverPeekActive) ? tokens.metrics.closedHoverScale : 1),
+            anchor: .top
+        )
+        .animation(Self.hoverPeekAnimation, value: model.hoverPeekActive)
         .padding(.horizontal, panelShadowHorizontalInset)
         .padding(.bottom, panelShadowBottomInset)
         .animation(notchTransitionAnimation, value: model.notchStatus)
@@ -454,14 +494,46 @@ struct IslandPanelView: View {
         }
     }
 
-    // MARK: - §B hover peek (G-62/M-27)
+    // MARK: - §B hover peek (G-62/M-27 · PI-B-001)
 
-    /// The peek content for the current island, or `nil` when the theme draws no
-    /// peek (every theme but Halo) or nothing is waiting on the user.
+    /// The show/hide animation for the model-driven peek — the same spring the
+    /// pointer-driven dwell below has always used.
+    private static let hoverPeekAnimation = Animation.spring(response: 0.34, dampingFraction: 0.86)
+
+    /// The peek content for the current island, or `nil` when nothing is waiting
+    /// on the user.
+    ///
+    /// PI-B-001: the `theme.id == "halo"` gate that used to live here has moved
+    /// into the theme seam (`IslandTheme.closedSurfaceHoverPeek`) — a theme that
+    /// draws no peek returns `nil` there, so this stays a pure content question.
     private var hoverPeekContent: HaloHoverPeekContent? {
-        guard theme.id == "halo" else { return nil }
-        return HaloHoverPeekContent.resolve(sessions: model.surfacedSessions, lang: lang)
+        model.closedSurfaceHoverPeekContent()
     }
+
+    /// Whether a peek is up at all, from either source: the model flag the
+    /// collapsed island's dwell sets (PI-B-001 — the only path that can fire in
+    /// production, since the closed window ignores mouse events), or the legacy
+    /// `.onHover` dwell that still serves the opened/interactive window.
+    private var showsAnyHoverPeek: Bool {
+        showsHoverPeek || model.hoverPeekActive
+    }
+
+    /// The active theme's peek for the current frame, or `nil` when the theme
+    /// draws none, nothing is waiting, or no dwell is up.
+    private func hoverPeekPlan(availableWidth: CGFloat) -> IslandClosedHoverPeek? {
+        guard showsAnyHoverPeek, let content = hoverPeekContent else { return nil }
+        return theme.closedSurfaceHoverPeek(
+            IslandClosedHoverPeekContext(
+                content: content,
+                lang: lang,
+                availableWidth: availableWidth,
+                closedPillWidth: closedPillOuterWidth(),
+                closedPillHeight: closedNotchHeight,
+                topProfile: usesNotchAwareOpenedHeader ? .notch : .topBar
+            )
+        )
+    }
+
 
     /// The peek layer, faded out by the morph.
     ///
@@ -473,8 +545,8 @@ struct IslandPanelView: View {
     /// additionally cleared on the status change, so an interrupted open can
     /// never leave a stale peek hanging under a reopened pill.
     @ViewBuilder
-    private func hoverPeekOverlay(availableWidth: CGFloat) -> some View {
-        if let content = hoverPeekContent, showsHoverPeek {
+    private func hoverPeekOverlay(_ plan: IslandClosedHoverPeek?) -> some View {
+        if let plan {
             // Deliberately NOT `if !usesOpenedVisualState` — unmounting the peek
             // on the status flip hands its removal to the ancestor
             // `.animation(notchTransitionAnimation, value: model.notchStatus)`,
@@ -488,24 +560,16 @@ struct IslandPanelView: View {
                 ? 0
                 : Double(max(0, min(1, 1 - morphProgress / 0.2)))
             // R4 · item 2 · §B "the single black shape begins to grow… the
-            // edge-light stretches continuously": the peek is the pill's own
-            // column, not a card under it. It takes the pill's width and reserves
-            // the pill's band at the top (transparent — the live pill draws
-            // there), so the two bodies share one silhouette with no gap and no
-            // radius mismatch at the joint. The pill keeps the pointer and the
-            // click.
-            HaloHoverPeek(
-                content: content,
-                lang: lang,
-                availableWidth: availableWidth,
-                dockedWidth: closedPillOuterWidth(),
-                pillHeight: closedNotchHeight,
-                pillBottomRadius: closedNotchHeight / 2
-            )
+            // edge-light stretches continuously": the peek is the collapsed
+            // island's own body, not a card under it. Halo's peek reserves the
+            // pill's band and takes the pill's width (one union silhouette);
+            // Poured's *replaces* the pill outright (board §B draws no wings).
+            // Either way the pointer and the click stay with the island.
+            plan.body
                 // ONE outline around the combined shape — the same theme edge
                 // seam the pill uses, handed the union's silhouette (flat top,
-                // the peek's bottom radius) and the union's measured size. The
-                // pill's own ring is suppressed for as long as this is up
+                // the peek's own bottom radius) and the union's measured size.
+                // The pill's own ring is suppressed for as long as this is up
                 // (`suppressesClosedEdgeForPeek`), so the two never double up.
                 .overlay {
                     GeometryReader { geo in
@@ -513,7 +577,7 @@ struct IslandPanelView: View {
                             shape: OpenedIslandSurfaceShape(
                                 topProfile: usesNotchAwareOpenedHeader ? .notch : .topBar,
                                 topCornerRadius: 0,
-                                bottomCornerRadius: HaloHoverPeek.cornerRadius,
+                                bottomCornerRadius: plan.bottomCornerRadius,
                                 filletRadius: tokens.metrics.filletRadius
                             ),
                             isOpened: false,
@@ -521,6 +585,15 @@ struct IslandPanelView: View {
                         )
                     }
                 }
+                // PI-B-001: publish the raised peek's real outer size so
+                // `OverlayPanelController` can keep the dwell (and the click)
+                // alive over the grown body — the collapsed hit-test rect is
+                // only the pill's.
+                .background(
+                    GeometryReader { geo in
+                        Color.clear.preference(key: HoverPeekSizeKey.self, value: geo.size)
+                    }
+                )
                 .opacity(fade)
                 .animation(nil, value: usesOpenedVisualState)
                 .allowsHitTesting(false)
@@ -532,8 +605,16 @@ struct IslandPanelView: View {
     /// docked peek is drawing one continuous outline around the combined shape
     /// (R4 · item 2). Two rings on one silhouette is exactly what made the peek
     /// read as two objects. Only ever true for the theme that draws a peek at all.
+    ///
+    /// PI-B-001 review correction: `hoverPeekContent != nil` is theme-agnostic
+    /// (any theme can have an actionable session), so on its own it let a theme
+    /// that draws NO peek still stand its closed edge down — an edge zeroed with
+    /// nothing drawn in its place. `theme.themeDrawsHoverPeek` is the cheap
+    /// capability answer to "does this theme have a peek at all"; calling
+    /// `closedSurfaceHoverPeek(_:)` here instead would build an `AnyView` every
+    /// frame.
     private var suppressesClosedEdgeForPeek: Bool {
-        showsHoverPeek && !usesOpenedVisualState && hoverPeekContent != nil
+        showsAnyHoverPeek && !usesOpenedVisualState && theme.themeDrawsHoverPeek && hoverPeekContent != nil
     }
 
     /// Starts (or cancels) the board's 0.15s dwell. Only a dwell that survives
@@ -543,7 +624,7 @@ struct IslandPanelView: View {
         hoverPeekDwell?.cancel()
         hoverPeekDwell = nil
 
-        guard hovering, !usesOpenedVisualState, hoverPeekContent != nil else {
+        guard hovering, !usesOpenedVisualState, theme.themeDrawsHoverPeek, hoverPeekContent != nil else {
             if showsHoverPeek {
                 withAnimation(.easeOut(duration: 0.14)) { showsHoverPeek = false }
             }
@@ -1018,7 +1099,12 @@ struct IslandPanelView: View {
         // other five keep the crossfade they shipped with; outside Halo these
         // two values are exactly the `opened ? 1 : 0` pair from before, still
         // animated by the ambient `.animation(_:value: model.notchStatus)`.
-        let gatesContentOnMorph = theme.id == "halo"
+        //
+        // PI-B-002: Poured joins it through its material capability rather than
+        // a second id check — a one-body morph and a boolean `opened ? 1 : 0`
+        // content swap are incompatible by construction (the swap is a visible
+        // content flash across an otherwise seamless body).
+        let gatesContentOnMorph = theme.id == "halo" || tokens.material.morphsAsOneBody
         let closedContentOpacity: Double = gatesContentOnMorph
             ? Double(max(0, min(1, 1 - morph / 0.25)))
             : (opened ? 0 : 1)
@@ -1061,13 +1147,28 @@ struct IslandPanelView: View {
             // layer instead and let the shape and frame do all the morphing.
             // Vibrancy themes keep the crossfade — their opened body genuinely
             // is a different, translucent material.
+            //
+            // PI-B-002: a theme whose material declares `morphsAsOneBody`
+            // (Poured) removes the remaining half of M-23. Its pill, peek and
+            // panel are ONE continuous glass body by design, so there is
+            // nothing to crossfade *between*: the same glass is painted once,
+            // over the live interpolating `shape`, at rest and at every t. That
+            // also lifts the theme's inner hairline out of the opacity-gated
+            // layer, so the single edge the reference declares traces the
+            // contour continuously through the morph instead of being painted
+            // at partial strength mid-flight. Every other vibrancy theme keeps
+            // the crossfade it shipped with, byte-identically — Classic
+            // included, which is `usesVibrancy` too.
             let bodyIsOpaqueInk = reduceTransparency || !theme.usesVibrancy
+            let bodyIsOneMaterial = bodyIsOpaqueInk || tokens.material.morphsAsOneBody
             ZStack {
                 if bodyIsOpaqueInk {
                     // PI-M-002: the LIVE interpolating `shape` (not a rest-state
                     // copy) so the inner hairline stays locked to the silhouette
                     // for the whole morph.
                     OpenedSurfaceBackground(reduceTransparency: true, surfaceShape: shape)
+                } else if bodyIsOneMaterial {
+                    OpenedSurfaceBackground(reduceTransparency: false, surfaceShape: shape)
                 } else {
                     OpenedSurfaceBackground(reduceTransparency: false, surfaceShape: shape)
                         .opacity(opened ? 1 : 0)
@@ -1084,6 +1185,15 @@ struct IslandPanelView: View {
                 // `showsGlyph: false` — the glyph is rendered once, below,
                 // as its own overlay so it can travel instead of fading.
                 v6ClosedSurface(showsGlyph: false)
+                    // PI-B-002: the one body above already painted this pill's
+                    // glass (the same ink, the same specular catch, now
+                    // continuous with the peek and the panel), so the pill must
+                    // not stack a second background on it — at rest or
+                    // mid-morph, where the doubled fill would ride the content
+                    // opacity and read as a ghost of the closed silhouette.
+                    // `true` (unchanged) for every theme that does not declare
+                    // `morphsAsOneBody`.
+                    .environment(\.islandClosedPillPaintsOwnSurface, !tokens.material.morphsAsOneBody)
                     .opacity(closedContentOpacity)
                     .allowsHitTesting(!opened)
 

@@ -122,6 +122,37 @@ struct PouredThemeTests {
         }
     }
 
+    /// PI-B-002: pill, peek and panel are ONE continuous glass body, so Poured's
+    /// morph paints one material for the whole interpolant. Every other theme
+    /// keeps the two-layer crossfade it shipped with — Classic explicitly, since
+    /// it is a vibrancy theme too and must stay byte-identical.
+    @Test
+    func onlyPouredMorphsAsOneBody() {
+        #expect(IslandMaterialTokens.poured.morphsAsOneBody)
+
+        for material in [
+            IslandMaterialTokens.classic,
+            IslandMaterialTokens.instrument,
+            IslandMaterialTokens.flightDeck,
+            IslandMaterialTokens.annual,
+            IslandMaterialTokens.halo,
+        ] {
+            #expect(material.morphsAsOneBody == false)
+        }
+    }
+
+    /// PI-B-002: a pill rendered anywhere but inside that one body (settings
+    /// previews, the Reduce-Motion crossfade surface, every other theme) still
+    /// paints its own glass — the stand-down is opt-in per mount point.
+    @Test
+    func closedPillPaintsItsOwnSurfaceUnlessTheHostSaysOtherwise() {
+        #expect(EnvironmentValues().islandClosedPillPaintsOwnSurface)
+
+        var values = EnvironmentValues()
+        values.islandClosedPillPaintsOwnSurface = false
+        #expect(values.islandClosedPillPaintsOwnSurface == false)
+    }
+
     /// The four flat themes opt into none of the three new liquid-glass layers —
     /// `nil` is what guarantees `OpenedSurfaceBackground` renders them exactly as
     /// it does today.
@@ -389,6 +420,10 @@ struct PouredThemeTests {
             .diff,
             .assistantInlineCode,
             .metadataValueMono,
+            // PI-B-001: the §B peek's second line is the pending *command*
+            // (`font-family:var(--mono)`, `01-poured-island.html:721`) — code
+            // shaped, so it belongs in this set rather than breaking the rule.
+            .peekCommand,
         ]))
 
         for role in [PouredType.Role.sectionHeader, .summaryLabel, .summaryNumber, .age, .agentChipLabel, .metaChip] {

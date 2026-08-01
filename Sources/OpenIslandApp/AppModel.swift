@@ -89,7 +89,14 @@ final class AppModel {
 
     var notchStatus: NotchStatus {
         get { overlay.notchStatus }
-        set { overlay.notchStatus = newValue }
+        set {
+            overlay.notchStatus = newValue
+            // PI-B-001: the peek belongs to the collapsed island only. Leaving
+            // `.closed` — by click, hotkey, notification or the parity driver —
+            // retires it in the same transaction, so a peek can never hang over
+            // a growing or opened panel.
+            if newValue != .closed { endHoverPeek() }
+        }
     }
     var notchOpenReason: NotchOpenReason? {
         get { overlay.notchOpenReason }
@@ -554,8 +561,61 @@ final class AppModel {
     }
 
     var islandCenterLabel: IslandCenterLabel {
-        get { appearancePreferences(for: activeAppearanceProfile).centerLabel }
-        set { updateAppearancePreferences(for: activeAppearanceProfile) { $0.centerLabel = newValue } }
+        get { effectiveCenterLabel(for: activeAppearanceProfile) }
+        set {
+            updateAppearancePreferences(
+                for: activeAppearanceProfile,
+                explicitCenterLabelChoice: true
+            ) { $0.centerLabel = newValue }
+        }
+    }
+
+    /// The centre label that is actually *rendered* for `profile` — the stored
+    /// preference, or the Poured notch override when no explicit choice was
+    /// ever recorded.
+    ///
+    /// PI-A-001 round-2 correction: this resolution used to live inline in the
+    /// `islandCenterLabel` getter, so the settings pane (which reads the raw
+    /// stored preference) showed "Off" selected while the pill visibly
+    /// narrated. Extracted so every read path — the getter below and
+    /// `AppearanceSettingsPane.centerLabelCard` — answers the same value.
+    func effectiveCenterLabel(for profile: IslandAppearanceDisplayProfile) -> IslandCenterLabel {
+        // PI-A-001 (owner rulings R4/R5): the Poured board's §A frames all
+        // narrate in the collapsed pill ("Editing AppModel.swift", "Approve
+        // swift build?", "Done · the-automator"), so under Poured the notch
+        // profile's *effective* centre label is `.agentAction` — otherwise
+        // the theme ships with its highest-value state permanently hidden.
+        // Scoped like the Halo right-slot branch below (`islandThemeID ==
+        // "halo"`, see `islandRightSlotContent`): a read/effective-path
+        // override, not a cross-theme default flip in
+        // `loadAppearancePreferences(for:)`. Keyed off the *resolved*
+        // `islandTheme.id` so the parity harness' theme override
+        // (`PouredParityDriver.apply`) is honoured. An explicitly persisted notch
+        // value — including `.off` — always wins, preserving AB-241's
+        // user-choice intent, and stored preferences are never mutated.
+        //
+        // PI-A-001 review correction: the "user explicitly chose" sentinel
+        // used to be *absence* of the persisted `centerLabel` key, which is
+        // not a record of choice at all —
+        // `persistAppearancePreferences(_:for:)` writes all seven notch keys
+        // whenever ANY notch preference changes, so one unrelated write
+        // (a right-slot pick, say) materialised `centerLabel=off` and
+        // silently reinstated the very defect this override fixes. The
+        // sentinel is now a dedicated marker key written only on the two
+        // paths a user actually picks a centre label on — the
+        // `islandCenterLabel` setter and `AppearanceSettingsPane`'s
+        // centre-label card — both of which pass
+        // `explicitCenterLabelChoice: true`. Pre-existing persisted values
+        // carry no marker and are therefore treated as non-explicit —
+        // acceptable precisely because this slice is where the Poured notch
+        // default flips, so "never chose" and "chose the old default" are
+        // the same population.
+        if profile == .notch,
+           islandTheme.id == "poured",
+           !Self.hasExplicitCenterLabelChoice(for: .notch) {
+            return .agentAction
+        }
+        return appearancePreferences(for: profile).centerLabel
     }
 
     var islandUsageDisplay: IslandUsageDisplay {
@@ -615,16 +675,48 @@ final class AppModel {
         }
     }
 
+    /// Mutates a profile's appearance preferences.
+    ///
+    /// `explicitCenterLabelChoice` is the *intent* signal for PI-A-001's
+    /// marker: pass `true` only from the two call sites where a human picked a
+    /// centre label (the `islandCenterLabel` setter and
+    /// `AppearanceSettingsPane.centerLabelCard`). It defaults to `false`, so no
+    /// other caller — and in particular not the blanket seven-key
+    /// `persistAppearancePreferences` path — can plant the marker.
     func updateAppearancePreferences(
         for profile: IslandAppearanceDisplayProfile,
+        explicitCenterLabelChoice: Bool = false,
         _ update: (inout IslandAppearancePreferences) -> Void
     ) {
+        let previousCenterLabel = appearancePreferences(for: profile).centerLabel
         switch profile {
         case .notch:
             update(&notchAppearancePreferences)
         case .topBar:
             update(&topBarAppearancePreferences)
         }
+        // PI-A-001 round-2 correction: the marker must be planted on explicit
+        // *intent*, not only on an observed value change. Under Poured the
+        // notch stored value is already `.off` while the effective value is
+        // `.agentAction`, so gating solely on "the stored value changed" made
+        // clicking "Off" in the settings pane a silent no-op — the user could
+        // not turn the label off at all. A no-op re-pick from a centre-label
+        // control now records the choice and flips the effective value.
+        let storedCenterLabelChanged =
+            appearancePreferences(for: profile).centerLabel != previousCenterLabel
+        if explicitCenterLabelChoice || storedCenterLabelChanged {
+            UserDefaults.standard.set(true, forKey: Self.explicitCenterLabelChoiceKey(profile))
+        }
+    }
+
+    /// Whether the user has explicitly picked a centre label for `profile`
+    /// (PI-A-001 review correction — see `islandCenterLabel`'s getter).
+    static func hasExplicitCenterLabelChoice(for profile: IslandAppearanceDisplayProfile) -> Bool {
+        UserDefaults.standard.bool(forKey: explicitCenterLabelChoiceKey(profile))
+    }
+
+    static func explicitCenterLabelChoiceKey(_ profile: IslandAppearanceDisplayProfile) -> String {
+        appearanceDefaultsKey(profile, "centerLabel.explicit")
     }
 
     private func appearancePreferencesDidChange(
@@ -984,6 +1076,67 @@ final class AppModel {
                 overlay.refreshOverlayPlacementIfVisible()
             }
         }
+    }
+
+    // MARK: - Closed-surface hover peek (PI-B-001)
+
+    /// What a completed hover dwell over the *collapsed* island should do.
+    enum ClosedSurfaceHoverBehavior: Equatable {
+        /// Open the panel — what every theme did before the peek existed.
+        case openPanel
+        /// Raise the theme's peek instead: grow the collapsed shape and surface
+        /// the one actionable item, without opening (board §B).
+        case peek
+    }
+
+    /// Whether the collapsed island is currently showing its hover peek.
+    ///
+    /// Lives on the model rather than in `IslandPanelView`'s `@State` because
+    /// the dwell that raises it is owned by `OverlayPanelController`'s global
+    /// mouse monitor: while the island is closed the panel window is
+    /// `ignoresMouseEvents`, so SwiftUI's own `.onHover` never fires and a
+    /// view-local peek flag could never be set in production.
+    private(set) var hoverPeekActive = false
+
+    /// The peek's measured outer size, published by `IslandPanelView` while it
+    /// is up. `OverlayPanelController` unions it with the collapsed pill's
+    /// hit-test rect so that moving the pointer *down onto* the grown body does
+    /// not read as "left the island" and retire the peek a tenth of a second
+    /// after it appeared.
+    var hoverPeekSurfaceSize: CGSize = .zero
+
+    /// The peek content for the current island, or `nil` when nothing is
+    /// waiting on the user. Resolved here (not in the view) so the dwell
+    /// decision below and the rendered peek can never disagree about whether
+    /// there is anything to show.
+    func closedSurfaceHoverPeekContent() -> HaloHoverPeekContent? {
+        HaloHoverPeekContent.resolve(sessions: surfacedSessions, lang: lang)
+    }
+
+    /// The dwell endpoint for the active theme and the current sessions.
+    ///
+    /// `.peek` only when the theme's board specifies the peek as the endpoint
+    /// AND there is an actionable session to surface. With nothing waiting the
+    /// board draws no peek frame at all, so falling back to `.openPanel`
+    /// preserves the shipped hover-to-open behaviour instead of swallowing the
+    /// gesture into an empty surface.
+    func hoverBehaviorForClosedSurface() -> ClosedSurfaceHoverBehavior {
+        guard islandTheme.hoverPeekPreemptsHoverOpen,
+              closedSurfaceHoverPeekContent() != nil else {
+            return .openPanel
+        }
+        return .peek
+    }
+
+    func beginHoverPeek() {
+        guard notchStatus == .closed, !hoverPeekActive else { return }
+        hoverPeekActive = true
+    }
+
+    func endHoverPeek() {
+        guard hoverPeekActive else { return }
+        hoverPeekActive = false
+        hoverPeekSurfaceSize = .zero
     }
 
     var surfacedSessions: [AgentSession] {

@@ -84,6 +84,32 @@ extension EnvironmentValues {
     }
 }
 
+private struct IslandClosedPillPaintsOwnSurfaceKey: EnvironmentKey {
+    static let defaultValue: Bool = true
+}
+
+extension EnvironmentValues {
+    /// PI-B-002: whether the closed pill is responsible for painting its own
+    /// glass fill, or whether the surface it is mounted in already paints the
+    /// one body underneath it.
+    ///
+    /// Defaults to `true` — every pill rendered standalone (settings previews,
+    /// the Reduce-Motion crossfade surface, every non-Poured theme) keeps
+    /// painting its own background, byte-identically. `IslandPanelView`'s morph
+    /// container sets it to `false` for exactly the themes whose material
+    /// declares `morphsAsOneBody`, so the rest-state pill is not a *second*
+    /// background stacked on the morph body's first.
+    ///
+    /// Only the *fill* stands down. Silhouette, width, label, indicator and the
+    /// pill's ambient glow are unchanged — the light treatment the pill loses
+    /// here (the `specularHardEdge` catch) is the identical one the one body
+    /// paints at the same top edge.
+    var islandClosedPillPaintsOwnSurface: Bool {
+        get { self[IslandClosedPillPaintsOwnSurfaceKey.self] }
+        set { self[IslandClosedPillPaintsOwnSurfaceKey.self] = newValue }
+    }
+}
+
 private struct IslandBridgeIsLiveKey: EnvironmentKey {
     static let defaultValue: Bool = false
 }

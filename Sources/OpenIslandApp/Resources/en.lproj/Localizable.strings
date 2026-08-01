@@ -420,6 +420,18 @@
 "island.halo.peek.reviewAnswer" = "Click to review & answer";
 "island.halo.peek.moreWaiting" = "+%lld more waiting";
 
+/* Poured §B hover peek (PI-B-001) — copy verbatim from the reference board
+   `docs/design/overlay-redesign/01-poured-island.html:718,727,730`. Poured's own
+   keys rather than Halo's because the two boards phrase the overflow chip
+   differently ("+2 more sessions" vs "+2 more waiting"); the permission /
+   question fork mirrors Halo's exactly. */
+"island.poured.peek.wantsToRun" = "%@ wants to run a command";
+"island.poured.peek.wantsPermission" = "%@ wants permission";
+"island.poured.peek.hasQuestion" = "%@ has a question";
+"island.poured.peek.reviewApprove" = "Click to review & approve";
+"island.poured.peek.reviewAnswer" = "Click to review & answer";
+"island.poured.peek.moreSessions" = "+%lld more sessions";
+
 /* Island Panel - Annual theme rows (AB-317) */
 "island.annual.row.jump" = "Jump";
 

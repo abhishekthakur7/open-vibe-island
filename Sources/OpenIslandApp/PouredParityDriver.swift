@@ -20,7 +20,13 @@ import Foundation
     }
     func applyConfiguredEvent(to model:AppModel)throws {
         guard let event=configuration.event else{return}
-        switch event { case .open:model.notchStatus = .opened; case .close:model.notchStatus = .closed; case .hover,.reverse,.settle,.rowMutation,.success:throw PouredParityError.unsupportedEvent(event) }
+        // PI-B-001 · `.hover`: this drives the peek **endpoint** — the state the
+        // board's §B frame renders — by calling the model's begin-peek path
+        // directly. It does NOT exercise the 0.15s pointer dwell, the global
+        // mouse monitor, the 0.1s leave grace, or the growth animation; those
+        // remain live-run-only, which is why `B1-hover-peek` stays
+        // `diagnostic-partial` / `native.status: partial` in scenarios-v1.json.
+        switch event { case .open:model.notchStatus = .opened; case .close:model.notchStatus = .closed; case .hover:model.notchStatus = .closed; model.beginHoverPeek(); case .reverse,.settle,.rowMutation,.success:throw PouredParityError.unsupportedEvent(event) }
         acknowledgedEvents.append(event); model.pouredParityStateDump=stateDump(model)
     }
     func stateDump(_ model:AppModel)->PouredParityStateDump { .init(schemaVersion:"poured-state-v1",scenario:configuration.scenario,resolvedThemeID:model.islandTheme.id,fixture:fixture.record,sessionIDs:model.sessions.map(\.id),selectedSessionID:model.selectedSessionID,presentation:model.notchStatus == .opened ? "opened":"closed",profile:configuration.profile,accessibility:configuration.accessibility,acknowledgedEvents:acknowledgedEvents,clock:PouredParityEventClock.attestation(configuration),complete:true) }

@@ -7,9 +7,11 @@ struct NotchShape: Shape {
     /// Concave fillet at the top (notch-junction) corners, in points (AB-300).
     /// `0` reproduces the plain concave top corner Open Island has always
     /// shipped; a positive value deepens and softens the transition into a
-    /// "poured" fillet. Deliberately *not* part of `animatableData`: the fillet
-    /// is a constant per-theme identity, only the corner radii interpolate
-    /// across the closed↔opened morph.
+    /// "poured" fillet. Not part of *this* shape's `animatableData` — the
+    /// morph never animates `NotchShape` directly, it animates the
+    /// `OpenedIslandSurfaceShape` wrapper (which rebuilds a `NotchShape` from
+    /// its own interpolated values every frame) and that wrapper *does* carry
+    /// the fillet in its animatable data (PI-B-003).
     var filletRadius: CGFloat = 0
 
     var animatableData: AnimatablePair<CGFloat, CGFloat> {
