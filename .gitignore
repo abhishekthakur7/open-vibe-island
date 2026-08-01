@@ -19,6 +19,10 @@ Package.resolved
 # Local tooling artifacts
 artifacts/
 Validation/
+!Validation/
+Validation/*
+!Validation/PouredParity/
+!Validation/PouredParity/**
 .claude/
 .codegraph/
 .cursor/

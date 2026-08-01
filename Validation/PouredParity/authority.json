@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "id": "poured-authority-v1",
+  "approval": {"status": "pending", "product_design_owner": null, "independent_reviewer": null, "recorded_at": null},
+  "acceptance_authority": false,
+  "reference": {
+    "path": "docs/design/overlay-redesign/01-poured-island.html",
+    "sha256": "eedf838c10a69450e320e339019cc45b776bd4c90a990af5873da5e0f6fc56e5"
+  }
+}

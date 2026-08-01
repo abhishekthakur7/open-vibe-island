@@ -494,7 +494,9 @@ final class AppModel {
     /// dependencies, so flipping the theme re-renders the live overlay with the
     /// new tokens and slot factories immediately — no app restart.
     var islandTheme: any IslandTheme {
-        #if HALO_PARITY_TESTING
+        #if POURED_PARITY_TESTING
+        ThemeRegistry.theme(id: pouredParityThemeIDOverride ?? islandThemeID)
+        #elseif HALO_PARITY_TESTING
         ThemeRegistry.theme(id: haloParityThemeIDOverride ?? islandThemeID)
         #else
         ThemeRegistry.theme(id: islandThemeID)
@@ -529,9 +531,18 @@ final class AppModel {
     var haloParityTopBarAppearancePreferencesOverride: IslandAppearancePreferences?
     var haloParityBootstrapIsolation: HaloParityBootstrapIsolationProof?
     #endif
+    #if POURED_PARITY_TESTING
+    var pouredParityThemeIDOverride: String?
+    var pouredParityAppearanceProfileOverride: IslandAppearanceDisplayProfile?
+    var pouredParityNotchAppearancePreferencesOverride: IslandAppearancePreferences?
+    var pouredParityTopBarAppearancePreferencesOverride: IslandAppearancePreferences?
+    var pouredParityBootstrapIsolation: PouredParityBootstrapIsolationProof?
+    #endif
 
     var activeAppearanceProfile: IslandAppearanceDisplayProfile {
-        #if HALO_PARITY_TESTING
+        #if POURED_PARITY_TESTING
+        if let pouredParityAppearanceProfileOverride { return pouredParityAppearanceProfileOverride }
+        #elseif HALO_PARITY_TESTING
         if let haloParityAppearanceProfileOverride { return haloParityAppearanceProfileOverride }
         #endif
         return overlayPlacementDiagnostics?.mode == .notch ? .notch : .topBar
@@ -579,7 +590,14 @@ final class AppModel {
     private var hasFinishedInit = false
 
     func appearancePreferences(for profile: IslandAppearanceDisplayProfile) -> IslandAppearancePreferences {
-        #if HALO_PARITY_TESTING
+        #if POURED_PARITY_TESTING
+        switch profile {
+        case .notch:
+            if let pouredParityNotchAppearancePreferencesOverride { return pouredParityNotchAppearancePreferencesOverride }
+        case .topBar:
+            if let pouredParityTopBarAppearancePreferencesOverride { return pouredParityTopBarAppearancePreferencesOverride }
+        }
+        #elseif HALO_PARITY_TESTING
         switch profile {
         case .notch:
             if let haloParityNotchAppearancePreferencesOverride {
@@ -680,6 +698,9 @@ final class AppModel {
     /// authenticity payload; normal launches leave both values nil.
     var haloParityCaptureManifest: HaloParityCaptureManifest?
     var haloParityStateDump: HaloParityStateDump?
+    #endif
+    #if POURED_PARITY_TESTING
+    var pouredParityStateDump: PouredParityStateDump?
     #endif
 
     @ObservationIgnored

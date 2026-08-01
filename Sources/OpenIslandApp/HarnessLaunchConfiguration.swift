@@ -34,6 +34,9 @@ struct HarnessLaunchConfiguration {
     #if HALO_PARITY_TESTING
     let haloParity: HaloParityLaunchState
     #endif
+    #if POURED_PARITY_TESTING
+    let pouredParity: PouredParityLaunchState
+    #endif
 
     init(
         environment: [String: String] = ProcessInfo.processInfo.environment,
@@ -71,6 +74,9 @@ struct HarnessLaunchConfiguration {
         )
         #if HALO_PARITY_TESTING
         haloParity = Self.haloParityValue(environment: environment, arguments: arguments)
+        #endif
+        #if POURED_PARITY_TESTING
+        pouredParity = PouredParityConfiguration.launchState(environment: environment, arguments: arguments)
         #endif
     }
 

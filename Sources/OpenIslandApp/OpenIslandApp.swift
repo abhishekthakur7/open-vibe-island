@@ -23,7 +23,13 @@ final class OpenIslandAppDelegate: NSObject, NSApplicationDelegate {
             model.harnessRuntimeMonitor = harnessRuntimeMonitor
             harnessRuntimeMonitor.recordLog(model.lastActionMessage)
 
-            #if HALO_PARITY_TESTING
+            #if POURED_PARITY_TESTING
+            let parityRequested: Bool
+            switch harnessLaunchConfiguration.pouredParity {
+            case .inactive: parityRequested = false
+            case .configured, .rejected: parityRequested = true
+            }
+            #elseif HALO_PARITY_TESTING
             let parityRequested: Bool
             switch harnessLaunchConfiguration.haloParity {
             case .inactive:
@@ -50,6 +56,11 @@ final class OpenIslandAppDelegate: NSObject, NSApplicationDelegate {
                     runtimeStateLoadingDisabled: true,
                     bridgeStartupDisabled: true
                 )
+            }
+            #endif
+            #if POURED_PARITY_TESTING
+            if parityRequested {
+                model.pouredParityBootstrapIsolation = PouredParityBootstrapIsolationProof(runtimeStateLoadingDisabled:true,bridgeStartupDisabled:true)
             }
             #endif
             model.startIfNeeded(
@@ -148,6 +159,26 @@ final class OpenIslandAppDelegate: NSObject, NSApplicationDelegate {
                 )
                 model.lastActionMessage = "Halo parity rejected: \(error.description)"
                 harnessRuntimeMonitor.recordMilestone("haloParityRejected", message: error.description)
+            }
+            #endif
+
+            #if POURED_PARITY_TESTING
+            switch harnessLaunchConfiguration.pouredParity {
+            case .inactive: break
+            case .rejected(let error):
+                model.loadDebugSnapshot(IslandDebugScenario.emptyState.snapshot(at:launchedAt),presentOverlay:false)
+                model.lastActionMessage="Poured parity rejected: \(error.description)"
+            case .configured(let configuration):
+                do {
+                    let driver=PouredParityDriver(configuration:configuration)
+                    try driver.apply(to:model,presentOverlay:true)
+                    if configuration.event != nil { try driver.applyConfiguredEvent(to:model) }
+                    harnessRuntimeMonitor.recordMilestone("pouredParityLoaded",message:"\(configuration.scenario.rawValue) \(driver.fixture.record.dataHash)")
+                } catch {
+                    model.loadDebugSnapshot(IslandDebugScenario.emptyState.snapshot(at:launchedAt),presentOverlay:false)
+                    model.lastActionMessage="Poured parity rejected: \(error)"
+                    harnessRuntimeMonitor.recordMilestone("pouredParityRejected",message:"\(error)")
+                }
             }
             #endif
 

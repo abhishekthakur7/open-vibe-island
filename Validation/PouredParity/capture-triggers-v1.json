@@ -1,0 +1,1 @@
+{"schema_version":1,"id":"poured-capture-triggers-v1","triggers":{"static-board":{"clock":"frozen","direct_classes":["rendered-canonical"]},"css-motion":{"clock":"animation-frame-manifest","direct_classes":["rendered-motion-exemplar"]},"native":{"completion_marker_required":true,"windowserver_placement_required":true}},"approval":{"status":"pending"}}

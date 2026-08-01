@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "required": ["schema_version", "family", "scenario", "profile", "variant", "authority_class", "bindings", "source_report", "overall_screening_status", "metrics"],
+  "binding_required": ["ledger_sha256", "source_evidence_sha256", "applicability_sha256", "calibration_sha256", "mask_policy_sha256", "thresholds_sha256"],
+  "metric_required": ["status", "value", "unit"],
+  "metrics_by_family": {
+    "calibration": ["mapping_residual", "cross_renderer_residual", "timing_jitter"],
+    "static": ["silhouette_iou", "edge_p95", "edge_max", "delta_e_median", "delta_e_p95", "ssim", "chrome_ratio", "text_geometry", "landmark_max"],
+    "motion": ["timing_jitter", "duplicates", "drops"],
+    "geometry": ["landmark_max"],
+    "light": ["delta_e_median", "delta_e_p95"],
+    "text": ["text_geometry"],
+    "interaction": ["interaction_contract"],
+    "accessibility": ["accessibility_contract"]
+  }
+}
