@@ -80,21 +80,6 @@ extension IslandMotionTokens {
     )
 }
 
-// MARK: - Instrument
-
-extension IslandMotionTokens {
-    /// A crisp, mechanical spring — an instrument panel snaps to its readout
-    /// rather than easing. Both the open and the attention "pop" damp harder and
-    /// respond faster than Classic so the motion reads as precise; the unmount
-    /// delay shrinks to match the quicker close.
-    static let instrument = IslandMotionTokens(
-        openAnimation: .spring(response: 0.34, dampingFraction: 0.9, blendDuration: 0),
-        closeAnimation: .smooth(duration: 0.26, extraBounce: 0),
-        popAnimation: .spring(response: 0.24, dampingFraction: 0.62, blendDuration: 0),
-        openedSurfaceUnmountDelay: 0.3
-    )
-}
-
 // MARK: - Flight Deck
 
 extension IslandMotionTokens {
@@ -109,22 +94,5 @@ extension IslandMotionTokens {
         closeAnimation: .smooth(duration: 0.24, extraBounce: 0),
         popAnimation: .spring(response: 0.22, dampingFraction: 0.6, blendDuration: 0),
         openedSurfaceUnmountDelay: 0.28
-    )
-}
-
-// MARK: - Annual
-
-extension IslandMotionTokens {
-    /// A calm, refined settle — the editorial page eases open and comes to rest
-    /// with no bounce, the antithesis of a mechanical snap or a springy wobble.
-    /// The open spring damps high so it settles cleanly; the attention "pop"
-    /// damps far harder than Classic's playful bounce so a new event registers as
-    /// a quiet, composed nudge rather than a jiggle. The unmount delay tracks the
-    /// unhurried close.
-    static let annual = IslandMotionTokens(
-        openAnimation: .spring(response: 0.44, dampingFraction: 0.86, blendDuration: 0),
-        closeAnimation: .smooth(duration: 0.3, extraBounce: 0),
-        popAnimation: .spring(response: 0.3, dampingFraction: 0.72, blendDuration: 0),
-        openedSurfaceUnmountDelay: 0.34
     )
 }

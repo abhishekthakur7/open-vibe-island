@@ -36,9 +36,7 @@ struct PouredThemeTests {
         let preserved = IslandHairlineToken(opacity: 0.07, width: 1)
         for material in [
             IslandMaterialTokens.classic,
-            IslandMaterialTokens.instrument,
             IslandMaterialTokens.flightDeck,
-            IslandMaterialTokens.annual,
             IslandMaterialTokens.halo,
         ] {
             #expect(material.contentEdgeStroke == preserved)
@@ -55,9 +53,7 @@ struct PouredThemeTests {
 
         for material in [
             IslandMaterialTokens.classic,
-            IslandMaterialTokens.instrument,
             IslandMaterialTokens.flightDeck,
-            IslandMaterialTokens.annual,
             IslandMaterialTokens.halo,
         ] {
             #expect(material.morphsAsOneBody == false)
@@ -116,9 +112,7 @@ struct PouredThemeTests {
 
         for material in [
             IslandMaterialTokens.classic,
-            IslandMaterialTokens.instrument,
             IslandMaterialTokens.flightDeck,
-            IslandMaterialTokens.annual,
             IslandMaterialTokens.halo,
         ] {
             #expect(material.cornerFillet == nil)

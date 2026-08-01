@@ -12,7 +12,7 @@ import OpenIslandCore
 ///
 /// The suite is `.serialized` and snapshots `appLanguage` because the localized
 /// assertions pin a `LanguageManager` to a concrete language (whose `didSet`
-/// writes `UserDefaults.standard`), mirroring `AnnualThemeTests`.
+/// writes `UserDefaults.standard`), mirroring the other theme suites.
 @Suite(.serialized)
 final class QuestionPromptFormatTests {
     private let savedLanguage: String?
@@ -76,7 +76,7 @@ final class QuestionPromptFormatTests {
     /// bucket it stands in for.
     @Test
     func pageDigitsRestartForAnUnpaginatedMultiQuestionPrompt() {
-        // Classic/Annual/Instrument with several structured questions: no
+        // Classic with several structured questions: no
         // pagination and more than one question on the page means
         // `currentPageDigitBases` is all-zero — each question's options
         // restart at 1, so this must be the one `false` case.
@@ -106,7 +106,7 @@ final class QuestionPromptFormatTests {
     // MARK: - Localization coverage (every new key resolves in all 3 languages)
 
     /// Every AB-325 string resolves to a real translation — not the bare key — in
-    /// English and both Chinese scripts (the `AnnualThemeTests` pattern).
+    /// English and both Chinese scripts (the shared theme-suite pattern).
     ///
     /// Overlay remediation Phase 2C added `question.submitAndNext` /
     /// `question.next` (D1 pagination's per-page advance label, routed

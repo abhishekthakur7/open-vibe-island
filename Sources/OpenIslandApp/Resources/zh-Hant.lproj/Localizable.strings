@@ -204,12 +204,8 @@
 "theme.classic.descriptor" = "最初的墨與紙風格靈動島。";
 "theme.poured.name" = "流光島";
 "theme.poured.descriptor" = "從瀏海傾瀉而出的液態玻璃。";
-"theme.instrument.name" = "儀表板";
-"theme.instrument.descriptor" = "精密等寬主控台。";
 "theme.flightDeck.name" = "飛行甲板";
 "theme.flightDeck.descriptor" = "航電警示燈面板。";
-"theme.annual.name" = "年刊";
-"theme.annual.descriptor" = "瑞士編輯風格的排印靜謐。";
 "theme.halo.name" = "光環";
 "theme.halo.descriptor" = "純黑虛空中流動的稜彩光邊。";
 
@@ -244,22 +240,6 @@
 "island.startAgent" = "在終端機中啟動編碼代理";
 "island.recentSessions" = "最近的工作階段將保留在這裡，直到終端機重新開啟";
 "island.hint.installHooks" = "尚未安裝任何代理 hook，工作階段不會觸發事件 · 點擊設定";
-
-/* Island Panel - Instrument theme (AB-308) */
-"island.instrument.footer.monitoring" = "監控中";
-"island.instrument.footer.standby" = "待命";
-"island.instrument.footer.sessions" = "%lld 個工作階段";
-"island.instrument.state.noSignal" = "無訊號";
-"island.instrument.state.probing" = "探測中";
-"island.instrument.hint.setup" = "設定";
-
-/* Island Panel - Instrument theme rows (AB-309) */
-"island.instrument.row.jump" = "跳轉";
-
-/* Island Panel - Instrument theme actionable surfaces (AB-310) */
-"island.instrument.approval.attn" = "注意";
-"island.instrument.approval.allow" = "允許";
-"island.instrument.approval.deny" = "拒絕";
 
 /* Island Panel - Flight Deck theme (AB-312) */
 "island.flightDeck.annunciator.attn" = "注意";
@@ -339,14 +319,6 @@
 "island.poured.footer.groupedByProject" = "按專案分組";
 "island.poured.footer.idle" = "別處一切安靜 · %lld 個閒置";
 "island.poured.empty.hooksInstalled" = "已為 %@ 安裝 Hooks";
-
-/* Island Panel - Annual theme (AB-316) */
-"island.annual.usage.healthy" = "正常";
-"island.annual.usage.elevated" = "偏高";
-"island.annual.usage.critical" = "臨界";
-"island.annual.state.empty" = "暫無會話";
-"island.annual.state.loading" = "載入中";
-"island.annual.hint.setup" = "設定";
 
 /* Island Panel - Halo theme (AB-340) */
 "island.halo.empty.allQuiet" = "一切平靜";
@@ -428,14 +400,6 @@
 "island.poured.peek.reviewApprove" = "點擊查看並批准";
 "island.poured.peek.reviewAnswer" = "點擊查看並回答";
 "island.poured.peek.moreSessions" = "還有 %lld 個工作階段";
-
-/* Island Panel - Annual theme rows (AB-317) */
-"island.annual.row.jump" = "跳轉";
-
-/* Island Panel - Annual theme actionable surfaces (AB-318) */
-"island.annual.approval.permissionRequired" = "需要授權";
-"island.annual.approval.allow" = "允許";
-"island.annual.approval.deny" = "拒絕";
 
 /* Island Panel - Narrated activity verbs (AB-321) */
 "island.activity.verb.editing" = "正在編輯";

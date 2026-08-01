@@ -1,6 +1,7 @@
 # Poured Island parity — recorded product/design-owner rulings
 
-Version 2 — 2026-08-01 (R6 appended; R1–R5 unchanged from version 1).
+Version 3 — 2026-08-01 (R7 and the theme-retirement ruling appended; R1–R6
+unchanged from version 2).
 Recorded verbatim by the root orchestrator from the
 owner's written instructions (session `75ecb072`, repo owner). This document is
 the source of record for these rulings until they are formally registered in
@@ -103,3 +104,38 @@ Resolved by this ruling, with the applications recorded per item in that file:
 (`settled` has no rendered referent — a motion-measurement definition), **N-6**
 (`settle` names two mechanisms), **N-7** (`--aggregate` / `--attn-hot` are
 tokenised but never drawn).
+
+## R7 — N-7: the collapsed pill with more than one session waiting
+
+> "For N7, if multiple are waiting, loop through them one at a time. may be
+> wait 3-4 seconds for 1 then move to 2nd one and then again back to 1
+> depending upon how many are waiting."
+
+Recorded 2026-08-01 (version 3 of this document). This is the owner's authority
+for the **N > 1 waiting** collapsed state, which R6 explicitly left open (`--aggregate`
+/ `--attn-hot` are tokenised in the reference but never drawn, so the board
+answers nothing about how a multi-waiting pill should read).
+
+Disposition: the collapsed pill does **not** aggregate the waiting sessions into
+a single count-badge treatment. It **spotlights one waiting session at a time**
+and rotates: hold a session for roughly 3–4 seconds, advance to the next waiting
+session, and wrap back to the first — a cycle whose length is set by how many
+sessions are currently waiting. Implementation lands in **Slice 5** (spotlight
+rotation); this ruling is the acceptance authority for it.
+
+## Theme retirement — Annual and Instrument
+
+> "yes delete annual and instrument"
+
+Recorded 2026-08-01 (version 3 of this document). The Annual and Instrument
+themes are retired outright: theme structs, their per-theme views, their rows in
+every token table, their registry entries, and their `theme.*` / `island.*`
+localized strings in all three catalogs are deleted. The surviving roster is
+**four** — Poured Island (default), Classic, Flight Deck, Halo.
+
+Migration: a persisted `appearance.island.v8.theme` of `"annual"` or
+`"instrument"` is simply an unknown id, so `ThemeRegistry.theme(id:)` resolves it
+to the default (Poured Island) and `AppModel` normalizes the stored value on
+load — no versioned migration step, no crash, no unstyled overlay.
+
+Applied in the commit that carries this ruling.

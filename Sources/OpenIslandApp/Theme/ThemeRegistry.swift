@@ -17,9 +17,7 @@ enum ThemeRegistry {
     static let all: [any IslandTheme] = [
         PouredIslandTheme(),
         ClassicTheme(),
-        InstrumentTheme(),
         FlightDeckTheme(),
-        AnnualTheme(),
         HaloTheme(),
     ]
 
@@ -29,6 +27,13 @@ enum ThemeRegistry {
     /// The theme with `id`, or the default when `id` is nil / unknown. This is
     /// the single fallback point: a missing or garbage persisted id resolves to
     /// `default` rather than crashing or rendering blank.
+    ///
+    /// This is also the whole migration story for **retired** themes. The
+    /// 2026-08-01 owner ruling deleted Annual and Instrument; anyone whose
+    /// `appearance.island.v8.theme` still holds `"annual"` or `"instrument"`
+    /// takes exactly the unknown-id path here and lands on Poured Island, and
+    /// `AppModel` normalizes the stored value back on load. No versioned
+    /// migration step is needed — `ThemeSelectionTests` pins both ids.
     static func theme(id: String?) -> any IslandTheme {
         guard let id, let match = all.first(where: { $0.id == id }) else {
             return `default`

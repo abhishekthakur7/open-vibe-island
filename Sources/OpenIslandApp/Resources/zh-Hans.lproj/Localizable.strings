@@ -204,12 +204,8 @@
 "theme.classic.descriptor" = "最初的墨与纸风格灵动岛。";
 "theme.poured.name" = "流光岛";
 "theme.poured.descriptor" = "从刘海倾泻而出的液态玻璃。";
-"theme.instrument.name" = "仪表盘";
-"theme.instrument.descriptor" = "精密等宽控制台。";
 "theme.flightDeck.name" = "飞行甲板";
 "theme.flightDeck.descriptor" = "航电警示灯面板。";
-"theme.annual.name" = "年刊";
-"theme.annual.descriptor" = "瑞士编辑风格的排印静谧。";
 "theme.halo.name" = "光环";
 "theme.halo.descriptor" = "纯黑虚空中流动的棱彩光边。";
 
@@ -244,22 +240,6 @@
 "island.startAgent" = "在终端中启动编码代理";
 "island.recentSessions" = "最近的会话将保留在这里，直到终端重新打开";
 "island.hint.installHooks" = "尚未安装任何代理 hook，会话不会触发事件 · 点击配置";
-
-/* Island Panel - Instrument theme (AB-308) */
-"island.instrument.footer.monitoring" = "监控中";
-"island.instrument.footer.standby" = "待命";
-"island.instrument.footer.sessions" = "%lld 个会话";
-"island.instrument.state.noSignal" = "无信号";
-"island.instrument.state.probing" = "探测中";
-"island.instrument.hint.setup" = "配置";
-
-/* Island Panel - Instrument theme rows (AB-309) */
-"island.instrument.row.jump" = "跳转";
-
-/* Island Panel - Instrument theme actionable surfaces (AB-310) */
-"island.instrument.approval.attn" = "注意";
-"island.instrument.approval.allow" = "允许";
-"island.instrument.approval.deny" = "拒绝";
 
 /* Island Panel - Flight Deck theme (AB-312) */
 "island.flightDeck.annunciator.attn" = "注意";
@@ -339,14 +319,6 @@
 "island.poured.footer.groupedByProject" = "按项目分组";
 "island.poured.footer.idle" = "别处一切安静 · %lld 个空闲";
 "island.poured.empty.hooksInstalled" = "已为 %@ 安装 Hooks";
-
-/* Island Panel - Annual theme (AB-316) */
-"island.annual.usage.healthy" = "正常";
-"island.annual.usage.elevated" = "偏高";
-"island.annual.usage.critical" = "临界";
-"island.annual.state.empty" = "暂无会话";
-"island.annual.state.loading" = "加载中";
-"island.annual.hint.setup" = "配置";
 
 /* Island Panel - Halo theme (AB-340) */
 "island.halo.empty.allQuiet" = "一切平静";
@@ -428,14 +400,6 @@
 "island.poured.peek.reviewApprove" = "点击查看并批准";
 "island.poured.peek.reviewAnswer" = "点击查看并回答";
 "island.poured.peek.moreSessions" = "还有 %lld 个会话";
-
-/* Island Panel - Annual theme rows (AB-317) */
-"island.annual.row.jump" = "跳转";
-
-/* Island Panel - Annual theme actionable surfaces (AB-318) */
-"island.annual.approval.permissionRequired" = "需要授权";
-"island.annual.approval.allow" = "允许";
-"island.annual.approval.deny" = "拒绝";
 
 /* Island Panel - Narrated activity verbs (AB-321) */
 "island.activity.verb.editing" = "正在编辑";
@@ -522,7 +486,6 @@
 "approval.jumpToCodex" = "前往 Codex 批准";
 "approval.codexApprovesInApp" = "Codex 在应用内批准。打开面板以在那里允许或拒绝。";
 "approval.autoCollapseCountdown" = "%lld 秒后自动收起 · 悬停可暂停";
-
 
 /* Island Panel - Subagents & Tasks */
 "subagents.title" = "子代理 (%lld)";

@@ -2910,8 +2910,8 @@ struct StructuredQuestionPromptView: View {
     /// trivially every single-question prompt, and, since D1 (overlay
     /// remediation Phase 2B), every page of a themed pagination-opted-in
     /// multi-question prompt too (Poured/Halo restart per page, Flight
-    /// Deck's all-questions page runs continuously). Classic/Annual/
-    /// Instrument's multi-question prompts still fall back to mouse-only
+    /// Deck's all-questions page runs continuously). Classic's
+    /// multi-question prompts still fall back to mouse-only
     /// selection, unchanged.
     var keyboardCoordinator: OverlayUICoordinator?
     let onAnswer: (QuestionPromptResponse) -> Void
@@ -3075,7 +3075,7 @@ struct StructuredQuestionPromptView: View {
     /// The question sentence's font. Poured/Halo already define a
     /// `questionText` role (`PouredTypography.swift:203`, `HaloTheme.swift:85`);
     /// Flight Deck's is authored fresh (`FlightDeckTheme.swift`, this phase)
-    /// since it had none of the four roles below. Classic/Annual/Instrument
+    /// since it had none of the four roles below. Classic
     /// keep the exact literal this view has always rendered, so they stay
     /// byte-identical.
     private var questionTextFont: Font {
@@ -3167,7 +3167,7 @@ struct StructuredQuestionPromptView: View {
     /// Whether the trailing selection marker still renders on an *unselected*
     /// option (F1b). Poured and Halo's boards emit no trailing element at all
     /// on an unselected row; Flight Deck's `.check` is a persistent hollow
-    /// ring by design, and Classic/Annual/Instrument keep today's
+    /// ring by design, and Classic keep today's
     /// unconditional ring.
     private var selectionMarkerAlwaysVisible: Bool {
         theme.id != "poured" && theme.id != "halo"
@@ -3175,7 +3175,7 @@ struct StructuredQuestionPromptView: View {
 
     /// The submit CTA. Tries the theme's `questionSubmitButton` seam first —
     /// Poured/Halo/Flight Deck now override it (overlay remediation Phase
-    /// 2A-follow-up · F1); Classic/Annual/Instrument still return `nil` and
+    /// 2A-follow-up · F1); Classic still return `nil` and
     /// fall back to the `IslandActionButtonStyle` rendering every theme used
     /// before this. Shared by both submit call sites (structured questions and
     /// the plain freeform answer body) so the seam only needs wiring once.
@@ -3579,7 +3579,7 @@ struct StructuredQuestionPromptView: View {
     /// 1 — the same condition `registerKeyboardHandlersIfNeeded` gates actual
     /// keyboard registration on (see its doc). `nil` (no caption) when no
     /// coordinator is registered, or the page's digits restart per question
-    /// (Classic/Annual/Instrument's unpaginated multi-question prompts), so
+    /// (Classic's unpaginated multi-question prompts), so
     /// the hint never advertises a range that doesn't hold.
     ///
     /// D1 (overlay remediation Phase 2B): reads `currentPage`, not
@@ -3685,7 +3685,7 @@ struct StructuredQuestionPromptView: View {
 
         // D1: a non-final page advances instead of finishing — the answer
         // round-trip (`onAnswer`) only fires once every page has been walked,
-        // exactly like Classic/Annual/Instrument's single, always-final page.
+        // exactly like Classic's single, always-final page.
         guard isFinalPage else {
             advanceToNextPage()
             return
@@ -3885,7 +3885,7 @@ struct StructuredQuestionPromptView: View {
     /// they don't have today (their page always holds exactly one question
     /// once paginated, so digits are unambiguous) and lets Flight Deck's
     /// all-questions page stay active too (its digits just run continuously
-    /// instead of restarting). Only Classic/Annual/Instrument with more than
+    /// instead of restarting). Only Classic with more than
     /// one question still fall through to disabled — their pre-D1 behaviour,
     /// since they never set `questionPageSize`.
     ///
@@ -3947,7 +3947,7 @@ struct StructuredQuestionPromptView: View {
     /// `structuredQuestions` grouped into pages of `theme.questionPageSize`
     /// questions each — the single mechanism D1 settled on
     /// (`REMEDIATION-PLAN.md` §5 D1) so the three approved boards are honoured
-    /// without two parallel code paths. `nil` (Classic/Annual/Instrument's
+    /// without two parallel code paths. `nil` (Classic's
     /// default) yields exactly one page holding every question — today's
     /// unpaginated rendering, byte-identical. A concrete size chunks the
     /// list: `1` (Poured, Halo) puts one question per page; a size at or past
@@ -4002,7 +4002,7 @@ struct StructuredQuestionPromptView: View {
     /// followed by a 4-option one), so the second question's digits render
     /// 4-7 rather than restarting at 1.
     ///
-    /// `nil` page size (Classic/Annual/Instrument) takes the all-zero branch
+    /// `nil` page size (Classic) takes the all-zero branch
     /// even though `currentPage` still holds every question there (their one
     /// and only "page" is the whole list, per `questionPages`'s doc) — without
     /// this branch every question's digits would run continuously for them
@@ -4039,7 +4039,7 @@ struct StructuredQuestionPromptView: View {
     /// non-final-page relabel and `submitAnswer`'s advance-vs-finish branch.
     /// Trivially `true` whenever there is only one page (the `nil`-page-size
     /// default, or a page size that already covers every question), so
-    /// Classic/Annual/Instrument and Flight Deck always finish on their one
+    /// Classic and Flight Deck always finish on their one
     /// and only page — the same "submit is terminal" behaviour every theme
     /// had before D1.
     private var isFinalPage: Bool {

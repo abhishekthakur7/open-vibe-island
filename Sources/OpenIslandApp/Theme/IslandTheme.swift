@@ -462,7 +462,7 @@ protocol IslandTheme: Sendable {
     /// literal behaviour every theme has always shipped, and the keyboard
     /// 1-9/Enter wiring stays disabled whenever there is more than one question
     /// (`StructuredQuestionPromptView.registerKeyboardHandlersIfNeeded`'s pre-D1
-    /// guard). Classic/Annual/Instrument take this default and are therefore
+    /// guard). Classic take this default and are therefore
     /// byte-identical.
     ///
     /// A concrete value opts a theme into the D1 pagination mechanism — **one**
@@ -507,7 +507,7 @@ protocol IslandTheme: Sendable {
     /// `nil` — the default every theme but Flight Deck takes — means "use the
     /// closed pill's own height" (`closedNotchHeight` /
     /// `NSScreen.islandClosedHeight`), exactly the fixed, shared band every
-    /// theme has always rendered into. Classic/Annual/Instrument/Poured/Halo
+    /// theme has always rendered into. Classic/Poured/Halo
     /// take this default and are therefore byte-identical.
     ///
     /// Flight Deck overrides it: its avionics gauge chip (with a reset-time
@@ -701,7 +701,7 @@ extension IslandTheme {
     ) -> AnyView? { nil }
 
     /// Default: no themed CTA — `StructuredQuestionPromptView` falls back to
-    /// `IslandActionButtonStyle`. Classic/Annual/Instrument take this default;
+    /// `IslandActionButtonStyle`. Classic take this default;
     /// Poured/Flight Deck/Halo override it (overlay remediation Phase
     /// 2A-follow-up · F1).
     func questionSubmitButton(
@@ -711,7 +711,7 @@ extension IslandTheme {
     ) -> AnyView? { nil }
 
     /// Default: no themed card container — the shared view keeps drawing its
-    /// own literal translucent rounded card. Classic/Annual/Instrument/Poured
+    /// own literal translucent rounded card. Classic/Poured
     /// take this default (Poured's layered glass already reads correctly with
     /// the literal card nested inside its own gold wash); Halo/Flight Deck
     /// override it (overlay remediation Phase 2A-follow-up · F1).
@@ -719,14 +719,14 @@ extension IslandTheme {
 
     /// Default: no pagination — every question renders on one page and
     /// `registerKeyboardHandlersIfNeeded` keeps multi-question keyboard
-    /// selection disabled (its pre-D1 behaviour). Classic/Annual/Instrument
+    /// selection disabled (its pre-D1 behaviour). Classic
     /// take this default and are therefore byte-identical; Poured/Halo/Flight
     /// Deck override it (overlay remediation Phase 2B · F1a/D1).
     var questionPageSize: Int? { nil }
 
     /// Default: use the closed pill's own height — the shared, unchanged
     /// band every theme has always rendered its opened header into.
-    /// Classic/Annual/Instrument/Poured/Halo take this default and are
+    /// Classic/Poured/Halo take this default and are
     /// therefore byte-identical (overlay remediation Phase 5 · F8); Flight
     /// Deck overrides it.
     var openedHeaderHeight: CGFloat? { nil }

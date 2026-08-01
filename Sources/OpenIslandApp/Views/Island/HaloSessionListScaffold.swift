@@ -12,7 +12,7 @@ import OpenIslandCore
 /// a 1px hairline on pure `#000`, and hierarchy comes from the type scale + case
 /// + the status-tint dots, never from a wash or capsule. The counting and
 /// grouping logic is identical to `IslandSessionListScaffold` / the sibling
-/// `AnnualSessionListScaffold` — the buckets and the per-section title / count
+/// `PouredSessionListScaffold` — the buckets and the per-section title / count
 /// are computed the same way (`HaloSessionListModel`, a pure format enum pinned
 /// by `HaloSessionListTests`), so only the surface treatment differs.
 ///

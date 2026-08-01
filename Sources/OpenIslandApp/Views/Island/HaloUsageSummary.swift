@@ -49,7 +49,7 @@ enum HaloUsageMetrics {
 ///
 /// The band **cut-offs are unchanged** from the app-wide `usageColor` rule
 /// (`IslandUsageSummary`: `>= 90` critical, `70..<90` warn, else fine) — exactly
-/// like `AnnualUsageVerdict` / `PouredUsageThreshold`. The colours are Halo's own
+/// like `PouredUsageThreshold`. The colours are Halo's own
 /// `HaloEdge` usage filaments (`usageFine #5FE39A` / `usageWarn #FFCF7A` /
 /// `usageCrit #FF6B6B`), pinned to the SPEC hex by `HaloUsageTests`.
 enum HaloUsageThreshold: String, CaseIterable, Sendable {

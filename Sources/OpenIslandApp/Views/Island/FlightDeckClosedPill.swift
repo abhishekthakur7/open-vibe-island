@@ -16,7 +16,7 @@ import OpenIslandCore
 ///
 /// Layout (glyph, centre label, notch-lane label, right slot) and the
 /// fluid-width math are shared verbatim with `V6ClosedPill` — the same statics
-/// `PouredClosedPill` / `InstrumentClosedPill` reuse — so the pill's outer
+/// `PouredClosedPill` reuses — so the pill's outer
 /// dimensions, and therefore the closed↔opened morph frame in `IslandPanelView`,
 /// stay identical across themes. Only the fill treatment and the lamp styling
 /// differ. The centre / notch-lane labels are already `.monospaced`, so reusing

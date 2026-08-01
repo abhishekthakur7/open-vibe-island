@@ -7,7 +7,7 @@ import OpenIslandCore
 /// The layout — the notch-split lanes on notched displays, the single flush-left
 /// lane on the top-bar / external profile, and the metrics that measure the
 /// physical notch out of the way — is shared **verbatim** with
-/// `AnnualHeaderControls` / `IslandHeaderControls` so the header keeps its exact
+/// `IslandHeaderControls` so the header keeps its exact
 /// geometry across themes (mockup `.ngap 96pt` reserved under the notch). Only the
 /// two rendered regions change for the Halo idiom: the usage becomes thin
 /// light-filament arcs with a percent readout (`HaloUsageSummary`, fitted per
@@ -32,7 +32,7 @@ struct HaloHeaderControls: View {
     /// exactly the strip that survives right of it. Shrinking them 26 → 22 buys
     /// the filament 12pt of that strip — the difference between a lane that draws
     /// a gauge and one that draws nothing. 22pt is still a comfortable hit target
-    /// (Instrument ships 22pt controls) and the 4pt delta is invisible next to a
+    /// and the 4pt delta is invisible next to a
     /// missing gauge. The top-bar / external profile has no notch to pay for and
     /// keeps the board's 26.
     static let notchHeaderControlButtonSize: CGFloat = 22
@@ -260,7 +260,7 @@ struct HaloHeaderControls: View {
 // MARK: - Halo header button (26pt circular control)
 
 /// A 26pt circular control for the header's mute / settings / quit actions
-/// (mockup `.ctl`). The behavior is identical to `AnnualHeaderButton` /
+/// (mockup `.ctl`). The behavior is identical to
 /// `IslandHeaderControls.headerIconButton` — same closures, same accessibility
 /// labels — the only change is the Halo styling: a `white@.06` fill circle that
 /// lifts to `white@.14` on hover, with the SF glyph in the secondary text ramp

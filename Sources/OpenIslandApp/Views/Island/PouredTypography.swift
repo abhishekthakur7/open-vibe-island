@@ -7,8 +7,7 @@ import SwiftUI
 /// themes swap whole slot views, so per-view fonts belong to each theme. This
 /// enum is Poured's own type table, kept in one place so every Poured slot view
 /// (T12–T15) draws from the same roles and the scale is checkable in one spot
-/// (`PouredThemeTests`), exactly like `FlightDeckTypography` /
-/// `AnnualTypography`.
+/// (`PouredThemeTests`), exactly like `FlightDeckTypography`.
 ///
 /// Poured 2.0 is the largest visual change in the redesign: the shipped theme
 /// used `design: .monospaced` for section headers, the summary strip, badges,

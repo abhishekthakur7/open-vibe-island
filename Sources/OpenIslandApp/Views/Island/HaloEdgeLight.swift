@@ -334,7 +334,7 @@ struct HaloBloomSpec: Equatable {
 /// reduceMotion, increaseContrast)` — no clocks, no environment — so
 /// `HaloEdgeLightTests` can pin exact colours/degrees and prove the Reduce-Motion
 /// statics without rendering. The view (`HaloEdgeLight`) is a thin animator over
-/// this; the format mirrors `AnnualSessionRowFormat` / `FlightDeckApprovalFormat`.
+/// this; the format mirrors `FlightDeckApprovalFormat`.
 enum HaloEdgeLightModel {
 
     // MARK: Opacity ranges (SPEC §1a)

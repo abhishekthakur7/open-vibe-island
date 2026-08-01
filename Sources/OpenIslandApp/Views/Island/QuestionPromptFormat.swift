@@ -97,7 +97,7 @@ enum QuestionPromptFormat {
     /// when the page holds exactly one question even without pagination —
     /// there is nothing for its digits to restart against.
     ///
-    /// `false` only for Classic/Annual/Instrument's unpaginated (`pageSize ==
+    /// `false` only for Classic's unpaginated (`pageSize ==
     /// nil`) *multi*-question prompts, where `currentPageDigitBases` returns
     /// every zero and each question's options restart at 1 — a "1–N" hint
     /// there would describe a range that doesn't exist.

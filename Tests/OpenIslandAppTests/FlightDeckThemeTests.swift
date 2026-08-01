@@ -9,7 +9,7 @@ import OpenIslandCore
 /// typography floor, and the theme's own square-annunciator-light grid geometry.
 ///
 /// Serialized and defaults-clearing like `ThemeSelectionTests` /
-/// `InstrumentThemeTests`, since the registry / persistence checks construct real
+/// the other theme suites, since the registry / persistence checks construct real
 /// `AppModel`s that read `UserDefaults.standard`.
 @MainActor
 @Suite(.serialized)

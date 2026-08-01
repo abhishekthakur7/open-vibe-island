@@ -17,25 +17,25 @@ import OpenIslandCore
 @MainActor
 struct HaloThemeTests {
 
-    // MARK: - Registry position (AC: appended after Annual, non-default)
+    // MARK: - Registry position (AC: appended last, non-default)
 
-    /// T26 (AB-345) registers Halo: appended to `ThemeRegistry.all` **after**
-    /// `AnnualTheme()`, **non-default**. Poured Island stays `all[0]` (the product's
-    /// face), and `theme(id:)` now resolves the real theme instead of falling back.
-    /// This pins the position so a reorder (or a change of default) is caught.
+    /// T26 (AB-345) registers Halo: appended last in `ThemeRegistry.all`,
+    /// **non-default**. Poured Island stays `all[0]` (the product's face), and
+    /// `theme(id:)` resolves the real theme instead of falling back. This pins
+    /// the position so a reorder (or a change of default) is caught.
+    ///
+    /// The roster is four since the 2026-08-01 owner ruling retired Annual and
+    /// Instrument; Halo used to sit directly after Annual and now simply stays
+    /// last.
     @Test
-    func haloIsRegisteredAfterAnnualAndIsNotTheDefault() {
+    func haloIsRegisteredLastAndIsNotTheDefault() {
         let ids = ThemeRegistry.all.map(\.id)
         // Present and resolvable by id.
         #expect(ids.contains("halo"))
         #expect(ThemeRegistry.theme(id: "halo").id == "halo")
-        // Full registry order (spec §7): Halo appended last, after Annual.
-        #expect(ids == ["poured", "classic", "instrument", "flightDeck", "annual", "halo"])
-        let haloIndex = ids.firstIndex(of: "halo")
-        let annualIndex = ids.firstIndex(of: AnnualTheme().id)
-        #expect(haloIndex != nil && annualIndex != nil)
-        #expect(haloIndex == ids.count - 1)          // last entry
-        #expect(annualIndex! + 1 == haloIndex!)       // directly after Annual
+        // Full registry order after the retirement: the surviving four.
+        #expect(ids == ["poured", "classic", "flightDeck", "halo"])
+        #expect(ids.firstIndex(of: "halo") == ids.count - 1)   // last entry
         // Non-default: Poured stays the product's face at slot 0.
         #expect(ThemeRegistry.default.id == "poured")
         #expect(ThemeRegistry.default.id != "halo")
@@ -72,7 +72,7 @@ struct HaloThemeTests {
 
     /// The edge-state resolver maps phase / presence / outcome exactly, and an
     /// inactive process always recedes to `idle` so a dead session never keeps a
-    /// loud edge (mirrors `AnnualSessionRowFormat.statusMark`).
+    /// loud edge.
     @Test
     func edgeStateResolverMapsPhasePresenceAndOutcome() {
         typealias F = HaloSessionRowFormat

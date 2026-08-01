@@ -36,7 +36,7 @@ enum PouredUsageMetrics {
 /// This enum unifies them: the arc, the ring value, the meter percentage and the
 /// meter word/shape all resolve their colour through here. The band **cut-offs
 /// are unchanged** from the app-wide `usageColor` (`>= 90` / `70..<90` / else) —
-/// only the colours move onto the status tokens, exactly like `AnnualUsageVerdict`.
+/// only the colours move onto the status tokens, exactly like `PouredUsageThreshold`.
 ///
 /// Each band also carries a **word** and a **shape marker** so the §I meter state
 /// is never colour-alone (`Fine ●` / `Warn ▲` / `Critical ●`, `SPEC` §4I).

@@ -281,7 +281,7 @@ struct FlightDeckUsageProviderChip: View {
         }
         .help(summaryText)
         // One VoiceOver stop per chip — the same per-window summary the app
-        // surfaces through `.help()`, matching Classic / Poured / Instrument
+        // surfaces through `.help()`, matching Classic / Poured
         // (AB-244).
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(summaryText)

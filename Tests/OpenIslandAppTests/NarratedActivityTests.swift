@@ -123,7 +123,7 @@ struct NarratedActivityTests {
             )
         )
 
-        // Classic / Annual / Instrument still see the noun + raw preview.
+        // Classic still see the noun + raw preview.
         #expect(AgentSession.currentToolDisplayName(for: "Edit") == "Edit")
         #expect(session.displayCurrentToolName == "Edit")
         #expect(session.spotlightSecondaryText == "Running Edit")

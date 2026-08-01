@@ -72,8 +72,6 @@ struct UsageSummaryAccessibilityFormatterTests {
             "PouredUsageSummary.swift",
             "HaloUsageSummary.swift",
             "FlightDeckUsageSummary.swift",
-            "InstrumentUsageSummary.swift",
-            "AnnualUsageSummary.swift",
         ]
 
         for file in files {

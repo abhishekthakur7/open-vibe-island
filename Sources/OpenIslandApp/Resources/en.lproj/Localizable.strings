@@ -204,12 +204,8 @@
 "theme.classic.descriptor" = "The original ink-and-paper island.";
 "theme.poured.name" = "Poured Island";
 "theme.poured.descriptor" = "Liquid glass poured from the notch.";
-"theme.instrument.name" = "Instrument";
-"theme.instrument.descriptor" = "Precision monospace console.";
 "theme.flightDeck.name" = "Flight Deck";
 "theme.flightDeck.descriptor" = "Avionics annunciator panel.";
-"theme.annual.name" = "Annual";
-"theme.annual.descriptor" = "Editorial Swiss typographic calm.";
 "theme.halo.name" = "Halo";
 "theme.halo.descriptor" = "Prismatic edge-light on a true-black void.";
 
@@ -244,22 +240,6 @@
 "island.startAgent" = "Start a coding agent in your terminal";
 "island.recentSessions" = "Recent sessions are kept here until the terminal is open again";
 "island.hint.installHooks" = "No agent hooks installed — sessions won't surface events. Tap to set up.";
-
-/* Island Panel - Instrument theme (AB-308) */
-"island.instrument.footer.monitoring" = "Monitoring";
-"island.instrument.footer.standby" = "Standby";
-"island.instrument.footer.sessions" = "%lld sessions";
-"island.instrument.state.noSignal" = "No signal";
-"island.instrument.state.probing" = "Probing";
-"island.instrument.hint.setup" = "Setup";
-
-/* Island Panel - Instrument theme rows (AB-309) */
-"island.instrument.row.jump" = "Jump";
-
-/* Island Panel - Instrument theme actionable surfaces (AB-310) */
-"island.instrument.approval.attn" = "ATTN";
-"island.instrument.approval.allow" = "Allow";
-"island.instrument.approval.deny" = "Deny";
 
 /* Island Panel - Flight Deck theme (AB-312) */
 "island.flightDeck.annunciator.attn" = "Attn";
@@ -338,14 +318,6 @@
 "island.poured.footer.groupedByProject" = "Grouped by project";
 "island.poured.footer.idle" = "All quiet elsewhere · %lld idle";
 "island.poured.empty.hooksInstalled" = "Hooks installed for %@";
-
-/* Island Panel - Annual theme (AB-316) */
-"island.annual.usage.healthy" = "Healthy";
-"island.annual.usage.elevated" = "Elevated";
-"island.annual.usage.critical" = "Critical";
-"island.annual.state.empty" = "No sessions";
-"island.annual.state.loading" = "Loading";
-"island.annual.hint.setup" = "Setup";
 
 /* Island Panel - Halo theme (AB-340) */
 "island.halo.empty.allQuiet" = "All quiet";
@@ -432,14 +404,6 @@
 "island.poured.peek.reviewAnswer" = "Click to review & answer";
 "island.poured.peek.moreSessions" = "+%lld more sessions";
 
-/* Island Panel - Annual theme rows (AB-317) */
-"island.annual.row.jump" = "Jump";
-
-/* Island Panel - Annual theme actionable surfaces (AB-318) */
-"island.annual.approval.permissionRequired" = "Permission Required";
-"island.annual.approval.allow" = "Allow";
-"island.annual.approval.deny" = "Deny";
-
 /* Island Panel - Narrated activity verbs (AB-321) */
 "island.activity.verb.editing" = "Editing";
 "island.activity.verb.reading" = "Reading";
@@ -525,7 +489,6 @@
 "approval.jumpToCodex" = "Jump to Codex to approve";
 "approval.codexApprovesInApp" = "Codex approves in-app. Open the pane to allow or deny there.";
 "approval.autoCollapseCountdown" = "Auto-collapses in %llds · hover pauses";
-
 
 /* Island Panel - Subagents & Tasks */
 "subagents.title" = "Subagents (%lld)";

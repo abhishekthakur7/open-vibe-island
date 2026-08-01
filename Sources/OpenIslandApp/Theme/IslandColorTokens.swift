@@ -223,46 +223,6 @@ extension IslandColorTokens {
     private static let pouredPaper = Color(red: 0xf2 / 255.0, green: 0xf5 / 255.0, blue: 0xfb / 255.0)
 }
 
-// MARK: - Instrument
-
-extension IslandColorTokens {
-    /// Instrument (precision monospace console): a near-monochrome palette where
-    /// colour is spent *only* on status. The surface is a near-black console
-    /// ground with a cool light-grey ink; the status tints collapse to the three
-    /// the design language allows — one alarm red (approval / failure), one
-    /// run/done green (running and completed share the "live" green), and a
-    /// caution amber for the softer waiting/interrupted states — while idle and
-    /// inactive drop to dim greys. Hairlines are stronger than Classic's because
-    /// hairline rules are a load-bearing part of the instrument look, not an
-    /// afterthought.
-    static let instrument = IslandColorTokens(
-        surfaceInk: instrumentInk,
-        paper: instrumentPaper,
-        surfaceText: .white,
-        statusRunning: instrumentGreen,
-        statusCompleted: instrumentGreen,
-        statusWaitingForApproval: instrumentAlarm,
-        statusWaitingForAnswer: instrumentAmber,
-        statusWaitingAggregate: instrumentAmber,
-        statusWarning: instrumentAmber,
-        statusInterrupted: instrumentAmber,
-        statusFailed: instrumentAlarm,
-        statusIdle: instrumentPaper.opacity(0.32),
-        statusInactive: instrumentPaper.opacity(0.28),
-        secondaryTextOpacity: 0.6,
-        tertiaryTextOpacity: 0.5,
-        increasedContrastTextBoost: 0.24,
-        hairlineOpacity: 0.12,
-        hairlineOpacityIncreasedContrast: 0.3
-    )
-
-    private static let instrumentInk = Color(red: 0x0a / 255.0, green: 0x0a / 255.0, blue: 0x0b / 255.0)
-    private static let instrumentPaper = Color(red: 0xdf / 255.0, green: 0xe1 / 255.0, blue: 0xde / 255.0)
-    private static let instrumentGreen = Color(red: 76.0 / 255.0, green: 201.0 / 255.0, blue: 111.0 / 255.0)
-    private static let instrumentAlarm = Color(red: 235.0 / 255.0, green: 77.0 / 255.0, blue: 75.0 / 255.0)
-    private static let instrumentAmber = Color(red: 224.0 / 255.0, green: 168.0 / 255.0, blue: 74.0 / 255.0)
-}
-
 // MARK: - Flight Deck
 
 extension IslandColorTokens {
@@ -300,8 +260,8 @@ extension IslandColorTokens {
         hairlineOpacityIncreasedContrast: 0.32
     )
 
-    /// Near-black cockpit ground with a faint cool cast, darker than Instrument's
-    /// console so the phosphor lights read as self-lit against unlit hardware.
+    /// Near-black cockpit ground with a faint cool cast, dark enough that the
+    /// phosphor lights read as self-lit against unlit hardware.
     private static let flightDeckInk = Color(red: 0x08 / 255.0, green: 0x09 / 255.0, blue: 0x0a / 255.0)
     /// Cool light-grey legend ink for uppercase micro-labels and glyphs.
     private static let flightDeckPaper = Color(red: 0xd4 / 255.0, green: 0xda / 255.0, blue: 0xd6 / 255.0)
@@ -313,59 +273,4 @@ extension IslandColorTokens {
     private static let flightDeckCaution = Color(red: 230.0 / 255.0, green: 170.0 / 255.0, blue: 66.0 / 255.0)
     /// Warning red — a blocked permission request and a failure outcome.
     private static let flightDeckWarning = Color(red: 224.0 / 255.0, green: 74.0 / 255.0, blue: 66.0 / 255.0)
-}
-
-// MARK: - Annual
-
-extension IslandColorTokens {
-    /// Annual (editorial Swiss typographic calm): a warm near-black ground and a
-    /// warm off-white ink, with hierarchy carried by type scale, weight, case and
-    /// hairline rules rather than colour. The palette is deliberately
-    /// near-monochrome — a warm grayscale secondary scale for the calm states —
-    /// and spends its **one** warm orange-red accent *exclusively* on attention
-    /// and critical states: a blocked permission request, a pending question, the
-    /// collapsed waiting roll-up, and a failure outcome. Every non-attention,
-    /// non-critical role (running, completed, idle, inactive, and the caution /
-    /// interrupted tones that a persistent bypass badge or a soft interruption
-    /// use) resolves to a warm grey, never the accent — so a calm state carries
-    /// zero accent pixels apart from the agent brand squares, which is the
-    /// accent-discipline invariant `AnnualThemeTests` pins at the token level.
-    /// Hairlines are stronger than Classic's because hairline rules are the
-    /// theme's primary structural device.
-    static let annual = IslandColorTokens(
-        surfaceInk: annualInk,
-        paper: annualPaper,
-        surfaceText: .white,
-        statusRunning: annualGreyBright,
-        statusCompleted: annualGreyMid,
-        statusWaitingForApproval: annualAccent,
-        statusWaitingForAnswer: annualAccent,
-        statusWaitingAggregate: annualAccent,
-        statusWarning: annualGreyMid,
-        statusInterrupted: annualGreyMid,
-        statusFailed: annualAccent,
-        statusIdle: annualPaper.opacity(0.28),
-        statusInactive: annualPaper.opacity(0.24),
-        secondaryTextOpacity: 0.6,
-        tertiaryTextOpacity: 0.5,
-        increasedContrastTextBoost: 0.24,
-        hairlineOpacity: 0.10,
-        hairlineOpacityIncreasedContrast: 0.28
-    )
-
-    /// Warm near-black editorial ground — a hair warmer (more red than blue) than
-    /// the neutral console blacks, so the surface reads as ink on warm paper stock
-    /// rather than cold glass.
-    private static let annualInk = Color(red: 0x14 / 255.0, green: 0x12 / 255.0, blue: 0x10 / 255.0)
-    /// Warm off-white ink for headline chrome, glyphs and the filled-running mark.
-    private static let annualPaper = Color(red: 0xf2 / 255.0, green: 0xed / 255.0, blue: 0xe3 / 255.0)
-    /// The single warm orange-red accent, reserved for attention and critical
-    /// states. Nothing calm may resolve to this value.
-    static let annualAccent = Color(red: 0xe0 / 255.0, green: 0x4f / 255.0, blue: 0x2a / 255.0)
-    /// The brighter step of the warm grayscale secondary scale — the calm
-    /// "running" tone.
-    private static let annualGreyBright = Color(red: 0xcf / 255.0, green: 0xc8 / 255.0, blue: 0xba / 255.0)
-    /// The mid step of the warm grayscale secondary scale — completed, caution and
-    /// interrupted all share it (none of them are attention states).
-    private static let annualGreyMid = Color(red: 0x9c / 255.0, green: 0x96 / 255.0, blue: 0x8b / 255.0)
 }

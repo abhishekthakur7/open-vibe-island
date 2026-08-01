@@ -75,10 +75,10 @@ final class LanguageManager: @unchecked Sendable {
 
     /// Whether the active language renders in a CJK script.
     ///
-    /// The Instrument theme leans on uppercase, letterspaced micro-labels
+    /// Several themes lean on uppercase, letterspaced micro-labels
     /// ("SESSIONS", "CRIT"). That reads as precision on Latin text but shreds
     /// CJK — Han characters have no case, and `.tracking()` pries them apart
-    /// into illegibility. Instrument's labels consult this flag to drop the
+    /// into illegibility. Those labels consult this flag to drop the
     /// `.uppercased()` transform and neutralize tracking to `0` for 中文
     /// (AB-308). Resolved through `resolvedCode` so the `.system` case follows
     /// the OS preference.

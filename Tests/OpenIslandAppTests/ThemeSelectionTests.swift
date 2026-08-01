@@ -40,6 +40,34 @@ struct ThemeSelectionTests {
         #expect(ThemeRegistry.theme(id: "does-not-exist").id == ThemeRegistry.default.id)
     }
 
+    /// Retirement migration (owner ruling 2026-08-01, "yes delete annual and
+    /// instrument"): the two deleted ids are no longer registered, so a stored
+    /// selection of either takes the same unknown-id path a garbage value does
+    /// and resolves to the default. Pinned by id rather than by symbol, since
+    /// the theme types are gone.
+    @Test
+    func retiredAnnualAndInstrumentIdsResolveToTheDefault() {
+        let retired = ["annual", "instrument"]
+        let ids = ThemeRegistry.all.map(\.id)
+        for id in retired {
+            #expect(ids.contains(id) == false)
+            #expect(ThemeRegistry.theme(id: id).id == ThemeRegistry.default.id)
+        }
+    }
+
+    /// The same migration through persistence: an install that had Annual or
+    /// Instrument selected reloads on Poured Island, and the stale id is
+    /// normalized out of `UserDefaults` rather than lingering.
+    @Test
+    func persistedRetiredThemeSelectionMigratesToTheDefault() {
+        for id in ["annual", "instrument"] {
+            UserDefaults.standard.set(id, forKey: Self.themeKey)
+            let model = AppModel()
+            #expect(model.islandThemeID == ThemeRegistry.default.id)
+            #expect(model.islandTheme.id == "poured")
+        }
+    }
+
     // MARK: - Persistence (AC #4)
 
     @Test

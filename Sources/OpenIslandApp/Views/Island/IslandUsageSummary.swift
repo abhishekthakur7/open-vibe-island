@@ -112,7 +112,7 @@ enum UsageSummaryAccessibilityFormatter {
 
 /// The opened-header usage-lane split + notch-cutout geometry, shared by every
 /// themed opened-header controls view (`IslandHeaderControls`,
-/// `AnnualHeaderControls`, `InstrumentHeaderControls`, `PouredHeaderControls`,
+/// `PouredHeaderControls`,
 /// `FlightDeckHeaderControls`, `HaloHeaderControls`).
 ///
 /// **Before F7** this was six byte-identical private copies —
@@ -247,7 +247,7 @@ enum IslandHeaderLaneLayout {
     /// How the right lane's control buttons share their lane with the usage
     /// gauge(s) (Phase 5, "Flight Deck column-stack" correction).
     ///
-    /// Five themes (Classic, Annual, Instrument, Poured, Halo) pack the
+    /// Three themes (Classic, Poured, Halo) pack the
     /// buttons and the gauge **side by side** in one row — the buttons'
     /// fixed-width chrome must be subtracted from the lane's available width
     /// before any of it can go to the gauge, and the lane's total width is

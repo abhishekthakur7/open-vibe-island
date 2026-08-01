@@ -43,7 +43,7 @@ enum IslandRightSlotResolver {
     /// worst window in the right slot.
     ///
     /// **Reconciliation note.** The specs disagree on where "critical" starts:
-    /// Poured (§I) and Instrument put the critical dial/tag at `>= 90`, while
+    /// Poured (§I) puts the critical dial/tag at `>= 90`, while
     /// Flight Deck's usage tape (§Slot-2) draws a caution tick at `70` and a red
     /// tick at `90`. Rather than let the *content selection* differ per theme —
     /// which would make the pill say different things depending on skin — the

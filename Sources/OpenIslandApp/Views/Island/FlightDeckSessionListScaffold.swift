@@ -151,7 +151,7 @@ struct FlightDeckSessionListScaffold: View {
         }
     }
 
-    /// The four fixed annunciator tiles. Unlike the shared / Instrument summary,
+    /// The four fixed annunciator tiles. Unlike the shared summary,
     /// which filters out zero-count states, the Flight Deck panel always renders
     /// all four — an unlit annunciator is as much a readout as a lit one — so ATTN
     /// / RUN / DONE / IDLE stay in fixed positions and simply light or go dark

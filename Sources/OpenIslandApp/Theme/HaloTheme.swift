@@ -9,7 +9,7 @@ import OpenIslandCore
 /// layer deliberately carries no typography (themes swap whole slot views), so
 /// this enum is Halo's own scale, kept in one place so every Halo view draws
 /// from the same roles and the ≥10pt floor is enforceable in one spot
-/// (`HaloThemeTests`). It mirrors `FlightDeckTypography` / `AnnualTypography`.
+/// (`HaloThemeTests`). It mirrors `FlightDeckTypography`.
 ///
 /// **The mono/sans split (SPEC §2 numeral rule).** Halo is a *sans* face —
 /// `.system(design: .default)` — everywhere the reader *reads* prose. Mono
@@ -233,7 +233,7 @@ enum HaloTypography {
 /// living prismatic edge needs partner hues (violet, magenta) for its two
 /// gradient states, plus three usage thresholds, plus two faint washes — none of
 /// which are expressible as status tints. They live here, theme-local, mirroring
-/// how `FlightDeckSurfaces` / `AnnualHairline` keep their theme paint outside the
+/// how `FlightDeckSurfaces` keeps their theme paint outside the
 /// token struct. Every value is pinned to the SPEC hex by 8-bit component
 /// equality in `HaloThemeTests`.
 ///
@@ -378,7 +378,7 @@ enum HaloMotion {
 /// stays legible for color-blind users and (critically) under Reduce Motion,
 /// where the light freezes. This is the pure logic T23/T25 will consume when they
 /// draw the pill / rows; `HaloThemeTests` asserts a non-color channel exists per
-/// state. It mirrors `AnnualSessionRowFormat` — pure, testable, view-free.
+/// state. It is pure, testable, view-free.
 enum HaloSessionRowFormat {
     /// The seven edge states the light resolves to. Distinct from the raw
     /// `SessionPhase` because a completed session forks by outcome (success /
@@ -1063,7 +1063,7 @@ extension IslandMetricsTokens {
 extension IslandMotionTokens {
     /// Halo's motion: a fluid "light travels" morph — smooth, no bounce, the notch
     /// *growing*. The open spring settles without overshoot (between Poured's
-    /// .5/.84 and Annual's .44/.86); the close is a clean collapse back to the
+    /// .5/.84); the close is a clean collapse back to the
     /// notch; the pop is a soft "condense" (light gathering, not a mechanical
     /// snap). The ambient edge-light periods live in `HaloMotion`, not here.
     ///
@@ -1130,7 +1130,7 @@ extension IslandThemeTokens {
 /// Classic delegations, finished in Part 2.
 ///
 /// **Registered in `ThemeRegistry.all`** (T26, AB-345): appended **after**
-/// `AnnualTheme()`, **non-default** — Poured Island stays `all[0]` (the product's
+/// every other theme, **non-default** — Poured Island stays `all[0]` (the product's
 /// face). The registration is the one-line append the architecture doc describes;
 /// `HaloThemeTests` pins its registry position and that it never displaces the
 /// default. T21–T25 built Halo unregistered (tests instantiate `HaloTheme()`
@@ -1175,7 +1175,7 @@ struct HaloTheme: IslandTheme {
     // MARK: Geometry strategy
 
     /// Halo reuses Classic's balanced matrix (so the pill width math + morph frame
-    /// are unchanged — the same move Annual / Flight Deck made) but overrides
+    /// are unchanged — the same move Flight Deck made) but overrides
     /// `cellGeometry` to `(6, 3.5, 3)` so each cell renders as a **bloomed light
     /// circle** (radius = cell / 2). Pinned by `HaloThemeTests`; Classic's
     /// `AgentsGridLayoutTests` are untouched.
@@ -1522,7 +1522,7 @@ struct HaloTheme: IslandTheme {
     }
 
     // The notification card is the **shared** `IslandNotificationCard`: Halo
-    // delegates to it (exactly like Annual / Poured), and its one row routes
+    // delegates to it (exactly like Poured), and its one row routes
     // through `sessionRow` above, so once T24 restyles the row the card inherits
     // the void + edge-ring hero with no parallel card. The delegation itself is
     // permanent — only the row body it draws changes.

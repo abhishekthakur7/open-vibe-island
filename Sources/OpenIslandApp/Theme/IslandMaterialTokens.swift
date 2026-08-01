@@ -262,25 +262,6 @@ extension IslandMaterialTokens {
     )
 }
 
-// MARK: - Instrument
-
-extension IslandMaterialTokens {
-    /// Instrument is a flat panel, not glass: `InstrumentTheme.usesVibrancy` is
-    /// `false`, so `OpenedSurfaceBackground` takes the opaque `surfaceInk` path
-    /// and never instantiates a vibrancy view. These values are the fallback the
-    /// surface would use if vibrancy were ever forced on — a fully opaque ink
-    /// tint (`1.0`) and no specular edge, i.e. the same flat, unlit readout even
-    /// then. Reduce Transparency is therefore a no-op for this theme: the surface
-    /// is already flat.
-    static let instrument = IslandMaterialTokens(
-        material: .hudWindow,
-        blendingMode: .behindWindow,
-        appearanceName: .vibrantDark,
-        tintOpacity: 1.0,
-        specularTopEdge: nil
-    )
-}
-
 // MARK: - Flight Deck
 
 extension IslandMaterialTokens {
@@ -292,25 +273,6 @@ extension IslandMaterialTokens {
     /// even then. Reduce Transparency is therefore a no-op for this theme: the
     /// panel is already opaque.
     static let flightDeck = IslandMaterialTokens(
-        material: .hudWindow,
-        blendingMode: .behindWindow,
-        appearanceName: .vibrantDark,
-        tintOpacity: 1.0,
-        specularTopEdge: nil
-    )
-}
-
-// MARK: - Annual
-
-extension IslandMaterialTokens {
-    /// Annual is a printed editorial page, not glass: `AnnualTheme.usesVibrancy`
-    /// is `false`, so `OpenedSurfaceBackground` takes the opaque `surfaceInk` path
-    /// and never instantiates a vibrancy view. These values are the fallback the
-    /// surface would use if vibrancy were ever forced on — a fully opaque ink
-    /// tint (`1.0`) and no specular edge, i.e. the same flat warm ground even
-    /// then. Reduce Transparency is therefore a no-op for this theme: the page is
-    /// already opaque.
-    static let annual = IslandMaterialTokens(
         material: .hudWindow,
         blendingMode: .behindWindow,
         appearanceName: .vibrantDark,

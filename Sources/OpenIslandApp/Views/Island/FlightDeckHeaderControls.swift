@@ -6,7 +6,7 @@ import OpenIslandCore
 ///
 /// The single flush-left lane on the top-bar / external profile, and the
 /// underlying `IslandHeaderLaneLayout.metrics`/`laneGroups` machinery, are
-/// shared with `IslandHeaderControls` (and mirror `InstrumentHeaderControls`).
+/// shared with `IslandHeaderControls`.
 /// The **notch-split lane geometry is no longer byte-identical** to the other
 /// five themes as of overlay remediation Phase 5: FD's board
 /// (`02-flight-deck.html:282`) stacks the right lane's control row above its

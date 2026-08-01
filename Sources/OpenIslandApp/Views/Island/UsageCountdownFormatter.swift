@@ -3,7 +3,7 @@ import Foundation
 /// Shared "resets in …" countdown formatter (AB-324).
 ///
 /// Consolidates the five near-identical `remainingDurationString(until:)` copies
-/// that lived on Classic / Flight Deck / Instrument / Poured / Annual into one
+/// that lived on Classic / Flight Deck / Poured into one
 /// tested implementation, exposed for both the header usage `.help()` tooltips
 /// and the upcoming inline reset readouts every 2.0 theme renders
 /// (`resets 2h 10m` / `RESET 2H 10M` / `Claude 5h · 34% · 2h 10m`).

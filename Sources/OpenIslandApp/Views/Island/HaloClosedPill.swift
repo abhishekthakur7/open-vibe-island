@@ -25,7 +25,7 @@ import OpenIslandCore
 ///
 /// Layout (glyph, centre label, notch-lane label, right slot) and the fluid-width
 /// math are shared **verbatim** with `V6ClosedPill.*OuterWidth` — the same statics
-/// `PouredClosedPill` / `AnnualClosedPill` reuse — so the pill's outer dimensions,
+/// `PouredClosedPill` reuses — so the pill's outer dimensions,
 /// and therefore the closed↔opened morph frame in `IslandPanelView`, stay
 /// identical across themes (`HaloClosedPillWidthRegressionTests` pins it). The
 /// spotlight's phase/outcome — which `UnifiedBars.Mode` alone can't carry —

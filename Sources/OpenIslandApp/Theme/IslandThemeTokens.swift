@@ -49,20 +49,6 @@ extension IslandThemeTokens {
     )
 }
 
-// MARK: - Instrument
-
-extension IslandThemeTokens {
-    /// Instrument (precision monospace console): a near-monochrome palette that
-    /// spends colour only on status, a squared-off flat panel with no vibrancy or
-    /// fillet, and a crisp mechanical open/close spring.
-    static let instrument = IslandThemeTokens(
-        colors: .instrument,
-        metrics: .instrument,
-        motion: .instrument,
-        material: .instrument
-    )
-}
-
 // MARK: - Flight Deck
 
 extension IslandThemeTokens {
@@ -74,20 +60,5 @@ extension IslandThemeTokens {
         metrics: .flightDeck,
         motion: .flightDeck,
         material: .flightDeck
-    )
-}
-
-// MARK: - Annual
-
-extension IslandThemeTokens {
-    /// Annual (editorial Swiss typographic calm): a warm near-black ground and
-    /// warm off-white ink spending one orange-red accent only on attention and
-    /// critical states, a quiet flat page with no vibrancy or fillet and modestly
-    /// rounded corners, and a calm, bounce-free settle.
-    static let annual = IslandThemeTokens(
-        colors: .annual,
-        metrics: .annual,
-        motion: .annual,
-        material: .annual
     )
 }

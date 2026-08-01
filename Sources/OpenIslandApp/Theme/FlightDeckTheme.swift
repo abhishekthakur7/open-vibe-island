@@ -355,7 +355,7 @@ enum FlightDeckSurfaces {
 /// noise on CJK (Han has no case, and letterspacing pries the glyphs apart).
 /// Every Flight Deck micro-label routes its casing and tracking through these
 /// two helpers so the neutralization lives in one place and is pinned by
-/// `FlightDeckThemeTests`. Mirrors Instrument's `InstrumentText`; kept per-theme
+/// `FlightDeckThemeTests`. Kept per-theme
 /// so a later slice can diverge one theme's rule without touching the other's.
 enum FlightDeckText {
     /// Uppercases Latin strings; passes CJK through unchanged.

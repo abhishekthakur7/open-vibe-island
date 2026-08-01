@@ -7,7 +7,7 @@ import OpenIslandCore
 /// implementation the opened header's notch-lane split now routes through —
 /// previously six byte-identical private copies (`splitUsageProviders` /
 /// `openedHeaderMetrics` / `minimumRightUsageLaneWidth`) duplicated across
-/// `IslandHeaderControls`, `AnnualHeaderControls`, `InstrumentHeaderControls`,
+/// `IslandHeaderControls`,
 /// `PouredHeaderControls`, `FlightDeckHeaderControls`, `HaloHeaderControls`.
 ///
 /// The bug: splitting at whole-**provider** granularity meant a width-starved
