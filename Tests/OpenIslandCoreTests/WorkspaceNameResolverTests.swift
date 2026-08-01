@@ -79,6 +79,38 @@ struct WorkspaceNameResolverTests {
         #expect(WorkspaceNameResolver.gitBranch(for: repo.path) == "changed-branch")
     }
 
+    // MARK: - PI-C-003: workspace identity never leaks a raw path
+
+    @Test
+    func workspaceNameKeepsTheFolderNameForNormalPaths() {
+        #expect(WorkspaceNameResolver.workspaceName(for: "/Users/x/dev/proj") == "proj")
+        #expect(WorkspaceNameResolver.workspaceName(for: "/Users/x/dev/proj/") == "proj")
+        #expect(WorkspaceNameResolver.workspaceName(for: "/Users/x/dev/my.project") == "my.project")
+    }
+
+    @Test
+    func workspaceNameSubstitutesFallbackForRootAndMissingPaths() {
+        // Poured design law 6: the label is always a bare human folder name, so
+        // a root cwd (whose `lastPathComponent` is literally "/") and a missing
+        // cwd both resolve to the "Workspace" substitute instead of leaking.
+        #expect(WorkspaceNameResolver.workspaceName(for: "/") == "Workspace")
+        #expect(WorkspaceNameResolver.workspaceName(for: "") == "Workspace")
+        #expect(WorkspaceNameResolver.workspaceName(for: "   ") == "Workspace")
+    }
+
+    @Test
+    func resolvableNamePredicateRejectsPathPunctuationOnly() {
+        // `URL(fileURLWithPath:)` normalises a bare "~" against the process cwd,
+        // so the "~" rule is pinned on the predicate rather than through a
+        // directory-dependent `workspaceName(for:)` call.
+        #expect(WorkspaceNameResolver.isResolvableWorkspaceName("~") == false)
+        #expect(WorkspaceNameResolver.isResolvableWorkspaceName("/") == false)
+        #expect(WorkspaceNameResolver.isResolvableWorkspaceName("//") == false)
+        #expect(WorkspaceNameResolver.isResolvableWorkspaceName("") == false)
+        #expect(WorkspaceNameResolver.isResolvableWorkspaceName("proj") == true)
+        #expect(WorkspaceNameResolver.isResolvableWorkspaceName("my.project") == true)
+    }
+
     private func makeTemporaryDirectory() throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("WorkspaceNameResolverTests-\(UUID().uuidString)")

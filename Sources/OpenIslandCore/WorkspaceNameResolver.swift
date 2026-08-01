@@ -3,7 +3,28 @@ import Foundation
 public enum WorkspaceNameResolver {
     private static let worktreeMarkers = ["/.claude/worktrees/", "/.git/worktrees/"]
 
+    /// PI-C-003: the substitute identity for a cwd that yields no human folder
+    /// name. Poured design law 6 — the workspace label is always a bare folder
+    /// name, so a raw path fragment must never reach a surface.
+    public static let fallbackWorkspaceName = "Workspace"
+
+    /// A last path component only reads as a workspace identity when it carries
+    /// something other than path punctuation. `/` (root cwd), `~`, and the empty
+    /// string are paths, not names.
+    static func isResolvableWorkspaceName(_ name: String) -> Bool {
+        !name
+            .trimmingCharacters(in: pathPunctuation)
+            .isEmpty
+    }
+
+    private static let pathPunctuation = CharacterSet(charactersIn: "/~")
+        .union(.whitespacesAndNewlines)
+
     public static func workspaceName(for cwd: String) -> String {
+        guard !cwd.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return fallbackWorkspaceName
+        }
+
         let url = URL(fileURLWithPath: cwd)
         let path = url.standardizedFileURL.path
 
@@ -11,14 +32,14 @@ public enum WorkspaceNameResolver {
             if let range = path.range(of: marker) {
                 let projectPath = String(path[path.startIndex..<range.lowerBound])
                 let projectName = URL(fileURLWithPath: projectPath).lastPathComponent
-                if !projectName.isEmpty {
+                if isResolvableWorkspaceName(projectName) {
                     return projectName
                 }
             }
         }
 
         let name = url.lastPathComponent
-        return name.isEmpty ? "Workspace" : name
+        return isResolvableWorkspaceName(name) ? name : fallbackWorkspaceName
     }
 
     public static func worktreeBranch(for cwd: String) -> String? {

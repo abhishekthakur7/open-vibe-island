@@ -111,8 +111,11 @@ extension AgentSession {
     }
 
     var spotlightWorkspaceName: String {
+        // PI-C-003 defence in depth: a candidate made only of path punctuation
+        // ("/", "//", "~") is a path, not a workspace identity — Poured design
+        // law 6 forbids it as the primary label — so the chain falls through.
         if let workspaceName = jumpTarget?.workspaceName.trimmedForSurface,
-           !workspaceName.isEmpty {
+           workspaceName.isSurfaceableIdentity {
             return workspaceName
         }
 
@@ -120,11 +123,11 @@ extension AgentSession {
         let pieces = trimmedTitle.split(separator: "·", maxSplits: 1).map {
             String($0).trimmedForSurface
         }
-        if pieces.count == 2, !pieces[1].isEmpty {
+        if pieces.count == 2, pieces[1].isSurfaceableIdentity {
             return pieces[1]
         }
 
-        return trimmedTitle
+        return trimmedTitle.isSurfaceableIdentity ? trimmedTitle : ""
     }
 
     /// The name a row headline leads with: workspace name → the segment after
@@ -591,6 +594,17 @@ private extension String {
     var trimmedForSurface: String {
         trimmingCharacters(in: .whitespacesAndNewlines)
     }
+
+    /// PI-C-003: does this string read as a human workspace identity? Anything
+    /// left only with path punctuation once trimmed ("", "/", "//", "~", "~/")
+    /// is a raw path and must never become a row's primary label. Names with
+    /// dots, spaces, or unicode pass unchanged.
+    var isSurfaceableIdentity: Bool {
+        !trimmingCharacters(in: Self.surfaceIdentityRejects).isEmpty
+    }
+
+    private static let surfaceIdentityRejects = CharacterSet(charactersIn: "/~")
+        .union(.whitespacesAndNewlines)
 }
 
 // MARK: - Narrated activity (AB-321)

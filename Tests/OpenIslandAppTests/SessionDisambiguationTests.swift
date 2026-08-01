@@ -366,6 +366,91 @@ struct SessionDisambiguationTests {
         #expect(result["b"] == "1h ago")
     }
 
+    // MARK: - PI-C-003: a bare "/" is never a workspace identity
+
+    @Test
+    func rootPathWorkspaceNameNeverBecomesTheDisplayName() {
+        // A jump target built from a root cwd used to hand the row a literal
+        // "/" as its primary label. The guard rejects path-only candidates and
+        // the chain falls through to the title segment / agent display name.
+        let withTitleSegment = AgentSession(
+            id: "a",
+            title: "Claude Code · niche-radar",
+            tool: .claudeCode,
+            origin: .live,
+            phase: .running,
+            summary: "Working",
+            updatedAt: Self.now,
+            jumpTarget: JumpTarget(terminalApp: "Ghostty", workspaceName: "/", paneTitle: "pane")
+        )
+        let withoutTitle = AgentSession(
+            id: "b",
+            title: "/",
+            tool: .codex,
+            origin: .live,
+            phase: .running,
+            summary: "Working",
+            updatedAt: Self.now,
+            jumpTarget: JumpTarget(terminalApp: "Ghostty", workspaceName: "//", paneTitle: "pane")
+        )
+
+        #expect(withTitleSegment.spotlightDisplayName == "niche-radar")
+        #expect(withoutTitle.spotlightDisplayName == AgentTool.codex.displayName)
+        #expect(withoutTitle.spotlightDisplayName != "/")
+    }
+
+    @Test
+    func normalWorkspaceNamesSurviveTheRootPathGuard() {
+        // The guard must be tight: dots, spaces, unicode, and names that merely
+        // contain a separator are all legitimate identities.
+        for name in ["the-automator", "my.project", "Ø-radar", "two words", "a/b"] {
+            let session = AgentSession(
+                id: name,
+                title: "Claude Code · fallback",
+                tool: .claudeCode,
+                origin: .live,
+                phase: .running,
+                summary: "Working",
+                updatedAt: Self.now,
+                jumpTarget: JumpTarget(terminalApp: "Ghostty", workspaceName: name, paneTitle: "pane")
+            )
+            #expect(session.spotlightDisplayName == name)
+        }
+    }
+
+    @Test
+    func twoFallbackWorkspacesStayDistinguishable() {
+        // Both sessions resolve to the shared "Workspace" substitute, so the
+        // list-level disambiguator is what keeps them apart.
+        let sessions = [
+            Self.session(
+                id: "a",
+                tool: .claudeCode,
+                workspace: WorkspaceNameResolver.fallbackWorkspaceName,
+                branch: "feat/bridge-auth",
+                ageSeconds: 60
+            ),
+            Self.session(
+                id: "b",
+                tool: .codex,
+                workspace: WorkspaceNameResolver.fallbackWorkspaceName,
+                ageSeconds: 3_600
+            ),
+        ]
+
+        #expect(sessions[0].spotlightDisplayName == "Workspace")
+        #expect(sessions[1].spotlightDisplayName == "Workspace")
+
+        let result = SessionDisambiguation.disambiguators(for: sessions, now: Self.now)
+        #expect(result["a"] != nil)
+        #expect(result["b"] != nil)
+        #expect(result["a"] != result["b"])
+
+        let headlineA = sessions[0].spotlightHeadlineText(disambiguator: result["a"])
+        let headlineB = sessions[1].spotlightHeadlineText(disambiguator: result["b"])
+        #expect(headlineA != headlineB)
+    }
+
     // MARK: - BRIEF §4C / §5 realistic session set
 
     /// The list BRIEF §4C asks every mockup to render, using §5's mandated

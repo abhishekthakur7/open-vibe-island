@@ -519,7 +519,9 @@ final class SessionDiscoveryCoordinator {
             if session.jumpTarget == nil {
                 session.jumpTarget = JumpTarget(
                     terminalApp: "Codex.app",
-                    workspaceName: URL(fileURLWithPath: cwd).lastPathComponent,
+                    // PI-C-003: route through the resolver so a missing or root
+                    // cwd falls back to "Workspace" instead of leaking "" / "/".
+                    workspaceName: WorkspaceNameResolver.workspaceName(for: cwd),
                     paneTitle: session.title,
                     workingDirectory: cwd.isEmpty ? nil : cwd,
                     codexThreadID: session.id
