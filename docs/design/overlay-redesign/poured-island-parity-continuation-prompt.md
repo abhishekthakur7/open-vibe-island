@@ -56,7 +56,7 @@ For every bounded researcher, executor, or visual reviewer, spawn an isolated su
 
 ```json
 {
-  "model": "gpt-5.6-sol",
+  "model": "opus5",
   "reasoning_effort": "medium",
   "fork_turns": "none"
 }
