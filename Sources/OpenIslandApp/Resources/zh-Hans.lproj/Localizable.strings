@@ -328,6 +328,11 @@
 "island.poured.usage.resets" = "%@ 后重置";
 "island.poured.usage.resetsIn" = "%@ 后重置";
 
+/* Island Panel - Poured Island 2.0 section taxonomy (PI-C-001) */
+"island.poured.section.needsYou" = "需要你";
+"island.poured.section.working" = "运行中";
+"island.poured.section.done" = "已完成";
+
 /* Island Panel - Poured Island 2.0 list footer + empty state (AB-331) */
 "island.poured.footer.groupedByState" = "按状态分组";
 "island.poured.footer.groupedByAgent" = "按代理分组";
@@ -566,6 +571,10 @@
 "window.settings" = "Open Island 设置";
 
 /* Accessibility (AB-244) */
+/* Poured idle roll-up disclosure (PI-C-002) */
+"a11y.poured.footer.showIdle" = "显示 %lld 个空闲会话";
+"a11y.poured.footer.hideIdle" = "隐藏 %lld 个空闲会话";
+
 "a11y.header.muteSound" = "静音";
 "a11y.header.unmuteSound" = "取消静音";
 "a11y.session.expandDetail" = "展开会话详情";

@@ -24,6 +24,14 @@ struct IslandDebugSnapshot {
     /// `subagentsCard`, which deliberately keeps documenting the collapsed
     /// row — rendering exactly as before.
     var forcesRowExpansion: Bool = false
+    /// PI-C-001: a scenario-scoped completed-stale window. `nil` (the default)
+    /// leaves the active profile's preference in force, so every pre-existing
+    /// scenario is unaffected. Only `pouredGroupedSix` sets it — the board's own
+    /// `Done` rows are 12 and 22 minutes old while its footer reads `0 idle` in
+    /// the same frame, which under the shipping 5-minute default would file both
+    /// rows as idle and make the mapped scenario render something the reference
+    /// never shows.
+    var completedStaleThreshold: IslandCompletedStaleThreshold? = nil
 }
 
 enum IslandDebugScenario: String, CaseIterable, Identifiable {
@@ -58,6 +66,11 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
     case completedInterrupted
     case completedFailed
     case usageMeters
+    // Poured parity PI-V-001: the §C board's exact six sessions, so
+    // `C1-grouped-six` has a deterministic native fixture. `sessionList` is the
+    // generic opened list (nine rows, one runner, seven idle) and can't stand in
+    // for a six-row two-per-group board.
+    case pouredGroupedSix
     case emptyState
 
     var id: String { rawValue }
@@ -100,6 +113,8 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
             "Completed — Failed"
         case .usageMeters:
             "Usage Meters"
+        case .pouredGroupedSix:
+            "Poured §C — Grouped Six"
         case .emptyState:
             "Empty State"
         }
@@ -143,6 +158,8 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
             "Finished-task reminder for a turn that ended in failure."
         case .usageMeters:
             "Expanded list with the header usage meters populated from fixture providers."
+        case .pouredGroupedSix:
+            "The Poured board's §C six: two waiting, two running, two done — the exact deterministic fixture behind the C1-grouped-six parity scenario."
         case .emptyState:
             "Expanded surface with zero sessions — the empty scaffold."
         }
@@ -417,6 +434,31 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
                 sessions: sessions,
                 selectedSessionID: sessions.first?.id,
                 usageProviders: AppearancePreviewFixtures.usageProviders(now: now)
+            )
+
+        case .pouredGroupedSix:
+            // Poured parity PI-V-001 (C1-grouped-six). Opened, click-opened (the
+            // board draws the *user-opened* list, not a notification surface),
+            // no actionable session id — §C shows the row-level Approve/Deny
+            // affordances inside the list, not an expanded permission hero.
+            // Session order is the board's own top-to-bottom order; the list's
+            // own sectioning re-derives the three groups from it.
+            let sessions = AppearancePreviewFixtures.pouredGroupedSix(now: now)
+            return IslandDebugSnapshot(
+                title: title,
+                summary: summary,
+                previewHeight: 430,
+                notchStatus: .opened,
+                notchOpenReason: .click,
+                islandSurface: .sessionList(),
+                sessions: sessions,
+                selectedSessionID: sessions.first?.id,
+                // PI-C-001: the board's `Done` rows are 12m / 22m old and its
+                // footer reads `0 idle` in the same frame — self-consistent only
+                // above a 22-minute window. Scoped to this scenario so the
+                // mapped C1 capture reproduces §C instead of a two-group list
+                // with a `2 idle` roll-up.
+                completedStaleThreshold: .never
             )
 
         case .emptyState:

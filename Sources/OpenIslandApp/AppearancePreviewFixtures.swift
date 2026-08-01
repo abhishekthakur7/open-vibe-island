@@ -760,6 +760,226 @@ enum AppearancePreviewFixtures {
         )
     }
 
+    // MARK: - Poured §C grouped-six (PI-V-001)
+
+    /// The exact six sessions the Poured board draws in §C
+    /// (`01-poured-island.html:809-918`), in the board's own top-to-bottom
+    /// order, so `C1-grouped-six` finally has a deterministic native fixture
+    /// instead of "exact deterministic fixture missing".
+    ///
+    /// The board's six, and where each one comes from:
+    ///
+    /// | # | group     | workspace         | disambiguator          | agent  | age |
+    /// |---|-----------|-------------------|------------------------|--------|-----|
+    /// | 1 | Needs you | `the-automator`   | `feat/bridge-auth`     | claude | 1m  |
+    /// | 2 | Needs you | `niche-radar`     | —                      | codex  | 3m  |
+    /// | 3 | Working   | `open-vibe-island`| `feat/theme-poured`    | claude | now |
+    /// | 4 | Working   | `the-automator`   | `main · 3 subagents`   | claude | 8m  |
+    /// | 5 | Done      | `the-automator`   | `docs/agents-md`       | claude | 12m |
+    /// | 6 | Done      | `open-vibe-island`| `fix/socket-leak`      | cursor | 22m |
+    ///
+    /// Rows 4 and 5 are **reused** from the fixtures that already depict them —
+    /// `duplicateWorkspaceTrio(now:)[1]` is the board's `the-automator` / `main`
+    /// / three-subagents runner, and `completedSuccess(now:)` is its
+    /// `docs/agents-md` / `Success` / `43m` completion. The *identity* matches;
+    /// the copy does not (see the divergence table below). They are rebuilt
+    /// against a **shifted `now`** rather than copied: passing
+    /// `now - 428s` to the trio lands its `-52s` row on the board's `8m`, and
+    /// `now - 570s` lands `completedSuccess`'s `-150s` row on the board's `12m`.
+    /// Every nested offset (subagent `startedAt`, the 43-minute `firstSeenAt`)
+    /// shifts with it, so the reused payloads stay internally consistent and no
+    /// second copy of them can drift.
+    ///
+    /// Rows 1, 2, 3 and 6 have no existing equivalent (the board's permission is
+    /// on `the-automator`/`feat/bridge-auth`, not `permissionCommand`'s
+    /// `open-vibe-island`/`feat/auth-bridge`; its question is a bare Codex row,
+    /// not `questionMulti`'s two-question Claude card; its interrupt is a Cursor
+    /// row on `open-vibe-island`, not `completedInterrupted`'s Claude row on
+    /// `niche-radar`) and are built here.
+    ///
+    /// ### C1 native/reference divergences (all of them, in one place)
+    ///
+    /// | # | divergence | why |
+    /// |---|------------|-----|
+    /// | 4 | activity string is the trio's own copy, not the board's row-4 text | reused payload kept internally consistent rather than re-worded |
+    /// | 4 | the board's `2/5 tasks` progress chip is **absent** | no native session field carries a task ratio; fabricating one would invent data |
+    /// | 5 | activity string is `completedSuccess`'s own copy, not the board's row-5 text | same reuse rule as row 4 |
+    /// | 6 | the board's `fix/socket-leak` branch tag is **not carried** | branch is Claude-only ground truth (AB-323); see `pouredGroupedSixInterrupted` |
+    /// | 5, 6 | ages 12m / 22m vs the board's `0 idle` footer | see the threshold note below |
+    ///
+    /// Rows 5 and 6 finished 12 and 22 minutes ago, so under the default
+    /// 5-minute `staleCompletedDisplayThreshold` the shared state sectioning
+    /// files them under `state-idle`, not `state-done`. The board draws them as
+    /// `Done` **and** reads `0 idle` in the same footer, which is only
+    /// self-consistent at a ≥22-minute (or `never`) threshold. The fixture
+    /// reproduces the board's recency; the threshold is the caller's choice —
+    /// and `IslandDebugScenario.pouredGroupedSix` scopes it to `.never` so the
+    /// mapped C1 scenario renders §C's three groups (PI-C-001).
+    static func pouredGroupedSix(now: Date) -> [AgentSession] {
+        [
+            pouredGroupedSixPermission(now: now),
+            pouredGroupedSixQuestion(now: now),
+            pouredGroupedSixRunning(now: now),
+            duplicateWorkspaceTrio(now: now.addingTimeInterval(-8 * 60 + 52))[1],
+            completedSuccess(now: now.addingTimeInterval(-12 * 60 + 150)),
+            pouredGroupedSixInterrupted(now: now),
+        ]
+    }
+
+    /// Board row 1 (`:812-826`): Claude on `the-automator` / `feat/bridge-auth`
+    /// asking to run `swift build`, 1 minute old. The command text rides in
+    /// `currentToolInputPreview`, exactly like `permissionCommand`.
+    private static func pouredGroupedSixPermission(now: Date) -> AgentSession {
+        AgentSession(
+            id: "fixture-poured-c1-permission",
+            title: "Claude · the-automator",
+            tool: .claudeCode,
+            origin: .demo,
+            attachmentState: .attached,
+            phase: .waitingForApproval,
+            summary: "Claude wants to run swift build.",
+            updatedAt: now.addingTimeInterval(-60),
+            permissionRequest: PermissionRequest(
+                id: stableID("fixture-poured-c1-permission"),
+                title: "Run shell command",
+                summary: "Claude wants to run swift build.",
+                affectedPath: "~/Developer/the-automator",
+                primaryActionTitle: "Approve",
+                secondaryActionTitle: "Deny",
+                toolName: "Bash",
+                suggestedUpdates: [
+                    .addRules(
+                        destination: .projectSettings,
+                        rules: [ClaudePermissionRuleValue(toolName: "Bash", ruleContent: "swift build")],
+                        behavior: .allow
+                    ),
+                ]
+            ),
+            jumpTarget: JumpTarget(
+                terminalApp: "Ghostty",
+                workspaceName: "the-automator",
+                paneTitle: "claude ~/the-automator",
+                terminalSessionID: "fixture-poured-c1-permission"
+            ),
+            claudeMetadata: ClaudeSessionMetadata(
+                lastUserPrompt: "Build the bridge auth changes.",
+                currentTool: "Bash",
+                currentToolInputPreview: "swift build",
+                model: "claude-opus-4-8-20260101",
+                worktreeBranch: "feat/bridge-auth"
+            )
+        )
+    }
+
+    /// Board row 2 (`:828-841`): Codex on `niche-radar` asking the auth
+    /// question, 3 minutes old, with **no** disambiguator — the workspace is
+    /// unique in the six, so `SessionDisambiguation` must leave it bare. The
+    /// question text is the board's verbatim, which is also the first
+    /// `conformanceQuestions()` prompt; the three options are that prompt's.
+    private static func pouredGroupedSixQuestion(now: Date) -> AgentSession {
+        AgentSession(
+            id: "fixture-poured-c1-question",
+            title: "Codex · niche-radar",
+            tool: .codex,
+            origin: .demo,
+            attachmentState: .attached,
+            phase: .waitingForAnswer,
+            summary: "Which auth method should the bridge use?",
+            updatedAt: now.addingTimeInterval(-3 * 60),
+            questionPrompt: QuestionPrompt(
+                id: stableID("fixture-poured-c1-question"),
+                title: "Bridge auth",
+                questions: [
+                    QuestionPromptItem(
+                        question: "Which auth method should the bridge use?",
+                        header: "Auth",
+                        options: [
+                            QuestionOption(id: stableID("poured-c1-auth-oauth"), label: "OAuth 2.0"),
+                            QuestionOption(id: stableID("poured-c1-auth-apikey"), label: "API key"),
+                            QuestionOption(id: stableID("poured-c1-auth-mtls"), label: "mTLS"),
+                        ],
+                        multiSelect: false
+                    ),
+                ]
+            ),
+            jumpTarget: JumpTarget(
+                terminalApp: "Ghostty",
+                workspaceName: "niche-radar",
+                paneTitle: "codex ~/niche-radar",
+                terminalSessionID: "fixture-poured-c1-question"
+            ),
+            codexMetadata: CodexSessionMetadata(
+                initialUserPrompt: "Wire the ranking bridge.",
+                lastUserPrompt: "Wire the ranking bridge.",
+                lastAssistantMessage: "Which auth method should the bridge use?",
+                currentTool: "ask_user"
+            )
+        )
+    }
+
+    /// Board row 3 (`:846-861`): Claude editing `AppModel.swift` on
+    /// `open-vibe-island` / `feat/theme-poured`, `now` (age reads `now`, so the
+    /// offset must stay under one minute — `-2s`, off any 60s badge boundary).
+    private static func pouredGroupedSixRunning(now: Date) -> AgentSession {
+        AgentSession(
+            id: "fixture-poured-c1-running",
+            title: "Claude · open-vibe-island",
+            tool: .claudeCode,
+            origin: .demo,
+            attachmentState: .attached,
+            phase: .running,
+            summary: "Editing AppModel.swift.",
+            updatedAt: now.addingTimeInterval(-2),
+            jumpTarget: JumpTarget(
+                terminalApp: "Ghostty",
+                workspaceName: "open-vibe-island",
+                paneTitle: "claude ~/open-vibe-island",
+                terminalSessionID: "fixture-poured-c1-running"
+            ),
+            claudeMetadata: ClaudeSessionMetadata(
+                lastUserPrompt: "Bring the opened list to Poured parity.",
+                currentTool: "Edit",
+                currentToolInputPreview: "Sources/OpenIslandApp/AppModel.swift",
+                model: "claude-opus-4-8-20260101",
+                worktreeBranch: "feat/theme-poured"
+            )
+        )
+    }
+
+    /// Board row 6 (`:900-913`): a **Cursor** turn on `open-vibe-island` /
+    /// `fix/socket-leak` stopped mid-edit, 22 minutes old with an 18-minute run
+    /// length (`firstSeenAt` sits 18 minutes before `updatedAt`). The only
+    /// non-Claude, non-Codex row in the set, and the only `.interrupted` one.
+    ///
+    /// The board's `fix/socket-leak` tag is **deliberately not carried**: branch
+    /// is Claude-only ground truth (AB-323 — `SessionDisambiguation.branch(for:)`
+    /// reads `claudeMetadata.worktreeBranch` and nothing else), so a Cursor row
+    /// fabricating one would be inventing data the session never has. This row
+    /// does collide on `open-vibe-island` with row 3, so it still disambiguates
+    /// — via the recency fallback, not a branch. A reference/native divergence
+    /// recorded here, not papered over.
+    private static func pouredGroupedSixInterrupted(now: Date) -> AgentSession {
+        let finishedAt = now.addingTimeInterval(-22 * 60)
+        return AgentSession(
+            id: "fixture-poured-c1-interrupted",
+            title: "Cursor · open-vibe-island",
+            tool: .cursor,
+            origin: .demo,
+            attachmentState: .attached,
+            phase: .completed,
+            outcome: .interrupted,
+            summary: "Stopped while editing BridgeServer.swift",
+            updatedAt: finishedAt,
+            firstSeenAt: finishedAt.addingTimeInterval(-18 * 60),
+            jumpTarget: JumpTarget(
+                terminalApp: "Cursor",
+                workspaceName: "open-vibe-island",
+                paneTitle: "cursor ~/open-vibe-island",
+                terminalSessionID: "fixture-poured-c1-interrupted"
+            )
+        )
+    }
+
     // MARK: - Usage meters (AB-326 item 9)
 
     /// Fixture usage providers exposed for the header meter path. Claude carries

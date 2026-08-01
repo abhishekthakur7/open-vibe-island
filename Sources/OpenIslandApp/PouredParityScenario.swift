@@ -7,6 +7,9 @@ enum PouredParityScenario: String, CaseIterable, Codable, Sendable {
     case a3Permission = "A3-permission"
     case e1CommandPermission = "E1-command-permission"
     case h1Completed = "H1-completed"
+    // PI-V-001: the §C grouped list. `diagnostic-partial` like every other case
+    // — a deterministic fixture is not capture authority.
+    case c1GroupedSix = "C1-grouped-six"
 }
 
 enum PouredParityProfile: String, CaseIterable, Codable, Sendable { case notch = "notch-v1"; case topBar = "top-bar-v1" }

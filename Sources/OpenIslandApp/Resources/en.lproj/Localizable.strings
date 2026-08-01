@@ -327,6 +327,11 @@
 "island.poured.usage.resets" = "resets %@";
 "island.poured.usage.resetsIn" = "resets in %@";
 
+/* Island Panel - Poured Island 2.0 section taxonomy (PI-C-001) */
+"island.poured.section.needsYou" = "Needs you";
+"island.poured.section.working" = "Working";
+"island.poured.section.done" = "Done";
+
 /* Island Panel - Poured Island 2.0 list footer + empty state (AB-331) */
 "island.poured.footer.groupedByState" = "Grouped by state";
 "island.poured.footer.groupedByAgent" = "Grouped by agent";
@@ -565,6 +570,10 @@
 "window.settings" = "Open Island Settings";
 
 /* Accessibility (AB-244) */
+/* Poured idle roll-up disclosure (PI-C-002) */
+"a11y.poured.footer.showIdle" = "Show %lld idle sessions";
+"a11y.poured.footer.hideIdle" = "Hide %lld idle sessions";
+
 "a11y.header.muteSound" = "Mute sound";
 "a11y.header.unmuteSound" = "Unmute sound";
 "a11y.session.expandDetail" = "Expand session detail";

@@ -52,6 +52,95 @@ import Testing
         #expect(throws:PouredParityError.partialFixture(.a2WorkingOne)){try driver.captureManifest(model:model,executablePath:"/tmp/app",executableSHA256:"abc",gitRevision:"deadbeef",sourceTreeDirty:false,bundleIdentifier:"app",signingIdentity:nil,windowServerPlacement:"window-1")}
     }
 
+    /// PI-V-001: `C1-grouped-six` now has a native driver. The seam must load it
+    /// end to end (six demo sessions, in the board's own order), and the fixture
+    /// must stay `diagnostic-partial` — a deterministic fixture is evidence, not
+    /// capture authority, so promoting the disposition would be a false claim.
+    @Test @MainActor func driver_loads_the_c1_grouped_six_fixture_in_board_order_without_claiming_authority() throws {
+        let model = AppModel()
+        model.pouredParityBootstrapIsolation = .init(runtimeStateLoadingDisabled:true, bridgeStartupDisabled:true)
+        let configuration = PouredParityConfiguration(
+            scenario:.c1GroupedSix, profile:.notch, accessibility:.standard, event:nil,
+            seed:42, epochMilliseconds:1_700_000_000_000, manualTimeMilliseconds:nil
+        )
+        let driver = PouredParityDriver(configuration:configuration)
+        try driver.apply(to:model, presentOverlay:false)
+
+        #expect(driver.fixture.record.canonicalDisposition == "diagnostic-partial")
+        #expect(driver.fixture.record.sessionCount == 6)
+        #expect(driver.fixture.record.sourceScenario == "pouredGroupedSix")
+        #expect(model.sessions.allSatisfy { $0.origin == .demo })
+
+        // The fixture is authored in the board's own top-to-bottom order
+        // (`01-poured-island.html:809-918`): permission → question → running →
+        // running → done → interrupted.
+        #expect(driver.fixture.snapshot.sessions.map(\.id) == [
+            "fixture-poured-c1-permission",
+            "fixture-poured-c1-question",
+            "fixture-poured-c1-running",
+            "fixture-trio-claude-main",
+            "fixture-completed-success",
+            "fixture-poured-c1-interrupted",
+        ])
+
+        let dump = try #require(model.pouredParityStateDump)
+        #expect(dump.resolvedThemeID == "poured")
+        // `AppModel` re-orders on load — it promotes the running spotlight to
+        // the head of `sessions` — so the dump is not the authored order. It is
+        // still deterministic, and it still carries exactly the six, which is
+        // what the seam has to guarantee; the *rendered* grouping is
+        // `PouredSectionTaxonomy`'s job and is pinned in
+        // `PouredProjectionStressTests`.
+        #expect(dump.sessionIDs == [
+            "fixture-poured-c1-running",
+            "fixture-poured-c1-permission",
+            "fixture-poured-c1-question",
+            "fixture-trio-claude-main",
+            "fixture-completed-success",
+            "fixture-poured-c1-interrupted",
+        ])
+        #expect(Set(dump.sessionIDs) == Set(driver.fixture.snapshot.sessions.map(\.id)))
+    }
+
+    /// PI-C-001: the mapped C1 scenario must actually reproduce §C. Its `Done`
+    /// rows are 12m / 22m old, so under the shipping 5-minute default they would
+    /// fall to the idle roll-up and the scenario would render a two-group list
+    /// the board never shows. `IslandDebugScenario.pouredGroupedSix` therefore
+    /// carries a scenario-scoped `completedStaleThreshold` of `.never`; every
+    /// other scenario leaves the profile preference alone.
+    @Test @MainActor func c1_scenario_projects_the_boards_three_groups_under_its_scoped_stale_window() throws {
+        let model = AppModel()
+        model.pouredParityBootstrapIsolation = .init(runtimeStateLoadingDisabled:true, bridgeStartupDisabled:true)
+        let configuration = PouredParityConfiguration(
+            scenario:.c1GroupedSix, profile:.notch, accessibility:.standard, event:nil,
+            seed:42, epochMilliseconds:1_700_000_000_000, manualTimeMilliseconds:nil
+        )
+        try PouredParityDriver(configuration:configuration).apply(to:model, presentOverlay:false)
+
+        #expect(model.completedStaleThreshold == .never)
+
+        let projected = PouredSectionTaxonomy.project(
+            IslandSessionSectioning.sections(
+                for: model.sessions,
+                group: .state,
+                sort: .attention,
+                completedStaleThreshold: model.completedStaleThreshold.seconds
+            )
+        )
+
+        #expect(projected.sections.map(\.id) == [
+            PouredSectionTaxonomy.Group.needsYou.sectionID,
+            PouredSectionTaxonomy.Group.working.sectionID,
+            PouredSectionTaxonomy.Group.done.sectionID,
+        ])
+        #expect(projected.sections.map(\.sessions.count) == [2, 2, 2])
+        #expect(projected.idleCount == 0)
+
+        // The override is scenario-scoped: loading any other scenario clears it.
+        model.loadDebugSnapshot(IslandDebugScenario.emptyState.snapshot(at:Date(timeIntervalSince1970:0)), presentOverlay:false)
+        #expect(model.debugCompletedStaleThresholdOverride == nil)
+    }
+
     @Test func sidecar_writer_is_fail_closed_and_manifest_is_last() throws {
         let fixture=PouredParityFixtureRecord(id:"fixture",sourceScenario:"closed",dataHash:"abc",sessionCount:0,canonicalDisposition:"exact")
         let state=PouredParityStateDump(schemaVersion:"poured-state-v1",scenario:.a2WorkingOne,resolvedThemeID:"poured",fixture:fixture,sessionIDs:[],selectedSessionID:nil,presentation:"closed",profile:.notch,accessibility:.standard,acknowledgedEvents:[],clock:.init(fixedEpochMilliseconds:1,seed:1,manualTimeMilliseconds:nil,consumedByPouredViews:false),complete:true)

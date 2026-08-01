@@ -8,7 +8,7 @@ struct PouredParityFixture { let snapshot:IslandDebugSnapshot; let record:Poured
 enum PouredParityFixtureCatalog {
     static func resolve(_ configuration:PouredParityConfiguration)->PouredParityFixture {
         let debug:IslandDebugScenario = switch configuration.scenario {
-        case .a2WorkingOne:.closed; case .a2mWorkingMany:.closedMultiRunning; case .a3Permission:.closedAttention; case .e1CommandPermission:.approvalCard; case .h1Completed:.completionCard
+        case .a2WorkingOne:.closed; case .a2mWorkingMany:.closedMultiRunning; case .a3Permission:.closedAttention; case .e1CommandPermission:.approvalCard; case .h1Completed:.completionCard; case .c1GroupedSix:.pouredGroupedSix
         }
         let now=Date(timeIntervalSince1970:Double(configuration.epochMilliseconds)/1000)
         let snapshot=debug.snapshot(at:now)

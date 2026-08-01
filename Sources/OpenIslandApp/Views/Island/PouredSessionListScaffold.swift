@@ -33,6 +33,15 @@ struct PouredSessionListScaffold: View {
     let pulseClock: PulseClock?
     let makeActions: (AgentSession) -> RowActions
 
+    /// PI-C-002: whether the footer's idle roll-up is currently disclosed as a
+    /// group below `Done`. Collapsed by default — the board's steady state is the
+    /// bare roll-up; disclosure is the escape hatch that makes the extracted rows
+    /// *reachable* rather than silently dropped.
+    @State private var idleDisclosureExpanded = false
+
+    /// Hover state for the roll-up toggle, mirroring `PouredInstallHooksHint`.
+    @State private var idleDisclosureHovering = false
+
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     private var increasesContrast: Bool { colorSchemeContrast == .increased }
 
@@ -60,13 +69,62 @@ struct PouredSessionListScaffold: View {
         .padding(.vertical, 2)
     }
 
+    /// PI-C-001 / PI-C-002 (§C · `01-poured-island.html:809/844/878/913`): Poured's
+    /// list is **always** grouped by state — `Needs you → Working → Done` is the
+    /// composition, not a preference — and idle never forms a group. When the
+    /// profile's grouping is `.none` (one flat `all` section) or already `.state`,
+    /// the scaffold re-sections by state locally and runs it through
+    /// `PouredSectionTaxonomy`, so attention floats to the top and the idle tail
+    /// leaves the table for the footer roll-up. An explicit `.agent` / `.project`
+    /// grouping the user picked is honoured verbatim.
+    private var taxonomyProjection: PouredSectionTaxonomy.Projection? {
+        switch group {
+        case .none:
+            return PouredSectionTaxonomy.project(
+                IslandSessionSectioning.sections(
+                    for: sessions,
+                    group: .state,
+                    sort: .attention,
+                    completedStaleThreshold: completedStaleThreshold
+                )
+            )
+        case .state:
+            return PouredSectionTaxonomy.project(sections)
+        case .agent, .project:
+            return nil
+        }
+    }
+
+    private var displaySections: [IslandSessionSection] {
+        guard let projection = taxonomyProjection else { return sections }
+        guard idleDisclosureExpanded, let idle = idleDisclosureSection(projection) else {
+            return projection.sections
+        }
+        return projection.sections + [idle]
+    }
+
+    /// PI-C-002 (**derived**, pending owner ratification — see
+    /// `PouredSectionTaxonomy`): the extracted idle rows re-materialised as one
+    /// group below `Done` while the footer roll-up is disclosed. It reuses the
+    /// shared `state-idle` identity, the cross-theme `island.section.idle` title
+    /// and the existing idle tint, so the group is the list's own chrome — no new
+    /// surface is invented for it.
+    private func idleDisclosureSection(
+        _ projection: PouredSectionTaxonomy.Projection
+    ) -> IslandSessionSection? {
+        guard !projection.idleSessions.isEmpty else { return nil }
+        return IslandSessionSection(
+            id: PouredSectionTaxonomy.idleSourceSectionID,
+            title: "island.section.idle",
+            sessions: PouredSectionTaxonomy.recencyDescending(projection.idleSessions)
+        )
+    }
+
     @ViewBuilder
     private func sessionRowsContent() -> some View {
-        ForEach(sections) { section in
+        ForEach(displaySections) { section in
             VStack(alignment: .leading, spacing: 0) {
-                if group != .none {
-                    sessionSectionHeader(section)
-                }
+                sessionSectionHeader(section)
 
                 ForEach(section.sessions) { session in
                     SessionRowContainer(isInteractive: isInteractive) { isHighlighted in
@@ -139,8 +197,23 @@ struct PouredSessionListScaffold: View {
     /// N idle` readout with a tabular count, over the retained top hairline.
     /// Together they close the list with the same "quiet confidence" the empty
     /// state carries.
+    ///
+    /// PI-C-002: while the taxonomy is active the roll-up is a **disclosure**
+    /// (the board's own roll-up is an `<a>`, line 913), because the rows it
+    /// counts have been lifted out of the list and would otherwise be
+    /// unreachable. Under `.agent` / `.project` — where nothing is extracted —
+    /// it stays the inert readout it has always been.
     private func sessionPanelFooter(referenceDate: Date) -> some View {
-        HStack(spacing: 8) {
+        let projection = taxonomyProjection
+        // PI-C-002: the readout must count exactly the rows the projection
+        // removed. The local `idleSessionCount` is a *wider* bucket (completed
+        // and stale **or** inactive) than the sectioning's state-idle, so
+        // reading it while the taxonomy is active desynced the footer from the
+        // list. It remains the answer for agent / project, which extract nothing.
+        let idleCount = projection?.idleCount ?? idleSessionCount(referenceDate: referenceDate)
+        let canDisclose = projection != nil && idleCount > 0
+
+        return HStack(spacing: 8) {
             if let groupedByText {
                 Text(groupedByText)
                     .font(.system(size: 11))
@@ -149,15 +222,17 @@ struct PouredSessionListScaffold: View {
 
             Spacer(minLength: 0)
 
-            Text(lang.t("island.poured.footer.idle", idleSessionCount(referenceDate: referenceDate)))
-                .font(.system(size: 11).monospacedDigit())
-                .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
+            if canDisclose {
+                idleDisclosureToggle(count: idleCount)
+            } else {
+                idleRollUpText(count: idleCount)
+            }
         }
         .lineLimit(1)
         .padding(.leading, sideInset)
         .padding(.trailing, sideInset)
         .padding(.vertical, 9)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: canDisclose ? .contain : .combine)
         .overlay(alignment: .top) {
             Rectangle()
                 .fill(.white.opacity(tokens.colors.hairline(increaseContrast: increasesContrast)))
@@ -165,16 +240,59 @@ struct PouredSessionListScaffold: View {
         }
     }
 
-    /// The leading footer caption naming the active grouping, or `nil` when the
-    /// list is ungrouped (nothing to say). Each mode is a whole localized phrase
-    /// so it reads naturally in every language (CJK does not case-fold a word
-    /// inserted mid-sentence).
+    private func idleRollUpText(count: Int) -> some View {
+        Text(lang.t("island.poured.footer.idle", count))
+            .font(.system(size: 11).monospacedDigit())
+            .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
+    }
+
+    /// The roll-up as a press/click toggle. Mirrors `PouredInstallHooksHint` /
+    /// `PouredHeaderButton` — a `.plain` `Button` (so it is focusable and
+    /// space/return-activated under Full Keyboard Access) with an `onHover`
+    /// brightening that settles without easing under Reduce Motion. No new
+    /// colour: hover only lifts the existing paper opacity toward full.
+    private func idleDisclosureToggle(count: Int) -> some View {
+        Button {
+            idleDisclosureExpanded.toggle()
+        } label: {
+            HStack(spacing: 5) {
+                idleRollUpText(count: count)
+                    .foregroundStyle(
+                        tokens.colors.paper.opacity(
+                            tokens.colors.text(
+                                idleDisclosureHovering ? 0.92 : tokens.colors.secondaryTextOpacity,
+                                increaseContrast: increasesContrast
+                            )
+                        )
+                    )
+                Image(systemName: idleDisclosureExpanded ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(tokens.colors.paper.opacity(idleDisclosureHovering ? 0.6 : 0.4))
+                    .accessibilityHidden(true)
+            }
+        }
+        .buttonStyle(.plain)
+        .onHover { idleDisclosureHovering = $0 }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.14), value: idleDisclosureHovering)
+        .accessibilityLabel(
+            lang.t(
+                idleDisclosureExpanded ? "a11y.poured.footer.hideIdle" : "a11y.poured.footer.showIdle",
+                count
+            )
+        )
+    }
+
+    /// The leading footer caption naming the active grouping (§C · board line 912
+    /// `Grouped by state`). PI-C-001: under `.none` the list is still projected by
+    /// state through `PouredSectionTaxonomy`, so the caption tells the truth about
+    /// what the reader is looking at rather than going silent. Each mode is a whole
+    /// localized phrase so it reads naturally in every language (CJK does not
+    /// case-fold a word inserted mid-sentence).
     private var groupedByText: String? {
         switch group {
-        case .none:    return nil
-        case .state:   return lang.t("island.poured.footer.groupedByState")
-        case .agent:   return lang.t("island.poured.footer.groupedByAgent")
-        case .project: return lang.t("island.poured.footer.groupedByProject")
+        case .none, .state: return lang.t("island.poured.footer.groupedByState")
+        case .agent:        return lang.t("island.poured.footer.groupedByAgent")
+        case .project:      return lang.t("island.poured.footer.groupedByProject")
         }
     }
 
@@ -330,28 +448,35 @@ struct PouredSessionListScaffold: View {
         }
     }
 
+    /// PI-C-001: a taxonomy group wears its **fixed** board hue (`--attn` / `--run`
+    /// / `--done`), not a hue derived from whichever row happens to sort first —
+    /// which used to make a `Done` group led by an interrupted row wear the
+    /// interrupted amber. Agent / project groupings keep the first-row derivation,
+    /// which is all they can do.
     private func sectionTint(for section: IslandSessionSection) -> Color {
+        if let group = PouredSectionTaxonomy.group(forSectionID: section.id) {
+            return PouredSectionTaxonomy.tint(for: group, tokens: tokens.colors)
+        }
         guard let first = section.sessions.first else { return tokens.colors.statusIdle }
         if section.id == "state-idle" { return tokens.colors.statusIdle }
         return tokens.colors.statusTint(for: first.phase, outcome: first.outcome)
     }
 
     private func sessionSectionTitle(for section: IslandSessionSection) -> String {
+        if let key = PouredSectionTaxonomy.localizationKey(forSectionID: section.id) {
+            return lang.t(key)
+        }
         if section.title.hasPrefix("island.") {
             return lang.t(section.title)
         }
         return section.title
     }
 
+    // The `state-approval` / `state-answer` tinted-label cases are gone: those
+    // ids never reach a rendered header any more — `PouredSectionTaxonomy` merges
+    // both into `Needs you` and owns that group's chrome.
     private func sectionLabelColor(for section: IslandSessionSection) -> Color {
-        switch section.id {
-        case "state-approval":
-            return tokens.colors.statusWaitingForApproval.opacity(0.86)
-        case "state-answer":
-            return tokens.colors.statusWaitingForAnswer.opacity(0.86)
-        default:
-            return tokens.colors.paper.opacity(0.72)
-        }
+        tokens.colors.paper.opacity(0.72)
     }
 }
 

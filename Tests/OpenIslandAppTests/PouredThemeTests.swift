@@ -653,6 +653,9 @@ struct PouredThemeTests {
             "island.poured.footer.groupedByProject",
             "island.poured.footer.idle",
             "island.poured.empty.hooksInstalled",
+            // PI-C-002: the roll-up's disclosure labels.
+            "a11y.poured.footer.showIdle",
+            "a11y.poured.footer.hideIdle",
         ]
 
         for language in [LanguageManager.AppLanguage.en, .zhHans, .zhHant] {
@@ -670,6 +673,10 @@ struct PouredThemeTests {
         // The idle count interpolates through `%lld`.
         #expect(en.t("island.poured.footer.idle", 0).contains("0"))
         #expect(en.t("island.poured.footer.idle", 3).contains("3"))
+        // The disclosure labels name the action and carry the count.
+        #expect(en.t("a11y.poured.footer.showIdle", 4).contains("4"))
+        #expect(en.t("a11y.poured.footer.hideIdle", 4).contains("4"))
+        #expect(en.t("a11y.poured.footer.showIdle", 4) != en.t("a11y.poured.footer.hideIdle", 4))
         // The joined installed-agents list interpolates through `%@`.
         #expect(en.t("island.poured.empty.hooksInstalled", "Claude, Codex").contains("Claude, Codex"))
     }

@@ -262,6 +262,7 @@ PouredEmptyState.swift	typography-debt	1	.font(.system(size: 11, weight: .regula
 PouredHeaderControls.swift	sf-symbol	1	.font(.system(size: 10, weight: .semibold))
 PouredInstallHooksHint.swift	sf-symbol	1	.font(.system(size: 10, weight: .semibold))
 PouredInstallHooksHint.swift	sf-symbol	1	.font(.system(size: 12, weight: .semibold))
+PouredSessionListScaffold.swift	sf-symbol	1	.font(.system(size: 9, weight: .semibold))
 PouredSessionListScaffold.swift	typography-debt	1	.font(.system(size: 10.5, weight: .medium).monospacedDigit())
 PouredSessionListScaffold.swift	typography-debt	1	.font(.system(size: 11))
 PouredSessionListScaffold.swift	typography-debt	1	.font(.system(size: 11).monospacedDigit())
