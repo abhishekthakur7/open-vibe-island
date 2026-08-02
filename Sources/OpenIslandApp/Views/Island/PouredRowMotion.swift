@@ -82,11 +82,22 @@ enum PouredRowMotion {
 /// verb/object directly instead of re-parsing a joined string.
 enum PouredRowActivityTone {
 
+    /// The ink a run of the activity line takes.
+    ///
+    /// R2/C3 (`01-poured-island.html:852`, `:868`): the board paints **only the
+    /// verb** in the run-blue `.live` tone; the object and the trailing
+    /// `· live 1m 42s` segment both stay at the base `.act` colour (`--t2`).
+    enum Tone: Equatable, Sendable {
+        /// `.act .live` — the run-blue verb span.
+        case live
+        /// Base `.act` ink (`--t2`).
+        case secondary
+    }
+
     /// One tone run of the activity line.
     struct Segment: Equatable {
         var text: String
-        /// `true` → primary ink (`t1`); `false` → secondary ink (`t2`).
-        var isPrimary: Bool
+        var tone: Tone
     }
 
     /// Tone-segments the activity line.
@@ -95,20 +106,53 @@ enum PouredRowActivityTone {
     ///   - verb: the narrated verb, already localized. `nil`/empty → no narration.
     ///   - object: the narrated object (file / command / host), never localized.
     ///   - fallback: the human activity line to speak when there is no narration.
-    static func segments(verb: String?, object: String?, fallback: String?) -> [Segment] {
+    ///   - liveSuffix: the board's `· live 1m 42s` tail, already formatted, or
+    ///     `nil` when the row's own age column already answers "for how long".
+    static func segments(
+        verb: String?,
+        object: String?,
+        fallback: String?,
+        liveSuffix: String? = nil
+    ) -> [Segment] {
+        var runs: [Segment] = []
         if let verb = verb?.pouredTrimmed, !verb.isEmpty {
+            runs.append(Segment(text: verb, tone: .live))
             if let object = object?.pouredTrimmed, !object.isEmpty {
-                return [
-                    Segment(text: verb, isPrimary: false),
-                    Segment(text: " " + object, isPrimary: true),
-                ]
+                runs.append(Segment(text: " " + object, tone: .secondary))
             }
-            return [Segment(text: verb, isPrimary: true)]
+        } else if let fallback = fallback?.pouredTrimmed, !fallback.isEmpty {
+            runs.append(Segment(text: fallback, tone: .secondary))
         }
-        if let fallback = fallback?.pouredTrimmed, !fallback.isEmpty {
-            return [Segment(text: fallback, isPrimary: false)]
+        guard !runs.isEmpty else { return [] }
+        if let liveSuffix = liveSuffix?.pouredTrimmed, !liveSuffix.isEmpty {
+            runs.append(Segment(text: " \u{00B7} " + liveSuffix, tone: .secondary))
         }
-        return []
+        return runs
+    }
+}
+
+// MARK: - Live run duration (mockup §C row 3 — `live 1m 42s`)
+
+/// The `1m 42s` clock the board hangs off a just-refreshed running row's `.act`
+/// line (`01-poured-island.html:852`). Distinct from the row's `.age` column,
+/// which reads *recency*: the board's row 3 is `now` in the age column **and**
+/// `live 1m 42s` in the narration, so the two can never be the same reading.
+///
+/// Seconds survive under an hour — a run that has been going 102 seconds reads
+/// `1m 42s`, not the age badge's coarser `1m` — and roll up to `Xh Ym` beyond
+/// it. Pure so `PouredRowMotionTests` can pin it without a `TimelineView`.
+enum PouredLiveElapsed {
+    static func text(seconds: TimeInterval) -> String {
+        let total = max(0, Int(seconds))
+        if total < 60 { return "\(total)s" }
+        if total < 3_600 {
+            let minutes = total / 60
+            let remainder = total % 60
+            return remainder == 0 ? "\(minutes)m" : "\(minutes)m \(remainder)s"
+        }
+        let hours = total / 3_600
+        let minutes = (total % 3_600) / 60
+        return minutes == 0 ? "\(hours)h" : "\(hours)h \(minutes)m"
     }
 }
 

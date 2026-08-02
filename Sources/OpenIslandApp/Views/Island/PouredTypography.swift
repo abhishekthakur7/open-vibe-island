@@ -117,6 +117,7 @@ enum PouredType {
         // Meters
         case displayNumeral          // .mpct — big meter percentage (tabular)
         case usageRingValue          // .uv   — ring value readout (tabular)
+        case usageResetLabel         // .ut b — header wing reset countdown
 
         // Code surfaces (mono)
         case commandBlock            // .cmd  — permission command (mono)
@@ -125,6 +126,7 @@ enum PouredType {
         // Permission / question hero
         case keycap                  // .kc kbd — keycap hint
         case heroButtonLabel         // hero-frame approval / submit CTA label
+        case compactButtonLabel      // §C in-list Approve / Deny CTA label
         case heroTitle               // .ht   — permission hero title
         case heroSubtitle            // .hs   — permission hero subtitle
         case questionText            // .q-text — the question prompt
@@ -196,12 +198,18 @@ enum PouredType {
         .displayNumeral:        Spec(size: 20,   weight: 640, trackingEm: -0.02, isMono: false, isTabular: true,  isUppercase: false),
         // Mockup range 9.5–11.5; readable end taken so the role holds the floor.
         .usageRingValue:        Spec(size: 11.5, weight: 700, trackingEm: 0,     isMono: false, isTabular: true,  isUppercase: false),
+        // PI-I-001: the board's `.umeter .ut b` — 11px/600, block, not
+        // uppercase, `letter-spacing:0` (`01-poured-island.html:234`).
+        .usageResetLabel:       Spec(size: 11,   weight: 600, trackingEm: 0,     isMono: false, isTabular: true,  isUppercase: false),
 
         .commandBlock:          Spec(size: 12,   weight: 600, trackingEm: 0,     isMono: true,  isTabular: false, isUppercase: false),
         .diff:                  Spec(size: 11.5, weight: 400, trackingEm: 0,     isMono: true,  isTabular: false, isUppercase: false),
 
         .keycap:                Spec(size: 10,   weight: 600, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
         .heroButtonLabel:       Spec(size: 13,   weight: 600, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
+        // PI-C-006: the §C row override of the same `.btn` — `font-size:12px`
+        // (`01-poured-island.html:820`), weight unchanged.
+        .compactButtonLabel:    Spec(size: 12,   weight: 600, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
         .heroTitle:             Spec(size: 14,   weight: 640, trackingEm: -0.01, isMono: false, isTabular: false, isUppercase: false),
         .heroSubtitle:          Spec(size: 11,   weight: 400, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
         .questionText:          Spec(size: 14.5, weight: 560, trackingEm: -0.01, isMono: false, isTabular: false, isUppercase: false),

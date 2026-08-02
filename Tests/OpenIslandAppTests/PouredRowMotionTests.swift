@@ -16,7 +16,37 @@ struct PouredRowMotionTests {
             isInteractive: true,
             expandedByDefault: false,
             isActionable: false,
+            autoExpandsActionable: false,
             detailOverride: nil
+        ))
+    }
+
+    /// PI-C-006: an actionable row auto-expands only on the dedicated
+    /// notification surface (§E/§F). Inside the §C grouped list the same row
+    /// stays compact — the hero opens deliberately, and an explicit override
+    /// still wins over both.
+    @Test
+    func actionableRowExpandsOnlyOnTheNotificationSurface() {
+        #expect(!PouredRowExpansion.resolved(
+            isInteractive: true,
+            expandedByDefault: false,
+            isActionable: true,
+            autoExpandsActionable: false,
+            detailOverride: nil
+        ))
+        #expect(PouredRowExpansion.resolved(
+            isInteractive: true,
+            expandedByDefault: false,
+            isActionable: true,
+            autoExpandsActionable: true,
+            detailOverride: nil
+        ))
+        #expect(PouredRowExpansion.resolved(
+            isInteractive: true,
+            expandedByDefault: false,
+            isActionable: true,
+            autoExpandsActionable: false,
+            detailOverride: true
         ))
     }
 
@@ -26,29 +56,97 @@ struct PouredRowMotionTests {
             isInteractive: true,
             expandedByDefault: false,
             isActionable: false,
+            autoExpandsActionable: false,
             detailOverride: true
         ))
         #expect(!PouredRowExpansion.resolved(
             isInteractive: true,
             expandedByDefault: true,
             isActionable: true,
+            autoExpandsActionable: true,
             detailOverride: false
         ))
     }
 
+    // MARK: - Compact activity narrative (PI-C-005)
+
+    /// The board narrates on all six §C rows, including a 22-minute-old
+    /// interrupted one — past the point where the shared spotlight line falls
+    /// silent — and it never prints Markdown. Both halves of that contract:
+    /// a settled row falls back to its own one-line summary, and a Markdown
+    /// last-message is flattened to one plain line.
+    @Test
+    func compactActivityNarratesAgedRowsWithoutLeakingMarkdown() {
+        let aged = PouredCompactActivity.text(
+            isSettled: true,
+            summary: "Stopped while editing BridgeServer.swift",
+            spotlight: nil,
+            lastAssistantMessage: nil,
+            hasJumpTarget: false
+        )
+        #expect(aged == "Stopped while editing BridgeServer.swift")
+
+        let markdown = PouredCompactActivity.text(
+            isSettled: false,
+            summary: nil,
+            spotlight: nil,
+            lastAssistantMessage: """
+            Updated **AGENTS.md** and `CLAUDE.md`.
+
+            - 2 files changed
+            """,
+            hasJumpTarget: true
+        )
+        #expect(markdown == "Updated AGENTS.md and CLAUDE.md. 2 files changed")
+
+        // Nothing to say still says something rather than leaving the row mute.
+        #expect(PouredCompactActivity.text(
+            isSettled: true,
+            summary: nil,
+            spotlight: nil,
+            lastAssistantMessage: nil,
+            hasJumpTarget: true
+        ) == "Ready")
+    }
+
     // MARK: - Narrated activity tone split (mockup `.act` / `.act .live`)
 
+    /// R2/C3 (`01-poured-island.html:852`): only the verb takes the run-blue
+    /// `.live` tone; the object and the `\u{00B7} live 1m 42s` tail both stay at
+    /// the base `.act` ink, and the tail is appended only when a suffix is
+    /// supplied (the board's row 4 has none).
     @Test
-    func verbAndObjectSplitDimsVerbAndBrightensObject() {
-        let segments = PouredRowActivityTone.segments(
+    func verbTakesLiveToneAndTheLiveTailStaysSecondary() {
+        #expect(PouredRowActivityTone.segments(
             verb: "Editing",
             object: "AppModel.swift",
             fallback: nil
-        )
-        #expect(segments == [
-            .init(text: "Editing", isPrimary: false),
-            .init(text: " AppModel.swift", isPrimary: true),
+        ) == [
+            .init(text: "Editing", tone: .live),
+            .init(text: " AppModel.swift", tone: .secondary),
         ])
+
+        #expect(PouredRowActivityTone.segments(
+            verb: "Editing",
+            object: "AppModel.swift",
+            fallback: nil,
+            liveSuffix: "live 1m 42s"
+        ) == [
+            .init(text: "Editing", tone: .live),
+            .init(text: " AppModel.swift", tone: .secondary),
+            .init(text: " \u{00B7} live 1m 42s", tone: .secondary),
+        ])
+
+        // A row with nothing to narrate gains no orphan tail.
+        #expect(PouredRowActivityTone.segments(
+            verb: nil, object: nil, fallback: nil, liveSuffix: "live 3s"
+        ).isEmpty)
+
+        // The tail's own formatting keeps seconds under an hour — the age
+        // column's coarser `1m` is a different reading of a different clock.
+        #expect(PouredLiveElapsed.text(seconds: 102) == "1m 42s")
+        #expect(PouredLiveElapsed.text(seconds: 42) == "42s")
+        #expect(PouredLiveElapsed.text(seconds: 3_720) == "1h 2m")
     }
 
     @Test
@@ -60,8 +158,8 @@ struct PouredRowMotionTests {
             fallback: "ignored"
         )
         #expect(segments == [
-            .init(text: "Running", isPrimary: false),
-            .init(text: " git status", isPrimary: true),
+            .init(text: "Running", tone: .live),
+            .init(text: " git status", tone: .secondary),
         ])
     }
 

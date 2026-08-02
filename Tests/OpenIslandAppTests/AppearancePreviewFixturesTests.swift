@@ -139,10 +139,12 @@ struct IslandDebugScenarioConformanceTests {
     @Test
     func onlyUsageScenariosCarryUsageProviders() {
         // `closedCritical` needs the ≥90% providers so the I′ filament wins the
-        // right-slot resolver ladder — see its fixture comment.
+        // right-slot resolver ladder — see its fixture comment. PI-I-001:
+        // `pouredGroupedSix` joins them because the board's §C header renders
+        // two usage rings, one per wing (`01-poured-island.html:784-790`).
         for scenario in IslandDebugScenario.allCases {
             let snapshot = scenario.snapshot()
-            if scenario == .usageMeters || scenario == .closedCritical {
+            if scenario == .usageMeters || scenario == .closedCritical || scenario == .pouredGroupedSix {
                 #expect(snapshot.usageProviders?.isEmpty == false)
             } else {
                 #expect(snapshot.usageProviders == nil, "\(scenario.rawValue) unexpectedly set usage providers")

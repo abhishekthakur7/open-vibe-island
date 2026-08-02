@@ -65,14 +65,21 @@ struct PouredSessionRow: View {
 /// and actionable approval/question/completion rows auto-expand. Once the user
 /// toggles the chevron, that explicit choice wins until interactivity resets it.
 enum PouredRowExpansion {
+    /// PI-C-006: an actionable row auto-expands into its hero **only where the
+    /// board renders a hero** — the dedicated §E/§F notification surface, which
+    /// is a 440pt panel holding one session. Inside the grouped §C list the same
+    /// permission/question row stays compact (`01-poured-island.html:812-841`),
+    /// carrying inline Approve/Deny or an `Answer` chip instead; the hero opens
+    /// only on a deliberate gesture (chevron / `Answer`).
     static func resolved(
         isInteractive: Bool,
         expandedByDefault: Bool,
         isActionable: Bool,
+        autoExpandsActionable: Bool,
         detailOverride: Bool?
     ) -> Bool {
         guard isInteractive else { return false }
-        return detailOverride ?? (expandedByDefault || isActionable)
+        return detailOverride ?? (expandedByDefault || (isActionable && autoExpandsActionable))
     }
 
     /// Human fallback for an expanded inactive/aged row after the normal
@@ -91,6 +98,79 @@ enum PouredRowExpansion {
             return trimmed
         }
         return hasJumpTarget ? "Ready" : "Completed"
+    }
+}
+
+/// PI-C-005: what a **collapsed** Poured row narrates on its `.act` line. The
+/// board gives every one of the six §C rows an activity line
+/// (`01-poured-island.html:818/835/852/868/886/903`), including a 22-minute-old
+/// interrupted row — but the shared `spotlightActivityLineText` deliberately
+/// falls silent past `collapsedDetailAgeThreshold`, and it hands back raw
+/// Markdown for a settled row. Rather than relax that cross-theme contract
+/// (Classic / Flight Deck / Halo read it too), Poured resolves its own compact
+/// line here.
+///
+/// Pure and `nonisolated` so the contract is testable off the main actor.
+enum PouredCompactActivity {
+    /// Preference order:
+    /// 1. a **settled** row's own one-line `summary` — already human, already one
+    ///    line, and it never ages out (board row 6, `Stopped while editing …`);
+    /// 2. the shared spotlight line (a live row's narration);
+    /// 3. the last assistant message, flattened to one plain-text line;
+    /// 4. the shared `Ready` / `Completed` fallback.
+    nonisolated static func text(
+        isSettled: Bool,
+        summary: String?,
+        spotlight: String?,
+        lastAssistantMessage: String?,
+        hasJumpTarget: Bool
+    ) -> String? {
+        if isSettled, let settled = plainText(summary) {
+            return settled
+        }
+        if let spotlight = plainText(spotlight) {
+            return spotlight
+        }
+        if let message = plainText(lastAssistantMessage) {
+            return message
+        }
+        return PouredRowExpansion.fallbackActivityLine(
+            isExpanded: true,
+            lastAssistantMessage: nil,
+            hasJumpTarget: hasJumpTarget
+        )
+    }
+
+    /// One plain line: Markdown emphasis / code fences / list bullets / heading
+    /// hashes removed and every whitespace run (including newlines) collapsed, so
+    /// a `**bold**` multi-paragraph message can never leak literal asterisks into
+    /// a `lineLimit(1)` row.
+    nonisolated static func plainText(_ raw: String?) -> String? {
+        guard let raw, !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+
+        let lines = raw.split(whereSeparator: \.isNewline).map { line -> String in
+            var trimmed = String(line).trimmingCharacters(in: .whitespaces)
+            while let first = trimmed.first, first == "#" || first == ">" {
+                trimmed = String(trimmed.dropFirst()).trimmingCharacters(in: .whitespaces)
+            }
+            for bullet in ["- ", "* ", "+ "] where trimmed.hasPrefix(bullet) {
+                trimmed = String(trimmed.dropFirst(bullet.count))
+                break
+            }
+            return trimmed
+        }
+
+        var text = lines.filter { !$0.isEmpty }.joined(separator: " ")
+        for marker in ["```", "**", "__", "`", "*", "_"] {
+            text = text.replacingOccurrences(of: marker, with: "")
+        }
+        text = text
+            .split(whereSeparator: \.isWhitespace)
+            .joined(separator: " ")
+            .trimmingCharacters(in: .whitespaces)
+        return text.isEmpty ? nil : text
     }
 }
 
@@ -135,6 +215,9 @@ private struct PouredRowContent: View {
     /// can deliberately render its §4D/§4G detail.
     @Environment(\.islandRowExpandedByDefault) private var expandedByDefault
 
+    /// R4-6: set by `PouredSessionListScaffold` on the first row of each group.
+    @Environment(\.pouredRowIsFirstInGroup) private var isFirstRowInGroup
+
     /// Each row owns its own age refresh (AB-228) so a tick invalidates only
     /// this row, not its siblings or the list header.
     private static let ageRefreshInterval: TimeInterval = 30
@@ -155,6 +238,7 @@ private struct PouredRowContent: View {
             isInteractive: isInteractive,
             expandedByDefault: expandedByDefault,
             isActionable: isActionable,
+            autoExpandsActionable: presentation == .notification,
             detailOverride: detailOverride
         )
         let presence: IslandSessionPresence = isStaleCompleted
@@ -195,10 +279,19 @@ private struct PouredRowContent: View {
             }
         }
         .background(rowFillColor(for: presence))
+        // PI-C-006 (`01-poured-island.html:300-302`, `:830`): inside the list an
+        // actionable row is loud through a flat radial wash on the row itself —
+        // never a hero sub-card. Amber for a permission, the lower-alpha gold
+        // for a question.
+        .background(actionableRowWash)
         .overlay(alignment: .top) {
-            Rectangle()
-                .fill(.white.opacity(tokens.colors.hairline(increaseContrast: increasesContrast)))
-                .frame(height: 1)
+            // R4-6 (`01-poured-island.html:257`): `.row + .row` only — a group
+            // header breaks adjacency, so a group's first row draws nothing.
+            if !isFirstRowInGroup {
+                Rectangle()
+                    .fill(.white.opacity(tokens.colors.hairline(increaseContrast: increasesContrast)))
+                    .frame(height: 1)
+            }
         }
         .overlay(alignment: .leading) {
             if showsLeadingStatusBar {
@@ -236,48 +329,74 @@ private struct PouredRowContent: View {
             if showsLeadingStatusIndicator {
                 statusIndicator(for: presence)
                     .frame(width: 20, alignment: .top)
+                    .accessibilityHidden(true)
             }
 
             VStack(alignment: .leading, spacing: 3) {
-                titleLine(presence: presence)
+                // R4-2 (PI-C-006): the row's *narrative* is the grouped stop —
+                // title, disambiguator and activity line collapsed into one
+                // label carrying the row's traits and its hover-only controls'
+                // rotor actions. It no longer swallows the row's controls: the
+                // inline Approve / Deny buttons, the `Answer` chip and the
+                // `Jump ↗` chip sit beside it as their own accessibility
+                // elements (see `rowSummary`'s `children: .contain` below), so
+                // the primary affordance of an attention row is reachable by
+                // element navigation and not only by the actions rotor.
+                VStack(alignment: .leading, spacing: 3) {
+                    titleLine(presence: presence)
 
-                if showsDetail {
-                    activityLine(isExpanded: showsDetail)
+                    // PI-C-005: the board narrates on **every** row, collapsed or
+                    // not (`01-poured-island.html:818/835/852/868/886/903`) — a row
+                    // that only prints a workspace name says nothing.
+                    activityLine(referenceDate: referenceDate)
                 }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(accessibilityRowSummaryText(referenceDate: referenceDate))
+                .modifier(NestedWorkAccessibilityValue(
+                    value: nestedWorkAccessibilityValue(isExpanded: showsDetail)
+                ))
+                .accessibilityAddTraits(isInteractive ? .isButton : [])
+                .accessibilityAction {
+                    guard isInteractive else { return }
+                    actions.jump()
+                }
+                .accessibilityAction(named: Text(lang.t(showsDetail ? "a11y.session.collapseDetail" : "a11y.session.expandDetail"))) {
+                    toggleDetail(currentlyOpen: showsDetail)
+                }
+                .modifier(PouredOptionalNamedAccessibilityAction(name: actions.dismiss != nil ? lang.t("a11y.session.dismiss") : nil, action: { actions.dismiss?() }))
+
+                metaRow(showsDetail: showsDetail)
+
+                compactActionableAffordances(showsDetail: showsDetail)
             }
 
             Spacer(minLength: 10)
 
+            // PI-C-005: on a **collapsed** row the trailing column is only
+            // `.age` + the chevron + the hover-revealed `.dismiss`
+            // (`01-poured-island.html:270`, `:273`) — model, permission mode,
+            // nested rollups and SSH / terminal moved into the `.meta` flow row
+            // under the activity line, where the board puts them.
+            //
+            // R3/C12: an **open** row keeps its pre-slice trailing identity set.
+            // The board's compact-row treatment is a statement about the *list*,
+            // not about the header of a row that has swung its hero open — and
+            // an open row renders no `.meta` flow row at all, so dropping these
+            // deleted the only place the model / transport were stated.
             HStack(spacing: IslandSessionRowMetrics.badgeSpacing) {
-                // AB-332: the capsule agent badge is gone from the collapsed row —
-                // identity is now the 2pt brand tick before the workspace name
-                // ("identity stays a whisper", SPEC §1.5). The agent's full name
-                // reappears only as the dot+label chip in the expanded metadata
-                // grid (`agentIdentityChip`).
-                if let modelBadge = session.displayModelName {
-                    sideBadge(modelBadge)
-                }
-                if let permissionChip = permissionModeBadgeKind {
-                    permissionModeChip(permissionChip)
-                }
-                // AB-332 · SPEC §4G: when the detail is collapsed, the nested
-                // subagent / task work rolls up to two quiet chips
-                // (`3 subagents` · `⏲ 2/5 tasks`) — the only counts the row
-                // invents are these real ones. Expanded, the full nests replace
-                // them below (`subagentsAndTasksNests`).
-                if !showsDetail {
-                    if let subagentCount = collapsedSubagentCount {
-                        sideBadge(lang.t("poured.subagents.count", subagentCount))
+                if showsDetail {
+                    if let modelBadge = session.displayModelName {
+                        sideBadge(modelBadge)
                     }
-                    if let taskRollup = collapsedTaskRollup {
-                        sideBadge("⏲ " + lang.t("poured.tasks.chip", taskRollup.done, taskRollup.total))
+                    if let permissionChip = permissionModeBadgeKind {
+                        permissionModeChip(permissionChip)
                     }
-                }
-                if session.isRemote {
-                    sideBadge("SSH")
-                }
-                if let terminalBadge = session.spotlightTerminalBadge {
-                    sideBadge(terminalBadge)
+                    if session.isRemote {
+                        sideBadge("SSH")
+                    }
+                    if let terminalBadge = session.spotlightTerminalBadge {
+                        sideBadge(terminalBadge)
+                    }
                 }
                 Text(ageBadgeText(at: referenceDate))
                     // AB-332: §2 `age` role — SF Pro 11/500 `.monospacedDigit()`
@@ -286,8 +405,22 @@ private struct PouredRowContent: View {
                     .font(PouredType.Role.age.font)
                     .foregroundStyle(summaryAgeColor(for: presence))
                     .frame(minWidth: IslandSessionRowMetrics.ageColumnWidth, alignment: .trailing)
-                detailToggleButton(isOpen: showsDetail)
-                if let dismiss = actions.dismiss {
+                // R4-9 (PI-C-005 · `01-poured-island.html:812-910`): at rest the
+                // board's trailing slot holds `.age` and nothing else — every
+                // trailing control (`.dismiss`, and by the same root rule the
+                // detail chevron) is hover/focus-revealed. Both are dropped from
+                // the flow at rest so `.age` actually reaches the panel's trailing
+                // inset instead of floating two control widths inside it. The
+                // expand/collapse rotor action on the row keeps the chevron's
+                // behaviour reachable without a mouse.
+                if showsDetail || isHighlighted {
+                    detailToggleButton(isOpen: showsDetail)
+                }
+                // PI-C-006 (`01-poured-island.html:859/874/894/909`): the board
+                // puts `.dismiss` on rows 3-6 only. An actionable row's answer is
+                // Approve / Deny / Answer, never "make it go away" — the rotor
+                // action below still exposes dismiss to VoiceOver.
+                if let dismiss = actions.dismiss, !isActionable, isHighlighted {
                     // AB-332: hover-reveal — hidden at rest, fades in on the row's
                     // `isHighlighted` (which never becomes true in `.notification`,
                     // where `actions.dismiss` is nil anyway). The row's grouped
@@ -300,28 +433,412 @@ private struct PouredRowContent: View {
             }
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
+            // R4-2: age and the hover-only trailing controls are chrome — the
+            // age is already spoken inside the row's narrative label, and both
+            // controls survive as named rotor actions on it.
+            .accessibilityHidden(true)
         }
         .padding(.leading, rowLeadingInset)
         .padding(.trailing, sideInset)
         .padding(.top, 11)
         .padding(.bottom, showsDetail ? 8 : 11)
-        // AB-302: identical grouped VoiceOver summary to Classic — one stop for
-        // the whole row, with the toggle and dismiss recreated as named rotor
-        // actions so both stay reachable without splitting the row.
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityRowSummaryText(referenceDate: referenceDate))
-        .modifier(NestedWorkAccessibilityValue(
-            value: nestedWorkAccessibilityValue(isExpanded: showsDetail)
-        ))
-        .accessibilityAddTraits(isInteractive ? .isButton : [])
-        .accessibilityAction {
-            guard isInteractive else { return }
-            actions.jump()
+        // R4-2 (PI-C-006 · a11y): the row is a *container* now, not one opaque
+        // stop. It holds the narrative element built above plus whatever
+        // controls the row kind renders (Approve / Deny / Answer / Jump), each
+        // with its own label and activation action. The pre-R4 `children:
+        // .ignore` here exposed six bare row buttons and nothing nested, so an
+        // attention row's primary affordance existed only in the actions rotor.
+        .accessibilityElement(children: .contain)
+    }
+
+    // MARK: - Meta row (PI-C-005 · mockup `.meta`)
+
+    /// The board's `.meta` flow row (`01-poured-island.html:268`): `gap:10px`,
+    /// `margin-top:6px`, wrapping, sitting under `.act` inside the row body.
+    /// It carries the row's facts — identity/model, permission mode, nested-work
+    /// rollups, transport, the outcome pill and the `Jump ↗` affordance — at the
+    /// board's own per-kind ordering. Rendered only while the row is collapsed:
+    /// an open row states the same facts in the §D metadata grid below, and the
+    /// board never renders both.
+    ///
+    /// The permission row is the one row with **no** `.meta` at all (board lines
+    /// 814-825) — its Approve / Deny pair replaces it.
+    @ViewBuilder
+    private func metaRow(showsDetail: Bool) -> some View {
+        if !showsDetail, !(isActionable && session.phase == .waitingForApproval) {
+            let items = metaItems
+            if !items.isEmpty {
+                PouredFlowLayout(spacing: 10) {
+                    ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                        item.view
+                    }
+                }
+                // `.meta{margin-top:6px}` less the body stack's own 3pt.
+                .padding(.top, 3)
+            }
         }
-        .accessibilityAction(named: Text(lang.t(showsDetail ? "a11y.session.collapseDetail" : "a11y.session.expandDetail"))) {
-            toggleDetail(currentlyOpen: showsDetail)
+    }
+
+    private struct MetaItem {
+        let view: AnyView
+    }
+
+    private var metaItems: [MetaItem] {
+        var items: [MetaItem] = []
+        func add<V: View>(_ view: V) { items.append(MetaItem(view: AnyView(view))) }
+
+        switch session.phase {
+        case .waitingForAnswer:
+            // Board row 2 (line 836-838): the agent chip, then the gold `Answer`
+            // chip that opens the hero.
+            add(metaChip(agentIdentityChipLabel, dot: agentBrandColor))
+            if isActionable, isInteractive, presentation == .list {
+                add(compactAnswerChip)
+            }
+
+        case .running, .waitingForApproval:
+            // Board rows 3-4 (lines 853-856, 869-872).
+            if let model = session.displayModelName {
+                add(metaChip(model, dot: agentBrandColor))
+            }
+            add(permissionModeMetaChip)
+            // R2/C4: the subagent count is **identity**, not a fact chip — the
+            // board carries it in the `.disamb` (`main · 3 subagents`, line 867)
+            // and gives the `.meta` row no subagent chip at all (lines 869-872).
+            if let taskRollup = collapsedTaskRollup {
+                add(metaChip("⏲ " + lang.t("poured.tasks.chip", taskRollup.done, taskRollup.total)))
+            }
+            if session.isRemote {
+                // R4-10 (`01-poured-island.html:871`): the board's SSH chip leads
+                // with a 9×9 filled three-bar glyph, so the transport reads as a
+                // shape before it reads as three letters.
+                add(metaChip("SSH", leadingBars: true))
+            }
+            // R2/C5: no terminal-name chip on any compact row (the board's
+            // `.meta` rows carry none — lines 853-856 / 869-872 / 887-892 /
+            // 904-907); terminal identity stays in the expanded detail grid.
+            //
+            // R2/C6: `Jump ↗` renders on **local** rows only — board row 3 (a
+            // local session) carries it, row 4 (SSH) does not. A remote session
+            // has no terminal on this Mac to be sent back to, so the derived
+            // rule is `jumpTarget != nil && !isRemote`.
+            if session.jumpTarget != nil, !session.isRemote {
+                add(jumpChip)
+            }
+
+        case .completed:
+            // Board rows 5-6 (lines 887-892, 904-907): the outcome pill leads.
+            // The identity chip appears only when the run did **not** succeed —
+            // that is the board's own split (row 5 carries none, row 6 carries
+            // `● cursor`), and it reads as a rule: when something went wrong,
+            // *which* agent stopped is worth a glance.
+            add(outcomeMetaBadge)
+            if session.outcome != .success {
+                add(metaChip(agentIdentityChipLabel, dot: agentBrandColor))
+            }
+            if let duration = completionDurationText {
+                add(metaChip(duration))
+            }
+            // Row 6 carries no `Jump` — an interrupted run is not somewhere the
+            // reader is being sent back to.
+            if session.outcome == .success, session.jumpTarget != nil, !session.isRemote {
+                add(jumpChip)
+            }
         }
-        .modifier(PouredOptionalNamedAccessibilityAction(name: actions.dismiss != nil ? lang.t("a11y.session.dismiss") : nil, action: { actions.dismiss?() }))
+
+        return items
+    }
+
+    // MARK: - Trailing identity badges (open rows only · R3/C12)
+
+    /// The pre-slice capsule badge, verbatim: SF Pro 10.5/500 on a paper wash,
+    /// dimmer inside the notification surface. Only an **open** row draws these
+    /// (see `rowSummary`); the collapsed row states the same facts as `.meta`
+    /// chips instead.
+    private func sideBadge(_ title: String) -> some View {
+        Text(title)
+            .font(PouredType.Role.metaChip.font)
+            .foregroundStyle(tokens.colors.paper.opacity(presentation == .notification ? 0.52 : 0.72))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(.white.opacity(presentation == .notification ? 0.05 : 0.07), in: Capsule())
+    }
+
+    private enum PermissionModeBadgeKind {
+        case plan
+        case bypass
+    }
+
+    private var permissionModeBadgeKind: PermissionModeBadgeKind? {
+        switch session.claudeMetadata?.permissionMode {
+        case .plan:
+            .plan
+        case .bypassPermissions:
+            .bypass
+        default:
+            nil
+        }
+    }
+
+    @ViewBuilder
+    private func permissionModeChip(_ kind: PermissionModeBadgeKind) -> some View {
+        switch kind {
+        case .plan:
+            sideBadge(lang.t("badge.planMode"))
+        case .bypass:
+            Text(lang.t("badge.bypassPermissions"))
+                .font(PouredType.Role.metaChip.font)
+                .foregroundStyle(tokens.colors.statusWarning.opacity(0.94))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(tokens.colors.statusWarning.opacity(0.16), in: Capsule())
+                .overlay(Capsule().stroke(tokens.colors.statusWarning.opacity(0.4), lineWidth: 1))
+        }
+    }
+
+    private var agentBrandColor: Color {
+        Color(hex: session.tool.brandColorHex) ?? tokens.colors.paper
+    }
+
+    /// The board's `.chip` (lines 287-289): 10.5/500 at secondary on a paper@.06
+    /// fill, radius 6, padding `2px 7px`, with an optional 6px agent dot at gap 5.
+    /// R4-11 (`01-poured-island.html:837`, `:906`): the board's agent-identity
+    /// chips read `codex` / `cursor` in lower case — the chip is a quiet fact
+    /// beside the workspace title, not a brand mark. Display transform only, and
+    /// scoped to this one chip: the model chip (`Opus 4.8`) keeps its casing, as
+    /// does every other surface that prints `session.tool.displayName`.
+    private var agentIdentityChipLabel: String {
+        session.tool.displayName.lowercased()
+    }
+
+    private func metaChip(_ title: String, dot: Color? = nil, leadingBars: Bool = false) -> some View {
+        HStack(spacing: 5) {
+            if let dot {
+                Circle()
+                    .fill(dot)
+                    .frame(width: 6, height: 6)
+                    .accessibilityHidden(true)
+            }
+            if leadingBars {
+                PouredTransportBarsGlyph()
+                    .accessibilityHidden(true)
+            }
+            Text(title)
+                .font(PouredType.Role.metaChip.font)
+                .lineLimit(1)
+        }
+        .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.secondaryTextOpacity)))
+        .padding(.horizontal, 7)
+        .padding(.vertical, 2)
+        .background(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(.white.opacity(0.06))
+        )
+        // R4-2: a fact chip is not a control. Its content is already inside the
+        // row's narrative label, so it stays out of element navigation and the
+        // only nested elements the row exposes are its actual affordances.
+        .accessibilityHidden(true)
+    }
+
+    /// PI-C-005: the board prints the permission mode verbatim as an ordinary
+    /// chip (`acceptEdits`, board line 855), so the compact row now surfaces
+    /// **every** non-default mode rather than only plan / bypass. `bypass` keeps
+    /// its warning treatment — it is not a neutral fact.
+    @ViewBuilder
+    private var permissionModeMetaChip: some View {
+        if let value = permissionModeValueText {
+            switch session.claudeMetadata?.permissionMode {
+            case .plan:
+                metaChip(lang.t("badge.planMode"))
+            case .bypassPermissions:
+                Text(lang.t("badge.bypassPermissions"))
+                    .font(PouredType.Role.metaChip.font)
+                    .lineLimit(1)
+                    .foregroundStyle(tokens.colors.statusWarning.opacity(0.94))
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(tokens.colors.statusWarning.opacity(0.16))
+                    )
+                    .accessibilityHidden(true)
+            default:
+                metaChip(value)
+            }
+        }
+    }
+
+    private var outcomeMetaBadge: some View {
+        // R4-2: the outcome pill states a fact the narrative label already
+        // carries — hidden from element navigation like the other meta chips.
+        PouredOutcomeBadge(
+            glyphName: completionOutcomeGlyphName,
+            label: completionOutcomeLabel,
+            tint: completionOutcomeTint.opacity(completionDoneOpacity),
+            fill: completionOutcomeFill
+        )
+        .accessibilityHidden(true)
+    }
+
+    /// The board's `.jump` chip (lines 280-284): 11.5/600, `padding:3px 9px`,
+    /// radius 8, on the same paper@.06 fill as `.chip`, with the trailing arrow.
+    /// It fires the row's own jump — the same call the row tap and the ⌘J
+    /// shortcut make — using the previously-defined-but-unused `jumpChip` role.
+    private var jumpChip: some View {
+        Button(action: handlePrimaryTap) {
+            HStack(spacing: 6) {
+                Text(lang.t("poured.row.jump"))
+                    .font(PouredType.Role.jumpChip.font)
+                    .lineLimit(1)
+                Image(systemName: "arrow.up.forward")
+                    .font(PouredType.Role.jumpChip.font)
+                    .accessibilityHidden(true)
+            }
+            .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.secondaryTextOpacity)))
+            .padding(.horizontal, 9)
+            .padding(.vertical, 3)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(.white.opacity(0.06))
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(lang.t("poured.row.jump"))
+    }
+
+    // MARK: - Compact attention (PI-C-006 · mockup §C rows 1-2)
+
+    /// What a **collapsed, in-list** actionable row carries instead of the hero
+    /// (`01-poured-island.html:812-841`): the permission row's inline
+    /// `Approve ⌘Y` / `Deny ⌘N` pair, or the question row's amber `Answer 1–N`
+    /// chip. Never both, never in the `.notification` presentation (there the
+    /// hero *is* the surface), and never once the row is open.
+    @ViewBuilder
+    private func compactActionableAffordances(showsDetail: Bool) -> some View {
+        if showsCompactApprovalActions(showsDetail: showsDetail) {
+            compactApprovalActions
+                // `.actions{margin-top:9px}` (board line 819) against the body
+                // stack's own 3pt rhythm.
+                .padding(.top, 6)
+        }
+    }
+
+    /// A row is in its compact attention state when it is actionable, in the
+    /// list, interactive and closed. The question row's `Answer` chip rides the
+    /// `.meta` row instead; only the permission pair sits on its own line.
+    private func showsCompactActionable(showsDetail: Bool) -> Bool {
+        presentation == .list && isActionable && isInteractive && !showsDetail
+    }
+
+    private func showsCompactApprovalActions(showsDetail: Bool) -> Bool {
+        showsCompactActionable(showsDetail: showsDetail)
+            && session.phase == .waitingForApproval
+            && actions.approve != nil
+    }
+
+    /// The board's compact `.btn` pair — the same `PouredApprovalButtonLabel` +
+    /// `PouredFullSizeButtonStyle` the hero uses, only at the row override
+    /// (`padding:6px 12px; font-size:12px`, board lines 820/822). Approve sits
+    /// left of Deny, and both fire exactly the callbacks ⌘Y / ⌘N fire, so the
+    /// global shortcuts and the visible controls can never disagree.
+    private var compactApprovalActions: some View {
+        HStack(spacing: 8) {
+            Button {
+                actions.approve?(.allowOnce)
+            } label: {
+                PouredApprovalButtonLabel(
+                    title: session.permissionRequest?.primaryActionTitle ?? lang.t("approval.allowOnce"),
+                    shortcut: .allowOnce,
+                    kind: .allow,
+                    usesStandaloneChrome: false
+                )
+            }
+            .buttonStyle(PouredFullSizeButtonStyle(kind: .event, isCompact: true))
+            .accessibilityLabel(session.permissionRequest?.primaryActionTitle ?? lang.t("a11y.approval.allowOnce"))
+
+            Button {
+                actions.approve?(.deny)
+            } label: {
+                PouredApprovalButtonLabel(
+                    title: session.permissionRequest?.secondaryActionTitle ?? lang.t("approval.deny"),
+                    shortcut: .deny,
+                    kind: .deny,
+                    usesStandaloneChrome: false
+                )
+            }
+            .buttonStyle(PouredFullSizeButtonStyle(kind: .deny, isCompact: true))
+            .accessibilityLabel(session.permissionRequest?.secondaryActionTitle ?? lang.t("a11y.approval.deny"))
+        }
+    }
+
+    /// The question row's single affordance (board lines 836-838): a `.jump`-class
+    /// chip in gold, advertising the digit keys the hero registers. Pressing it is
+    /// the **deliberate open** — it flips `detailOverride`, mounting the §F hero
+    /// (and with it the `keyboardCoordinator` registration the digits need).
+    private var compactAnswerChip: some View {
+        Button {
+            toggleDetail(currentlyOpen: false)
+        } label: {
+            HStack(spacing: 6) {
+                Text(lang.t("poured.row.answer"))
+                    .font(PouredType.Role.jumpChip.font)
+                    .lineLimit(1)
+                if let glyphs = questionOptionKeycapGlyphs {
+                    PouredKeycapRow(
+                        glyphs: glyphs,
+                        separator: glyphs.count > 1 ? "–" : nil,
+                        separatorInk: PouredQuestionColors.answerChipInk
+                    )
+                }
+            }
+            .foregroundStyle(PouredQuestionColors.answerChipInk)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 3)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(PouredQuestionColors.answerChipFill)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(lang.t("poured.row.answer"))
+    }
+
+    /// `1`–`N` for an N-option question (board renders `1–3`); a single-option
+    /// question advertises just `1`, and a question with no options advertises
+    /// nothing rather than an empty range.
+    private var questionOptionKeycapGlyphs: [String]? {
+        let count = session.questionPrompt?.options.count ?? 0
+        guard count > 0 else { return nil }
+        return count == 1 ? ["1"] : ["1", "\(count)"]
+    }
+
+    /// The flat radial wash an actionable row wears **in the list**
+    /// (`.actionable`, board lines 300-302; the question row's own inline
+    /// override at line 830 is gold at a lower alpha). Suppressed under Reduce
+    /// Transparency / Increase Contrast, where the hero's own wash flattens too.
+    @ViewBuilder
+    private var actionableRowWash: some View {
+        if let tint = actionableRowWashTint {
+            EllipticalGradient(
+                gradient: Gradient(colors: [tint, tint.opacity(0)]),
+                center: UnitPoint(x: 0.5, y: -0.1),
+                startRadiusFraction: 0,
+                endRadiusFraction: 0.6
+            )
+        }
+    }
+
+    private var actionableRowWashTint: Color? {
+        guard presentation == .list, isActionable, !reduceTransparency, !increasesContrast else {
+            return nil
+        }
+        switch session.phase {
+        case .waitingForApproval: return PouredApprovalColors.rowWash
+        case .waitingForAnswer: return PouredQuestionColors.rowWash
+        case .running, .completed: return nil
+        }
     }
 
     // MARK: - Title line (identity tick + workspace + disambiguator)
@@ -377,44 +894,125 @@ private struct PouredRowContent: View {
     /// (permission/question text, last message, outcome) wholly at secondary —
     /// never a raw tool id or a `$ …` command echo.
     @ViewBuilder
-    private func activityLine(isExpanded: Bool) -> some View {
-        let segments = activitySegments(isExpanded: isExpanded)
-        if !segments.isEmpty {
-            composedActivityText(segments)
+    private func activityLine(referenceDate: Date) -> some View {
+        if let ask = actionableAskText() {
+            // R2/C1 · C2 (`01-poured-island.html:818`, `:835`): an actionable
+            // row's `.act` is the **ask itself**, in the board's own warm ink —
+            // never the generic "Ask User" / "Running …" narration the shared
+            // spotlight line hands back for the same session.
+            ask
                 .font(PouredType.Role.activityLine.font)
                 .lineLimit(1)
                 .truncationMode(.tail)
+        } else {
+            let segments = activitySegments(referenceDate: referenceDate)
+            if !segments.isEmpty {
+                composedActivityText(segments)
+                    .font(PouredType.Role.activityLine.font)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
         }
+    }
+
+    /// The board's actionable `.act` copy, or `nil` for every non-actionable row.
+    ///
+    /// - permission (`:818`): `Wants to run ` + the command in `--mono`, the
+    ///   whole line `#ffd9a8` at weight 550.
+    /// - question (`:835`): the question **text** (byte-identical to the §F
+    ///   hero's `.q-text`, which is what makes the row its compact projection),
+    ///   in `#fff0cf`.
+    private func actionableAskText() -> Text? {
+        switch session.phase {
+        case .waitingForApproval:
+            let ink = PouredApprovalColors.askInk
+            guard let command = permissionCommandText else {
+                guard let summary = PouredCompactActivity.plainText(session.permissionRequest?.summary)
+                    ?? PouredCompactActivity.plainText(session.permissionRequest?.title) else { return nil }
+                return Text(verbatim: summary).foregroundStyle(ink)
+            }
+            return Text(lang.t("poured.row.wantsToRun") + " ").foregroundStyle(ink)
+                + Text(verbatim: command)
+                    .font(PouredType.Role.commandBlock.font)
+                    .foregroundStyle(ink)
+
+        case .waitingForAnswer:
+            guard let question = PouredCompactActivity.plainText(
+                session.questionPrompt?.questions.first?.question
+            ) else { return nil }
+            return Text(verbatim: question).foregroundStyle(PouredQuestionColors.askInk)
+
+        case .running, .completed:
+            return nil
+        }
+    }
+
+    /// The bare shell command a permission request is asking about — the board's
+    /// `swift build` mono span. Reuses the same preview the §E hero's `$ …` block
+    /// reads, so the row and the hero can never disagree about the command.
+    private var permissionCommandText: String? {
+        guard session.permissionRequest != nil else { return nil }
+        return PouredCompactActivity.plainText(session.currentCommandPreviewText)
     }
 
     /// Tone-split runs for the `.act` line. Running rows narrate verb+object;
     /// the rest fall back to the human activity summary (never the `$` echo,
     /// which lived only in the retired running command block).
-    private func activitySegments(isExpanded: Bool) -> [PouredRowActivityTone.Segment] {
+    private func activitySegments(referenceDate: Date) -> [PouredRowActivityTone.Segment] {
         if let narrated = session.narratedActivity {
             return PouredRowActivityTone.segments(
                 verb: narrated.localizedVerb(lang),
                 object: narrated.object,
-                fallback: nil
+                fallback: nil,
+                liveSuffix: liveElapsedSuffix(at: referenceDate)
             )
         }
+        // PI-C-005: expansion no longer gates the line — a collapsed row
+        // narrates too, through the Poured-local compact resolver.
         return PouredRowActivityTone.segments(
             verb: nil,
             object: nil,
-            fallback: session.spotlightActivityLineText ?? PouredRowExpansion.fallbackActivityLine(
-                isExpanded: isExpanded,
+            fallback: PouredCompactActivity.text(
+                isSettled: session.phase == .completed,
+                summary: settledSummaryText,
+                spotlight: session.spotlightActivityLineText,
                 lastAssistantMessage: session.lastAssistantMessageText,
                 hasJumpTarget: session.jumpTarget != nil
             )
         )
     }
 
+    /// The session's own one-line `summary`, unless it is merely the phase's
+    /// display name (`Completed`), which narrates nothing the state dot doesn't.
+    private var settledSummaryText: String? {
+        let summary = session.summary.trimmedForRow
+        return summary == SessionPhase.completed.displayName ? nil : summary
+    }
+
+    /// R2/C3 (`01-poured-island.html:852`): the `· live 1m 42s` tail a running
+    /// row hangs off its narration.
+    ///
+    /// It is spoken **only when the age column reads `now`** — i.e. when the row
+    /// was just refreshed and its age can no longer answer "for how long has
+    /// this been going?". That is exactly the board's own split: row 3 (`now`)
+    /// carries the tail, row 4 (`8m`) does not. Recorded as a derived rule.
+    private func liveElapsedSuffix(at referenceDate: Date) -> String? {
+        guard session.phase == .running, isJustRefreshed(at: referenceDate) else { return nil }
+        let elapsed = referenceDate.timeIntervalSince(session.firstSeenAt)
+        guard elapsed >= 1 else { return nil }
+        return lang.t("poured.row.live", PouredLiveElapsed.text(seconds: elapsed))
+    }
+
+    private func isJustRefreshed(at referenceDate: Date) -> Bool {
+        referenceDate.timeIntervalSince(session.islandActivityDate) < 60
+    }
+
     private func composedActivityText(_ segments: [PouredRowActivityTone.Segment]) -> Text {
-        let primary = tokens.colors.paper.opacity(contrastText(0.96))
+        let live = tokens.colors.statusRunning
         let secondary = tokens.colors.paper.opacity(contrastText(tokens.colors.secondaryTextOpacity))
         return segments.reduce(Text(verbatim: "")) { accumulated, segment in
             accumulated + Text(verbatim: segment.text)
-                .foregroundStyle(segment.isPrimary ? primary : secondary)
+                .foregroundStyle(segment.tone == .live ? live : secondary)
         }
     }
 
@@ -422,7 +1020,16 @@ private struct PouredRowContent: View {
     /// workspace name is unique among the visible sessions. Rendered as its own
     /// mono span (no parentheses) — see `PouredRowDisambiguation`.
     private var disambiguatorSuffix: String? {
-        PouredRowDisambiguation.suffix(sessionDisambiguators[session.id])
+        // R2/C4 (`01-poured-island.html:866-867`): when a row is fanned out into
+        // subagents, the board composes the disambiguator as
+        // `<branch> · <N> subagents` — the fan-out is part of *which* row this
+        // is, not a fact chip beside it. Reuses the same localized count string
+        // the expanded §4G nest header speaks.
+        let base = PouredRowDisambiguation.suffix(sessionDisambiguators[session.id])
+        guard let subagentCount = collapsedSubagentCount else { return base }
+        let fanOut = lang.t("poured.subagents.count", subagentCount)
+        guard let base else { return fanOut }
+        return base + " \u{00B7} " + fanOut
     }
 
     // MARK: - Subagents & tasks nests (§4G · mockup §G)
@@ -1204,76 +1811,63 @@ private struct PouredRowContent: View {
         }
     }
 
-    /// The default indicator carries Poured's design language most directly:
-    /// a running (or actionable-waiting) row breathes a glowing dot, a
-    /// done-success row settles to a quiet check, and an idle row recedes to a
-    /// dim, glow-less dot.
+    /// R4-4 (PI-C-005 · `01-poured-island.html:847/863/881/898`, `:160-170`,
+    /// `:204-212`): the board's `.lead` vocabulary, one marker per row kind.
+    ///
+    /// - **working** → the three-bar `.glyph.run` in `--run`, never a plain dot;
+    ///   the bars are the theme's own liveness glyph (`UnifiedBars`, the same
+    ///   component the closed pill draws), fitted to the row's lead column.
+    /// - **done / success** → a plain `.dot.done`. The check glyph the shipped
+    ///   row drew here is gone: `✓ Success` already sits in the row's outcome
+    ///   pill, so the row was stating the same fact twice.
+    /// - **interrupted** → `.dot.interrupt` `#d98c26` (see `leadMarkerTint`).
+    /// - permission / question keep their approve+ring and answer dots.
     @ViewBuilder
     private func animatedIndicator(tint: Color, presence: IslandSessionPresence) -> some View {
-        if session.phase == .completed, session.outcome == .success, presence != .inactive {
-            Image(systemName: "checkmark")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(tint)
-                .shadow(color: tint.opacity(0.4), radius: 3)
-                .frame(width: 14, height: 24, alignment: .top)
-                .padding(.top, 3)
+        let markerTint = leadMarkerTint(fallback: tint)
+        // R5 / PI-C-006: `.dot.approve.ring` — only the permission row carries
+        // the board's hard band. Everything else is a bare `.dot`.
+        let wantsApproveRing = session.phase == .waitingForApproval
+        if session.phase == .running {
+            PouredRunBarsGlyph(tint: tokens.colors.statusRunning)
+                .frame(width: 20, height: 24, alignment: .top)
         } else if let pulseClock, stateIndicator.pulses(presence: presence, isActionable: isActionable) {
-            PouredPulsingStatusDot(pulseClock: pulseClock, tint: tint, presence: presence)
+            PouredPulsingStatusDot(pulseClock: pulseClock, tint: markerTint, ring: wantsApproveRing)
                 .frame(width: 12, height: 24, alignment: .top)
         } else {
-            pouredStatusDotView(tint: tint, presence: presence, pulse: 0)
+            pouredStatusDotView(tint: markerTint, pulse: 0, ring: wantsApproveRing)
                 .frame(width: 12, height: 24, alignment: .top)
         }
     }
 
-    // MARK: - Badges (display rules AB-282…286, verbatim from Classic)
-
-    private func sideBadge(_ title: String) -> some View {
-        Text(title)
-            .font(PouredType.font(for: .metaChip))
-            .foregroundStyle(tokens.colors.paper.opacity(presentation == .notification ? 0.52 : 0.72))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(.white.opacity(presentation == .notification ? 0.05 : 0.07), in: Capsule())
+    /// R4-4: a **completed** row's lead marker states its outcome, not its
+    /// recency. `statusTint(for:presence:outcome:)` collapses any `.inactive`
+    /// presence to the idle grey, which made the board's interrupted row (22
+    /// minutes old) read as an idle session — the exact opposite of `⏹
+    /// Interrupted` printed beside it. Age is already carried by `.age` and the
+    /// stale-row opacity; the marker carries the state.
+    private func leadMarkerTint(fallback: Color) -> Color {
+        guard session.phase == .completed else { return fallback }
+        return tokens.colors.statusTint(for: .completed, outcome: session.outcome)
     }
 
-    private enum PermissionModeBadgeKind {
-        case plan
-        case bypass
-    }
+    // MARK: - Badges
 
-    private var permissionModeBadgeKind: PermissionModeBadgeKind? {
-        switch session.claudeMetadata?.permissionMode {
-        case .plan:
-            .plan
-        case .bypassPermissions:
-            .bypass
-        default:
-            nil
-        }
-    }
-
-    @ViewBuilder
-    private func permissionModeChip(_ kind: PermissionModeBadgeKind) -> some View {
-        switch kind {
-        case .plan:
-            sideBadge(lang.t("badge.planMode"))
-        case .bypass:
-            Text(lang.t("badge.bypassPermissions"))
-                .font(PouredType.font(for: .metaChip))
-                .foregroundStyle(tokens.colors.statusWarning.opacity(0.94))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(tokens.colors.statusWarning.opacity(0.16), in: Capsule())
-                .overlay(Capsule().stroke(tokens.colors.statusWarning.opacity(0.4), lineWidth: 1))
-        }
-    }
-
+    /// R2/C7 (`01-poured-island.html:858`): every Poured row's `.age` reads
+    /// **recency** — how long since this session last said anything — and a
+    /// running row that just spoke reads the board's `now` rather than `<1m`.
+    ///
+    /// Running rows used to read `elapsedRunningLabel` (run *duration*) here,
+    /// which made the same column mean two different things depending on phase
+    /// and left no way to render the board's row 3, which is simultaneously
+    /// `now` in the age column and `live 1m 42s` in the narration. Duration now
+    /// lives where the board puts it — the `.act` tail (see
+    /// `liveElapsedSuffix(at:)`).
     private func ageBadgeText(at referenceDate: Date) -> String {
-        if session.phase == .running {
-            return session.elapsedRunningLabel(at: referenceDate)
+        if session.phase == .running, isJustRefreshed(at: referenceDate) {
+            return lang.t("poured.age.now")
         }
-        return session.spotlightAgeBadge
+        return session.spotlightAgeBadge(at: referenceDate)
     }
 
     // MARK: - Trailing controls
@@ -1322,13 +1916,45 @@ private struct PouredRowContent: View {
     // MARK: - Accessibility (identical wording to Classic)
 
     private func accessibilityRowSummaryText(referenceDate: Date) -> String {
-        lang.t(
+        let base = lang.t(
             "a11y.session.summary",
             session.tool.displayName,
             session.spotlightWorkspaceName,
             accessibilityPhaseText,
             accessibilityElapsedText(at: referenceDate)
         )
+        // PI-C-005: the row now narrates on screen, so the single grouped
+        // VoiceOver stop must say the same thing rather than stopping at the
+        // workspace + phase.
+        guard let narrative = accessibilityActivityNarrative(referenceDate: referenceDate) else { return base }
+        return "\(base), \(narrative)"
+    }
+
+    /// R2/C1 · C2: VoiceOver hears the same ask the row prints — the permission's
+    /// `Wants to run swift build` / the question's own text — not the generic
+    /// narration the shared spotlight line would produce for the same session.
+    private func accessibilityActivityNarrative(referenceDate: Date) -> String? {
+        if let ask = accessibilityAskText { return ask }
+        let joined = activitySegments(referenceDate: referenceDate)
+            .map(\.text)
+            .joined()
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return joined.isEmpty ? nil : joined
+    }
+
+    private var accessibilityAskText: String? {
+        switch session.phase {
+        case .waitingForApproval:
+            guard let command = permissionCommandText else {
+                return PouredCompactActivity.plainText(session.permissionRequest?.summary)
+                    ?? PouredCompactActivity.plainText(session.permissionRequest?.title)
+            }
+            return lang.t("poured.row.wantsToRun") + " " + command
+        case .waitingForAnswer:
+            return PouredCompactActivity.plainText(session.questionPrompt?.questions.first?.question)
+        case .running, .completed:
+            return nil
+        }
     }
 
     private var accessibilityPhaseText: String {
@@ -1471,7 +2097,7 @@ private struct PouredRowContent: View {
                 .accessibilityLabel(lang.t("a11y.task.completed"))
         case .inProgress:
             if let pulseClock {
-                PouredPulsingStatusDot(pulseClock: pulseClock, tint: tokens.colors.statusRunning, presence: .active)
+                PouredPulsingStatusDot(pulseClock: pulseClock, tint: tokens.colors.statusRunning)
                     .frame(width: 8, height: 8)
                     .accessibilityLabel(lang.t("a11y.task.inProgress"))
             } else {
@@ -1859,12 +2485,49 @@ enum PouredApprovalShortcut {
 /// scope rows, an ink chip for the amber primary (so it reads on the light
 /// gradient), per the mockup `.kc kbd` / `.btn.primary .kc kbd`.
 private struct PouredKeycapRow: View {
-    let shortcut: PouredApprovalShortcut
+    let glyphs: [String]
+    /// PI-C-006: the board's `Answer` chip prints a *range* — `1`–`3` with the
+    /// en-dash **outside** the two keycaps (`01-poured-island.html:838`).
+    var separator: String?
+    /// R4-3: the separator is chip text, not keycap text — it takes the hosting
+    /// chip's ink so `Answer 1–3` reads as one phrase.
+    var separatorInk: Color?
     var onAmber: Bool = false
+
+    init(shortcut: PouredApprovalShortcut, onAmber: Bool = false) {
+        self.glyphs = shortcut.glyphs
+        self.separator = nil
+        self.onAmber = onAmber
+    }
+
+    init(glyphs: [String], separator: String? = nil, separatorInk: Color? = nil, onAmber: Bool = false) {
+        self.glyphs = glyphs
+        self.separator = separator
+        self.separatorInk = separatorInk
+        self.onAmber = onAmber
+    }
 
     var body: some View {
         HStack(spacing: 2) {
-            ForEach(Array(shortcut.glyphs.enumerated()), id: \.offset) { _, glyph in
+            ForEach(Array(glyphs.enumerated()), id: \.offset) { index, glyph in
+                if index > 0, separator != nil {
+                    // R4-3 (`01-poured-island.html:838`): the range separator
+                    // between the two caps — the board's `&#8211;`, which renders
+                    // **6.5 × 1.5pt** in the §C frame (measured on
+                    // `frame-C-2x.png`: a 13×3px rule at 2×), in the hosting
+                    // chip's ink.
+                    //
+                    // **Deviation, recorded.** Drawn as a rule rather than set as
+                    // `Text("\u{2013}")`. Typeset at the keycap role it rendered
+                    // 2×3px and at the chip role 4×4px — a speck that reads as an
+                    // interpunct ("Answer 1 · 3"), which is exactly the defect
+                    // R4-3 names. The dash is chrome joining two keycaps, not
+                    // prose, so its geometry is stated directly and now matches
+                    // the reference at the pixel.
+                    Capsule(style: .continuous)
+                        .fill(separatorInk ?? PouredApprovalColors.keycapInk)
+                        .frame(width: 6.5, height: 1.5)
+                }
                 Text(glyph)
                     .font(PouredType.Role.keycap.font)
                     .foregroundStyle(onAmber ? PouredApprovalColors.keycapInkOnAmber : PouredApprovalColors.keycapInk)
@@ -2047,6 +2710,12 @@ private enum PouredApprovalColors {
     static let denyFill = Color(red: 0xDB/255, green: 0x52/255, blue: 0x52/255).opacity(0.14) // rgba(219,82,82,.14)
     static let denyInk = Color(red: 0xF0/255, green: 0xA8/255, blue: 0xA8/255)              // #f0a8a8
 
+    /// PI-C-006 · `.actionable` row wash — `rgba(255,177,77,.16)`.
+    static let rowWash = Color(red: 0xFF/255, green: 0xB1/255, blue: 0x4D/255).opacity(0.16)
+
+    /// R2/C2 · the compact permission row's `.act` ink — `#ffd9a8` (line 818).
+    static let askInk = Color(red: 0xFF/255, green: 0xD9/255, blue: 0xA8/255)
+
     // Keycaps
     static let keycapFill = Color.black.opacity(0.28)
     static let keycapStroke = Color.white.opacity(0.14)
@@ -2137,6 +2806,16 @@ enum PouredQuestionColors {
     static let submitTop = Color(red: 0xFF/255, green: 0xE0/255, blue: 0xA8/255)    // #ffe0a8
     static let submitBottom = Color(red: 0xFF/255, green: 0xD5/255, blue: 0x8A/255) // #ffd58a
     static let submitInk = Color(red: 0x2A/255, green: 0x22/255, blue: 0x05/255)    // #2a2205
+
+    /// PI-C-006 · the question row's own inline wash — `rgba(255,213,138,.13)`
+    /// (`01-poured-island.html:830`): gold, and a touch quieter than the
+    /// permission row's amber.
+    static let rowWash = Color(red: 0xFF/255, green: 0xD5/255, blue: 0x8A/255).opacity(0.13)
+    /// R2/C1 · the compact question row's `.act` ink — `#fff0cf` (line 835).
+    static let askInk = Color(red: 0xFF/255, green: 0xF0/255, blue: 0xCF/255)
+    /// `Answer` chip fill / ink — `rgba(255,213,138,.14)` on `#ffe6b8` (line 837).
+    static let answerChipFill = Color(red: 0xFF/255, green: 0xD5/255, blue: 0x8A/255).opacity(0.14)
+    static let answerChipInk = Color(red: 0xFF/255, green: 0xE6/255, blue: 0xB8/255)
 }
 
 /// The completion outcome badge (`.outcome`) fills (`SPEC` §4H · mockup
@@ -2227,13 +2906,104 @@ enum PouredRowEntrance {
 /// `pulse` (0…1, from the shared `PulseClock`) breathes both the scale and the
 /// glow radius. A little softer/larger than Classic's dot to match the frosted
 /// surface.
-private func pouredStatusDotView(tint: Color, presence: IslandSessionPresence, pulse: Double) -> some View {
-    Circle()
+/// R4-4 (`01-poured-island.html:160-166`, `:847`): the working row's `.lead`
+/// marker — the board's `.glyph.run`, three bottom-aligned bars at `width:12px`
+/// in `--run`, measured off the rendered §C frame at 2.5pt wide, 2.5pt apart,
+/// `14 / 14 / 11` tall.
+///
+/// **Deviation, recorded.** The correction asked for the closed pill's
+/// `UnifiedBars`. That component draws the same three bars but drives them with
+/// a `CAKeyframeAnimation` wave, so the marker's height is whatever phase the
+/// frame happens to catch — in a harness capture it landed at the wave's floor
+/// and rendered three 2×3pt specks, which is not the board's glyph at any
+/// amplitude. The lead marker is a *state* mark rather than a liveness meter
+/// (the row's `.act` already carries `live 1m 42s`), so it is drawn statically at
+/// the board's own frame and reads identically in every capture.
+private struct PouredRunBarsGlyph: View {
+    let tint: Color
+
+    private static let barWidth: CGFloat = 2.5
+    private static let barHeights: [CGFloat] = [14, 14, 11]
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: Self.barWidth) {
+            ForEach(Array(Self.barHeights.enumerated()), id: \.offset) { _, height in
+                Capsule(style: .continuous)
+                    .fill(tint)
+                    .frame(width: Self.barWidth, height: height)
+            }
+        }
+        .frame(height: 15, alignment: .bottom)
+        .accessibilityHidden(true)
+    }
+}
+
+/// R4-10 (`01-poured-island.html:871`): the SSH chip's leading mark — the
+/// board's 9×9 filled three-bar SVG, drawn in the chip's own ink
+/// (`fill=currentColor`) rather than as an SF Symbol, so it keeps the board's
+/// squat proportions at chip scale.
+private struct PouredTransportBarsGlyph: View {
+    var side: CGFloat = 9
+
+    var body: some View {
+        VStack(spacing: side * 0.19) {
+            ForEach(0..<3, id: \.self) { _ in
+                RoundedRectangle(cornerRadius: side * 0.09, style: .continuous)
+                    .frame(height: side * 0.18)
+            }
+        }
+        .frame(width: side, height: side)
+    }
+}
+
+/// `rgba(255,177,77,.22)` — the board's `.ring` band colour, literal.
+private let pouredApproveRingColor = Color(
+    red: 255 / 255,
+    green: 177 / 255,
+    blue: 77 / 255
+).opacity(0.22)
+
+/// R5 / PI-C-006 (`01-poured-island.html:204-212`): the board's list marker dot.
+///
+/// The board draws exactly two things here and nothing else:
+/// `.dot{width:8px;height:8px;border-radius:50%}` filled in the state colour,
+/// and — for the permission row only — `.ring{box-shadow:0 0 0 3px
+/// rgba(255,177,77,.22)}`. A CSS *spread* shadow with zero blur is a **hard**
+/// band: it paints the ±3px offset silhouette behind the disc, so the ring runs
+/// from r=4 to r=7 with crisp edges on both sides. That ring is the shape
+/// discriminator between a permission marker and a question marker — same
+/// family of disc, different silhouette.
+///
+/// The soft monotonic bloom this helper used to draw (a 9px disc plus two
+/// `.shadow` layers) exists nowhere on the board's list markers; the only glow
+/// in the board's list is the running row's `.glyph.run`, which is a different
+/// component entirely (`PouredRunBarsGlyph`). It is gone. What survives is the
+/// pulse *scale* — the breathing semantics the shipped row had — applied to the
+/// disc and its ring together so the marker keeps one silhouette.
+private func pouredStatusDotView(
+    tint: Color,
+    pulse: Double,
+    ring: Bool = false
+) -> some View {
+    // `.dot` — 8×8 in the state colour, so the disc's own radius is 4.
+    let core: CGFloat = 8
+    // `.ring` — `0 0 0 3px`: a band 3pt wide starting at the disc's edge, i.e.
+    // r=4…7. `strokeBorder` draws inward from the frame, so the frame is the
+    // band's *outer* diameter: 14.
+    let bandWidth: CGFloat = 3
+    let ringOuterDiameter = core + (bandWidth * 2)
+
+    return Circle()
         .fill(tint)
-        .frame(width: 9, height: 9)
+        .frame(width: core, height: core)
+        .overlay {
+            if ring {
+                Circle()
+                    .strokeBorder(pouredApproveRingColor, lineWidth: bandWidth)
+                    .frame(width: ringOuterDiameter, height: ringOuterDiameter)
+            }
+        }
         .scaleEffect(1 + (pulse * 0.2))
-        .shadow(color: tint.opacity(presence == .inactive ? 0 : 0.42 + (pulse * 0.3)), radius: 5 + (pulse * 4))
-        .shadow(color: tint.opacity(presence == .inactive ? 0 : 0.2 + (pulse * 0.16)), radius: 10 + (pulse * 5))
 }
 
 /// The breathing variant of `pouredStatusDotView`, isolated in its own `View`
@@ -2243,15 +3013,15 @@ private func pouredStatusDotView(tint: Color, presence: IslandSessionPresence, p
 private struct PouredPulsingStatusDot: View {
     let pulseClock: PulseClock
     let tint: Color
-    let presence: IslandSessionPresence
+    var ring: Bool = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         if reduceMotion {
-            pouredStatusDotView(tint: tint, presence: presence, pulse: 0)
+            pouredStatusDotView(tint: tint, pulse: 0, ring: ring)
         } else {
-            pouredStatusDotView(tint: tint, presence: presence, pulse: pulseClock.phase)
+            pouredStatusDotView(tint: tint, pulse: pulseClock.phase, ring: ring)
                 .onAppear { pulseClock.acquire() }
                 .onDisappear { pulseClock.release() }
         }
@@ -2319,6 +3089,12 @@ enum PouredFullSizeButtonKind: CaseIterable, Equatable {
     static let horizontalPadding: CGFloat = 14
     static let verticalPadding: CGFloat = 8
 
+    /// PI-C-006: the §C list row overrides the same `.btn` to `padding:6px 12px;
+    /// font-size:12px` (`01-poured-island.html:820`, `:822`) — a size, not a new
+    /// treatment: radius, fill, ink and glow all stay the button's own.
+    static let compactHorizontalPadding: CGFloat = 12
+    static let compactVerticalPadding: CGFloat = 6
+
     var usesGradient: Bool {
         self == .event || self == .wayfinding
     }
@@ -2333,13 +3109,16 @@ enum PouredFullSizeButtonKind: CaseIterable, Equatable {
 /// only changes semantic fill, ink and whether the primary glow is present.
 private struct PouredFullSizeButtonStyle: ButtonStyle {
     let kind: PouredFullSizeButtonKind
+    /// PI-C-006: the in-list compact override of the same button.
+    var isCompact: Bool = false
 
     func makeBody(configuration: Configuration) -> some View {
-        PouredFullSizeButtonChrome(kind: kind, configuration: configuration)
+        PouredFullSizeButtonChrome(kind: kind, isCompact: isCompact, configuration: configuration)
     }
 
     private struct PouredFullSizeButtonChrome: View {
         let kind: PouredFullSizeButtonKind
+        let isCompact: Bool
         let configuration: Configuration
 
         @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -2349,10 +3128,10 @@ private struct PouredFullSizeButtonStyle: ButtonStyle {
 
         var body: some View {
             let base = configuration.label
-                .font(PouredType.Role.heroButtonLabel.font)
+                .font(isCompact ? PouredType.Role.compactButtonLabel.font : PouredType.Role.heroButtonLabel.font)
                 .foregroundStyle(ink)
-                .padding(.horizontal, PouredFullSizeButtonKind.horizontalPadding)
-                .padding(.vertical, PouredFullSizeButtonKind.verticalPadding)
+                .padding(.horizontal, isCompact ? PouredFullSizeButtonKind.compactHorizontalPadding : PouredFullSizeButtonKind.horizontalPadding)
+                .padding(.vertical, isCompact ? PouredFullSizeButtonKind.compactVerticalPadding : PouredFullSizeButtonKind.verticalPadding)
                 .background(background)
                 .opacity(configuration.isPressed ? 0.82 : 1)
                 .scaleEffect(configuration.isPressed ? 0.98 : 1)

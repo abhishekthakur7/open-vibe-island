@@ -207,7 +207,6 @@ PouredSessionListScaffold.swift	typography-debt	1	.font(.system(size: 11).monosp
 PouredSessionRow.swift	sf-symbol	1	.font(.system(size: 10, weight: .bold))
 PouredSessionRow.swift	sf-symbol	1	.font(.system(size: 10, weight: .bold))
 PouredSessionRow.swift	sf-symbol	1	.font(.system(size: 10, weight: .semibold))
-PouredSessionRow.swift	sf-symbol	1	.font(.system(size: 11, weight: .bold))
 PouredSessionRow.swift	sf-symbol	1	.font(.system(size: 11, weight: .semibold))
 PouredSessionRow.swift	sf-symbol	1	.font(.system(size: 12, weight: .semibold))
 PouredSessionRow.swift	sf-symbol	1	.font(.system(size: 12, weight: .semibold))

@@ -207,6 +207,11 @@ struct PouredThemeTests {
             (.commandBlock, 12, 600, true, false),
             (.diff, 11.5, 400, true, false),
             (.heroButtonLabel, 13, 600, false, false),
+            // PI-C-006: the §C in-list Approve / Deny override of the same
+            // button — 12/600 sans (`01-poured-island.html:820`).
+            (.compactButtonLabel, 12, 600, false, false),
+            // PI-I-001: the header wing's `.ut b` countdown — 11/600 tabular.
+            (.usageResetLabel, 11, 600, false, true),
             (.heroTitle, 14, 640, false, false),
             (.metadataKey, 10, 600, false, false),
         ]

@@ -504,6 +504,11 @@
 "poured.detail.attachment.attached" = "已連接窗格";
 "poured.detail.attachment.stale" = "窗格失聯";
 "poured.detail.attachment.detached" = "已分離";
+"poured.row.jump" = "跳轉";
+"poured.row.answer" = "回答";
+"poured.row.wantsToRun" = "想要執行";
+"poured.row.live" = "已執行 %@";
+"poured.age.now" = "剛剛";
 "poured.subagents.count" = "%lld 個子代理";
 "poured.tasks.chip" = "%1$lld/%2$lld 任務";
 "poured.tasks.header" = "任務 · %2$lld 個中 %1$lld 個已完成";

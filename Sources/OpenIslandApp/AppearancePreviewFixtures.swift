@@ -316,7 +316,10 @@ enum AppearancePreviewFixtures {
             attachmentState: .attached,
             phase: .completed,
             outcome: .success,
-            summary: "Documented the new bridge-auth flow.",
+            // PI-C-005 (§C row 5, board line 886): a settled row's compact
+            // `.act` line reads its own one-line summary, so this is the board's
+            // copy verbatim.
+            summary: "Updated AGENTS.md and CLAUDE.md",
             updatedAt: finishedAt,
             firstSeenAt: finishedAt.addingTimeInterval(-43 * 60),
             jumpTarget: JumpTarget(
@@ -378,47 +381,7 @@ enum AppearancePreviewFixtures {
                     worktreeBranch: "feat/bridge-auth"
                 )
             ),
-            AgentSession(
-                id: "fixture-trio-claude-main",
-                title: "Claude · the-automator",
-                tool: .claudeCode,
-                origin: .demo,
-                attachmentState: .attached,
-                phase: .running,
-                summary: "Running the release checklist.",
-                updatedAt: now.addingTimeInterval(-52),
-                jumpTarget: JumpTarget(
-                    terminalApp: "Ghostty",
-                    workspaceName: "the-automator",
-                    paneTitle: "claude ~/the-automator",
-                    terminalSessionID: "fixture-trio-main"
-                ),
-                claudeMetadata: ClaudeSessionMetadata(
-                    lastUserPrompt: "Kick off the release checklist across the sub-tasks.",
-                    currentTool: "Task",
-                    worktreeBranch: "main",
-                    activeSubagents: [
-                        ClaudeSubagentInfo(
-                            agentID: "trio-sub-1",
-                            agentType: "Explore",
-                            taskDescription: "Audit the changelog since the last tag",
-                            startedAt: now.addingTimeInterval(-40)
-                        ),
-                        ClaudeSubagentInfo(
-                            agentID: "trio-sub-2",
-                            agentType: "general-purpose",
-                            taskDescription: "Verify the notarization credentials",
-                            startedAt: now.addingTimeInterval(-64)
-                        ),
-                        ClaudeSubagentInfo(
-                            agentID: "trio-sub-3",
-                            agentType: "Plan",
-                            taskDescription: "Draft the bilingual release notes",
-                            startedAt: now.addingTimeInterval(-12)
-                        ),
-                    ]
-                )
-            ),
+            duplicateWorkspaceTrioReleaseSession(now: now),
             AgentSession(
                 id: "fixture-trio-codex",
                 title: "Codex · the-automator",
@@ -441,6 +404,75 @@ enum AppearancePreviewFixtures {
                 )
             ),
         ]
+    }
+
+    /// §C row 4 / the trio's `main` row, split out of the array literal so it
+    /// can carry `isRemote` (a `var`, not an init parameter).
+    private static func duplicateWorkspaceTrioReleaseSession(now: Date) -> AgentSession {
+        var session = AgentSession(
+            id: "fixture-trio-claude-main",
+            title: "Claude · the-automator",
+            tool: .claudeCode,
+            origin: .demo,
+            attachmentState: .attached,
+            phase: .running,
+            summary: "Running the release checklist.",
+            updatedAt: now.addingTimeInterval(-52),
+            jumpTarget: JumpTarget(
+                terminalApp: "Ghostty",
+                workspaceName: "the-automator",
+                paneTitle: "claude ~/the-automator",
+                terminalSessionID: "fixture-trio-main"
+            ),
+            // PI-C-005 (§C row 4, board lines 869-872): the board's fourth
+            // row carries `Opus 4.8`, `⏲ 2/5 tasks` and `SSH` in its `.meta`
+            // row. This fixture is that row, so it must actually hold those
+            // facts — none of them were set before, so the chips had nothing
+            // to render.
+            // R2/C11 (`01-poured-island.html:868`): the board's row 4 narrates
+            // `Refactoring hook installers across 3 subagents` — a live verb the
+            // shared `ActivityNarrator` reaches only through its unknown-tool
+            // branch (`Task` is hard-wired to `Orchestrating`). Rather than
+            // touch cross-theme narration for one board string, the *fixture*
+            // carries the tool and the preview the narrator turns into that
+            // exact line: verb from `currentTool`, object from the preview.
+            claudeMetadata: ClaudeSessionMetadata(
+                lastUserPrompt: "Kick off the release checklist across the sub-tasks.",
+                currentTool: "Refactoring",
+                currentToolInputPreview: "hook installers across 3 subagents",
+                model: "claude-opus-4-8-20260101",
+                worktreeBranch: "main",
+                activeSubagents: [
+                    ClaudeSubagentInfo(
+                        agentID: "trio-sub-1",
+                        agentType: "Explore",
+                        taskDescription: "Audit the changelog since the last tag",
+                        startedAt: now.addingTimeInterval(-40)
+                    ),
+                    ClaudeSubagentInfo(
+                        agentID: "trio-sub-2",
+                        agentType: "general-purpose",
+                        taskDescription: "Verify the notarization credentials",
+                        startedAt: now.addingTimeInterval(-64)
+                    ),
+                    ClaudeSubagentInfo(
+                        agentID: "trio-sub-3",
+                        agentType: "Plan",
+                        taskDescription: "Draft the bilingual release notes",
+                        startedAt: now.addingTimeInterval(-12)
+                    ),
+                ],
+                activeTasks: [
+                    ClaudeTaskInfo(id: "trio-task-1", title: "Tag the release candidate", status: .completed),
+                    ClaudeTaskInfo(id: "trio-task-2", title: "Audit the changelog", status: .completed),
+                    ClaudeTaskInfo(id: "trio-task-3", title: "Verify notarization", status: .inProgress),
+                    ClaudeTaskInfo(id: "trio-task-4", title: "Draft the release notes", status: .pending),
+                    ClaudeTaskInfo(id: "trio-task-5", title: "Publish the appcast", status: .pending),
+                ]
+            )
+        )
+        session.isRemote = true
+        return session
     }
 
     // MARK: - Permission: shell command (AB-326 item 4)
@@ -932,6 +964,12 @@ enum AppearancePreviewFixtures {
             phase: .running,
             summary: "Editing AppModel.swift.",
             updatedAt: now.addingTimeInterval(-2),
+            // R2/C3 (`01-poured-island.html:852`, `:858`): the board's row 3 is
+            // simultaneously `now` in the age column (it spoke 2 seconds ago)
+            // and `live 1m 42s` in its narration (it has been running 102
+            // seconds). Two different clocks, so the fixture carries both — a
+            // `firstSeenAt` 102s back, an `updatedAt` 2s back.
+            firstSeenAt: now.addingTimeInterval(-102),
             jumpTarget: JumpTarget(
                 terminalApp: "Ghostty",
                 workspaceName: "open-vibe-island",
@@ -943,6 +981,10 @@ enum AppearancePreviewFixtures {
                 currentTool: "Edit",
                 currentToolInputPreview: "Sources/OpenIslandApp/AppModel.swift",
                 model: "claude-opus-4-8-20260101",
+                // R2/C10 (`01-poured-island.html:855`): board row 3 carries an
+                // `acceptEdits` chip; the fixture had no permission mode at all,
+                // so `permissionModeMetaChip` had nothing to render.
+                permissionMode: .acceptEdits,
                 worktreeBranch: "feat/theme-poured"
             )
         )
@@ -1018,6 +1060,34 @@ enum AppearancePreviewFixtures {
                         label: "7d",
                         usedPercentage: 92,
                         resetsAt: now.addingTimeInterval(19 * 3_600)
+                    ),
+                ]
+            ),
+        ]
+    }
+
+    /// PI-I-001 / PI-C-004: the §C header's own usage set — **two** windows, one
+    /// per wing (`01-poured-island.html:784-790`: `Claude 5h` 34% fine, `Claude
+    /// 7d` 78% warn). Deliberately not `usageProviders(now:)`, whose third
+    /// (critical Codex) window belongs to the §I meter-card frame and would put
+    /// a third ring in a header the board draws with two.
+    static func pouredGroupedSixUsageProviders(now: Date) -> [UsageProviderPresentation] {
+        [
+            UsageProviderPresentation(
+                id: "claude",
+                title: "Claude",
+                windows: [
+                    UsageWindowPresentation(
+                        id: "claude-5h",
+                        label: "5h",
+                        usedPercentage: 34,
+                        resetsAt: now.addingTimeInterval(2 * 3_600 + 10 * 60)
+                    ),
+                    UsageWindowPresentation(
+                        id: "claude-7d",
+                        label: "7d",
+                        usedPercentage: 78,
+                        resetsAt: now.addingTimeInterval(3 * 86_400 + 4 * 3_600)
                     ),
                 ]
             ),

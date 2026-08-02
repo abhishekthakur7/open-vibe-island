@@ -449,7 +449,15 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
                 // scenario-scoped stale window is needed for that any more —
                 // the Poured list itself never stales `Done`
                 // (`PouredSessionListScaffold.taxonomyStaleThreshold`).
-                selectedSessionID: sessions.first?.id
+                //
+                // PI-C-006: the board's §C frame shows no expanded / selected
+                // row — with actionable rows no longer auto-expanding, nothing
+                // in the list is open, so the frame must not pre-select one
+                // either.
+                selectedSessionID: nil,
+                // PI-I-001 / PI-C-004: the §C header renders two usage rings,
+                // one per wing.
+                usageProviders: AppearancePreviewFixtures.pouredGroupedSixUsageProviders(now: now)
             )
 
         case .emptyState:

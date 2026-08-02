@@ -507,6 +507,11 @@
 "poured.detail.attachment.attached" = "Pane attached";
 "poured.detail.attachment.stale" = "Pane stale";
 "poured.detail.attachment.detached" = "Detached";
+"poured.row.jump" = "Jump";
+"poured.row.answer" = "Answer";
+"poured.row.wantsToRun" = "Wants to run";
+"poured.row.live" = "live %@";
+"poured.age.now" = "now";
 "poured.subagents.count" = "%lld subagents";
 "poured.tasks.chip" = "%1$lld/%2$lld tasks";
 "poured.tasks.header" = "Tasks · %1$lld of %2$lld done";

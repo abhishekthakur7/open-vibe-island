@@ -16,9 +16,20 @@ import OpenIslandCore
 /// returns the glass `PouredSessionRow` since AB-302), exactly as the shared
 /// scaffold does.
 struct PouredSessionListScaffold: View {
-    /// Cap for the scrollable region — kept in sync with the shared scaffold so
-    /// the opened surface's height math is identical across themes.
-    private static let maxSessionListHeight: CGFloat = 560
+    /// Cap for the scrollable region.
+    ///
+    /// R2/C9 (PI-C-004 / PI-C-007): Poured's own cap, no longer the shared 560.
+    /// The board's §C frame is **six rows visible at once** — that is the whole
+    /// point of the state grouping — and at 560 the sixth row fell below the
+    /// fold in the C1 capture. Poured's rows are also taller than the shared
+    /// scaffold's (every row now carries a narration line plus a `.meta` flow
+    /// row), so the shared cap was never sized for this list.
+    ///
+    /// The ceiling is the notch display's visible frame (949pt): the opened
+    /// surface is this cap plus ~150pt of header / summary strip / footer
+    /// chrome, so 700 lands at ~850pt with ~100pt of margin. Beyond six rows
+    /// the list scrolls exactly as before — the cap moved, the behaviour didn't.
+    private static let maxSessionListHeight: CGFloat = 700
 
     let sessions: [AgentSession]
     let sections: [IslandSessionSection]
@@ -53,7 +64,6 @@ struct PouredSessionListScaffold: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     private var increasesContrast: Bool { colorSchemeContrast == .increased }
 
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.islandTokens) private var tokens
     @Environment(\.islandTheme) private var theme
@@ -61,7 +71,7 @@ struct PouredSessionListScaffold: View {
     var body: some View {
         VStack(spacing: 0) {
             TimelineView(.periodic(from: .now, by: 30)) { context in
-                sessionPanelHeader(referenceDate: context.date)
+                sessionSummaryStrip(referenceDate: context.date)
             }
 
             AutoHeightScrollView(maxHeight: Self.maxSessionListHeight) {
@@ -259,7 +269,7 @@ struct PouredSessionListScaffold: View {
             VStack(alignment: .leading, spacing: 0) {
                 sessionSectionHeader(section, totalRowCount: content.groupTotals[section.id])
 
-                ForEach(section.sessions) { session in
+                ForEach(Array(section.sessions.enumerated()), id: \.element.id) { index, session in
                     SessionRowContainer(isInteractive: isInteractive) { isHighlighted in
                         theme.sessionRow(
                             session: session,
@@ -284,6 +294,11 @@ struct PouredSessionListScaffold: View {
                     // animation is nil under Reduce Motion, so a reduced-motion
                     // insert simply snaps — no clock is touched.
                     .transition(PouredRowEntrance.transition)
+                    // R4-6 (`01-poured-island.html:257`): the board's only list
+                    // rule is `.row + .row`, and the `.grp` between groups breaks
+                    // adjacency — so the first row of every group draws no top
+                    // hairline (rows 1, 3, 5 in the §C frame).
+                    .environment(\.pouredRowIsFirstInGroup, index == 0)
                 }
             }
             // Keyed to the section's row-id set so an insert/remove animates the
@@ -359,29 +374,30 @@ struct PouredSessionListScaffold: View {
         .accessibilityLabel(title)
     }
 
-    private func sessionPanelHeader(referenceDate: Date) -> some View {
+    /// PI-C-004 (§C · `01-poured-island.html:801-806`, `.summary` at `:243-246`):
+    /// the list's chrome is a **shallow band**, not a titled header. The board
+    /// carries no "SESSIONS" word anywhere — the panel is already the session
+    /// list — and the buckets are not a capsule but a flat full-width strip
+    /// fenced by a hairline above *and* below, `8pt` vertical padding, `16pt`
+    /// between buckets, no fixed height. Everything the reader needs to triage
+    /// the list is in the numbers; the chrome gets out of the way.
+    private func sessionSummaryStrip(referenceDate: Date) -> some View {
         let overview = sessionOverviewItems(referenceDate: referenceDate)
 
-        return HStack(spacing: 8) {
-            Text(lang.t("island.sessionList.title").uppercased())
-                // §2 `listOverviewTitle` role: SF Pro 10.5/650, tracking 0.16em
-                // uppercase — the mono chrome is retired (Font can't carry
-                // tracking, so it is applied here from the pinned spec).
-                .font(PouredType.Role.listOverviewTitle.font)
-                .tracking(PouredType.Role.listOverviewTitle.spec.trackingPoints)
-                .foregroundStyle(tokens.colors.paper.opacity(0.6))
-
-            ViewThatFits(in: .horizontal) {
-                sessionOverviewView(overview, compact: false)
-                sessionOverviewView(overview, compact: true)
-            }
-
-            Spacer(minLength: 0)
+        return ViewThatFits(in: .horizontal) {
+            sessionOverviewView(overview, compact: false)
+            sessionOverviewView(overview, compact: true)
         }
         .padding(.leading, sideInset)
         .padding(.trailing, sideInset)
-        .frame(height: 36)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(.white.opacity(tokens.colors.hairline(increaseContrast: increasesContrast)))
+                .frame(height: 1)
+        }
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(.white.opacity(tokens.colors.hairline(increaseContrast: increasesContrast)))
@@ -544,7 +560,11 @@ struct PouredSessionListScaffold: View {
 
         return [
             PouredSessionOverviewItem(id: "total", title: lang.t("island.sessionOverview.total"), compactTitle: "", count: buckets.total, tint: nil),
-            PouredSessionOverviewItem(id: "waiting", title: lang.t("island.sessionOverview.waiting"), compactTitle: lang.t("island.sessionOverview.waitingCompact"), count: buckets.waiting, tint: tokens.colors.statusWaitingAggregate),
+            // R4-1 (PI-C-004 · `01-poured-island.html:803`): the strip's waiting
+            // dot is the board's `.dot.approve` salmon (`#f4a4a4`), not the
+            // aggregate amber — which collided with the `NEEDS YOU` group chip's
+            // `--attn` and made two different things read as one colour.
+            PouredSessionOverviewItem(id: "waiting", title: lang.t("island.sessionOverview.waiting"), compactTitle: lang.t("island.sessionOverview.waitingCompact"), count: buckets.waiting, tint: tokens.colors.statusWaitingForApproval),
             PouredSessionOverviewItem(id: "running", title: lang.t("island.sessionOverview.running"), compactTitle: lang.t("island.sessionOverview.runningCompact"), count: buckets.running, tint: tokens.colors.statusRunning),
             PouredSessionOverviewItem(id: "done", title: lang.t("island.sessionOverview.done"), compactTitle: lang.t("island.sessionOverview.done"), count: buckets.done, tint: tokens.colors.statusCompleted),
             PouredSessionOverviewItem(id: "idle", title: lang.t("island.sessionOverview.idle"), compactTitle: lang.t("island.sessionOverview.idle"), count: buckets.idle, tint: tokens.colors.statusIdle),
@@ -569,14 +589,13 @@ struct PouredSessionListScaffold: View {
     }
 
     private func sessionOverviewView(_ items: [PouredSessionOverviewItem], compact: Bool) -> some View {
-        HStack(spacing: compact ? 7 : 9) {
+        // PI-C-004: the board's `.summary` is a bare flex row at `gap:16px` —
+        // no capsule, no fill, no inner padding of its own.
+        HStack(spacing: compact ? 10 : 16) {
             ForEach(items) { item in
                 sessionOverviewMetric(item, compact: compact)
             }
         }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 3)
-        .background(.white.opacity(reduceTransparency ? 0.1 : 0.05), in: Capsule())
         .lineLimit(1)
         .fixedSize(horizontal: true, vertical: false)
         .accessibilityElement(children: .combine)
@@ -588,18 +607,20 @@ struct PouredSessionListScaffold: View {
         // §2 splits the bucket into a bold tabular number (`summaryNumber`
         // 12/700) and a proportional word (`summaryLabel` 11/400); the tinted
         // dot carries the status colour, so the mono chrome is retired.
-        return HStack(spacing: 4) {
+        // PI-C-004: `.summary .b { gap: 6px }` with a 6×6 dot (the board
+        // overrides the base 8px `.dot` inline for the strip).
+        return HStack(spacing: 6) {
             if let tint = item.tint {
                 Circle()
                     .fill(tint)
-                    .frame(width: 5.5, height: 5.5)
+                    .frame(width: 6, height: 6)
                     .accessibilityHidden(true)
             }
 
-            HStack(spacing: 3) {
+            HStack(spacing: 6) {
                 Text("\(item.count)")
                     .font(PouredType.Role.summaryNumber.font)
-                    .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(0.9, increaseContrast: increasesContrast)))
+                    .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(0.96, increaseContrast: increasesContrast)))
 
                 if !label.isEmpty {
                     Text(label)
@@ -629,9 +650,12 @@ struct PouredSessionListScaffold: View {
         totalRowCount: Int? = nil
     ) -> some View {
         HStack(spacing: 8) {
-            Circle()
+            // R4-5 (PI-C-005 · `01-poured-island.html:251`): `.grp .gc` is a
+            // 6×6 **rounded square** (`border-radius:2px`), not a circle — the
+            // board's own shape-carries-state rule applied to the group chip.
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
                 .fill(sectionTint(for: section))
-                .frame(width: 7, height: 7)
+                .frame(width: 6, height: 6)
                 .accessibilityHidden(true)
             Text(sessionSectionTitle(for: section).uppercased())
                 // §2 `sectionHeader` role: SF Pro 10.5/650, tracking 0.09em
@@ -639,51 +663,23 @@ struct PouredSessionListScaffold: View {
                 .font(PouredType.Role.sectionHeader.font)
                 .tracking(PouredType.Role.sectionHeader.spec.trackingPoints)
                 .foregroundStyle(sectionLabelColor(for: section))
+            // R4-5 (`:252`): `.grp .gn { margin-left:auto }` — the count sits at
+            // the panel's trailing inset, not tucked against the label.
+            Spacer(minLength: 8)
             Text("\(totalRowCount ?? section.sessions.count)")
                 // Drop mono, keep the digits tabular so counts line up column-wise.
                 .font(.system(size: 10.5, weight: .medium).monospacedDigit())
                 .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
-            Spacer(minLength: 0)
         }
         .padding(.leading, sideInset)
         .padding(.trailing, sideInset)
         .padding(.top, 10)
         .padding(.bottom, 7)
-        .background(sectionHeaderWash)
+        // R4-6 (PI-C-005 · `:249-252`, `:257`): `.grp` carries **no** fill band
+        // and **no** hairline. The board's only list rule is `.row + .row`, and a
+        // group header breaks that adjacency — so the header paints nothing and
+        // the group's first row draws no top hairline either.
         .accessibilityElement(children: .combine)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(.white.opacity(tokens.colors.hairline(increaseContrast: increasesContrast)))
-                .frame(height: 1)
-        }
-    }
-
-    /// A top-lit wash so the section header reads as a lip in the glass rather
-    /// than a painted bar. Flattens to a single low-opacity fill under Reduce
-    /// Transparency.
-    ///
-    /// Re-tuned (AB-331) against the T11 body gradient (§1d — lighter top,
-    /// darker toward the bottom): the old `0.05 → 0.012` linear never reached
-    /// zero, so a uniform milky film sat over the darkening body and read as
-    /// *mud*. This concentrates the light in a brighter top edge (`0.075`) and
-    /// falls all the way to `0` by the header's baseline, so the lower band
-    /// returns to the pure body gradient and the bright top edge reads as a
-    /// raised lip catching light.
-    @ViewBuilder
-    private var sectionHeaderWash: some View {
-        if reduceTransparency {
-            Color.white.opacity(0.05)
-        } else {
-            LinearGradient(
-                stops: [
-                    .init(color: .white.opacity(0.075), location: 0.0),
-                    .init(color: .white.opacity(0.02), location: 0.5),
-                    .init(color: .white.opacity(0.0), location: 1.0),
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        }
     }
 
     /// PI-C-001: a taxonomy group wears its **fixed** board hue (`--attn` / `--run`
@@ -724,4 +720,20 @@ private struct PouredSessionOverviewItem: Identifiable {
     let compactTitle: String
     let count: Int
     let tint: Color?
+}
+
+/// R4-6 (PI-C-005 · `01-poured-island.html:257`): Poured-local seam telling a
+/// row it is the **first** row of its group, so it can suppress the `.row + .row`
+/// top hairline the board only draws between *adjacent* rows. Set by
+/// `PouredSessionListScaffold` alone; every other theme's scaffold leaves the
+/// default (`false`) in place and is unaffected.
+private struct PouredRowIsFirstInGroupKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var pouredRowIsFirstInGroup: Bool {
+        get { self[PouredRowIsFirstInGroupKey.self] }
+        set { self[PouredRowIsFirstInGroupKey.self] = newValue }
+    }
 }
