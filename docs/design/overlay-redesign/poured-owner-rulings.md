@@ -1,7 +1,9 @@
 # Poured Island parity — recorded product/design-owner rulings
 
-Version 5 — 2026-08-03 (R12 appended at the Slice 5 correction round 3; R1–R11
-and the theme-retirement ruling unchanged from version 4).
+Version 6 — 2026-08-03 (R13–R16 appended after the Slice 5 merge, from the
+owner's post-slice ruling "go with your suggestions and what we have in
+mockup…", which also reaffirmed R5/R6: the rendered mockup is the golden rule
+for visual look AND animations; R1–R12 unchanged from version 5).
 Recorded verbatim by the root orchestrator from the
 owner's written instructions (session `75ecb072`, repo owner). This document is
 the source of record for these rulings until they are formally registered in
@@ -210,3 +212,74 @@ Applied in Slice 5 correction round 3 (`AppModel.pouredRotationRetaggedBadge` +
 `PouredRightSlotView` / `PouredAttentionBadge`). Poured-scoped: every other
 theme, the opened island and any single-waiting pill keep
 `IslandRightSlotResolver`'s own aggregate answer.
+
+## R13 — Bulk ratification of as-rendered implementations (2026-08-03)
+
+The owner ratified every escalation item that was implemented board-verbatim and
+queued only for confirmation. Closed by this ruling:
+
+- Y1 verb-spelling family: four affirmative verbs across surfaces
+  (`Approve` §C / `Allow once` §E hero / `Allow`+`Always` E4 pair) are each
+  intentional per-surface wording (extends R11).
+- Y4 keycap tint: `.btn.primary .kc kbd` keeps the board's single amber-family
+  cap treatment over blue (E3) and gold (§F) primaries — not a board bug.
+- Rotation per-item templates stay A3/A4-faithful (permission = dot+ring/amber
+  count, question = wait-bars/gold `?` per R12) — no uniform pill vocabulary.
+- `.q-foot` hint is the board-verbatim `Press [1–3] to pick`, F2 only; Esc/Enter
+  affordances advertised nowhere on §F.
+- Slice-4 X1: footer "All quiet elsewhere · 0 idle" copy AND zero-bucket-omitting
+  strip are both intended as rendered.
+- Slice-4 X3: reset-countdown coarsening is per-surface as rendered
+  ("resets 3d" §C header vs "resets in 3d 4h" §I card).
+- Slice-4 X5: completed-row identity chip appears only when outcome ≠ success.
+
+## R14 — Mockup-conformance polish mandate (2026-08-03)
+
+Where native still diverges from the rendered board on pure look, the board
+wins and the divergences are scheduled as fix-native work (polish round P1):
+
+- §E hero interior bloom: match the board's near-black warm well
+  (interior ≈ rgb(44,36,27), `.cmd` ≈ rgb(20,17,18); white points already match).
+- F″ compact question drops the gold `.q-hero` wrapper — bare glass, as the
+  board's F″ frame renders.
+- Opened-panel header control glyphs take the board's stroked speaker-x / gear /
+  X forms (replacing filled `speaker.wave.2.fill` / `gearshape.fill` / `power`).
+- The far-left header state-glyph cluster is dropped from the opened panel
+  header (board §C header has no such element; board purity over state
+  continuity).
+- Drift batch: E2 `.fname` gains the board's border-bottom
+  `rgba(242,245,251,.09)` + `6px 10px` padding; `.amber-hero` bottom padding
+  15px; E3 codex-note icon takes the board's glyph; "+N more lines" takes the
+  board's placement; §D bullet rhythm takes the board's looser list spacing;
+  `.amh` agent chip reads the board's `CLAUDE`.
+
+## R15 — Non-board decisions ratified as adjudicated (2026-08-03)
+
+Where the mockup renders nothing, the root/reviewer-adjudicated behaviour shipped
+in Slice 5 is ratified:
+
+- R7 rotation execution details: N≥2 gate, 3.5 s hold, 0.4 s sequential
+  zero-overlap fade, constant 352×40 silhouette, badge = total waiting count
+  through permission holds (R12 gold `?` through question holds), and Reduce
+  Motion keeps the cycle running with instant unanimated swaps.
+- E4 verb triplet: native keeps the real always-allow scope rows; the board's
+  `Allow · Always · Deny` triplet is not adopted (E4 remains not reproducible
+  natively; revisit only if that changes).
+- §C compact verb: board-verbatim `Approve` with the agent-supplied title
+  demoted to the VoiceOver label is acceptable product-wide.
+- F″ trigger and input asymmetry: the isPoured compact variant inside the shared
+  question view stands; click commits the answer directly while keyboard stays
+  digit-selects-then-Enter.
+- Slice-4 X4 (Fine ● / Critical ● share a shape): the RENDER wins over the
+  board's own caption prose (consistent with R5) — only Warn ▲ differs in
+  shape; Fine/Critical discriminate by color plus accessibility label.
+- Wing distribution on notch hardware: both meters in the left wing (one
+  extending under the physical notch) is accepted as a platform adaptation of
+  the board's one-meter-per-wing layout.
+- §D metadata-cell VoiceOver pairing (key+value single elements) is ratified in
+  place under PI-A11Y-001 — no separate ledger line.
+
+## R16 — Settled definition (closes Slice-3 N-4)
+
+"Settled" for the mockup's infinite-loop animations = **iteration end** —
+capture bookkeeping only, no rendering change.

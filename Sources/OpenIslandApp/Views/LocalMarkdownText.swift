@@ -80,6 +80,15 @@ struct LocalMarkdownText: View {
             }
         }
 
+        /// The gap between list items. The board's `.assistant li{margin:3px 0}`
+        /// (`01-poured-island.html:441`) sets list items looser than paragraph
+        /// lines — 3px above and below each item — which SwiftUI (no margin
+        /// collapse) reproduces as a 6pt inter-item gap. Every other style keeps
+        /// the tight 3 it shipped with.
+        fileprivate var listItemSpacing: CGFloat {
+            self == .pouredAssistant ? 6 : 3
+        }
+
         /// Whether inline `code` runs get the mockup's chip.
         fileprivate var chipsInlineCode: Bool {
             self == .haloAssistant || self == .pouredAssistant
@@ -160,7 +169,7 @@ struct LocalMarkdownText: View {
         case .heading(let level, let text):
             inlineText(text, font: headingFont(for: level))
         case .unorderedList(let items):
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: style.listItemSpacing) {
                 ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                     HStack(alignment: .firstTextBaseline, spacing: 7) {
                         Text("•")
@@ -171,7 +180,7 @@ struct LocalMarkdownText: View {
                 }
             }
         case .orderedList(let items):
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: style.listItemSpacing) {
                 ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                     HStack(alignment: .firstTextBaseline, spacing: 7) {
                         Text("\(item.ordinal).")

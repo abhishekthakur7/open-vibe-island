@@ -991,7 +991,12 @@ struct IslandPanelView: View {
     /// enough room for a persistent glyph without colliding with the usage
     /// summary — so there it just fades out with the rest of the closed
     /// content instead, exactly as it did before this ticket.
-    private var travelsGlyphOnOpen: Bool { usesNotchAwareOpenedHeader }
+    ///
+    /// Poured never lands the glyph in the opened header: the board's §C
+    /// `.p-head` (`01-poured-island.html:782-798`) opens on the usage meter with
+    /// no lead-marker cluster at far left, so the collapsed pill's state glyph
+    /// fades out on open here the way it already does on the top-bar profile.
+    private var travelsGlyphOnOpen: Bool { usesNotchAwareOpenedHeader && theme.id != "poured" }
 
     /// The theme's traveling glyph, mounted once and continuously, whose
     /// leading inset (and, on layouts with nowhere safe to land, opacity) is

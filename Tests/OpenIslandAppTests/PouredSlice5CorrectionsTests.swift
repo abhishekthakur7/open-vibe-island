@@ -819,7 +819,7 @@ struct PouredSlice5CorrectionsTests {
     func ruling12IsTranscribedAndTheStaleBadgeCommentsAreGone() throws {
         let rulings = try Self.source("docs/design/overlay-redesign/poured-owner-rulings.md")
         #expect(rulings.contains("## R12 — Rotation question-phase badge"))
-        #expect(rulings.contains("Version 5 — 2026-08-03"))
+        #expect(rulings.contains("Version 6 — 2026-08-03"))
 
         let rotation = try Self.source("Sources/OpenIslandApp/PouredSpotlightRotation.swift")
         #expect(!rotation.contains("the badge keeps showing the **total** waiting count"))
@@ -988,15 +988,18 @@ struct PouredSlice5CorrectionsTests {
         #expect(!row.contains("accessibilityActivityNarrative(referenceDate: referenceDate)\n"))
     }
 
-    /// X13: `.amber-hero{padding:14px 16px 15px}` — the two axes differ, and the
-    /// horizontal one is the board's 16, not the uniform 14 the card shipped.
+    /// X13 / P1-P6a: `.amber-hero{padding:14px 16px 15px}` — all three axes differ:
+    /// 16 on each side, 14 top, 15 bottom. X13 took only the horizontal 16; the
+    /// bottom 15 lands in P1.
     @Test
     func heroHorizontalPaddingIsTheBoardsSixteen() throws {
         let row = try Self.source(Self.rowSource)
         #expect(row.contains("static let horizontalPadding: CGFloat = 16"))
         #expect(row.contains("static let verticalPadding: CGFloat = 14"))
+        #expect(row.contains("static let bottomPadding: CGFloat = 15"))
         #expect(row.contains(".padding(.horizontal, Self.horizontalPadding)"))
-        #expect(row.contains(".padding(.vertical, Self.verticalPadding)"))
+        #expect(row.contains(".padding(.top, Self.verticalPadding)"))
+        #expect(row.contains(".padding(.bottom, Self.bottomPadding)"))
     }
 
     /// X8 (reviewer D's F-05): E2's `.fname` renders the board's

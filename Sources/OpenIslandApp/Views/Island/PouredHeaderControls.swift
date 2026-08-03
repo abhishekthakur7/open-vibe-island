@@ -92,7 +92,7 @@ struct PouredHeaderControls: View {
     private var openedHeaderButtons: some View {
         HStack(spacing: Self.headerControlSpacing) {
             PouredHeaderButton(
-                systemName: isSoundMuted ? "speaker.slash.fill" : "speaker.wave.2.fill",
+                systemName: isSoundMuted ? "speaker.slash" : "speaker.wave.2",
                 tint: isSoundMuted ? .orange.opacity(0.92) : .white.opacity(0.7),
                 accessibilityLabel: lang.t(isSoundMuted ? "a11y.header.unmuteSound" : "a11y.header.muteSound"),
                 size: Self.headerControlButtonSize,
@@ -100,7 +100,7 @@ struct PouredHeaderControls: View {
             )
 
             PouredHeaderButton(
-                systemName: "gearshape.fill",
+                systemName: "gearshape",
                 tint: .white.opacity(0.7),
                 accessibilityLabel: lang.t("window.settings"),
                 size: Self.headerControlButtonSize,
@@ -108,7 +108,7 @@ struct PouredHeaderControls: View {
             )
 
             PouredHeaderButton(
-                systemName: "power",
+                systemName: "xmark",
                 tint: .white.opacity(0.7),
                 accessibilityLabel: lang.t("settings.about.quitApp"),
                 size: Self.headerControlButtonSize,

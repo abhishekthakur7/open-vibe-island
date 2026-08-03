@@ -1470,7 +1470,11 @@ private struct PouredRowContent: View {
     /// the row off the panel.
     private func assistantMessageCard(_ message: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(pouredUppercased(lang.t("poured.detail.lastMessage", session.tool.displayName)))
+            // The board's `.amh` byline reads `Last message · Claude`
+            // (`01-poured-island.html:953`) — the agent's concise vendor name,
+            // not the full product name the AGENT metadata cell carries
+            // (`Claude Code`, `:944`). `shortName` is that concise form.
+            Text(pouredUppercased(lang.t("poured.detail.lastMessage", session.tool.shortName)))
                 .font(PouredType.Role.assistantLabel.font)
                 .tracking(PouredType.Role.assistantLabel.spec.trackingPoints)
                 .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
@@ -1658,36 +1662,57 @@ private struct PouredRowContent: View {
     /// flowing through `keyboardCoordinator` exactly as before. Under Reduce
     /// Transparency the wash flattens to opaque `surfaceInk` so the amber tint can
     /// never erode the option text's contrast.
+    @ViewBuilder
     private var questionActionBody: some View {
-        StructuredQuestionPromptView(
+        let interior = StructuredQuestionPromptView(
             prompt: session.questionPrompt,
             lang: lang,
             keyboardCoordinator: keyboardCoordinator,
             headContext: pouredQuestionHeadContext,
             onAnswer: { actions.answer?($0) }
         )
-        // B4 · the `.q-hero` inset, split explicitly.
-        //
-        // The board's hero is `padding:14px 16px 15px` (`.q-hero`, L379-381).
-        // The shared interior already applies its own `10 / 8` for Poured and is
-        // owned by another part this round, so the wrapper contributes the
-        // remainder — 6 horizontal, 6 top, 7 bottom — and the two halves sum to
-        // the board's numbers exactly. Documented rather than folded together so
-        // a later round that zeroes the interior padding knows to move 10/8 here
-        // rather than re-deriving the inset.
-        .padding(.horizontal, 6)
-        .padding(.top, 6)
-        .padding(.bottom, 7)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(questionHeroWash)
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder(PouredQuestionColors.ring, lineWidth: 1)
-        )
-        // Y6, honoured: `.q-hero` has NO pulse variant anywhere in the board's
-        // stylesheet and §F contains no CSS animation at all — no
-        // `PouredAmberGlow`, no breathing ring, no clock is acquired here. The
-        // asymmetry against §E's `heropulse` is the board's, and it is kept.
+
+        if isCompactQuestion {
+            // F″ is bare glass (`01-poured-island.html:1248-1256`): the board draws
+            // no `.q-hero` gradient card and no inset ring for the compact single —
+            // the gold tint comes from the row's own radial wash. Only the wrapper
+            // is dropped; the interior and its digit/Enter registration stay intact.
+            interior
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            // B4 · the `.q-hero` inset, split explicitly.
+            //
+            // The board's hero is `padding:14px 16px 15px` (`.q-hero`, L379-381).
+            // The shared interior already applies its own `10 / 8` for Poured and is
+            // owned by another part this round, so the wrapper contributes the
+            // remainder — 6 horizontal, 6 top, 7 bottom — and the two halves sum to
+            // the board's numbers exactly. Documented rather than folded together so
+            // a later round that zeroes the interior padding knows to move 10/8 here
+            // rather than re-deriving the inset.
+            interior
+                .padding(.horizontal, 6)
+                .padding(.top, 6)
+                .padding(.bottom, 7)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(questionHeroWash)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .strokeBorder(PouredQuestionColors.ring, lineWidth: 1)
+                )
+            // Y6, honoured: `.q-hero` has NO pulse variant anywhere in the board's
+            // stylesheet and §F contains no CSS animation at all — no
+            // `PouredAmberGlow`, no breathing ring, no clock is acquired here. The
+            // asymmetry against §E's `heropulse` is the board's, and it is kept.
+        }
+    }
+
+    /// F″ (`01-poured-island.html:1245-1256`): the board's compact single-question
+    /// frame — one non-multi question, two option-only Yes/No choices. Derived from
+    /// the prompt's shape, exactly as `PouredCompactQuestionLayout` selects the
+    /// compact interior itself (`IslandPanelView.swift`), so a live agent prompt
+    /// reaches it without anyone wiring a per-frame flag.
+    private var isCompactQuestion: Bool {
+        PouredCompactQuestionLayout.applies(to: session.questionPrompt?.questions ?? [])
     }
 
     /// The `.q-head`'s workspace span (`[dot] niche-radar`), or `nil` where the
@@ -2362,10 +2387,13 @@ private struct PouredApprovalCard: View {
     /// stroke can never drift apart again.
     static let cornerRadius: CGFloat = 18
 
-    /// X13: `.amber-hero{padding:14px 16px 15px}` — the two axes are not equal,
-    /// so they are stated separately (and pinned by `PouredSlice5CorrectionsTests`).
+    /// X13: `.amber-hero{padding:14px 16px 15px}` — all three axes differ, so they
+    /// are stated separately (and pinned by `PouredSlice5CorrectionsTests`). The
+    /// bottom is the board's 15, one point past the 14 top (X13 took only the
+    /// horizontal 16 last round).
     static let horizontalPadding: CGFloat = 16
     static let verticalPadding: CGFloat = 14
+    static let bottomPadding: CGFloat = 15
 
     private enum HeroRhythm {
         static let headToBody: CGFloat = 10
@@ -2396,34 +2424,24 @@ private struct PouredApprovalCard: View {
             // AB-235 / E2: the shared renderer owns the gutter and structural
             // marker column; Poured supplies its exact rounded-card palette.
             if let diffResult = permissionDiffResult {
+                // E1: the rows are clamped to whole `.dl` lines so the block never
+                // ends mid-glyph; the remainder is stated as "+N more lines" — but
+                // the board keeps a "+N more" compression *inside* the surface it
+                // summarizes (`01-poured-island.html:729`), so the count rides
+                // inside the diff well via `additionalHiddenLines`, not as a line
+                // floating below it.
                 let clamped = PouredHeroDiff.clamp(diffResult)
-                VStack(alignment: .leading, spacing: 0) {
-                    IslandDiffRenderer(
-                        result: clamped.result,
-                        lang: lang,
-                        style: .poured(
-                            tokens: tokens,
-                            reduceTransparency: reduceTransparency,
-                            fileName: session.permissionRequest?.affectedPath,
-                            hunk: session.permissionRequest?.diffHunkDescription
-                        )
+                IslandDiffRenderer(
+                    result: clamped.result,
+                    lang: lang,
+                    style: .poured(
+                        tokens: tokens,
+                        reduceTransparency: reduceTransparency,
+                        fileName: session.permissionRequest?.affectedPath,
+                        hunk: session.permissionRequest?.diffHunkDescription,
+                        additionalHiddenLines: clamped.hiddenLineCount
                     )
-                    if clamped.hiddenLineCount > 0 {
-                        // E1: an explicit, whole-row "+N more lines" affordance —
-                        // the alternative the correction contract blesses. The
-                        // shared renderer scroll-clips at a flat 180pt, which
-                        // sliced the last visible `.dl` through the middle of its
-                        // glyphs; clamping the *rows* means the block always ends
-                        // on a complete line and the remainder is stated instead
-                        // of amputated.
-                        Text(lang.t("approval.diffMoreLines", clamped.hiddenLineCount))
-                            .font(PouredType.Role.diff.font)
-                            .foregroundStyle(tokens.colors.paper.opacity(
-                                tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)
-                            ))
-                            .padding(.top, 5)
-                    }
-                }
+                )
                 .padding(.top, HeroRhythm.headToBody)
             }
 
@@ -2452,11 +2470,9 @@ private struct PouredApprovalCard: View {
             }
         }
         // X13 (D's F-07): `.amber-hero{padding:14px 16px 15px}`
-        // (`01-poured-island.html:302`) — the card was laid out at a uniform 14,
-        // so every §E hero's content box ran 2pt wide on each side. The
-        // horizontal value is the board's 16; the vertical stays at the measured
-        // 14 this round owns.
-        .padding(.vertical, Self.verticalPadding)
+        // (`01-poured-island.html:302`) — 16 on each side, 14 top, 15 bottom.
+        .padding(.top, Self.verticalPadding)
+        .padding(.bottom, Self.bottomPadding)
         .padding(.horizontal, Self.horizontalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardFill)
@@ -2772,7 +2788,9 @@ private struct PouredApprovalCard: View {
     /// variant honest about where the decision actually happens.
     private var codexNote: some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "arrow.up.forward.app")
+            // E3 `.codex-note` glyph (`01-poured-island.html:1100-1101`) is a down
+            // arrow dropping into a tray, not an external-link box.
+            Image(systemName: "tray.and.arrow.down")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(PouredApprovalColors.codexBlue)
                 .accessibilityHidden(true)
@@ -2852,20 +2870,22 @@ private struct PouredApprovalCard: View {
     @ViewBuilder
     private var cardFill: some View {
         let shape = RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
-        ZStack {
+        // Reduce Transparency floors the translucent well on opaque `surfaceInk`
+        // so it can't sample the desktop; the board has no such mode, so the
+        // well stops are the board's own either way.
+        return ZStack {
             if reduceTransparency {
                 shape.fill(tokens.colors.surfaceInk)
-                shape.fill(accent.opacity(0.22))
-            } else {
-                shape.fill(
-                    LinearGradient(
-                        colors: [accent.opacity(0.16), accent.opacity(0.08)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
             }
+            shape.fill(heroWellGradient)
         }
+    }
+
+    private var heroWellGradient: LinearGradient {
+        let stops = requiresTerminalApproval
+            ? [PouredApprovalColors.heroWellBlueTop, PouredApprovalColors.heroWellBlueBottom]
+            : [PouredApprovalColors.heroWellTop, PouredApprovalColors.heroWellBottom]
+        return LinearGradient(colors: stops, startPoint: .top, endPoint: .bottom)
     }
 
     // MARK: Content
@@ -3545,6 +3565,17 @@ private enum PouredApprovalColors {
     /// `.scope code{color:#ffd9a8}` on a `rgba(255,177,77,.1)` chip (`:369-370`).
     static let scopeCodeInk = Color(red: 0xFF/255, green: 0xD9/255, blue: 0xA8/255)         // #ffd9a8
 
+    // `.amber-hero` interior — the board's near-black warm well
+    // `linear-gradient(180deg, rgba(58,42,20,.55), rgba(30,22,12,.6))` (`:303`),
+    // the amber peer of `PouredQuestionColors.wash*`. The shipped fill lit the
+    // interior with bright amber at low alpha (`accent@0.16→.08`), which read
+    // ~3× above the board's rgb(44,36,27) well; these are the board's own stops.
+    static let heroWellTop = Color(red: 0x3A/255, green: 0x2A/255, blue: 0x14/255).opacity(0.55)     // rgba(58,42,20,.55)
+    static let heroWellBottom = Color(red: 0x1E/255, green: 0x16/255, blue: 0x0C/255).opacity(0.6)   // rgba(30,22,12,.6)
+    // E3's blue `.amber-hero` override — `linear-gradient(180deg, rgba(24,40,54,.5), rgba(14,24,34,.55))` (`:1089`).
+    static let heroWellBlueTop = Color(red: 0x18/255, green: 0x28/255, blue: 0x36/255).opacity(0.5)     // rgba(24,40,54,.5)
+    static let heroWellBlueBottom = Color(red: 0x0E/255, green: 0x18/255, blue: 0x22/255).opacity(0.55) // rgba(14,24,34,.55)
+
     // Command block
     static let commandInk = Color(red: 0xC9/255, green: 0xCE/255, blue: 0xDB/255)           // #c9cedb (plain runs)
     static let codeSurface = Color(red: 0x06/255, green: 0x08/255, blue: 0x0D/255).opacity(0.6) // rgba(6,8,13,.6)
@@ -3608,7 +3639,8 @@ extension IslandDiffStyle {
         tokens: IslandThemeTokens,
         reduceTransparency: Bool,
         fileName: String? = nil,
-        hunk: String? = nil
+        hunk: String? = nil,
+        additionalHiddenLines: Int = 0
     ) -> Self {
         // E2 (X8): a request carrying a hunk description renders the board's
         // `<file> · <hunk>` `.fname` line; without one the header stays on the
@@ -3618,6 +3650,9 @@ extension IslandDiffStyle {
         let headerColor = tokens.colors.paper.opacity(0.6)
         let headerBackground = Color.white.opacity(0.03)
         let normalizedHunk = hunk?.trimmingCharacters(in: .whitespacesAndNewlines)
+        // P5: the board's `.fname` (`01-poured-island.html:342`) carries
+        // `padding:6px 10px` and a `border-bottom:1px solid rgba(242,245,251,.09)`
+        // — Slice 5 X8 left both out as copy-only scope; they land here now.
         let header: HeaderStyle? = (normalizedHunk?.isEmpty == false)
             ? HeaderStyle(
                 title: .pouredFile(fileName: fileName, hunk: normalizedHunk),
@@ -3626,9 +3661,9 @@ extension IslandDiffStyle {
                 iconOpacity: 1,
                 color: headerColor,
                 background: headerBackground,
-                horizontalPadding: 8,
+                horizontalPadding: 10,
                 verticalPadding: 6,
-                bottomBorder: nil
+                bottomBorder: Border(color: tokens.colors.paper.opacity(0.09), width: 1)
             )
             : nil
         return Self(
@@ -3660,6 +3695,7 @@ extension IslandDiffStyle {
             containerBackground: reduceTransparency ? tokens.colors.surfaceInk : PouredApprovalColors.codeSurface,
             containerBorder: Border(color: .white.opacity(0.06), width: 1),
             containerShape: .rounded(cornerRadius: 10),
+            additionalHiddenLines: additionalHiddenLines,
             header: header
         )
     }

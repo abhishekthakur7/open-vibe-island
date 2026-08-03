@@ -61,7 +61,11 @@ struct IslandDiffRenderer: View {
     }
 
     private var rows: [RowModel] { Self.rows(for: result) }
-    private var hiddenLineCount: Int { result.lines.count - rows.count }
+    /// Rows the renderer itself dropped, plus any a caller clamped away before
+    /// handing the result in (`style.additionalHiddenLines`) — the Poured hero
+    /// pre-clamps to whole `.dl` rows, and states the remainder here, inside the
+    /// well, rather than as a floating line below it.
+    private var hiddenLineCount: Int { result.lines.count - rows.count + style.additionalHiddenLines }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -339,6 +343,10 @@ struct IslandDiffStyle {
     let containerShape: ContainerShape
     let rowTrailingPadding: CGFloat?
     let scrollVerticalPadding: CGFloat?
+    /// Rows a caller clamped away before handing the result to the renderer, so
+    /// the "+N more lines" line renders inside the well over the clamped result.
+    /// Defaults to 0, leaving every non-clamping caller byte-identical.
+    let additionalHiddenLines: Int
     let header: HeaderStyle?
 
     init(
@@ -357,6 +365,7 @@ struct IslandDiffStyle {
         containerShape: ContainerShape,
         rowTrailingPadding: CGFloat? = nil,
         scrollVerticalPadding: CGFloat? = nil,
+        additionalHiddenLines: Int = 0,
         header: HeaderStyle? = nil
     ) {
         self.gutterWidth = gutterWidth
@@ -374,6 +383,7 @@ struct IslandDiffStyle {
         self.containerShape = containerShape
         self.rowTrailingPadding = rowTrailingPadding
         self.scrollVerticalPadding = scrollVerticalPadding
+        self.additionalHiddenLines = additionalHiddenLines
         self.header = header
     }
 
