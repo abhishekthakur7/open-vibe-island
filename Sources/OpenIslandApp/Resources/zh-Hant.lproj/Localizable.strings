@@ -380,6 +380,7 @@
 "island.halo.approval.codexDecision" = "Codex 需要一個決定 — 只能在應用程式內完成";
 "island.halo.approval.diffFile" = "%1$@ · 變更 %2$lld 處";
 "island.halo.approval.diffFileFallback" = "檔案";
+"island.poured.approval.diffFile" = "%1$@ · %2$@";
 "island.halo.question.title" = "有個問題請你決定";
 "island.halo.question.tag" = "問題";
 "island.halo.question.multiSelect" = "多選";
@@ -487,6 +488,28 @@
 "approval.codexApprovesInApp" = "Codex 在應用程式內批准。開啟面板以在那裡允許或拒絕。";
 "approval.autoCollapseCountdown" = "%lld 秒後自動收合 · 停留可暫停";
 
+/* Poured §E 權限主卡（Slice 5）——R10 意圖問句與 R11 各表面動詞 */
+"poured.approval.allowOnce" = "允許一次";
+"poured.approval.approve" = "批准";
+"poured.approval.deny" = "拒絕";
+"poured.approval.intent.runCommand" = "執行 Shell 指令？";
+"poured.approval.intent.editFile" = "編輯檔案？";
+"poured.approval.intent.terminalApproval" = "需要在 %@ 中批准";
+/* Poured §F′ 多選 */
+"poured.question.selectAllThatApply" = "選擇所有適用項目";
+
+/* Poured §E 作用域列（Slice 5 修正輪 2 · E6）。%@ 為等寬程式碼標籤的位置。 */
+"poured.approval.scope.fromProject" = "一律允許在本專案中 %@";
+"poured.approval.scope.thisSession" = "本次工作階段一律允許 %@";
+"poured.approval.scope.allCommands" = "一律允許所有 %@ 指令";
+"poured.approval.scope.edits" = "一律允許編輯 %@";
+/* Poured §F 提示（F2）。%@ 為按鍵標籤。 */
+"poured.question.hint.pick" = "按 %@ 選擇";
+/* Poured §F′ 送出（F4）。 */
+"poured.question.submit.multiSelect" = "送出 %lld 項";
+/* Poured §F 自由輸入項（F3）。 */
+"poured.question.optionOther" = "其他 — 輸入另一種方案";
+
 /* Island Panel - Subagents & Tasks */
 "subagents.title" = "子代理 (%lld)";
 "subagents.completed" = "完成";
@@ -586,6 +609,7 @@
 /* AB-322 — closed-pill right slot: attention / task / usage badges */
 "a11y.rightSlot.attention.permission" = "%lld 個等待授權";
 "a11y.rightSlot.attention.question" = "%lld 個等待回答";
+"poured.a11y.rightSlot.attention.mixed" = "%lld 個等待你處理";
 "a11y.rightSlot.tasks" = "已完成 %2$lld 項中的 %1$lld 項";
 "a11y.rightSlot.subagents" = "%lld 個子代理";
 "a11y.rightSlot.usage" = "%1$@ %2$@ 用量 %3$lld%%";

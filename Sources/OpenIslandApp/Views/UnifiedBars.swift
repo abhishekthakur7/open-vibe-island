@@ -31,6 +31,16 @@ struct UnifiedBars: View {
     var size: CGFloat = 24
     /// Ink color for bars / tick. `nil` uses the theme's paper tone.
     var tint: Color?
+    /// X2 (Slice 5 r3, both reviewers): whether `.waiting` draws **three** bars.
+    ///
+    /// The shipped glyph hides the middle column while waiting (`waitH: 0` on
+    /// the centre `Column`), which is the pause-mark every theme but Poured
+    /// renders and stays their default. Poured's A4 question lead is the board's
+    /// `.glyph.wait`, and the board gives it three `<i>` bars breathing together
+    /// (`01-poured-island.html:167`, `@keyframes breathe` — no per-child rule
+    /// hides any of them), so the two-bar pause read as a different glyph
+    /// entirely. Opt-in, so every other theme's bars stay byte-identical.
+    var showsMiddleWaitBar: Bool = false
 
     /// The `LayerView` below is an `NSView` and cannot read SwiftUI's
     /// environment, so the tint is resolved here and passed down.
@@ -46,24 +56,54 @@ struct UnifiedBars: View {
         Column(x: 16.25, idleH: 3, waveCycle: [4, 10, 4], waveDelay: 0.30, waitH: 10),
     ]
 
+    /// X2: the same table with the middle column's wait height lifted to the
+    /// outer bars' — the only difference between the shipped two-bar pause and
+    /// Poured's three-bar `.glyph.wait`. Kept as a derived table (not a second
+    /// hand-written literal) so the two can never drift in geometry.
+    private static let threeBarWaitColumns: [Column] = columns.map { column in
+        column.waitH > 0 ? column : Column(
+            x: column.x,
+            idleH: column.idleH,
+            waveCycle: column.waveCycle,
+            waveDelay: column.waveDelay,
+            waitH: 10
+        )
+    }
+
+    fileprivate static func columns(showsMiddleWaitBar: Bool) -> [Column] {
+        showsMiddleWaitBar ? threeBarWaitColumns : columns
+    }
+
+    /// X2 test seam: the three columns' `.waiting` heights, in draw order. A bar
+    /// at `0` is hidden — so `[10, 0, 10]` is the shipped two-bar pause and
+    /// `[10, 10, 10]` is Poured's board-verbatim three-bar wait glyph.
+    static func waitBarHeights(showsMiddleWaitBar: Bool) -> [CGFloat] {
+        columns(showsMiddleWaitBar: showsMiddleWaitBar).map(\.waitH)
+    }
+
     @ViewBuilder
     var body: some View {
-        LayerRepresentable(mode: mode, tint: tint ?? tokens.colors.paper)
-            .frame(width: size, height: size)
+        LayerRepresentable(
+            mode: mode,
+            tint: tint ?? tokens.colors.paper,
+            showsMiddleWaitBar: showsMiddleWaitBar
+        )
+        .frame(width: size, height: size)
     }
 
     private struct LayerRepresentable: NSViewRepresentable {
         let mode: Mode
         let tint: Color
+        let showsMiddleWaitBar: Bool
 
         func makeNSView(context: Context) -> LayerView {
             let view = LayerView()
-            view.update(mode: mode, tint: NSColor(tint))
+            view.update(mode: mode, tint: NSColor(tint), showsMiddleWaitBar: showsMiddleWaitBar)
             return view
         }
 
         func updateNSView(_ nsView: LayerView, context: Context) {
-            nsView.update(mode: mode, tint: NSColor(tint))
+            nsView.update(mode: mode, tint: NSColor(tint), showsMiddleWaitBar: showsMiddleWaitBar)
         }
     }
 
@@ -71,6 +111,8 @@ struct UnifiedBars: View {
         private let barLayers = [CAShapeLayer(), CAShapeLayer(), CAShapeLayer()]
         private var mode: Mode = .idle
         private var tintColor = NSColor.white
+        /// X2: which column table this view draws (see `UnifiedBars.columns(showsMiddleWaitBar:)`).
+        private var showsMiddleWaitBar = false
         /// Mode most recently committed to `barLayers`. Compared against
         /// `mode` in `configureLayers()` to detect a genuine idle/running/
         /// waiting switch (as opposed to the first layout, or a same-mode
@@ -126,9 +168,10 @@ struct UnifiedBars: View {
             }
         }
 
-        func update(mode: Mode, tint: NSColor) {
+        func update(mode: Mode, tint: NSColor, showsMiddleWaitBar: Bool) {
             self.mode = mode
             tintColor = tint
+            self.showsMiddleWaitBar = showsMiddleWaitBar
             needsLayout = true
         }
 
@@ -158,7 +201,7 @@ struct UnifiedBars: View {
 
             CATransaction.begin()
             CATransaction.setDisableActions(true)
-            for (index, column) in UnifiedBars.columns.enumerated() {
+            for (index, column) in UnifiedBars.columns(showsMiddleWaitBar: showsMiddleWaitBar).enumerated() {
                 let barLayer = barLayers[index]
                 let baseHeight = self.baseHeight(for: column)
                 let width = UnifiedBars.barWidth * scale
@@ -330,7 +373,7 @@ struct UnifiedBars: View {
         }
     }
 
-    private struct Column: Equatable {
+    fileprivate struct Column: Equatable {
         let x: CGFloat
         let idleH: CGFloat
         let waveCycle: [CGFloat]

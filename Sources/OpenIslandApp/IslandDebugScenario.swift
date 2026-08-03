@@ -24,6 +24,25 @@ struct IslandDebugSnapshot {
     /// `subagentsCard`, which deliberately keeps documenting the collapsed
     /// row — rendering exactly as before.
     var forcesRowExpansion: Bool = false
+    /// Slice 5 · F4: which option indices a question scenario opens with
+    /// selected, driving `\.islandQuestionPromptPreselection`. The board's §F
+    /// frames are all drawn in a selected state (F2 option 1, F′ options 1+2,
+    /// F″ option 1) and `selections` is interaction-driven `@State`, so without
+    /// this the three frames could only ever be captured empty — and F′'s
+    /// `Submit 2 selected` label was unreachable entirely. `nil` (the default)
+    /// leaves every pre-existing scenario rendering exactly as before.
+    var questionPreselection: IslandQuestionPromptPreselection? = nil
+    /// Slice 5 · §E: drops the `Auto-collapses in Ns · hover pauses` footer from
+    /// the Poured permission hero.
+    ///
+    /// The board carries that line on **E4 only** (`01-poured-island.html:1140-1143`)
+    /// — E1, E2 and E3 are standalone hero frames with no countdown at all. Native
+    /// prints it on every notification-presentation hero, so the three scenarios
+    /// that exist to reproduce E1/E2/E3 grew a line their board frames do not
+    /// have, and the root's own E-still capture had no way to turn it off. `false`
+    /// (the default) leaves `notificationCard` — the E4 scenario — and every other
+    /// path exactly as before.
+    var suppressesNotificationCountdown: Bool = false
 }
 
 enum IslandDebugScenario: String, CaseIterable, Identifiable {
@@ -63,6 +82,13 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
     // generic opened list (nine rows, one runner, seven idle) and can't stand in
     // for a six-row two-per-group board.
     case pouredGroupedSix
+    // Poured parity Slice 5 (PI-X-001): the board's §D / §F′ / §F″ frames.
+    // `pouredSessionDetail` is the second scenario to set `forcesRowExpansion`
+    // — see its snapshot arm for why the §D board frame cannot be reached
+    // without it.
+    case pouredSessionDetail
+    case pouredMultiSelectQuestion
+    case pouredCompactQuestion
     case emptyState
 
     var id: String { rawValue }
@@ -107,6 +133,12 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
             "Usage Meters"
         case .pouredGroupedSix:
             "Poured §C — Grouped Six"
+        case .pouredSessionDetail:
+            "Poured §D — Session Detail"
+        case .pouredMultiSelectQuestion:
+            "Poured §F′ — Multi-Select"
+        case .pouredCompactQuestion:
+            "Poured §F″ — Compact Question"
         case .emptyState:
             "Empty State"
         }
@@ -152,6 +184,12 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
             "Expanded list with the header usage meters populated from fixture providers."
         case .pouredGroupedSix:
             "The Poured board's §C six: two waiting, two running, two done — the exact deterministic fixture behind the C1-grouped-six parity scenario."
+        case .pouredSessionDetail:
+            "The Poured board's §D: one running row expanded in place — metadata grid, the last assistant message as rich prose, jump/transcript rail."
+        case .pouredMultiSelectQuestion:
+            "The Poured board's §F′: a single multi-select question — square checks, running count in the submit label, no descriptions and no freeform Other."
+        case .pouredCompactQuestion:
+            "The Poured board's §F″: the compact single question — a two-option Yes/Hold with no descriptions, no submit CTA and no keyboard hint."
         case .emptyState:
             "Expanded surface with zero sessions — the empty scaffold."
         }
@@ -277,7 +315,11 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
                 notchOpenReason: .notification,
                 islandSurface: .sessionList(actionableSessionID: session.id),
                 sessions: DebugSessionFactory.notificationSessions(lead: session, now: now),
-                selectedSessionID: session.id
+                selectedSessionID: session.id,
+                // Slice 5 · §E: this scenario reproduces a board E-frame that
+                // carries no `Auto-collapses in Ns` footer (E4 is the only frame
+                // that does), so the countdown is suppressed here.
+                suppressesNotificationCountdown: true
             )
 
         case .questionCard:
@@ -329,7 +371,11 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
                 notchOpenReason: .notification,
                 islandSurface: .sessionList(actionableSessionID: session.id),
                 sessions: DebugSessionFactory.notificationSessions(lead: session, now: now),
-                selectedSessionID: session.id
+                selectedSessionID: session.id,
+                // Slice 5 · §E: this scenario reproduces a board E-frame that
+                // carries no `Auto-collapses in Ns` footer (E4 is the only frame
+                // that does), so the countdown is suppressed here.
+                suppressesNotificationCountdown: true
             )
 
         case .codexApprovalCard:
@@ -342,7 +388,11 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
                 notchOpenReason: .notification,
                 islandSurface: .sessionList(actionableSessionID: session.id),
                 sessions: DebugSessionFactory.notificationSessions(lead: session, now: now),
-                selectedSessionID: session.id
+                selectedSessionID: session.id,
+                // Slice 5 · §E: this scenario reproduces a board E-frame that
+                // carries no `Auto-collapses in Ns` footer (E4 is the only frame
+                // that does), so the countdown is suppressed here.
+                suppressesNotificationCountdown: true
             )
 
         case .multiQuestionCard:
@@ -355,7 +405,10 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
                 notchOpenReason: .notification,
                 islandSurface: .sessionList(actionableSessionID: session.id),
                 sessions: DebugSessionFactory.notificationSessions(lead: session, now: now),
-                selectedSessionID: session.id
+                selectedSessionID: session.id,
+                // Slice 5 · F4: the board's F frame draws option 1 selected —
+                // gold `.num`, 1.5px ring, `.ck` tick (`01-poured-island.html:1178-1182`).
+                questionPreselection: .firstOption
             )
 
         case .subagentsCard:
@@ -458,6 +511,81 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
                 // PI-I-001 / PI-C-004: the §C header renders two usage rings,
                 // one per wing.
                 usageProviders: AppearancePreviewFixtures.pouredGroupedSixUsageProviders(now: now)
+            )
+
+        case .pouredSessionDetail:
+            // Poured parity Slice 5 (D1-detail). The board's §D frame draws the
+            // expanded row as the panel's **sole child** — no header group, no
+            // sibling rows, no footer — so the fixture is a one-session list,
+            // not `notificationSessions(lead:)`.
+            //
+            // `forcesRowExpansion` is required, and this is the second scenario
+            // to set it (`IslandDebugScenarioTests` pins the set). Poured's
+            // expansion gate (`PouredSessionRow.PouredRowExpansion.resolved`)
+            // opens a detail body only for `expandedByDefault`, an explicit
+            // chevron/`Answer` tap, or an actionable row in *notification*
+            // presentation — a quiet `.running` row in the list is collapsed by
+            // construction (PI-C-006), which is exactly the state §D expands
+            // *from*. Without the seam there is no non-interactive way to reach
+            // §D at all.
+            //
+            // Click-opened, not `.notification`: the board's §D is a
+            // user-opened list, and the row carries no attention affordance.
+            let session = AppearancePreviewFixtures.pouredSessionDetail(now: now)
+            return IslandDebugSnapshot(
+                title: title,
+                summary: summary,
+                previewHeight: 430,
+                notchStatus: .opened,
+                notchOpenReason: .click,
+                islandSurface: .sessionList(),
+                sessions: [session],
+                selectedSessionID: session.id,
+                forcesRowExpansion: true
+            )
+
+        case .pouredMultiSelectQuestion:
+            // Poured parity Slice 5 (F3-multi-select). The board draws F′ as a
+            // standalone 440px panel holding one `.q-hero` — one session, and
+            // it is the actionable one so the question hero renders.
+            let session = AppearancePreviewFixtures.pouredMultiSelectQuestion(now: now)
+            return IslandDebugSnapshot(
+                title: title,
+                summary: summary,
+                previewHeight: 300,
+                notchStatus: .opened,
+                notchOpenReason: .notification,
+                islandSurface: .sessionList(actionableSessionID: session.id),
+                sessions: [session],
+                selectedSessionID: session.id,
+                // Slice 5 · F4: F′ draws options **1 and 2** selected — `✓` in
+                // both `.num` chips, both `.ck` ticks lit, and the submit reading
+                // `Submit 2 selected` (`01-poured-island.html:1222-1234`). That
+                // two-selection state is the whole point of the frame and was
+                // unreachable through the old first-option-only seam.
+                questionPreselection: IslandQuestionPromptPreselection(optionIndices: [0, 1])
+            )
+
+        case .pouredCompactQuestion:
+            // Poured parity Slice 5 (F4-compact-question). Same single-session
+            // shape as F′. The board's compact one-row layout is built — the
+            // fixture's own shape selects it, via the pure
+            // `PouredCompactQuestionLayout.applies(to:)` predicate
+            // (`IslandPanelView.swift:2930`), so nothing here opts in.
+            let session = AppearancePreviewFixtures.pouredCompactQuestion(now: now)
+            return IslandDebugSnapshot(
+                title: title,
+                summary: summary,
+                previewHeight: 260,
+                notchStatus: .opened,
+                notchOpenReason: .notification,
+                islandSurface: .sessionList(actionableSessionID: session.id),
+                sessions: [session],
+                selectedSessionID: session.id,
+                // Slice 5 · F4: F″ draws `1 Yes, deploy` as `.opt.sel`
+                // (`01-poured-island.html:1255`) — solid gold chip + 1.5px ring,
+                // and deliberately no tick (Y2, honoured as rendered).
+                questionPreselection: .firstOption
             )
 
         case .emptyState:
@@ -725,18 +853,54 @@ private enum DebugSessionFactory {
             origin: .demo,
             attachmentState: .attached,
             phase: .waitingForApproval,
-            summary: "Allow exec_command to rewrite SettingsView.swift?",
+            // Slice 5 · E3: the §E1 hero prints this as its *effect* line, so it
+            // has to say what running the command DOES — a declarative sentence
+            // plus its side effect, the way the board's E1 reads ("Compiles the
+            // OpenIsland package. No files are modified.", `01-poured-island.html:1010`).
+            // Never a question-form restatement of the ask, and never a raw tool
+            // name: "Allow exec_command to rewrite SettingsView.swift?" cleared
+            // `PouredApprovalHeroCopy.effect`'s echo heuristic and shipped both
+            // faults straight into the card.
+            summary: "Renames AppearanceSection to AppearanceSettingsSection in SettingsView.swift. One file is modified.",
             updatedAt: now.addingTimeInterval(-20),
             permissionRequest: PermissionRequest(
                 title: "Approve file rewrite",
-                summary: "Allow exec_command to rewrite SettingsView.swift?",
+                summary: "Renames AppearanceSection to AppearanceSettingsSection in SettingsView.swift. One file is modified.",
                 affectedPath: "Sources/OpenIslandApp/Views/SettingsView.swift",
                 primaryActionTitle: "Allow",
                 secondaryActionTitle: "Deny",
                 // The tool this request is actually for — `claudeMetadata.currentTool`
                 // below already says `exec_command`. Without it the always-allow
                 // scope row has no rule to name and never renders (G-21).
-                toolName: "exec_command"
+                toolName: "exec_command",
+                // X7 (D's F-04 · C's M-9/M-10): the board's E1 renders **two**
+                // `.scope` rows — a command-prefix grant scoped to the project
+                // (`Always allow ` `swift build` ` from this project`, carrying
+                // the `⌘⇧Y` cap) and the whole-tool grant under it
+                // (`Always allow all ` `swift` ` commands`, **no** cap;
+                // `01-poured-island.html:1018-1026`, verified against
+                // `mapper-reference.md` §5.2). The fixture carried none, so E1
+                // fell through to the single generic row and the frame could
+                // not be compared with the board at all.
+                //
+                // Both are real `addRules` updates the row sends verbatim on
+                // tap, so the rendered sentence and the action can never
+                // disagree: the first is `.projectSettings` (→ "from this
+                // project"), the second names the executable with no rule
+                // content (→ "all `sed` commands"). Order matters — the first
+                // row is the one that gets the keycap.
+                suggestedUpdates: [
+                    .addRules(
+                        destination: .projectSettings,
+                        rules: [ClaudePermissionRuleValue(toolName: "Bash", ruleContent: "sed -i ''")],
+                        behavior: .allow
+                    ),
+                    .addRules(
+                        destination: .session,
+                        rules: [ClaudePermissionRuleValue(toolName: "sed")],
+                        behavior: .allow
+                    ),
+                ]
             ),
             jumpTarget: JumpTarget(
                 terminalApp: "Ghostty",

@@ -16,6 +16,10 @@ import Foundation
         model.pouredParityNotchAppearancePreferencesOverride=notch; model.pouredParityTopBarAppearancePreferencesOverride=top
         guard model.islandTheme.id == "poured" else { throw PouredParityError.wrongTheme(model.islandTheme.id) }
         model.ignoresPointerExitDuringHarness=true; model.disablesOverlayEventMonitoringDuringHarness=true; model.debugSuppressesInstallHint=true
+        // R7 / PI-A-002: pin the collapsed pill's rotation phase before the
+        // fixture loads, so `A3m-permission-queue` renders a chosen item of the
+        // cycle rather than whatever the live 3.5s timer had reached.
+        PouredParityEventClock.install(configuration:configuration); model.pouredSpotlightRotationPhaseOverride=PouredParityEventClock.installedRotationPhaseMilliseconds
         model.loadDebugSnapshot(fixture.snapshot,presentOverlay:presentOverlay); model.pouredParityStateDump=stateDump(model)
     }
     func applyConfiguredEvent(to model:AppModel)throws {

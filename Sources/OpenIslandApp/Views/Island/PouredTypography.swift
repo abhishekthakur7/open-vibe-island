@@ -130,9 +130,11 @@ enum PouredType {
         case heroTitle               // .ht   — permission hero title
         case heroSubtitle            // .hs   — permission hero subtitle
         case questionText            // .q-text — the question prompt
+        case compactQuestionText     // §F″ inline question sentence
         case optionLabel             // .opt .ol — option label
         case optionDesc              // .opt .od — option description
         case optionNumber            // .opt .num — option number (tabular)
+        case optionOther             // .opt-other — freeform escape hatch (italic)
         case questionChip            // .q-chip — question kicker chip
 
         // §B hover peek (PI-B-001)
@@ -213,9 +215,19 @@ enum PouredType {
         .heroTitle:             Spec(size: 14,   weight: 640, trackingEm: -0.01, isMono: false, isTabular: false, isUppercase: false),
         .heroSubtitle:          Spec(size: 11,   weight: 400, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
         .questionText:          Spec(size: 14.5, weight: 560, trackingEm: -0.01, isMono: false, isTabular: false, isUppercase: false),
+        // Slice 5 §F″: the compact single states its sentence *inline* beside the
+        // chip at `font-size:13px;font-weight:560` (`01-poured-island.html:1253`)
+        // — the same 560 voice as `.q-text`, one step down in size and without
+        // its optical tracking, because it is set as a label, not a block.
+        .compactQuestionText:   Spec(size: 13,   weight: 560, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
         .optionLabel:           Spec(size: 13,   weight: 600, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
         .optionDesc:            Spec(size: 11.5, weight: 400, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
         .optionNumber:          Spec(size: 11,   weight: 700, trackingEm: 0,     isMono: false, isTabular: true,  isUppercase: false),
+        // Slice 5 (mapper gap 13): `.opt-other{font-size:12px}` at the body
+        // weight (`01-poured-island.html:400-402`). The italic is applied at the
+        // call site — `Spec` carries no slant field, and no other Poured role
+        // needs one.
+        .optionOther:           Spec(size: 12,   weight: 400, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
         .questionChip:          Spec(size: 10,   weight: 700, trackingEm: 0.05,  isMono: false, isTabular: false, isUppercase: true),
 
         // §B peek, read verbatim off the board's own inline styles

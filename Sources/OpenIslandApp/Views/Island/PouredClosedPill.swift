@@ -45,7 +45,10 @@ struct PouredClosedPill: View {
     @Environment(\.islandTokens) private var tokens
     @Environment(\.islandClosedPillActivity) private var activity
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.islandClosedPillPaintsOwnSurface) private var paintsOwnSurface
+    /// R2/R3: non-`nil` only while an R7 spotlight rotation is running.
+    @Environment(\.islandClosedPillRotation) private var rotation
 
     private static let glyphSize: CGFloat = 24
     private static let innerGap: CGFloat = 6
@@ -58,11 +61,40 @@ struct PouredClosedPill: View {
     }
 
     var body: some View {
-        switch layout {
-        case .external: externalBody
-        case .macbook:  macbookBody
+        Group {
+            switch layout {
+            case .external: externalBody
+            case .macbook:  macbookBody
+            }
         }
     }
+
+    // MARK: R3 / X1 — the swap
+
+    /// X1: the shared swap opacity, or `1` when no cycle is running.
+    ///
+    /// Round 2 ran the fade here, in `@State`, against the pill's own 0.45 s
+    /// layout crossfade — two drivers fighting over one property, which is why
+    /// the outgoing label re-entered at ≈35 % and the whole swap measured 0.64 s
+    /// — while the lead marker and the badge changed the instant the model's
+    /// spotlight did, ≈0.15 s earlier. Both faults are gone by construction: the
+    /// item now changes ONCE, upstream, in the same transaction that starts this
+    /// opacity's fade-in (`PouredSpotlightRotationClock.syncDisplayedIndex`), and
+    /// the marker, the badge and the label all ride this single value.
+    private var swapOpacity: Double { rotation?.contentOpacity ?? 1 }
+
+    /// R2: the label the *width* math sizes to — the widest item in the cycle
+    /// while a rotation is live, so the silhouette holds still across the swap,
+    /// and the live label otherwise (unchanged).
+    private var widthLabel: String? {
+        guard let reference = rotation?.widthReferenceLabel, !reference.isEmpty else { return label }
+        return reference
+    }
+
+    /// What is drawn right now. Outside a rotation this is simply `label`; under
+    /// one it is whichever item the clock has committed, which only ever changes
+    /// while `swapOpacity` is `0`.
+    private var visibleLabel: String? { label }
 
     // MARK: Background
 
@@ -117,25 +149,21 @@ struct PouredClosedPill: View {
         }
     }
 
+    /// R1: the resting indicator and the *traveling* one are now the same leaf
+    /// (`PouredClosedTravelingGlyph`), so the morph path can never render a
+    /// different marker from the pill it morphs out of.
     @ViewBuilder
     private var indicatorContent: some View {
+        PouredClosedTravelingGlyph(ambient: ambient, size: Self.glyphSize, tint: restingGlyphTint)
+    }
+
+    private var restingGlyphTint: Color? {
         switch ambient {
-        case .idle:
-            UnifiedBars(mode: .idle, size: Self.glyphSize,
-                        tint: tokens.colors.paper.opacity(tokens.colors.tertiaryTextOpacity))
-        case .working:
-            UnifiedBars(mode: .running, size: Self.glyphSize, tint: tokens.colors.statusRunning)
-        case .question:
-            UnifiedBars(mode: .waiting, size: Self.glyphSize, tint: tokens.colors.statusWaitingForAnswer)
-        case .permission:
-            PouredPillRingedDot(
-                fill: tokens.colors.statusWaitingForApproval,
-                ring: PouredPalette.attention.opacity(PouredPillMotion.Permission.ringOpacity),
-                ringWidth: PouredPillMotion.Permission.ringWidth
-            )
-        case .completed(let outcome):
-            PouredPillOutcomeMark(outcome: outcome)
-                .foregroundStyle(outcomeTint(outcome))
+        case .idle: tokens.colors.paper.opacity(tokens.colors.tertiaryTextOpacity)
+        case .working: tokens.colors.statusRunning
+        case .question: tokens.colors.statusWaitingForAnswer
+        case .permission: PouredPalette.attention
+        case .completed(let outcome): outcomeTint(outcome)
         }
     }
 
@@ -155,9 +183,10 @@ struct PouredClosedPill: View {
             text: text,
             ambient: ambient,
             // Cap at the width the fluid-layout math already reserved for this
-            // label (`V6CenterLabelView.intrinsicWidth`), so the two-tone leaf
-            // can never render wider than the pill sized itself for.
-            maxWidth: V6CenterLabelView.intrinsicWidth(of: text)
+            // label (`V6CenterLabelView.intrinsicWidth`) — which under a rotation
+            // is the *widest* item's width, not this item's, so a shorter
+            // sentence sits inside the held silhouette instead of shrinking it.
+            maxWidth: V6CenterLabelView.intrinsicWidth(of: widthLabel ?? text)
         )
     }
 
@@ -176,7 +205,9 @@ struct PouredClosedPill: View {
     @ViewBuilder
     private var rightSlotView: some View {
         if let rightSlot {
-            PouredRightSlotView(content: rightSlot)
+            // X5: the badge speaks the aggregate, kind-free, while a cycle is
+            // running — see `PouredRightSlotView.attentionAccessibilityLabel`.
+            PouredRightSlotView(content: rightSlot, isRotating: rotation != nil)
                 .transition(.opacity.combined(with: .move(edge: .trailing)))
         }
     }
@@ -184,8 +215,10 @@ struct PouredClosedPill: View {
     // MARK: External (fluid)
 
     private var externalBody: some View {
+        // R2: sized from `widthLabel`, which is the widest rotating item while a
+        // cycle is live and the live label otherwise.
         let width = V6ClosedPill.externalOuterWidth(
-            label: label,
+            label: widthLabel,
             rightSlot: rightSlot,
             minWidth: minWidth,
             height: height
@@ -197,8 +230,8 @@ struct PouredClosedPill: View {
             HStack(spacing: 0) {
                 leadingIndicator
 
-                if let label {
-                    centerLabel(label)
+                if let visibleLabel {
+                    centerLabel(visibleLabel)
                         .padding(.leading, Self.innerGap)
                         .transition(.opacity.combined(with: .move(edge: .leading)))
                 }
@@ -208,6 +241,11 @@ struct PouredClosedPill: View {
                 rightSlotView
             }
             .padding(.horizontal, pad)
+            // X1: ONE opacity for the whole rotating payload — lead marker,
+            // centre label and right-slot badge. It is driven upstream, in the
+            // same transaction that commits the item, so a frame can never mix
+            // item A's marker with item B's label.
+            .pouredRotationSwapFade(opacity: swapOpacity, isRotating: rotation != nil)
         }
         .frame(width: width, height: height)
         // AB-330 stage 2: the ambient glow no longer rides here. It moved to the
@@ -220,8 +258,9 @@ struct PouredClosedPill: View {
     // MARK: MacBook (notch-lane label opt-in)
 
     private var macbookBody: some View {
+        // R2: see `externalBody`.
         let outer = V6ClosedPill.macbookOuterWidth(
-            label: label,
+            label: widthLabel,
             physicalNotchWidth: physicalNotchWidth,
             height: height
         )
@@ -232,8 +271,8 @@ struct PouredClosedPill: View {
             HStack(spacing: 0) {
                 leadingIndicator
 
-                if let label {
-                    notchLaneLabel(label)
+                if let visibleLabel {
+                    notchLaneLabel(visibleLabel)
                         .padding(.leading, Self.notchLaneLabelGap)
                         .transition(.opacity.combined(with: .move(edge: .leading)))
                 }
@@ -243,6 +282,8 @@ struct PouredClosedPill: View {
                 rightSlotView
             }
             .padding(.horizontal, pad)
+            // X1: see `externalBody`.
+            .pouredRotationSwapFade(opacity: swapOpacity, isRotating: rotation != nil)
         }
         .frame(width: outer, height: height)
         // AB-330 stage 2: glow moved to the `PouredClosedGlow` seam layer — see
@@ -252,13 +293,25 @@ struct PouredClosedPill: View {
 
     // MARK: Layout transition
 
-    private var pillLayoutAnimation: Animation {
-        .timingCurve(0.4, 0, 0.2, 1, duration: 0.45)
+    /// The shipped 0.45 s layout crossfade — every non-rotation label change (a
+    /// running row's narration updating, a state transition) still takes it,
+    /// byte for byte.
+    ///
+    /// X1: `nil` while a cycle is live. That crossfade was the *second* driver
+    /// fighting round 2's `@State` fade: because `.animation(_:value:)` wins over
+    /// an ambient `withAnimation` inside its subtree, the incoming leg ran at
+    /// 0.45 s instead of 0.2 s (0.2 + 0.45 ≈ the 0.64 s reviewers measured) and
+    /// the outgoing label's `.transition` replayed on top of it. During a
+    /// rotation there is nothing for it to do anyway — R2 pins the silhouette to
+    /// the widest item, so the frame does not move — and the swap's own opacity
+    /// is the only animation left.
+    private var pillLayoutAnimation: Animation? {
+        rotation == nil ? .timingCurve(0.4, 0, 0.2, 1, duration: 0.45) : nil
     }
 
     private var pillLayoutKey: AnyHashable {
         AnyHashable([
-            AnyHashable(label ?? ""),
+            AnyHashable(visibleLabel ?? ""),
             AnyHashable(rightSlot.map(PouredRightSlotKey.init) ?? .none),
             AnyHashable(mode),
         ])
@@ -439,6 +492,149 @@ private struct PouredPillGlow: ViewModifier {
     }
 }
 
+// MARK: - Rotation seam (R2 / R3)
+
+/// What the collapsed pill needs to know about an R7 spotlight rotation.
+///
+/// R2 — **constant silhouette.** The board renders A3 and A4 at one identical
+/// 352 × 40 geometry (`mapper-reference.md` §7.1/§7.2), which is board authority
+/// that the waiting pill's outline does not track its content. Native sizes the
+/// pill from the live label (`V6ClosedPill.*OuterWidth`), so a rotation between
+/// `Approve swift build?` and `Answer needed` resized the silhouette every 3.5 s
+/// — a shape change reading as a state change. `widthReferenceLabel` is the
+/// widest label in the cycle; the pill lays out to that and never moves.
+///
+/// R3 / X1 — **no dual legibility, and one clock.** The swap must never show two
+/// labels legible at once, and no frame may mix one item's lead marker or badge
+/// with another item's label. Both are now guaranteed upstream: the rotation
+/// clock holds the outgoing item until its fade-out has finished, then swaps
+/// every consumer in a single transaction, and `contentOpacity` is the one
+/// animated value all of them ride. The pill therefore no longer owns any swap
+/// state of its own — it just applies this opacity.
+///
+/// Injected by `IslandPanelView` from `AppModel`; `nil` everywhere else, which is
+/// the pre-rotation behaviour byte for byte.
+struct PouredClosedPillRotation: Equatable, Sendable {
+    /// The widest label the current cycle will show, used for width only.
+    var widthReferenceLabel: String?
+
+    /// X1: the shared swap opacity — `1` outside a swap, `0` at the gap between
+    /// the two items. `AppModel.pouredClosedRotationContentOpacity`.
+    var contentOpacity: Double
+
+    init(widthReferenceLabel: String?, contentOpacity: Double = 1) {
+        self.widthReferenceLabel = widthReferenceLabel
+        self.contentOpacity = contentOpacity
+    }
+}
+
+private struct PouredClosedPillRotationKey: EnvironmentKey {
+    static let defaultValue: PouredClosedPillRotation? = nil
+}
+
+extension EnvironmentValues {
+    /// R2/R3: the live R7 rotation, or `nil` when no cycle is running.
+    ///
+    /// Declared beside its only consumer, the same way
+    /// `IslandQuestionPromptPreselectionKey` is — `PouredClosedPill` is the one
+    /// view that reads it, and every other theme's pill never looks.
+    var islandClosedPillRotation: PouredClosedPillRotation? {
+        get { self[PouredClosedPillRotationKey.self] }
+        set { self[PouredClosedPillRotationKey.self] = newValue }
+    }
+}
+
+// MARK: - The swap fade (X1)
+
+/// X1: applies the rotation's one shared swap opacity, with the leg's curve
+/// stated **explicitly** rather than inherited from the ambient transaction.
+///
+/// The explicitness is load-bearing. `PouredClosedPill` carries an outer
+/// `.animation(pillLayoutAnimation, value: pillLayoutKey)` whose value also
+/// changes at the commit instant; an inherited `withAnimation` inside that
+/// subtree can be overridden by it. Declaring the animation here — nearest the
+/// leaf, keyed on the opacity itself — makes the fade immune to that, and every
+/// site (pill body, morph traveling glyph, ambient glow) reads the same
+/// `PouredSpotlightRotation.swapAnimation(fadingOut:)`, so they cannot drift.
+///
+/// A no-op when no cycle is running: opacity `1`, animation `nil`.
+struct PouredRotationSwapFade: ViewModifier {
+    let opacity: Double
+    let isRotating: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(opacity)
+            .animation(
+                isRotating
+                    ? PouredSpotlightRotation.swapAnimation(fadingOut: opacity == 0)
+                    : nil,
+                value: opacity
+            )
+    }
+}
+
+extension View {
+    func pouredRotationSwapFade(opacity: Double, isRotating: Bool) -> some View {
+        modifier(PouredRotationSwapFade(opacity: opacity, isRotating: isRotating))
+    }
+}
+
+// MARK: - Traveling glyph (R1)
+
+/// R1: the collapsed pill's **traveling** left indicator under Poured.
+///
+/// In the morph path `PouredClosedPill` draws a transparent placeholder and this
+/// overlay is the visible indicator (AB-243). Poured never overrode
+/// `closedTravelingGlyph`, so it took the theme-agnostic `UnifiedBars` — merely
+/// *tinted* per ambient state. The consequence is exactly the defect both
+/// reviewers charged: a permission spotlight and a question spotlight rendered
+/// the same three bars, differing only in hue, so the rotation's two items were
+/// one uniform template distinguishable by colour alone. The board's A3 and A4
+/// differ in **shape** first (`mapper-reference.md` §7.3: "never color alone") —
+/// A3 is `.dot.approve.ring`, A4 is `.glyph.wait`.
+///
+/// This is the same indicator `PouredClosedPill.indicatorContent` already draws
+/// at rest, lifted into its own view so the resting pill and the traveling
+/// overlay cannot disagree.
+struct PouredClosedTravelingGlyph: View {
+    let ambient: PouredPillAmbientState
+    let size: CGFloat
+    let tint: Color?
+
+    @Environment(\.islandTokens) private var tokens
+
+    var body: some View {
+        switch ambient {
+        case .permission:
+            PouredPillRingedDot(
+                fill: tokens.colors.statusWaitingForApproval,
+                ring: PouredPalette.attention.opacity(PouredPillMotion.Permission.ringOpacity),
+                ringWidth: PouredPillMotion.Permission.ringWidth
+            )
+            .frame(width: size, height: size)
+        case .completed(let outcome):
+            PouredPillOutcomeMark(outcome: outcome)
+                .foregroundStyle(tint ?? tokens.colors.paper)
+                .frame(width: size, height: size)
+        case .idle, .working, .question:
+            // X2: A4's lead is the board's `.glyph.wait` — THREE gold bars
+            // breathing together (`01-poured-island.html:167`), not the shipped
+            // two-bar pause mark. Poured-scoped opt-in; every other theme's
+            // `.waiting` glyph is byte-identical.
+            UnifiedBars(mode: unifiedMode, size: size, tint: tint, showsMiddleWaitBar: true)
+        }
+    }
+
+    private var unifiedMode: UnifiedBars.Mode {
+        switch ambient {
+        case .working: .running
+        case .question: .waiting
+        default: .idle
+        }
+    }
+}
+
 // MARK: - Indicator leaves
 
 /// A filled status dot inside a soft translucent ring — the A3 approval marker
@@ -470,7 +666,7 @@ struct PouredPillRingedDot: View {
 /// The A6 outcome mark: a stop bar for interrupted, an ✕ for failed, and a
 /// check for a (fresh) success — distinct in shape as well as hue so the state
 /// never rides on colour alone. Tint is supplied by the caller.
-private struct PouredPillOutcomeMark: View {
+struct PouredPillOutcomeMark: View {
     let outcome: SessionOutcome
 
     var body: some View {
@@ -488,6 +684,39 @@ private struct PouredPillOutcomeMark: View {
     }
 }
 
+// MARK: - A3 command span (R1)
+
+/// R1: finds the command inside the collapsed pill's `Approve %@?` label.
+///
+/// The label arrives already localized and already substituted from
+/// `IslandClosedLabelResolver`, so the command is recovered by matching the
+/// *format's* own affixes around its `%@`. Doing it this way rather than
+/// re-deriving the command from the session keeps the resolver the single source
+/// of the sentence, and it survives a locale that puts the command first or last.
+/// `nil` whenever the label is not that sentence (any other ambient state, a
+/// `.sessionName` preference, an unexpected format), in which case the caller
+/// falls back to the untouched two-tone split.
+enum PouredClosedPillCommandSpan: Sendable {
+    struct Span: Equatable, Sendable {
+        var prefix: String
+        var command: String
+        var suffix: String
+    }
+
+    static func split(label: String, format: String) -> Span? {
+        guard let marker = format.range(of: "%@") else { return nil }
+        let prefix = String(format[format.startIndex..<marker.lowerBound])
+        let suffix = String(format[marker.upperBound...])
+        guard label.hasPrefix(prefix), label.hasSuffix(suffix),
+              label.count > prefix.count + suffix.count else {
+            return nil
+        }
+        let command = String(label.dropFirst(prefix.count).dropLast(suffix.count))
+        guard !command.isEmpty else { return nil }
+        return Span(prefix: prefix, command: command, suffix: suffix)
+    }
+}
+
 // MARK: - Two-tone narrated label
 
 /// The closed pill's narrated activity, split into primary / dim tone runs by
@@ -499,6 +728,7 @@ private struct PouredClosedPillLabel: View {
     let text: String
     let ambient: PouredPillAmbientState
     let maxWidth: CGFloat
+    var lang: LanguageManager = .shared
 
     @Environment(\.islandTokens) private var tokens
 
@@ -506,6 +736,23 @@ private struct PouredClosedPillLabel: View {
     private var dim: Color { tokens.colors.paper.opacity(tokens.colors.secondaryTextOpacity) }
 
     private var composed: Text {
+        // R1: A3's label is `Approve ` + the command in `--mono` at 11px + `?`
+        // (`mapper-reference.md` §7.1 — the inner `.mono` span is measured
+        // separately from the `.lab` runs either side of it). The whole sentence
+        // used to render in the proportional `activityLine` face, so the pill
+        // said "Approve sed?" with the command indistinguishable from the verb.
+        if ambient == .permission,
+           let span = PouredClosedPillCommandSpan.split(
+               label: text,
+               format: lang.t("island.closed.label.approve")
+           ) {
+            return Text(verbatim: span.prefix).foregroundStyle(primary)
+                + Text(verbatim: span.command)
+                    .font(PouredType.Role.branchDisambiguator.font)
+                    .foregroundStyle(primary)
+                + Text(verbatim: span.suffix).foregroundStyle(primary)
+        }
+
         let segments = PouredPillLabelTone.segments(for: text, ambient: ambient)
         return segments.reduce(Text(verbatim: "")) { accumulated, segment in
             var piece = Text(verbatim: segment.text)
@@ -546,6 +793,9 @@ private struct PouredClosedPillLabel: View {
 struct PouredRightSlotView: View {
     let content: IslandRightSlotContent
     var lang: LanguageManager = .shared
+    /// X5: `true` only while an R7 rotation is running, i.e. only when the badge
+    /// stands for a set that may hold more than one *kind* of wait.
+    var isRotating: Bool = false
     @Environment(\.islandTokens) private var tokens
 
     var body: some View {
@@ -554,7 +804,7 @@ struct PouredRightSlotView: View {
             countBadge
         case .attentionCount(let count, let kind):
             PouredAttentionBadge(count: count, kind: kind)
-                .accessibilityLabel(content.fallbackBadgeAccessibilityLabel(lang))
+                .accessibilityLabel(attentionAccessibilityLabel(count: count))
         case .taskCounter(let completed, let total, let subagents):
             PouredTaskCounterChip(completed: completed, total: total, subagents: subagents)
                 .accessibilityLabel(content.fallbackBadgeAccessibilityLabel(lang))
@@ -575,6 +825,25 @@ struct PouredRightSlotView: View {
             .fixedSize(horizontal: true, vertical: false)
             .foregroundStyle(tokens.colors.paper.opacity(0.72))
             .accessibilityLabel(content.fallbackBadgeAccessibilityLabel(lang))
+    }
+
+    /// X5 (C's M-4): what VoiceOver hears on the attention badge.
+    ///
+    /// The shared `fallbackBadgeAccessibilityLabel` speaks the badge's **kind**
+    /// over the badge's **count** — "2 waiting for an answer" / "2 waiting for
+    /// approval". That is true of a single-kind set and false the moment the set
+    /// is mixed, which is exactly the set R7 rotates through: with one
+    /// permission and one question the pill claimed two of whichever kind held
+    /// the spotlight, and the claim flipped every 3.5 s.
+    ///
+    /// While a rotation is live the badge therefore speaks the one thing that
+    /// stays true through every hold — the aggregate — and drops the kind. R12
+    /// makes this the only place the total is spoken during a question hold (the
+    /// badge itself renders the board's `?` there), so the phrase carries it.
+    /// Outside a rotation the shipped per-kind sentence is unchanged.
+    private func attentionAccessibilityLabel(count: Int) -> String {
+        guard isRotating else { return content.fallbackBadgeAccessibilityLabel(lang) }
+        return lang.t("poured.a11y.rightSlot.attention.mixed", count)
     }
 }
 
@@ -626,7 +895,13 @@ private struct PouredAttentionBadge: View {
             .fixedSize(horizontal: true, vertical: false)
             .foregroundStyle(ink)
             .padding(.horizontal, PouredPillMotion.RightSlot.badgeHPadding)
-            .padding(.vertical, PouredPillMotion.RightSlot.badgeVPadding)
+            // X3: `.count{min-width:20px;height:20px;border-radius:10px}` — a
+            // true 20pt circle at one digit / `?`, growing into the board's
+            // capsule only when the label itself is wider.
+            .frame(
+                minWidth: PouredPillMotion.RightSlot.badgeMinDiameter,
+                minHeight: PouredPillMotion.RightSlot.badgeMinDiameter
+            )
             .background(
                 RoundedRectangle(cornerRadius: PouredPillMotion.RightSlot.badgeCornerRadius, style: .continuous)
                     .fill(fill)

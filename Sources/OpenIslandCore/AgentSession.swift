@@ -220,6 +220,11 @@ public struct PermissionRequest: Equatable, Identifiable, Codable, Sendable {
     /// preview" — either the tool isn't a file edit or the payload lacked
     /// the needed fields.
     public var fileDiffSource: PermissionFileDiffSource?
+    /// A short prose description of *what part* of the file the diff touches —
+    /// the second segment of the Poured diff header's `<file> · <hunk>` shape.
+    /// Optional so older payloads and restored registry entries keep decoding;
+    /// when `nil` the header falls back to its file-only / counts treatment.
+    public var diffHunkDescription: String?
 
     public init(
         id: UUID = UUID(),
@@ -232,7 +237,8 @@ public struct PermissionRequest: Equatable, Identifiable, Codable, Sendable {
         toolUseID: String? = nil,
         suggestedUpdates: [ClaudePermissionUpdate] = [],
         requiresTerminalApproval: Bool = false,
-        fileDiffSource: PermissionFileDiffSource? = nil
+        fileDiffSource: PermissionFileDiffSource? = nil,
+        diffHunkDescription: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -245,6 +251,7 @@ public struct PermissionRequest: Equatable, Identifiable, Codable, Sendable {
         self.suggestedUpdates = suggestedUpdates
         self.requiresTerminalApproval = requiresTerminalApproval
         self.fileDiffSource = fileDiffSource
+        self.diffHunkDescription = diffHunkDescription
     }
 }
 

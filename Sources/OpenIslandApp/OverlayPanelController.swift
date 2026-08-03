@@ -287,7 +287,27 @@ final class OverlayPanelController {
         // Plain Esc only — leave modified combos (e.g. ⌘⌥Esc Force Quit)
         // alone rather than reinterpreting them as "close the overlay".
         if event.keyCode == UInt16(kVK_Escape), flags.isEmpty {
-            model.notchClose()
+            // R8 (owner ruling, 2026-08-02) — two-stage Esc. With a hero
+            // (permission / question / detail) open **inside** the expanded
+            // Poured list, the first Esc collapses it back to its compact row
+            // and keeps the list context; only the second Esc closes the panel.
+            //
+            // `requestCollapse()` returns false when no in-list hero is open —
+            // which is every other surface, every other theme, and the
+            // notification card's auto-expanded single row — so Esc keeps its
+            // shipped close-the-panel meaning everywhere the ruling does not
+            // reach. The theme check is redundant with that (only
+            // `PouredSessionRow` ever registers a hero) and is spelled out
+            // anyway so the Poured gate is legible at the call site.
+            switch Self.escapeStage(
+                themeID: model.islandTheme.id,
+                hasOpenInListHero: PouredHeroExpansion.shared.openHeroSessionID != nil
+            ) {
+            case .collapseHero:
+                PouredHeroExpansion.shared.requestCollapse()
+            case .closePanel:
+                model.notchClose()
+            }
             return true
         }
 
@@ -311,6 +331,18 @@ final class OverlayPanelController {
             return handleJumpShortcut(model)
         }
 
+        // Slice 5 gap 6, §F half. Unlike the ⌘-shortcuts above, Enter / 1–9 do
+        // not select a session here at all: they call whichever
+        // `StructuredQuestionPromptView` is mounted, through the single
+        // `QuestionCardKeyboardHandlers` slot it registers on appear and clears
+        // on disappear (`IslandPanelView.registerKeyboardHandlersIfNeeded`).
+        // Inside the expanded Poured list only the **open** §F hero mounts that
+        // interior — a compact question row draws an `Answer` chip and no
+        // prompt (PI-C-006) — so the registered slot already *is* the open
+        // hero's, and R8 stage 1 clears it on the way out. That is why these
+        // two branches need no `PouredHeroExpansion` lookup while ⌘Y / ⌘N do:
+        // the question keys follow the mounted view, the approval keys followed
+        // the selected card.
         if event.keyCode == UInt16(kVK_Return) || event.keyCode == UInt16(kVK_ANSI_KeypadEnter) {
             return model.overlay.handleQuestionSubmitKey()
         }
@@ -323,13 +355,110 @@ final class OverlayPanelController {
         return false
     }
 
+    /// R8 stage selection, as a pure decision so the two-stage contract can be
+    /// pinned without standing up an `NSPanel` (the idiom every other decision
+    /// in this controller already uses).
+    enum EscapeStage: Equatable {
+        /// Collapse the open in-list hero back to its compact row; the list, and
+        /// the panel, stay.
+        case collapseHero
+        /// The shipped meaning: close the overlay.
+        case closePanel
+    }
+
+    nonisolated static func escapeStage(themeID: String, hasOpenInListHero: Bool) -> EscapeStage {
+        // Poured-only by ruling, and by construction: `PouredSessionRow` is the
+        // only view that ever registers an in-list hero, so the second term is
+        // already false everywhere else. Spelled out so the gate is legible.
+        (themeID == "poured" && hasOpenInListHero) ? .collapseHero : .closePanel
+    }
+
+    /// The session ⌘Y / ⌘⇧Y / ⌘N actually act on, as a pure choice between the
+    /// open in-list hero and the selected card.
+    nonisolated static func approvalShortcutSessionID(
+        openHeroSessionID: String?,
+        activeCardSessionID: String?
+    ) -> String? {
+        openHeroSessionID ?? activeCardSessionID
+    }
+
+    /// The session ⌘Y / ⌘⇧Y / ⌘N actually act on.
+    ///
+    /// Slice 5 gap 6: `activeIslandCardSession` is the *notification/selected*
+    /// session (`islandSurface.sessionID`). A §E hero opened in place inside the
+    /// expanded Poured list is usually not that session, so before this the hero
+    /// drew ⌘Y / ⌘N keycaps that fired on a different row — or on nothing at
+    /// all. `PouredHeroExpansion.openHeroSessionID` is precisely "the hero the
+    /// user opened in the list" (R9's in-place expansion), so it takes
+    /// precedence; with no hero open, or when the recorded id no longer resolves
+    /// to a live session, the shipped selected-card behaviour is unchanged.
+    private func approvalShortcutSession(_ model: AppModel) -> AgentSession? {
+        let id = Self.approvalShortcutSessionID(
+            openHeroSessionID: PouredHeroExpansion.shared.openHeroSessionID,
+            activeCardSessionID: model.activeIslandCardSession?.id
+        )
+        guard let id else { return nil }
+        return model.state.session(id: id) ?? model.activeIslandCardSession
+    }
+
+    /// What ⌘Y / ⌘N do once a session has been resolved — a pure decision so the
+    /// E5 contract can be pinned without an `NSPanel`, the idiom `escapeStage`
+    /// and `approvalShortcutSessionID` already use.
+    enum ApprovalShortcutOutcome: Equatable {
+        /// The shipped path: resolve the request in-app.
+        case approve
+        /// E5: a `requiresTerminalApproval` request cannot be resolved in-app at
+        /// all, so the honest act behind the advertised cap is the jump.
+        case jump
+        /// Nothing to do — the key falls through to normal AppKit dispatch
+        /// rather than being swallowed.
+        case ignore
+    }
+
+    /// E5 (Poured Slice 5): the board prints `⌘Y` on E3's blue
+    /// "Jump to Codex to approve" primary (`01-poured-island.html:1106-1108`),
+    /// and a printed keycap must fire — the keycap-truth rule this slice
+    /// enforced everywhere else. E3 is the `requiresTerminalApproval` shape:
+    /// nothing in this app can approve it, and the card's own CTA (and ⌘J)
+    /// already perform exactly one thing — jump. So ⌘Y performs that same jump
+    /// instead of bailing.
+    ///
+    /// Deliberately narrow. `⌘N` (deny) keeps bailing: E3 prints no deny cap and
+    /// jumping on a deny key would be a lie in the other direction. `⌘⇧Y` never
+    /// reaches here (`handleAlwaysAllowShortcut` is its own path, untouched).
+    /// And the theme term keeps every other theme byte-identical — Poured's E3
+    /// is the only surface that prints `⌘Y` on a terminal-approval card, so
+    /// nowhere else gains a binding it does not advertise.
+    nonisolated static func approvalShortcutOutcome(
+        themeID: String,
+        action: ApprovalAction,
+        requiresTerminalApproval: Bool
+    ) -> ApprovalShortcutOutcome {
+        guard requiresTerminalApproval else { return .approve }
+        guard themeID == "poured", case .allowOnce = action else { return .ignore }
+        return .jump
+    }
+
     private func handleApprovalShortcut(_ model: AppModel, action: ApprovalAction) -> Bool {
-        guard let session = model.activeIslandCardSession, session.phase == .waitingForApproval,
-              session.permissionRequest?.requiresTerminalApproval != true else {
+        guard let session = approvalShortcutSession(model), session.phase == .waitingForApproval else {
             return false
         }
-        model.approvePermission(for: session.id, action: action)
-        return true
+        switch Self.approvalShortcutOutcome(
+            themeID: model.islandTheme.id,
+            action: action,
+            requiresTerminalApproval: session.permissionRequest?.requiresTerminalApproval == true
+        ) {
+        case .approve:
+            model.approvePermission(for: session.id, action: action)
+            return true
+        case .jump:
+            // The session ⌘Y resolved — the open in-list hero when there is one
+            // — not `activeIslandCardSession`, because the cap is printed on
+            // that hero and must act on the row the user is looking at.
+            return jumpIfReachable(model, session: session)
+        case .ignore:
+            return false
+        }
     }
 
     /// N3: the presented card's Jump action, fired by ⌘J — the *same*
@@ -341,8 +470,15 @@ final class OverlayPanelController {
     /// so a swallowed key never leaves a "Cannot jump" message behind. Themes
     /// that print no ⌘J simply gain a shortcut they do not advertise.
     private func handleJumpShortcut(_ model: AppModel) -> Bool {
-        guard let session = model.activeIslandCardSession,
-              let jumpTarget = session.jumpTarget,
+        guard let session = model.activeIslandCardSession else { return false }
+        return jumpIfReachable(model, session: session)
+    }
+
+    /// The jump itself, split out of `handleJumpShortcut` unchanged so E5's ⌘Y
+    /// route performs the identical round-trip (same reachability precondition,
+    /// same inert-on-unreachable return) on a session it picked itself.
+    private func jumpIfReachable(_ model: AppModel, session: AgentSession) -> Bool {
+        guard let jumpTarget = session.jumpTarget,
               jumpTarget.terminalApp.lowercased() != "unknown" else {
             return false
         }
@@ -357,7 +493,7 @@ final class OverlayPanelController {
     /// rule when the request carried no suggestions (e.g. non-Claude agents),
     /// so the shortcut keeps working exactly as it did before AB-235.
     private func handleAlwaysAllowShortcut(_ model: AppModel) -> Bool {
-        guard let session = model.activeIslandCardSession,
+        guard let session = approvalShortcutSession(model),
               session.phase == .waitingForApproval,
               let permissionRequest = session.permissionRequest,
               !permissionRequest.requiresTerminalApproval else {

@@ -199,4 +199,94 @@ struct PouredRowMotionTests {
         #expect(PouredAttachmentChip(.detached).localizationKey == "poured.detail.attachment.detached")
         #expect(!PouredAttachmentChip(.detached).isLive)
     }
+
+    // MARK: - Compact ⇄ hero disclosure (Slice 5 · PI-A11Y-001)
+
+    /// The open/close of an in-place hero was the last un-gated motion on the
+    /// Poured row. Reduce Motion must *remove* it, not shorten it — the same
+    /// contract `Entrance` already holds for a row insertion.
+    @Test
+    func heroDisclosureIsRemovedRatherThanShortenedUnderReduceMotion() {
+        #expect(PouredRowMotion.HeroDisclosure.duration == 0.2)
+        #expect(PouredRowMotion.HeroDisclosure.duration(reduceMotion: false) == 0.2)
+        #expect(PouredRowMotion.HeroDisclosure.duration(reduceMotion: true) == nil)
+    }
+
+    /// R8 stage 1 needs the open in-list hero to be reachable from
+    /// `OverlayPanelController`, which can never see a row's `@State`. With no
+    /// hero open the collapse request must decline, so Esc falls through to
+    /// stage 2 (close the panel) exactly as it does today.
+    @MainActor
+    @Test
+    func heroExpansionRegistryTracksTheOpenInListHeroAndDeclinesWhenNoneIsOpen() {
+        let registry = PouredHeroExpansion()
+
+        #expect(registry.openHeroSessionID == nil)
+        #expect(registry.requestCollapse() == false)
+        #expect(registry.collapseRequests == 0)
+
+        registry.heroDidOpen(sessionID: "session-a")
+        #expect(registry.openHeroSessionID == "session-a")
+        #expect(registry.requestCollapse() == true)
+        #expect(registry.collapseRequests == 1)
+
+        // The request is a signal, not the state change: the row that owns the
+        // hero reports the close, and a stale close from a different row is
+        // ignored so it can never clear another row's open hero.
+        registry.heroDidClose(sessionID: "session-b")
+        #expect(registry.openHeroSessionID == "session-a")
+        registry.heroDidClose(sessionID: "session-a")
+        #expect(registry.openHeroSessionID == nil)
+        #expect(registry.requestCollapse() == false)
+        #expect(registry.collapseRequests == 1)
+    }
+
+    // MARK: - §E hero head copy (Slice 5 · R10 ask-first)
+
+    /// The variant is read off the request, never off fixture wording.
+    @Test
+    func heroIntentIsResolvedFromTheRequestNotTheCopy() {
+        #expect(PouredApprovalHeroCopy.intent(
+            requiresTerminalApproval: true, hasFileDiff: true, hasCommand: true
+        ) == .terminalApproval)
+        #expect(PouredApprovalHeroCopy.intent(
+            requiresTerminalApproval: false, hasFileDiff: true, hasCommand: true
+        ) == .editFile)
+        #expect(PouredApprovalHeroCopy.intent(
+            requiresTerminalApproval: false, hasFileDiff: false, hasCommand: true
+        ) == .runCommand)
+        #expect(PouredApprovalHeroCopy.intent(
+            requiresTerminalApproval: false, hasFileDiff: false, hasCommand: false
+        ) == .generic)
+
+        #expect(PouredApprovalHeroCopy.Intent.runCommand.localizationKey == "poured.approval.intent.runCommand")
+        #expect(PouredApprovalHeroCopy.Intent.editFile.localizationKey == "poured.approval.intent.editFile")
+        #expect(PouredApprovalHeroCopy.Intent.terminalApproval.localizationKey == "poured.approval.intent.terminalApproval")
+        // No board frame for the fallback — it keeps the shipped shared key.
+        #expect(PouredApprovalHeroCopy.Intent.generic.localizationKey == "approval.toolPermissionRequested")
+    }
+
+    /// `.hs` is `workspace · scope`, and collapses to E4's workspace-only shape
+    /// when the scope would only repeat the workspace name.
+    @Test
+    func heroSubtitleJoinsWorkspaceAndScopeWithoutStuttering() {
+        #expect(PouredApprovalHeroCopy.subtitle(
+            workspace: "open-vibe-island",
+            affectedPath: "AGENTS.md"
+        ) == "open-vibe-island · AGENTS.md")
+
+        #expect(PouredApprovalHeroCopy.subtitle(
+            workspace: "open-vibe-island",
+            affectedPath: "~/Developer/open-vibe-island/README.md"
+        ) == "open-vibe-island · README.md")
+
+        // E4's shape: the affected path names the workspace itself.
+        #expect(PouredApprovalHeroCopy.subtitle(
+            workspace: "the-automator",
+            affectedPath: "~/Developer/the-automator"
+        ) == "the-automator")
+
+        #expect(PouredApprovalHeroCopy.subtitle(workspace: "the-automator", affectedPath: nil) == "the-automator")
+        #expect(PouredApprovalHeroCopy.subtitle(workspace: "  ", affectedPath: "   ") == nil)
+    }
 }

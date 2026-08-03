@@ -590,7 +590,8 @@ enum AppearancePreviewFixtures {
                         behavior: .allow
                     ),
                 ],
-                fileDiffSource: PermissionFileDiffSource(oldText: oldText, newText: newText)
+                fileDiffSource: PermissionFileDiffSource(oldText: oldText, newText: newText),
+                diffHunkDescription: "verification section"
             ),
             jumpTarget: JumpTarget(
                 terminalApp: "Ghostty",
@@ -677,6 +678,19 @@ enum AppearancePreviewFixtures {
                         id: stableID("conformance-auth-mtls"),
                         label: "mTLS",
                         description: "A client certificate per machine."
+                    ),
+                    // Slice 5 · F3: the board's F frame ends its option list with
+                    // the `.opt-other` escape hatch (`01-poured-island.html:1189`)
+                    // — three real answers plus "type a different approach". The
+                    // fixture had only the three, so the one §F row whose entire
+                    // treatment (italic, achromatic chip, tighter padding, 2pt
+                    // margin) landed in Part C′ was never on the F frame that
+                    // renders it. `label` stays the bare answer value the agent
+                    // receives; Poured's row prints the board's longer sentence.
+                    QuestionOption(
+                        id: stableID("conformance-auth-other"),
+                        label: "Other",
+                        allowsFreeform: true
                     ),
                 ],
                 multiSelect: false
@@ -1020,6 +1034,188 @@ enum AppearancePreviewFixtures {
                 workspaceName: "open-vibe-island",
                 paneTitle: "cursor ~/open-vibe-island",
                 terminalSessionID: "fixture-poured-c1-interrupted"
+            )
+        )
+    }
+
+    // MARK: - Poured §D session detail (Slice 5 · D1-detail)
+
+    /// The board's §D expanded session detail
+    /// (`docs/design/overlay-redesign/01-poured-island.html:923-983`), as one
+    /// deterministic running session.
+    ///
+    /// `pouredGroupedSixRunning` already matches the board's §D *identity*
+    /// (`open-vibe-island` / `feat/theme-poured` / Claude / `Opus 4.8` /
+    /// `acceptEdits` / `live 1m 42s`), but three of the six detail blocks the
+    /// board draws were unreachable from it (Slice 5 native-mapper gaps 1–3):
+    ///
+    /// | board block | native accessor | why the §C runner can't stand in |
+    /// |---|---|---|
+    /// | `.mcell` `Directory` | `PouredSessionRow.directoryDisplayText` → `jumpTarget.workingDirectory` | the §C runner's `JumpTarget` carries no `workingDirectory`, so the cell renders nothing |
+    /// | `.assistant` prose | `PouredSessionRow.lastAssistantMessageForDetail` → `session.lastAssistantMessageText` | no Poured fixture carried a last assistant message at all |
+    /// | `Transcript` ghost | `PouredSessionRow.trimmedTranscriptPath` → `session.trackingTranscriptPath` | same — no fixture carried a transcript path |
+    ///
+    /// So this is the §C runner's identity plus exactly those three fields, in
+    /// the board's verbatim copy. It is a **separate** fixture rather than an
+    /// enrichment of `pouredGroupedSixRunning` because C1's six-row frame draws
+    /// the collapsed row (no detail body) and must keep rendering byte-identically.
+    ///
+    /// The assistant prose is the board's `.assistant` block verbatim
+    /// (`:952-960`), transposed from HTML to the Markdown the native
+    /// `LocalMarkdownText` renderer reads: `<strong>` → `**…**`, `<code>` →
+    /// `` `…` ``, `<li>` → `- …`.
+    static func pouredSessionDetail(now: Date) -> AgentSession {
+        AgentSession(
+            id: "fixture-poured-d1-detail",
+            title: "Claude · open-vibe-island",
+            tool: .claudeCode,
+            origin: .demo,
+            attachmentState: .attached,
+            phase: .running,
+            // X11 (C's M-12): the board's §D `.act` reads
+            // `Editing AppModel.swift · narrating the bridge lifecycle change`
+            // (`01-poured-island.html:940`). The verb+object half is narrated
+            // from `currentTool` / `currentToolInputPreview` below; the clause
+            // after the `·` is the session's own summary, which the expanded row
+            // appends because §D's `.body` is the full 464pt content width.
+            // The §C runner keeps `"Editing AppModel.swift."` — a collapsed row
+            // has no room for the clause and the board gives it none.
+            summary: "narrating the bridge lifecycle change",
+            updatedAt: now.addingTimeInterval(-2),
+            // Board `.mcell` `Live` reads `1m 42s` — the same two-clock split
+            // `pouredGroupedSixRunning` documents (spoke 2s ago, running 102s).
+            firstSeenAt: now.addingTimeInterval(-102),
+            jumpTarget: JumpTarget(
+                terminalApp: "Ghostty",
+                workspaceName: "open-vibe-island",
+                paneTitle: "claude ~/open-vibe-island",
+                // Board `.mcell` `Directory` → `~/…/open-vibe-island`. Written
+                // absolute (never `~`-prefixed): `directoryDisplayText` does the
+                // home abbreviation itself, and a literal `~` would survive it.
+                workingDirectory: FileManager.default.homeDirectoryForCurrentUser
+                    .appendingPathComponent("Developer/open-vibe-island").path,
+                terminalSessionID: "fixture-poured-d1-detail"
+            ),
+            claudeMetadata: ClaudeSessionMetadata(
+                // Board `Transcript` ghost affordance — a path is all the row needs
+                // to render it (the file is never opened by the fixture path).
+                transcriptPath: FileManager.default.homeDirectoryForCurrentUser
+                    .appendingPathComponent(".claude/projects/open-vibe-island/fixture-poured-d1-detail.jsonl")
+                    .path,
+                lastUserPrompt: "Bring the opened list to Poured parity.",
+                lastAssistantMessage: """
+                I moved bridge startup into **AppModel.start()** so the socket binds before registry \
+                restore. The reconcile pass now runs **after** the first `BridgeServer` accept, which \
+                fixes the race where a live hook arrived before discovery finished.
+
+                - Socket bind → registry restore → reconcile
+                - Added a guard for the detached-pane case
+                """,
+                currentTool: "Edit",
+                currentToolInputPreview: "Sources/OpenIslandApp/AppModel.swift",
+                model: "claude-opus-4-8-20260101",
+                permissionMode: .acceptEdits,
+                worktreeBranch: "feat/theme-poured"
+            )
+        )
+    }
+
+    // MARK: - Poured §F question states (Slice 5 · F3 / F4)
+
+    /// Board **F′** (`:1209-1243`) — the multi-select question hero. Copy is the
+    /// board's verbatim: chip `Targets`, question `Which agents should ship in
+    /// v0.6?`, three bare options (`.ol` is a direct child of `.opt`, no `.od`
+    /// anywhere in F′) and no freeform `Other`.
+    ///
+    /// The board renders options 1 and 2 selected; selection is view `@State`
+    /// (`StructuredQuestionPromptView.selections`), never a session field, so the
+    /// fixture supplies only the data — the rendered selected pair comes from a
+    /// real toggle or the `\.islandQuestionPromptPreselectsFirstOption` seam.
+    static func pouredMultiSelectQuestion(now: Date) -> AgentSession {
+        AgentSession(
+            id: "fixture-poured-f3-multi-select",
+            title: "Claude · open-vibe-island",
+            tool: .claudeCode,
+            origin: .demo,
+            attachmentState: .attached,
+            phase: .waitingForAnswer,
+            summary: "Which agents should ship in v0.6?",
+            updatedAt: now.addingTimeInterval(-24),
+            questionPrompt: QuestionPrompt(
+                id: stableID("fixture-poured-f3-multi-select"),
+                title: "Release targets",
+                questions: [
+                    QuestionPromptItem(
+                        question: "Which agents should ship in v0.6?",
+                        header: "Targets",
+                        options: [
+                            QuestionOption(id: stableID("poured-f3-opencode"), label: "OpenCode"),
+                            QuestionOption(id: stableID("poured-f3-kimi"), label: "Kimi CLI"),
+                            QuestionOption(id: stableID("poured-f3-qwen"), label: "Qwen Code"),
+                        ],
+                        multiSelect: true
+                    ),
+                ]
+            ),
+            jumpTarget: JumpTarget(
+                terminalApp: "Ghostty",
+                workspaceName: "open-vibe-island",
+                paneTitle: "claude ~/open-vibe-island",
+                terminalSessionID: "fixture-poured-f3-multi-select"
+            ),
+            claudeMetadata: ClaudeSessionMetadata(
+                lastUserPrompt: "Plan the v0.6 agent matrix.",
+                currentTool: "AskUserQuestion",
+                model: "claude-opus-4-8-20260101",
+                worktreeBranch: "feat/theme-poured"
+            )
+        )
+    }
+
+    /// Board **F″** (`:1244-1266`) — the compact single question. Copy verbatim:
+    /// chip `Deploy`, question `Proceed to production?`, two bare one-line
+    /// options `Yes, deploy` / `Hold`, no descriptions, no submit CTA, no hint.
+    ///
+    /// The board's *layout* for this state (both options on one row inside a
+    /// 404×87 bare `.glass`) has no native referent yet — Slice 5 native-mapper
+    /// gap 15. This fixture supplies the state so that layout has something
+    /// deterministic to render once it exists.
+    static func pouredCompactQuestion(now: Date) -> AgentSession {
+        AgentSession(
+            id: "fixture-poured-f4-compact",
+            title: "Claude · the-automator",
+            tool: .claudeCode,
+            origin: .demo,
+            attachmentState: .attached,
+            phase: .waitingForAnswer,
+            summary: "Proceed to production?",
+            updatedAt: now.addingTimeInterval(-11),
+            questionPrompt: QuestionPrompt(
+                id: stableID("fixture-poured-f4-compact"),
+                title: "Proceed to production?",
+                questions: [
+                    QuestionPromptItem(
+                        question: "Proceed to production?",
+                        header: "Deploy",
+                        options: [
+                            QuestionOption(id: stableID("poured-f4-yes"), label: "Yes, deploy"),
+                            QuestionOption(id: stableID("poured-f4-hold"), label: "Hold"),
+                        ],
+                        multiSelect: false
+                    ),
+                ]
+            ),
+            jumpTarget: JumpTarget(
+                terminalApp: "Ghostty",
+                workspaceName: "the-automator",
+                paneTitle: "claude ~/the-automator",
+                terminalSessionID: "fixture-poured-f4-compact"
+            ),
+            claudeMetadata: ClaudeSessionMetadata(
+                lastUserPrompt: "Cut the release.",
+                currentTool: "AskUserQuestion",
+                model: "claude-opus-4-8-20260101",
+                worktreeBranch: "main"
             )
         )
     }

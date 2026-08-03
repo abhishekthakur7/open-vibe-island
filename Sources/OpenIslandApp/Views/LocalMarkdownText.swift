@@ -15,6 +15,14 @@ struct LocalMarkdownText: View {
         /// Halo `.assistant` (G-69): 12.5 / line-height 1.55 at `--t2`, with inline
         /// `code` runs on their own `white@.07` chip in `#c8d2e6` ink at 11pt.
         case haloAssistant
+        /// Poured §D `.assistant` (Slice 5 · D1, `01-poured-island.html:433-439`):
+        /// `font-size:12.5px; line-height:1.55; color:rgba(242,245,251,.66)` with
+        /// `strong{color:rgba(242,245,251,.96); font-weight:640}` and
+        /// `code{font-size:11px; background:rgba(255,255,255,.06); border-radius:4px;
+        /// color:#c9d3e6}`. Mirrors `.haloAssistant`'s shape at Poured's own values —
+        /// the §D detail used to borrow `.completionCard` (13.5/medium, 12.5 mono,
+        /// no chip), which rendered the board's quiet prose as a loud card body.
+        case pouredAssistant
 
         fileprivate var font: Font {
             switch self {
@@ -24,6 +32,8 @@ struct LocalMarkdownText: View {
                 .system(size: FlightDeckTypography.assistantSize, weight: .regular)
             case .haloAssistant:
                 .system(size: HaloTypography.assistantSize, weight: .regular)
+            case .pouredAssistant:
+                PouredType.Role.assistantBody.font
             }
         }
 
@@ -35,6 +45,8 @@ struct LocalMarkdownText: View {
                 .system(size: FlightDeckTypography.assistantSize - 1, weight: .regular, design: .monospaced)
             case .haloAssistant:
                 .system(size: HaloTypography.assistantInlineCodeSize, weight: .regular, design: .monospaced)
+            case .pouredAssistant:
+                PouredType.Role.assistantInlineCode.font
             }
         }
 
@@ -43,6 +55,8 @@ struct LocalMarkdownText: View {
             case .completionCard: 7
             case .flightDeckAssistant: 6
             case .haloAssistant: 6
+            // `.assistant ul{margin:6px 0 2px}` — the board's own block gap.
+            case .pouredAssistant: 6
             }
         }
 
@@ -53,19 +67,56 @@ struct LocalMarkdownText: View {
             case .completionCard: 0.88
             case .flightDeckAssistant: 0.9
             case .haloAssistant: 0.63
+            // `.assistant{color:rgba(242,245,251,.66)}` (`:433`).
+            case .pouredAssistant: 0.66
             }
         }
 
         fileprivate var lineSpacing: CGFloat {
             switch self {
             // 12.5 × 1.55 ≈ 19.4pt line box → ≈ 4pt of added leading.
-            case .haloAssistant: 4
+            case .haloAssistant, .pouredAssistant: 4
             default: 0
             }
         }
 
-        /// Whether inline `code` runs get the mockup's 7% chip.
-        fileprivate var chipsInlineCode: Bool { self == .haloAssistant }
+        /// Whether inline `code` runs get the mockup's chip.
+        fileprivate var chipsInlineCode: Bool {
+            self == .haloAssistant || self == .pouredAssistant
+        }
+
+        /// The inline-code chip's ink. Halo `#c8d2e6`; Poured `#c9d3e6` (`:439`).
+        fileprivate var inlineCodeInk: Color {
+            switch self {
+            case .pouredAssistant:
+                Color(red: 0xC9 / 255.0, green: 0xD3 / 255.0, blue: 0xE6 / 255.0)
+            default:
+                Color(red: 0xC8 / 255.0, green: 0xD2 / 255.0, blue: 0xE6 / 255.0)
+            }
+        }
+
+        /// The inline-code chip's fill. Halo `white@.07`; Poured `white@.06` (`:438`).
+        fileprivate var inlineCodeFill: Double {
+            switch self {
+            case .pouredAssistant: 0.06
+            default: 0.07
+            }
+        }
+
+        /// `.assistant strong{color:rgba(242,245,251,.96); font-weight:640}` (`:437`) —
+        /// the board lifts emphasis out of the body's 0.66 ink onto near-`--t1` and a
+        /// heavier face. Only Poured states it; every other style leaves Foundation's
+        /// parsed `**strong**` alone.
+        fileprivate var strongOpacity: Double? {
+            self == .pouredAssistant ? 0.96 : nil
+        }
+
+        fileprivate var strongFont: Font? {
+            guard self == .pouredAssistant else { return nil }
+            // Spec weight 640 → the nearest SF Pro face is `.semibold`, the same
+            // rounding `PouredType.Spec.fontWeight` applies to every 600–650 role.
+            return .system(size: PouredType.Role.assistantBody.spec.size, weight: .semibold)
+        }
     }
 
     struct OrderedListItem: Equatable {
@@ -168,12 +219,22 @@ struct LocalMarkdownText: View {
     /// gets the parsed markdown untouched.
     private func styledInline(_ source: String) -> AttributedString {
         var attributed = Self.attributedText(for: source)
+
+        // `.assistant strong` — Poured only; applied before the code pass so an
+        // inline `code` run nested inside emphasis still ends up on its chip.
+        if let strongFont = style.strongFont, let strongOpacity = style.strongOpacity {
+            for run in attributed.runs where run.inlinePresentationIntent?.contains(.stronglyEmphasized) == true {
+                attributed[run.range].font = strongFont
+                attributed[run.range].foregroundColor = colors.surfaceText.opacity(strongOpacity)
+            }
+        }
+
         guard style.chipsInlineCode else { return attributed }
-        let ink = Color(red: 0xC8 / 255.0, green: 0xD2 / 255.0, blue: 0xE6 / 255.0)
+        let ink = style.inlineCodeInk
         for run in attributed.runs where run.inlinePresentationIntent?.contains(.code) == true {
             attributed[run.range].font = style.codeFont
             attributed[run.range].foregroundColor = ink
-            attributed[run.range].backgroundColor = Color.white.opacity(0.07)
+            attributed[run.range].backgroundColor = Color.white.opacity(style.inlineCodeFill)
         }
         return attributed
     }

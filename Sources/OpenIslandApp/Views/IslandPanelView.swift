@@ -375,6 +375,10 @@ struct IslandPanelView: View {
         // read `false`. Reading it here instead re-evaluates on every `body`
         // pass, same as `islandBridgeIsLive`/`islandSessionDisambiguators` above.
         .environment(\.islandRowExpandedByDefault, model.debugForcesRowExpansion)
+        // Slice 5 · F4: same seam, same lifetime — read here so it re-evaluates
+        // after `loadDebugSnapshot`, never baked into the one-shot panel init.
+        .environment(\.islandQuestionPromptPreselection, model.debugQuestionPreselection)
+        .environment(\.islandSuppressesNotificationCountdown, model.debugSuppressesNotificationCountdown)
         .ignoresSafeArea()
         .preferredColorScheme(.dark)
         .alert(model.lang.t("island.quit.confirmTitle"), isPresented: $showingQuitConfirmation) {
@@ -753,6 +757,10 @@ struct IslandPanelView: View {
         // `islandSessionDisambiguators` uses. A theme that ignores it (every
         // theme but Poured) renders exactly as before.
         .environment(\.islandClosedPillActivity, model.islandClosedActivity())
+        // R2/R3 (PI-A-002): the live R7 rotation, or `nil`. Only Poured's pill
+        // reads it, and only while a cycle is running — every other theme and
+        // every non-rotating state renders exactly as before.
+        .environment(\.islandClosedPillRotation, model.islandClosedPillRotation())
     }
 
     /// AB-330: the closed pill's ambient glow layer for the active theme, or an
@@ -771,7 +779,15 @@ struct IslandPanelView: View {
             width: width,
             height: closedNotchHeight
         ) {
-            glow
+            // X1: the bloom is the loudest thing that changes hue between A3 and
+            // A4, so it rides the rotation's one swap opacity with the marker,
+            // the badge and the label — otherwise the glow would announce item B
+            // while the pill is still showing item A. `1` (a no-op) for every
+            // theme but Poured and whenever no cycle is running.
+            glow.pouredRotationSwapFade(
+                opacity: model.pouredClosedRotationContentOpacity,
+                isRotating: model.pouredSpotlightRotationIsLive
+            )
         }
     }
 
@@ -824,7 +840,13 @@ struct IslandPanelView: View {
         layout: V6ClosedLayout
     ) -> IslandClosedPillWingPlan {
         theme.closedPillWingPlan(
-            label: model.islandClosedLabel(),
+            // R2 (PI-A-002): the *silhouette* is what must hold still across a
+            // rotation swap, not merely the pill's inner label box — this plan
+            // feeds both the morph surface's `closedWidth` and the ambient-glow
+            // seam. During a cycle it measures the widest rotating sentence; the
+            // live label is unchanged everywhere else, including every other
+            // theme (which never sets a rotation).
+            label: model.islandClosedPillRotation()?.widthReferenceLabel ?? model.islandClosedLabel(),
             rightSlot: rightSlot,
             layout: layout,
             height: closedNotchHeight
@@ -990,12 +1012,54 @@ struct IslandPanelView: View {
         // liveness-glyph / ringed-permission-dot / outcome-mark indicator —
         // the same shape its closed pill already draws correctly under Reduce
         // Motion, now reaching this default animated path too.
-        theme.closedTravelingGlyph(
-            mode: model.islandClosedMode,
-            rightSlot: model.islandClosedRightSlotContent(),
-            activity: model.islandClosedActivity(),
-            size: 24
-        )
+        // R1 (PI-A-002): Poured's traveling glyph must fork by ambient **shape**,
+        // not only by tint. `IslandTheme`'s default `closedTravelingGlyph` returns
+        // the theme-agnostic `UnifiedBars` tinted per state, which rendered A3's
+        // permission spotlight and A4's question spotlight as the same three bars
+        // in two hues — state by colour alone, and the "one uniform template"
+        // both reviewers charged against the rotation. Poured's own leaf draws
+        // A3's `.dot.approve.ring` and A4's breathing bars, i.e. exactly what
+        // `PouredClosedPill` draws at rest.
+        //
+        // Branched here rather than by overriding `closedTravelingGlyph` on
+        // `PouredIslandTheme` because `Theme/PouredIslandTheme.swift` is outside
+        // this correction round's file ownership; the override is the tidier home
+        // and is a pure lift of these six lines whenever that file is next open.
+        Group {
+            if theme.id == "poured" {
+                PouredClosedTravelingGlyph(
+                    ambient: PouredPillAmbientState.resolve(
+                        activity: model.islandClosedActivity(),
+                        mode: model.islandClosedMode,
+                        rightSlot: model.islandClosedRightSlotContent()
+                    ),
+                    size: 24,
+                    tint: theme.closedGlyphTint(
+                        mode: model.islandClosedMode,
+                        rightSlot: model.islandClosedRightSlotContent(),
+                        activity: model.islandClosedActivity()
+                    )
+                )
+                // X1: the morph path draws the collapsed pill's lead marker HERE
+                // (the pill itself renders a transparent placeholder), so it must
+                // ride the rotation's one swap opacity too — otherwise the marker
+                // changes the instant the model's spotlight does while the label
+                // is still fading, which is the ~0.15 s desync reviewer D measured
+                // at every boundary. `1` whenever no cycle is running, and the
+                // fade curve is the rotation's own, stated once.
+                .pouredRotationSwapFade(
+                    opacity: model.pouredClosedRotationContentOpacity,
+                    isRotating: model.pouredSpotlightRotationIsLive
+                )
+            } else {
+                theme.closedTravelingGlyph(
+                    mode: model.islandClosedMode,
+                    rightSlot: model.islandClosedRightSlotContent(),
+                    activity: model.islandClosedActivity(),
+                    size: 24
+                )
+            }
+        }
             .frame(width: 24, height: 24)
             .padding(.leading, opened && travelsGlyphOnOpen ? Self.openedGlyphLeadingInset : closedLeadingInset)
             .padding(.top, max(0, (closedNotchHeight - 24) / 2))
@@ -2854,8 +2918,72 @@ struct IslandSessionRow: View {
     }
 }
 
-private struct IslandQuestionPromptPreselectsFirstOptionKey: EnvironmentKey {
-    static let defaultValue: Bool = false
+private struct IslandQuestionPromptPreselectionKey: EnvironmentKey {
+    static let defaultValue: IslandQuestionPromptPreselection? = nil
+}
+
+/// Slice 5 · F1: whether a question frame draws the global freeform reply field.
+///
+/// The board's three §F frames draw a text field nowhere. F2's escape hatch is
+/// the `.opt-other` *row* (which mounts its own inline field once picked); F3 and
+/// F4 offer no freeform answer at all — F3 is a closed multi-select over three
+/// agents, F4 is Yes/No. The shipped rule turned that on its head: it shows the
+/// global reply field precisely when **no** option is freeform, so the two frames
+/// the board leaves closed were the two that grew an unlabelled `NSTextField`.
+///
+/// A prompt with no structured questions at all is a genuine freeform ask and
+/// keeps its field on every theme, Poured included. Pure so the rule is pinnable
+/// without mounting the prompt, exactly like `PouredCompactQuestionLayout`.
+enum PouredQuestionFieldPolicy {
+    static func showsGlobalReplyField(isPoured: Bool, questions: [QuestionPromptItem]) -> Bool {
+        if questions.isEmpty { return true }
+        if isPoured { return false }
+        return !questions.contains { question in
+            question.options.contains { $0.allowsFreeform }
+        }
+    }
+}
+
+/// Slice 5 · F2: the Poured `.q-hint` digit range, or `nil` where the board draws
+/// no hint at all.
+///
+/// The board renders `Press [1–3] to pick` on F only. F′ (multi-select) has no
+/// `.q-hint` (`01-poured-island.html:1233-1235`) — its digits toggle rather than
+/// pick, so "to pick" would be wrong copy as well as an extra element — and F″
+/// has no `.q-foot` to host one.
+enum PouredQuestionHint {
+    static func digitRange(optionCount: Int, isMultiSelect: Bool) -> String? {
+        guard !isMultiSelect else { return nil }
+        let highest = min(optionCount, 9)
+        guard highest > 0 else { return nil }
+        // `&#8211;` — the board's en dash, not a hyphen.
+        return highest == 1 ? "1" : "1\u{2013}\(highest)"
+    }
+}
+
+/// Slice 5 · F4: which options a captured question frame opens with selected.
+///
+/// The board's §F frames are all drawn in a *selected* state — F2 option 1, F′
+/// options 1 **and** 2 (which is what makes its submit read `Submit 2 selected`),
+/// F″ option 1 — and `selections` is interaction-driven `@State` with no external
+/// hook, so none of those three states could be photographed. The pre-existing
+/// seam could only ever say "first option", which cannot express F′.
+///
+/// Indices are 0-based over each question's *displayed* option order (the same
+/// order the digit keys use), and are applied per question, so one value drives a
+/// multi-question prompt. **Preview / test / harness seam only** — nothing in the
+/// shipping app ever injects it, and the default is `nil`, i.e. the clean empty
+/// selection a real question card starts from.
+struct IslandQuestionPromptPreselection: Equatable, Sendable {
+    /// 0-based display indices to select in every question of the prompt.
+    var optionIndices: Set<Int>
+
+    init(optionIndices: Set<Int>) {
+        self.optionIndices = optionIndices
+    }
+
+    /// The shipped Bool seam's exact meaning, kept as a named value.
+    static let firstOption = IslandQuestionPromptPreselection(optionIndices: [0])
 }
 
 extension EnvironmentValues {
@@ -2880,8 +3008,16 @@ extension EnvironmentValues {
     /// `StructuredQuestionPromptView` is this key's only consumer and this
     /// ticket's file set doesn't include that file — see the phase report.
     var islandQuestionPromptPreselectsFirstOption: Bool {
-        get { self[IslandQuestionPromptPreselectsFirstOptionKey.self] }
-        set { self[IslandQuestionPromptPreselectsFirstOptionKey.self] = newValue }
+        get { self[IslandQuestionPromptPreselectionKey.self]?.optionIndices.contains(0) ?? false }
+        set { self[IslandQuestionPromptPreselectionKey.self] = newValue ? .firstOption : nil }
+    }
+
+    /// F4: the set-of-indices form of the seam above. `islandQuestionPromptPreselectsFirstOption`
+    /// is kept as the Bool spelling of `[0]` so existing callers and the documented
+    /// name survive; this is the one the §F capture scenarios set.
+    var islandQuestionPromptPreselection: IslandQuestionPromptPreselection? {
+        get { self[IslandQuestionPromptPreselectionKey.self] }
+        set { self[IslandQuestionPromptPreselectionKey.self] = newValue }
     }
 }
 
@@ -2900,6 +3036,66 @@ enum QuestionPromptAccessibility {
     static let primaryActionIdentifier = "open-island.question.primary-action"
 }
 
+/// Poured Slice 5 (§F″ · `PI-X-001`): when the question interior collapses to
+/// the board's **compact single** composition.
+///
+/// The board's caption states the rule in words — *"F″ Compact single. Yes/No
+/// collapses to one row — the same semantics, minimal footprint."*
+/// (`01-poured-island.html:1261-1262`) — and its frame (`:1245-1260`) states it
+/// in pixels: no `.q-text` block of its own, no `.od`, no `.ck`, no `.q-foot`,
+/// no submit, no hint; the chip sits inline beside the question sentence and the
+/// two options ride **one** flex row (`display:flex;gap:8px`, each
+/// `flex:1;padding:8px 11px`).
+///
+/// There is no session field, no theme flag and no fixture switch that says
+/// "draw the compact one" — the shape is *derived from the question itself*,
+/// which is what makes it a layout variant rather than a second card. The five
+/// conditions below are exactly the ones F″ satisfies and F / F′ break:
+///
+/// 1. the prompt is a **single** question (F is `1 of 2`),
+/// 2. it is **single-select** (F′ is multi-select),
+/// 3. it offers exactly **two** options (F offers three, F′ three),
+/// 4. no option carries a **description** (F's three all do — and a `.od` is the
+///    reason F's rows are 70pt tall stacked blocks rather than 36pt chips),
+/// 5. no option is the freeform **`Other`** escape hatch (F has one; it needs
+///    its own full-width row and a text field, neither of which fits one row).
+///
+/// Deliberately *not* a condition: label length. The board's `Yes, deploy` /
+/// `Hold` are short, but `.opt{flex:1}` shares the row evenly whatever the text,
+/// and a length cutoff would be a number the board never states.
+enum PouredCompactQuestionLayout {
+    /// Whether `questions` — the interior's already-resolved
+    /// `structuredQuestions`, so the legacy `prompt.options` shape is covered
+    /// too — states the board's F″ compact single.
+    static func applies(to questions: [QuestionPromptItem]) -> Bool {
+        guard questions.count == 1, let question = questions.first else { return false }
+        guard !question.multiSelect, question.options.count == 2 else { return false }
+        return question.options.allSatisfy { $0.description.isEmpty && !$0.allowsFreeform }
+    }
+}
+
+/// Poured Slice 5 (§F): the session-scoped half of the board's `.q-head`.
+///
+/// `StructuredQuestionPromptView` only ever sees a `QuestionPrompt`, which
+/// carries no workspace and no agent identity — but the board's F frame draws
+/// `[dot] niche-radar` between the category chip and the progress readout. The
+/// hero wrapper owns both facts, so it hands them down through this value
+/// rather than the shared view reaching for an `AgentSession` it has no
+/// business knowing about.
+struct QuestionPromptHeadContext: Equatable {
+    /// The row's headline workspace name (`AgentSession.spotlightDisplayName`).
+    var workspaceName: String
+
+    /// The agent's brand tint — the board's 7px `.cd` dot
+    /// (`01-poured-island.html:1174`, `background:var(--codex)`).
+    var brandColor: Color
+
+    init(workspaceName: String, brandColor: Color) {
+        self.workspaceName = workspaceName
+        self.brandColor = brandColor
+    }
+}
+
 struct StructuredQuestionPromptView: View {
     let prompt: QuestionPrompt?
     var lang: LanguageManager = .shared
@@ -2914,6 +3110,17 @@ struct StructuredQuestionPromptView: View {
     /// multi-question prompts still fall back to mouse-only
     /// selection, unchanged.
     var keyboardCoordinator: OverlayUICoordinator?
+
+    /// Poured Slice 5 (§F · `PI-X-001`): the board's `.q-head` carries a
+    /// workspace span with the agent's brand dot beside the category chip
+    /// (`01-poured-island.html:1173-1174`). Neither value lives on
+    /// `QuestionPrompt` — they belong to the *session* — so this is the seam the
+    /// hero wrapper injects them through. `nil` (the default) renders the head
+    /// without that span, which is also the board's own F′/F″ treatment (§F′ and
+    /// §F″ carry no workspace tag), and leaves every non-Poured theme untouched:
+    /// nothing outside the Poured `.q-head` branch reads it.
+    var headContext: QuestionPromptHeadContext?
+
     let onAnswer: (QuestionPromptResponse) -> Void
 
     @State private var selections: [String: Set<String>] = [:]
@@ -2940,7 +3147,22 @@ struct StructuredQuestionPromptView: View {
     /// Preview/test-only (see `\.islandQuestionPromptPreselectsFirstOption`
     /// below): pre-populates `selections` on appear so `canSubmit` can be
     /// driven `true` without a real click.
-    @Environment(\.islandQuestionPromptPreselectsFirstOption) private var preselectsFirstOption
+    @Environment(\.islandQuestionPromptPreselection) private var preselection
+
+    /// Poured Slice 5 (`PI-A11Y-001` part F). Until now this view read **no**
+    /// accessibility environment at all: the §F hero's only adaptation was the
+    /// gold wash flattening one level up (`PouredSessionRow.questionHeroWash`),
+    /// so the option chrome, selection ring and digit chips *inside* the hero
+    /// never responded to Increase Contrast or Reduce Transparency.
+    ///
+    /// Both reads are consumed **only** by the Poured branches below
+    /// (`pouredOption*` / `pouredQuestionInk`), so the other themes stay
+    /// byte-identical under every accessibility setting.
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    private var increasesContrast: Bool { colorSchemeContrast == .increased }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -2948,7 +3170,12 @@ struct StructuredQuestionPromptView: View {
             // the `.q-tag` chip names the category, so this gold title is the
             // first of the four stacked lines the board doesn't have. Every
             // other theme keeps it.
-            if showsPromptTitle, !isHalo {
+            // Slice 5 (§F): Poured joins Halo here. The board's §F frames open
+            // straight on `.q-head` → `.q-text` (`01-poured-island.html:1171-1176`)
+            // — the prompt *title* ("Bridge configuration") is never drawn, and
+            // rendering it put a fourth stacked line above a head the board
+            // states in one row.
+            if showsPromptTitle, !isHalo, !isPoured {
                 Text(promptTitle)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(tokens.colors.statusWaitingForAnswer)
@@ -2957,6 +3184,8 @@ struct StructuredQuestionPromptView: View {
 
             if structuredQuestions.isEmpty {
                 freeformAnswerBody
+            } else if rendersPouredCompactQuestion, let question = structuredQuestions.first {
+                pouredCompactQuestionBody(question)
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(Array(currentPage.enumerated()), id: \.element.question) { localIndex, question in
@@ -2978,6 +3207,21 @@ struct StructuredQuestionPromptView: View {
                         }
                         Spacer(minLength: 0)
                     }
+                    .padding(.top, 2)
+                } else if isPoured {
+                    // Slice 5 (§F): `.q-foot{display:flex;align-items:center;
+                    // gap:8px;margin-top:12px}` — the gold CTA first, the
+                    // `.q-hint` pushed to the trailing edge by `margin-left:auto`
+                    // (`01-poured-island.html:1191-1197`). The stacked
+                    // hint-above-CTA the shared branch draws is not a shape the
+                    // board ever states.
+                    quickReplyField
+                    HStack(alignment: .center, spacing: 8) {
+                        submitButton(title: submitButtonTitle)
+                        Spacer(minLength: 0)
+                        pouredQuestionHint
+                    }
+                    // `.q-foot{margin-top:12px}` against the stack's own 10.
                     .padding(.top, 2)
                 } else {
                     if let hint = keyboardHintCaption {
@@ -3016,6 +3260,203 @@ struct StructuredQuestionPromptView: View {
         .onDisappear { keyboardCoordinator?.clearQuestionCardKeyboardHandlers() }
     }
 
+    // MARK: - Poured §F seam (parity Slice 5 · PI-X-001 / PI-A11Y-001)
+
+    /// Whether the §F question interior is being drawn on Poured. Every
+    /// Poured-only branch in this shared view keys off this one flag — exactly
+    /// the `isHalo` pattern below — so classic / Flight Deck / Halo render
+    /// byte-identically to before Slice 5.
+    private var isPoured: Bool { theme.id == "poured" }
+
+    /// The board's `--answer` gold, `#FFD58A` — Poured's
+    /// `statusWaitingForAnswer` token, the same value `PouredQuestionColors`
+    /// spells literally for the hero ring and the Submit gradient.
+    private var pouredGold: Color { tokens.colors.statusWaitingForAnswer }
+
+    /// `.q-chip{color:#2a2205}` / `.opt.sel .num{color:#2a2205}` — the dark ink
+    /// that rides a solid gold chip. Identical to
+    /// `PouredQuestionColors.submitInk`, and read from it so the value has one
+    /// definition.
+    private var pouredGoldInk: Color { PouredQuestionColors.submitInk }
+
+    /// `.q-text{color:#fff3dc}` — the question sentence's warm cream.
+    private static let pouredQuestionTextInk = Color(red: 0xFF / 255.0, green: 0xF3 / 255.0, blue: 0xDC / 255.0)
+
+    /// The board's `--t1` base (`#f2f5fb`, Poured's `paper`) at a board-stated
+    /// alpha, with the Increase Contrast boost folded in (`PI-A11Y-001` part F).
+    /// Every §F text alpha the board names — `.ol` .96, `.od` .66, `.q-progress`
+    /// .5 — resolves through here, so one setting lifts them all coherently
+    /// instead of each call site re-deciding.
+    private func pouredQuestionInk(_ alpha: Double) -> Color {
+        tokens.colors.paper.opacity(tokens.colors.text(alpha, increaseContrast: increasesContrast))
+    }
+
+    /// The board's `.q-head` (`01-poured-island.html:1172-1175`, `:1218-1219`):
+    /// a single row of `[CATEGORY chip] [• workspace] ——— [Question N of M]`,
+    /// replacing the two stacked 10pt-bold lines this view drew above the
+    /// question for every non-Halo theme.
+    ///
+    /// Each element is independently optional exactly as the board draws them:
+    /// F carries all three, F′ carries chip + a right-aligned line and no
+    /// workspace, F″ carries chip only.
+    @ViewBuilder
+    private func pouredQuestionHead(_ question: QuestionPromptItem, questionIndex: Int) -> some View {
+        // `.q-head{display:flex;align-items:center;gap:9px}`.
+        HStack(alignment: .center, spacing: 9) {
+            pouredQuestionChip(question)
+
+            if let headContext {
+                HStack(spacing: 5) {
+                    // The board's 7px `.cd` brand dot.
+                    Circle()
+                        .fill(headContext.brandColor)
+                        .frame(width: 7, height: 7)
+                    Text(headContext.workspaceName)
+                        .font(PouredType.Role.heroSubtitle.font)
+                        .foregroundStyle(pouredQuestionInk(tokens.colors.secondaryTextOpacity))
+                        .lineLimit(1)
+                }
+                .accessibilityElement(children: .combine)
+            }
+
+            Spacer(minLength: 0)
+
+            // `.q-progress{margin-left:auto;font-size:11px;color:rgba(242,245,251,.5)}`.
+            if let progress = pouredProgressReadout(question, questionIndex: questionIndex) {
+                Text(progress)
+                    .font(PouredType.Role.heroSubtitle.font)
+                    .monospacedDigit()
+                    .foregroundStyle(pouredQuestionInk(tokens.colors.tertiaryTextOpacity))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+        }
+    }
+
+    /// The board's `.q-chip` — `{font-size:10;font-weight:700;letter-spacing:
+    /// .05em;text-transform:uppercase;color:#2a2205;background:#ffd58a;
+    /// padding:2px 7px;border-radius:6px}` (`01-poured-island.html:383-384`).
+    /// `PouredType.Role.questionChip` had been defined and consumed by no view
+    /// until this seam. Extracted from `pouredQuestionHead` because §F″'s
+    /// compact head states the chip inline beside the question sentence rather
+    /// than inside the three-slot `.q-head` row (`:1252-1253`).
+    @ViewBuilder
+    private func pouredQuestionChip(_ question: QuestionPromptItem) -> some View {
+        if !question.header.isEmpty {
+            Text(question.header.uppercased())
+                .font(PouredType.Role.questionChip.font)
+                .tracking(PouredType.Role.questionChip.spec.trackingPoints)
+                .foregroundStyle(pouredGoldInk)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2)
+                .background(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(pouredGold)
+                )
+                .fixedSize(horizontal: true, vertical: false)
+        }
+    }
+
+    /// What rides the `.q-progress` slot on Poured.
+    ///
+    /// F states `Question 1 of 2`; F′ replaces it outright with
+    /// `Select all that apply` (`01-poured-island.html:1219`) — the board's own
+    /// substitution, and the slot native left *empty* until now, because
+    /// `QuestionPromptFormat.progressReadout` correctly returns `nil` for a
+    /// single question (there is no ordinal to print). The Poured-only key was
+    /// landed in Part B; this is the one line that consumes it.
+    ///
+    /// Scoped to a single **multi-select** question exactly as the board scopes
+    /// it: a multi-select question inside a *multi*-question prompt still needs
+    /// its ordinal, so the readout wins there.
+    private func pouredProgressReadout(_ question: QuestionPromptItem, questionIndex: Int) -> String? {
+        if structuredQuestions.count == 1, question.multiSelect {
+            return lang.t("poured.question.selectAllThatApply")
+        }
+        return QuestionPromptFormat.progressReadout(
+            questionIndex: questionIndex,
+            questionCount: structuredQuestions.count,
+            lang: lang
+        )
+    }
+
+    // MARK: §F″ compact single (Slice 5)
+
+    /// Whether this render takes the board's F″ composition. Poured-gated on top
+    /// of the shape test, so every other theme keeps stacking its options
+    /// byte-identically no matter what the prompt looks like.
+    private var rendersPouredCompactQuestion: Bool {
+        isPoured && PouredCompactQuestionLayout.applies(to: structuredQuestions)
+    }
+
+    /// The board's F″ interior (`01-poured-island.html:1248-1257`).
+    ///
+    /// Two blocks, no more: the chip + sentence head
+    /// (`display:flex;align-items:center;gap:9px;margin-bottom:9px`) and the
+    /// options on **one** flex row (`display:flex;gap:8px`, `.opt{flex:1}`).
+    /// Everything the full interior adds below the options — the `.q-foot`, the
+    /// submit CTA, the `1–3` hint, the global reply field — is absent from the
+    /// frame, so it is absent here.
+    ///
+    /// That makes the option row itself the answer control: with no CTA on
+    /// screen, a click has to commit, which is what `pouredCompactAnswer` does.
+    /// The **keyboard** contract is untouched — `registerKeyboardHandlersIfNeeded`
+    /// still registers digit-select and Enter-submits for this prompt exactly as
+    /// it does for F and F′ — so a keyboard user still selects then confirms, and
+    /// the board's own `Enter`-submits semantics survive a composition that draws
+    /// no button.
+    @ViewBuilder
+    private func pouredCompactQuestionBody(_ question: QuestionPromptItem) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .center, spacing: 9) {
+                pouredQuestionChip(question)
+
+                // `font-size:13px;font-weight:560;color:#fff3dc` (`:1253`) — the
+                // sentence is stated *inline* at the compact size, not in the
+                // 14.5pt `.q-text` block the taller frames give it.
+                Text(question.question)
+                    .font(PouredType.Role.compactQuestionText.font)
+                    .foregroundStyle(Self.pouredQuestionTextInk)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer(minLength: 0)
+            }
+            // `margin-bottom:9px` on the head row.
+            .padding(.bottom, 9)
+
+            HStack(alignment: .center, spacing: 8) {
+                ForEach(
+                    Array(QuestionPromptFormat.orderedOptions(question.options).enumerated()),
+                    id: \.element.id
+                ) { displayIndex, displayOption in
+                    optionRow(
+                        displayOption.option,
+                        optionIndex: displayIndex,
+                        question: question,
+                        isCompactRow: true
+                    )
+                    // `.opt{flex:1}` — the two chips split the row evenly.
+                    .frame(maxWidth: .infinity)
+                }
+            }
+        }
+    }
+
+    /// F″'s answer commit. With no submit control drawn, the option row *is* the
+    /// control: the tapped label becomes the whole (single-select, never
+    /// freeform — both guaranteed by `PouredCompactQuestionLayout.applies`)
+    /// selection and the response goes out in the same turn.
+    ///
+    /// Assignment rather than `toggle(option:for:)` on purpose: `toggle` clears a
+    /// single-select option that is tapped while already selected, which in a
+    /// commit-on-tap surface would submit an empty answer.
+    private func pouredCompactAnswer(_ option: QuestionOption, for question: QuestionPromptItem) {
+        typedReply = ""
+        selections[question.question] = [option.label]
+        submitAnswer()
+    }
+
     // MARK: - Halo §F seam (visual-parity batch V8)
 
     /// Whether the §F question card is being drawn on Halo. Every Halo-only
@@ -3044,6 +3485,72 @@ struct StructuredQuestionPromptView: View {
             ),
             header: question.header,
             isMultiSelect: question.multiSelect
+        )
+    }
+
+    // MARK: - Poured `.q-hint` (Slice 5 · F2)
+
+    /// F2: the board's `.q-hint` is `Press ` + a real `<kbd>1–3</kbd>` chip +
+    /// ` to pick` (`01-poured-island.html:1195-1196`), and it appears on **F2
+    /// only** — F3 (multi-select) renders no `.q-hint` at all (`:1233-1235`) and
+    /// F4 has no `.q-foot` to put one in.
+    ///
+    /// Two corrections in one: the digits used to be printed as prose (the shared
+    /// `question.hint.keyboard.range` string, which also carries the
+    /// `Enter submits · Esc closes` tail the board never states — dropped for
+    /// Poured, recorded as a deliberate reversal), and the hint rendered on the
+    /// multi-select frame the board leaves bare.
+    ///
+    /// The `<kbd>` here is the board's own inline one (`:1196`): `font-family:
+    /// var(--ui)` — the UI face, **not** the mono/keycap face — `font-size:10px;
+    /// height:15px; padding:0 4px; border-radius:4px; background:rgba(0,0,0,.28);
+    /// box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)`.
+    @ViewBuilder
+    private var pouredQuestionHint: some View {
+        if let range = pouredDigitHintRange {
+            let parts = PouredScopeCopy.parts(
+                format: lang.t("poured.question.hint.pick"),
+                code: range
+            )
+            HStack(spacing: 0) {
+                Text(parts.prefix)
+                Text(range)
+                    .font(.system(size: 10, weight: .medium))
+                    .padding(.horizontal, 4)
+                    .frame(height: 15)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .fill(Color.black.opacity(0.28))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                    .strokeBorder(.white.opacity(0.14), lineWidth: 1)
+                            )
+                    )
+                Text(parts.suffix)
+            }
+            .font(.system(size: 10.5, weight: .regular))
+            .foregroundStyle(pouredQuestionInk(0.5))
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text(parts.prefix + range + parts.suffix))
+        }
+    }
+
+    /// `1–3` for the page's digit range, or `nil` where the board draws no hint:
+    /// a multi-select question (F3), a page whose digits are not contiguous, or
+    /// no keyboard coordinator to fire them.
+    private var pouredDigitHintRange: String? {
+        guard keyboardCoordinator != nil,
+              QuestionPromptFormat.pageDigitsAreContiguous(
+                  pageSize: theme.questionPageSize,
+                  pageQuestionCount: currentPage.count
+              ) else {
+            return nil
+        }
+        return PouredQuestionHint.digitRange(
+            optionCount: currentPageFlatOptions.count,
+            isMultiSelect: currentPage.contains(where: \.multiSelect)
         )
     }
 
@@ -3085,6 +3592,26 @@ struct StructuredQuestionPromptView: View {
         case "flightDeck": return FlightDeckTypography.questionText
         default: return .system(size: 12, weight: .medium)
         }
+    }
+
+    /// The `.q-text` ink. Halo's board sets `#fff2da`; Poured's sets `#fff3dc`
+    /// (`01-poured-island.html:386`); everything else keeps the literal this
+    /// view has always rendered. Under Increase Contrast the Poured sentence
+    /// goes to the full cream — a warm off-white at full alpha, so the head
+    /// chip stays the loudest element and the hierarchy survives.
+    private var questionTextInk: Color {
+        if isHalo { return Self.haloQuestionInk }
+        guard isPoured else { return .white.opacity(0.88) }
+        return Self.pouredQuestionTextInk
+    }
+
+    /// The gap between `.q-head`, `.q-text` and `.opts`. Poured's board states
+    /// 8 between the head and the sentence (`.q-text{margin-top:8px}` collapsed
+    /// against `.q-head{margin-bottom:4px}`); the remaining 4 to `.opts` is
+    /// added as bottom padding on the sentence itself.
+    private var questionRowSpacing: CGFloat {
+        if isHalo { return 10 }
+        return isPoured ? 8 : 6
     }
 
     /// Letter-spacing for `questionTextFont`. Poured's role carries −0.01em
@@ -3205,13 +3732,18 @@ struct StructuredQuestionPromptView: View {
     /// `true`; production question cards never set it, so real users still
     /// see a clean, empty selection.
     private func seedPreselectionIfNeeded() {
-        guard preselectsFirstOption else { return }
+        guard let preselection, !preselection.optionIndices.isEmpty else { return }
         for question in structuredQuestions {
-            guard selections[question.question] == nil,
-                  let first = QuestionPromptFormat.orderedOptions(question.options).first else {
-                continue
-            }
-            selections[question.question] = [first.option.label]
+            guard selections[question.question] == nil else { continue }
+            let ordered = QuestionPromptFormat.orderedOptions(question.options)
+            let picked = preselection.optionIndices
+                .sorted()
+                .compactMap { index in ordered.indices.contains(index) ? ordered[index].option.label : nil }
+            guard !picked.isEmpty else { continue }
+            // A single-select question can only ever hold one answer, so a
+            // multi-index seed collapses to the first valid index there — the
+            // seam pins a *rendered state*, it must never invent an impossible one.
+            selections[question.question] = question.multiSelect ? Set(picked) : [picked[0]]
         }
     }
 
@@ -3231,12 +3763,20 @@ struct StructuredQuestionPromptView: View {
     /// not a per-theme branch.
     @ViewBuilder
     private func questionRow(_ question: QuestionPromptItem, questionIndex: Int, digitBase: Int) -> some View {
-        VStack(alignment: .leading, spacing: isHalo ? 10 : 6) {
+        VStack(alignment: .leading, spacing: questionRowSpacing) {
             // G-72: Halo lifts both of these into the hero head — the ordinal
             // pair to the right-aligned `.qprog` slot, the category to the
             // inline `.q-tag` chip — so the board's two-line head replaces the
             // four-line stack this rendered.
-            if !isHalo {
+            //
+            // Slice 5 (§F): Poured states the same information in ONE row — its
+            // own `.q-head` — instead of two stacked 10pt-bold lines, and it
+            // renders the category chip for a single-question prompt too (the
+            // board's F′/F″ are single questions and both carry a chip), so the
+            // `structuredQuestions.count > 1` gate below does not apply to it.
+            if isPoured {
+                pouredQuestionHead(question, questionIndex: questionIndex)
+            } else if !isHalo {
                 if let progress = QuestionPromptFormat.progressReadout(
                     questionIndex: questionIndex,
                     questionCount: structuredQuestions.count,
@@ -3259,11 +3799,16 @@ struct StructuredQuestionPromptView: View {
                 .font(questionTextFont)
                 .tracking(questionTextTracking)
                 // `.qtext{color:#fff2da}` — the warm cream the hero head sets.
-                .foregroundStyle(isHalo ? Self.haloQuestionInk : .white.opacity(0.88))
+                // Poured's own `.q-text{color:#fff3dc}` is one step warmer still.
+                .foregroundStyle(questionTextInk)
                 .fixedSize(horizontal: false, vertical: true)
+                // `.q-text{margin:8px 0 12px}` — measured 8 above / 12 below in
+                // the rendered board (adjacent block margins collapse against
+                // `.q-head`'s 4). The stack's own spacing already contributes 8.
+                .padding(.bottom, isPoured ? 4 : 0)
 
             // `.opts{gap:7px}`.
-            VStack(alignment: .leading, spacing: isHalo ? 7 : 4) {
+            VStack(alignment: .leading, spacing: isHalo || isPoured ? 7 : 4) {
                 ForEach(
                     Array(QuestionPromptFormat.orderedOptions(question.options).enumerated()),
                     id: \.element.id
@@ -3280,7 +3825,8 @@ struct StructuredQuestionPromptView: View {
     private func optionRow(
         _ option: QuestionOption,
         optionIndex: Int,
-        question: QuestionPromptItem
+        question: QuestionPromptItem,
+        isCompactRow: Bool = false
     ) -> some View {
         let isSelected = selectedLabels(for: question).contains(option.label)
         let key = optionKey(for: question, option: option)
@@ -3289,35 +3835,69 @@ struct StructuredQuestionPromptView: View {
         // G-41: on Halo the freeform row is the mockup's `.opt-other` — italic
         // 12 @ t3 with an achromatic (never qgold) digit chip, so "Other…"
         // reads as the escape hatch rather than a fourth peer answer.
-        let isOther = isHalo && option.allowsFreeform
+        //
+        // Slice 5 (mapper gap 13): Poured's board states the same escape hatch,
+        // in its own values — `.opt-other{align-items:center; gap:10px;
+        // padding:9px 12px; background:rgba(255,255,255,.02); font-size:12px;
+        // color:rgba(242,245,251,.5); font-style:italic; margin-top:2px}` with an
+        // achromatic `.num` (`01-poured-island.html:400-404`) — so it joins Halo
+        // on this flag instead of rendering `Other` as a fourth gold peer.
+        let isOther = (isHalo || isPoured) && option.allowsFreeform
         let numberShape = RoundedRectangle(
             cornerRadius: optionNumberCornerRadius(multiSelect: question.multiSelect),
             style: .continuous
         )
         VStack(alignment: .leading, spacing: 0) {
             Button {
-                toggle(option: option.label, for: question)
+                if isCompactRow {
+                    pouredCompactAnswer(option, for: question)
+                } else {
+                    toggle(option: option.label, for: question)
+                }
             } label: {
                 // N1: `.opt{align-items:flex-start}` (06-halo.html:405) — on a
                 // two-line option the digit chip and the tick stay level with
                 // the *label* line instead of drifting to the row's vertical
                 // centre. The freeform escape hatch is the board's separate
                 // `.opt-other{align-items:center}` (:418), and it is always one
-                // line, so it keeps centring.
-                HStack(alignment: isHalo && !isOther ? .top : .center, spacing: isHalo ? 11 : 10) {
-                    Text("\(optionIndex + 1)")
+                // line, so it keeps centring. §F″'s one-line chips centre for the
+                // same reason.
+                HStack(
+                    alignment: (isHalo || isPoured) && !isOther && !isCompactRow ? .top : .center,
+                    // `.opt-other{gap:10px}` against `.opt{gap:11px}`.
+                    spacing: isHalo || isPoured ? (isPoured && isOther ? 10 : 11) : 10
+                ) {
+                    // Slice 5 (§F′): `01-poured-island.html:1222-1227` draws a
+                    // literal `✓` in the digit chip of a **selected
+                    // multi-select** option — the checkbox reading the board
+                    // gives multi-select, replacing the ordinal while it is on.
+                    // Single-select keeps its digit whatever its state (F, F″).
+                    Text(pouredRendersCheckInNumberChip(isSelected: isSelected, question: question)
+                        ? "✓"
+                        : "\(optionIndex + 1)")
                         .font(optionNumberFont)
                         .foregroundStyle(optionNumberInk(isSelected: isSelected, isOther: isOther))
-                        .frame(width: isHalo ? 19 : 22, height: isHalo ? 19 : 20)
+                        .frame(width: isHalo || isPoured ? 19 : 22, height: isHalo || isPoured ? 19 : 20)
                         .background(numberShape.fill(optionNumberFill(isSelected: isSelected, isOther: isOther)))
                         .overlay(
                             numberShape
-                                .strokeBorder(.white.opacity(isHalo || isSelected ? 0 : 0.08))
+                                .strokeBorder(.white.opacity(isHalo || isPoured || isSelected ? 0 : 0.08))
                         )
+                        // `.opt .num{margin-top:1px}` against the label's cap line.
+                        // Both the centred variants — `.opt-other` and §F″'s
+                        // one-line chip — drop it, since there is no cap line to
+                        // sit against.
+                        .padding(.top, isPoured && !isOther && !isCompactRow ? 1 : 0)
 
-                    VStack(alignment: .leading, spacing: isHalo ? 2 : 1) {
-                        Text(option.label)
-                            .font(isOther ? Self.haloOtherFont : optionLabelFont)
+                    VStack(alignment: .leading, spacing: isHalo ? 2 : (isPoured ? 2 : 1)) {
+                        // F3: the board's `.opt-other` states what the row *does*
+                        // — "Other — type a different approach"
+                        // (`01-poured-island.html:1189`) — where the option model
+                        // carries the bare answer value ("Other"), which is what
+                        // must be sent back to the agent. Display-only, Poured
+                        // only: `option.label` is still the submitted answer.
+                        Text(isPoured && isOther ? lang.t("poured.question.optionOther") : option.label)
+                            .font(isOther ? otherOptionFont : optionLabelFont)
                             .italic(isOther)
                             .foregroundStyle(optionLabelColor(isSelected: isSelected, isOther: isOther))
 
@@ -3328,14 +3908,27 @@ struct StructuredQuestionPromptView: View {
                                 // G-04: `.opt .od{line-height:1.42}` wraps in the
                                 // board; one line tail-truncated every real
                                 // description native ever showed.
-                                .lineLimit(isHalo ? 2 : 1)
-                                .fixedSize(horizontal: false, vertical: isHalo)
+                                //
+                                // Slice 5 (§F): Poured's board wraps its `.od`
+                                // to as many lines as the prose needs (F's three
+                                // descriptions all run to two —
+                                // `01-poured-island.html:1180`, `:1185`, `:1188`),
+                                // so it takes no line cap at all rather than
+                                // inheriting Halo's 2.
+                                .lineLimit(isPoured ? nil : (isHalo ? 2 : 1))
+                                .fixedSize(horizontal: false, vertical: isHalo || isPoured)
                         }
                     }
 
                     Spacer(minLength: 0)
 
-                    if isSelected || selectionMarkerAlwaysVisible {
+                    // Y2, honoured as rendered: §F″'s selected option carries no
+                    // `.ck` at all (`01-poured-island.html:1255`), contradicting
+                    // §F's own "selection has a tick" caption. The rendered board
+                    // is golden (R5/R6) and the conflict stays unresolved, so the
+                    // compact chip states selection with the solid gold `.num` and
+                    // the 1.5pt ring — never colour alone — and draws no tick.
+                    if !isCompactRow, isSelected || selectionMarkerAlwaysVisible {
                         selectionMarker(
                             shape: QuestionPromptFormat.markerShape(multiSelect: question.multiSelect),
                             isSelected: isSelected
@@ -3344,8 +3937,12 @@ struct StructuredQuestionPromptView: View {
                 }
                 .contentShape(Rectangle())
                 // `.opt{padding:10px 12px}` — the board's roomier option row.
-                .padding(.vertical, isHalo ? 8 : 5)
-                .padding(.horizontal, isHalo ? 12 : 11)
+                // Poured's board states the same 10/12 (`:388`), overridden to
+                // `9px 12px` for `.opt-other` (`:400`) and inline to `8px 11px`
+                // for §F″'s compact chips (`:1255-1256`).
+                .padding(.vertical, pouredOptionVerticalPadding(isOther: isOther, isCompactRow: isCompactRow)
+                    ?? (isHalo ? 8 : 5))
+                .padding(.horizontal, isPoured && isCompactRow ? 11 : (isHalo || isPoured ? 12 : 11))
             }
             .buttonStyle(.plain)
             // AB-244: selection state conveyed via the `.isSelected` trait
@@ -3359,10 +3956,7 @@ struct StructuredQuestionPromptView: View {
                 freeformField(for: option, question: question)
             }
         }
-        .background(
-            RoundedRectangle(cornerRadius: optionCornerRadius, style: .continuous)
-                .fill(optionFillColor(isSelected: isSelected, isHovered: isHovered, isOther: isOther))
-        )
+        .background(optionBackground(isSelected: isSelected, isHovered: isHovered, isOther: isOther))
         .overlay(
             RoundedRectangle(cornerRadius: optionCornerRadius, style: .continuous)
                 .strokeBorder(
@@ -3376,6 +3970,19 @@ struct StructuredQuestionPromptView: View {
                 hoveredOptionKey = hovering ? key : (hoveredOptionKey == key ? nil : hoveredOptionKey)
             }
         }
+        // `.opt-other{margin-top:2px}` (`:402`) on top of the `.opts` 7px flex
+        // gap — the escape hatch sits 9px below the last real option, not 7.
+        .padding(.top, isPoured && isOther ? 2 : 0)
+    }
+
+    /// The Poured option row's vertical padding, or `nil` when the theme isn't
+    /// Poured (the caller keeps Halo's 8 / everyone else's 5). Three board
+    /// values: `.opt{padding:10px …}` (`:388`), `.opt-other{padding:9px …}`
+    /// (`:400`) and §F″'s inline `padding:8px 11px` (`:1255`).
+    private func pouredOptionVerticalPadding(isOther: Bool, isCompactRow: Bool) -> CGFloat? {
+        guard isPoured else { return nil }
+        if isCompactRow { return 8 }
+        return isOther ? 9 : 10
     }
 
     /// The trailing selection marker. Its *shape* encodes the question kind —
@@ -3397,7 +4004,17 @@ struct StructuredQuestionPromptView: View {
     ) -> some View {
         let tint = tokens.colors.statusWaitingForAnswer
         ZStack {
-            if theme.id == "flightDeck" {
+            if isPoured {
+                // Slice 5 (§F): the board's `.ck` is a bare 15×15 gold tick
+                // stroked at 2.6 (`01-poured-island.html:397-398`,
+                // `:1182`) — no filled disc, no square, no ring. It is authored
+                // *only* inside the selected option (opacity 0 otherwise), which
+                // is exactly what `selectionMarkerAlwaysVisible == false`
+                // already gives Poured at the call site.
+                Image(systemName: "checkmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(tint)
+            } else if theme.id == "flightDeck" {
                 let chamfered = FlightDeckChamferedRectangle(chamfer: 3)
                 chamfered
                     .fill(isSelected ? tint : Color.clear)
@@ -3416,13 +4033,16 @@ struct StructuredQuestionPromptView: View {
                 }
             }
 
-            if isSelected {
+            // Poured's `.ck` already *is* the tick — the inner glyph below would
+            // stamp a second, dark one on top of it.
+            if isSelected, !isPoured {
                 Image(systemName: "checkmark")
                     .font(.system(size: 9, weight: .heavy))
                     .foregroundStyle(tokens.colors.surfaceInk)
             }
         }
-        .frame(width: 16, height: 16)
+        // `.opt .ck{width:15px;height:15px}`.
+        .frame(width: isPoured ? 15 : 16, height: isPoured ? 15 : 16)
         .accessibilityHidden(true)
     }
 
@@ -3450,6 +4070,11 @@ struct StructuredQuestionPromptView: View {
         .frame(height: 22)
         .padding(.vertical, 6)
         .padding(.horizontal, 10)
+        // F1: `ReplyTextField` is an `NSViewRepresentable` around a bare
+        // `NSTextField` with only a placeholder, so VoiceOver announced it as an
+        // unnamed text field. Any field that survives on a question frame must
+        // say what it is; the option it belongs to is the honest name.
+        .accessibilityLabel(Text(option.label))
     }
 
     private var freeformAnswerBody: some View {
@@ -3474,6 +4099,9 @@ struct StructuredQuestionPromptView: View {
                     }
                 )
                 .frame(height: 30)
+                // F1: the global reply field is now only reachable on a genuinely
+                // freeform prompt, and it names itself there.
+                .accessibilityLabel(Text(lang.t("question.otherPlaceholder")))
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
@@ -3540,9 +4168,10 @@ struct StructuredQuestionPromptView: View {
     }
 
     private var showsGlobalReplyField: Bool {
-        structuredQuestions.isEmpty || !structuredQuestions.contains { question in
-            question.options.contains { $0.allowsFreeform }
-        }
+        PouredQuestionFieldPolicy.showsGlobalReplyField(
+            isPoured: isPoured,
+            questions: structuredQuestions
+        )
     }
 
     private var primarySelectedAnswer: String? {
@@ -3640,13 +4269,31 @@ struct StructuredQuestionPromptView: View {
         // disabled-at-zero semantics are unchanged: `canSubmit` still gates the
         // button, this only relabels it (e.g. "Submit — 0 selected").
         if let question = singleMultiSelectQuestion {
+            let count = selectedLabels(for: question).count
+            // F4: the board's F′ submit reads `Submit 2 selected` — no em dash
+            // (`01-poured-island.html:1234`). Every other theme keeps the shipped
+            // `Submit — N selected`.
+            if isPoured {
+                return lang.t("poured.question.submit.multiSelect", count)
+            }
             return QuestionPromptFormat.multiSelectSubmitLabel(
-                selectedCount: selectedLabels(for: question).count,
+                selectedCount: count,
                 lang: lang
             )
         }
 
         if let primarySelectedAnswer, !primarySelectedAnswer.isEmpty {
+            return lang.t("question.sendAnswer")
+        }
+
+        // X10 (C's M-14): the SAME control may not change verbs between its
+        // disabled and enabled states. Poured's §F single-question submit read
+        // "Submit Answers" while nothing was picked and "Send answer" the moment
+        // one was — two verb families on one button. It reads "Send answer" in
+        // both states now. F2's "Submit & next" (a different action: advance) and
+        // F3's "Submit N selected" (a different control: multi-select) are
+        // unaffected — both are reached above this line.
+        if isPoured, structuredQuestions.count == 1 {
             return lang.t("question.sendAnswer")
         }
 
@@ -3762,7 +4409,41 @@ struct StructuredQuestionPromptView: View {
     /// `.opt:hover{rgba(255,207,122,.07)}` (G-39/M-17) /
     /// `.opt.sel{rgba(255,207,122,.1)}` — the whole row warms qgold on Halo
     /// instead of the achromatic wash every theme shared.
+    /// The option row's fill, layered so Reduce Transparency can put an opaque
+    /// floor under Poured's gold wash (`PI-A11Y-001` part F).
+    ///
+    /// The §F option rows sit on the hero's own translucent gold gradient; with
+    /// Reduce Transparency on, `PouredSessionRow.questionHeroWash` flattens that
+    /// gradient to `surfaceInk`, but the rows themselves kept stacking
+    /// translucent white/gold on top of whatever ended up behind them. Painting
+    /// the opaque ink first and the board's stated tint over it keeps the
+    /// rendered colour identical in intent while removing the see-through.
+    /// Every other theme takes the untouched single-fill path.
+    @ViewBuilder
+    private func optionBackground(isSelected: Bool, isHovered: Bool, isOther: Bool) -> some View {
+        let shape = RoundedRectangle(cornerRadius: optionCornerRadius, style: .continuous)
+        let tint = optionFillColor(isSelected: isSelected, isHovered: isHovered, isOther: isOther)
+        if isPoured, reduceTransparency {
+            shape
+                .fill(tokens.colors.surfaceInk)
+                .overlay(shape.fill(tint))
+        } else {
+            shape.fill(tint)
+        }
+    }
+
     private func optionFillColor(isSelected: Bool, isHovered: Bool, isOther: Bool = false) -> Color {
+        // Slice 5 (§F): `.opt{background:rgba(255,255,255,.03)}` /
+        // `.opt:hover{rgba(255,213,138,.08)}` / `.opt.sel{rgba(255,213,138,.12)}`
+        // (`01-poured-island.html:388-391`) — the selected row warms gold, where
+        // the shared achromatic wash tinted it with `paper`.
+        if isPoured {
+            if isSelected { return pouredGold.opacity(0.12) }
+            if isHovered { return pouredGold.opacity(0.08) }
+            // `.opt-other{background:rgba(255,255,255,.02)}` (`:400`) — one step
+            // quieter than a real option's `.03`.
+            return Color.white.opacity(isOther ? 0.02 : 0.03)
+        }
         if isHalo {
             if isSelected { return qgold.opacity(0.10) }
             if isHovered { return qgold.opacity(0.07) }
@@ -3779,6 +4460,17 @@ struct StructuredQuestionPromptView: View {
     }
 
     private func optionStrokeColor(isSelected: Bool, isHovered: Bool) -> Color {
+        // Slice 5 (§F): `.opt{box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}`
+        // and `.opt.sel{inset 0 0 0 1.5px rgba(255,213,138,.5)}` — the selected
+        // ring is already the shared 1.5pt gold@.5, so only the resting hairline
+        // moves (.045 → the board's .05), and Increase Contrast lifts it through
+        // the theme's own hairline ramp (`PI-A11Y-001` part F).
+        if isPoured {
+            if isSelected { return pouredGold.opacity(0.5) }
+            // `.opt:hover` changes only the background on the board, never the
+            // ring — so hover is deliberately not a case here.
+            return Color.white.opacity(increasesContrast ? 0.15 : 0.05)
+        }
         if isSelected {
             // Unified selection ring — `statusWaitingForAnswer` tint at 0.5,
             // 1.5pt inset. Themes do not restyle this ring (AB-325) — except
@@ -3795,19 +4487,48 @@ struct StructuredQuestionPromptView: View {
 
     /// `.opt{border-radius:10px}` — Halo's option rows are rounder than the 8pt
     /// every other theme draws.
-    private var optionCornerRadius: CGFloat { isHalo ? 10 : 8 }
+    /// Poured's board states `.opt{border-radius:11px}` (`:388`).
+    private var optionCornerRadius: CGFloat {
+        if isPoured { return 11 }
+        return isHalo ? 10 : 8
+    }
 
     /// `.opt .num{border-radius:6px}`, `.opt.multi .num{border-radius:4px}` —
     /// the digit chip squares off for multi-select, the same shape signal the
-    /// trailing marker carries.
+    /// trailing marker carries. Poured states the same pair one step rounder
+    /// (`:392`, `:399` — 6 single-select, 5 multi-select).
     private func optionNumberCornerRadius(multiSelect: Bool) -> CGFloat {
+        if isPoured { return multiSelect ? 5 : 6 }
         guard isHalo else { return 5 }
         return multiSelect ? 4 : 6
+    }
+
+    /// Whether the digit chip renders the board's literal `✓` instead of the
+    /// ordinal — Poured's §F′ treatment for a *selected multi-select* option
+    /// (`01-poured-island.html:1222`, `:1225`). Single-select rows keep their
+    /// digit in every state, and no other theme ever swaps the glyph.
+    ///
+    /// The keyboard digit still selects the option while it reads `✓`: the
+    /// handlers resolve a pressed digit through `currentPageFlatOptions`, which
+    /// is index-based and never reads what the chip draws.
+    private func pouredRendersCheckInNumberChip(isSelected: Bool, question: QuestionPromptItem) -> Bool {
+        isPoured && question.multiSelect && isSelected
     }
 
     /// `.opt .num{color:var(--qgold)}` / `.opt.sel .num{color:#2a2003}` /
     /// `.opt-other .num{color:var(--t3)}`.
     private func optionNumberInk(isSelected: Bool, isOther: Bool) -> Color {
+        // Slice 5 (§F): `.opt .num{color:#ffd58a}` / `.opt.sel .num{color:#2a2205}`
+        // (`01-poured-island.html:392-394`) — the resting chip is gold-on-gold,
+        // not a dim achromatic digit. `.opt-other .num{color:rgba(242,245,251,.5);
+        // font-style:normal}` (`:403-404`) keeps the escape hatch achromatic,
+        // and the board draws its ordinal as `…` — native keeps the real digit,
+        // matching the Halo precedent, because the digit key genuinely selects
+        // this row and a decorative ellipsis would hide a live affordance.
+        if isPoured {
+            if isSelected { return pouredGoldInk }
+            return isOther ? pouredQuestionInk(0.5) : pouredGold
+        }
         guard isHalo else {
             return isSelected ? .black.opacity(0.82) : tokens.colors.paper.opacity(0.42)
         }
@@ -3819,6 +4540,13 @@ struct StructuredQuestionPromptView: View {
     /// `.opt.sel .num{background:var(--qgold)}` /
     /// `.opt-other .num{background:rgba(255,255,255,.05)}`.
     private func optionNumberFill(isSelected: Bool, isOther: Bool) -> Color {
+        // Slice 5 (§F): `.opt .num{background:rgba(255,213,138,.14)}` /
+        // `.opt.sel .num{background:#ffd58a}` (`:392`, `:394`) /
+        // `.opt-other .num{background:rgba(242,245,251,.06)}` (`:403`).
+        if isPoured {
+            if isSelected { return pouredGold }
+            return isOther ? tokens.colors.paper.opacity(0.06) : pouredGold.opacity(0.14)
+        }
         guard isHalo else {
             return isSelected ? tokens.colors.paper.opacity(0.88) : Color.white.opacity(0.045)
         }
@@ -3829,6 +4557,12 @@ struct StructuredQuestionPromptView: View {
     /// G-04: `.opt .ol{color:var(--t1)}` — 0.95, not the 0.78 the shared row
     /// used. `.opt-other` drops the whole row to t3 instead.
     private func optionLabelColor(isSelected: Bool, isOther: Bool) -> Color {
+        // Slice 5 (§F): `.opt .ol{color:rgba(242,245,251,.96)}` (`:395`) — one
+        // flat, readable value in every state, so selection is carried by the
+        // ring / chip / tick and never by the label alone. `.opt-other` drops
+        // the whole row to `rgba(242,245,251,.5)` italic (`:400-402`), in every
+        // state, exactly as Halo's escape hatch already does.
+        if isPoured { return pouredQuestionInk(isOther ? 0.5 : 0.96) }
         guard isHalo else { return .white.opacity(isSelected ? 1 : 0.78) }
         if isOther { return tokens.colors.paper.opacity(tokens.colors.tertiaryTextOpacity) }
         return .white.opacity(0.95)
@@ -3837,12 +4571,23 @@ struct StructuredQuestionPromptView: View {
     /// G-04: `.opt .od{color:var(--t2)}` — a flat, readable 0.63 on Halo, so
     /// the description no longer needs hover to become legible.
     private func optionDescColor(isSelected: Bool, isHovered: Bool) -> Color {
+        // Slice 5 (§F): `.opt .od{color:rgba(242,245,251,.66)}` (`:396`) —
+        // legible at rest, not a hover-only reveal.
+        if isPoured { return pouredQuestionInk(0.66) }
         guard isHalo else { return .white.opacity(isHovered || isSelected ? 0.48 : 0.38) }
         return .white.opacity(tokens.colors.secondaryTextOpacity)
     }
 
     /// `.opt-other{font-size:12px;font-style:italic}`.
     private static let haloOtherFont = Font.system(size: 12, weight: .regular)
+
+    /// The freeform escape hatch's label face. Both boards state 12px italic at
+    /// their body weight (`06-halo.html:417`, `01-poured-island.html:400-402`);
+    /// Poured routes it through its own `optionOther` role so the §2 table stays
+    /// the single source of truth for every Poured size.
+    private var otherOptionFont: Font {
+        isPoured ? PouredType.Role.optionOther.font : Self.haloOtherFont
+    }
 
     private func trimmedFreeform(for question: QuestionPromptItem, option: QuestionOption) -> String {
         (freeformTexts[freeformKey(for: question, option: option)] ?? "")
@@ -4307,13 +5052,41 @@ struct TranscriptAffordance: View {
     /// the 10.5pt 0.4-opacity text form read as a disabled affordance. Every other
     /// theme keeps the plain text form.
     var haloChip: Bool = false
+    /// Slice 5 · D4: the board's §D action rail draws Transcript as a real
+    /// `.btn.ghost` — `background:rgba(242,245,251,.08)`, `border-radius:11px`,
+    /// 32pt tall, `color:var(--t1)`, `font-size:13px` with the inline
+    /// `padding:8px 12px` override (`01-poured-island.html:352`, `:967`). The
+    /// 10.5pt / 0.4-opacity text form the other themes keep read as a *disabled*
+    /// affordance beside the loud blue primary. Poured only; every other theme
+    /// takes the unchanged branches below.
+    var pouredGhost: Bool = false
     @State private var isHovered = false
 
     var body: some View {
         Button {
             openTranscriptFile(at: path)
         } label: {
-            if haloChip {
+            if pouredGhost {
+                HStack(spacing: 8) {
+                    Image(systemName: "doc.text")
+                        .font(.system(size: 11, weight: .semibold))
+                        .accessibilityHidden(true)
+                    Text(lang.t("island.transcript.label"))
+                        .font(PouredType.Role.heroButtonLabel.font)
+                        .lineLimit(1)
+                }
+                // `.btn.ghost{color:var(--t1)}` — `rgba(242,245,251,.96)`.
+                .foregroundStyle(Color(red: 0xF2 / 255.0, green: 0xF5 / 255.0, blue: 0xFB / 255.0).opacity(0.96))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    Color(red: 0xF2 / 255.0, green: 0xF5 / 255.0, blue: 0xFB / 255.0)
+                        // `.btn.ghost:hover{background:rgba(242,245,251,.14)}`.
+                        .opacity(isHovered ? 0.14 : 0.08),
+                    in: RoundedRectangle(cornerRadius: 11, style: .continuous)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+            } else if haloChip {
                 HStack(spacing: 6) {
                     Image(systemName: "doc.text")
                         .font(.system(size: 10.5, weight: .semibold))

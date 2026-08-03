@@ -98,15 +98,16 @@ struct IslandDiffRenderer: View {
                 .font(header?.iconFont ?? style.font)
                 .opacity(header?.iconOpacity ?? 1)
                 .accessibilityHidden(true)
-            if usesFileNameHeader {
-                Text(headerTitle)
+            switch Self.resolvedHeader(style: style, result: result, lang: lang) {
+            case let .fileName(title):
+                Text(title)
                     .lineLimit(1)
                     .truncationMode(.middle)
-            } else {
-                Text(headerTitle)
-                Text("+\(result.addedCount)")
+            case let .updatedCounts(title, added, removed):
+                Text(title)
+                Text("+\(added)")
                     .foregroundStyle(style.added.content)
-                Text("\u{2212}\(result.removedCount)")
+                Text("\u{2212}\(removed)")
                     .foregroundStyle(style.removed.content)
             }
         }
@@ -123,27 +124,59 @@ struct IslandDiffRenderer: View {
         }
     }
 
-    private var usesFileNameHeader: Bool {
-        guard let header = style.header else { return false }
-        if case .haloFile = header.title { return true }
-        return false
+    /// The header's resolved shape, split from SwiftUI so a theme's copy is
+    /// pinnable without snapshotting a view: `.fileName` is a single truncating
+    /// title line; `.updatedCounts` is the `Updated` word followed by the two
+    /// `+N` / `−N` count chips.
+    enum ResolvedHeader: Equatable {
+        case fileName(String)
+        case updatedCounts(title: String, added: Int, removed: Int)
     }
 
-    private var headerTitle: String {
+    static func resolvedHeader(
+        style: IslandDiffStyle,
+        result: PermissionDiffResult,
+        lang: LanguageManager
+    ) -> ResolvedHeader {
+        func updated(_ title: String) -> ResolvedHeader {
+            .updatedCounts(title: title, added: result.addedCount, removed: result.removedCount)
+        }
         guard let header = style.header else {
-            return lang.t("approval.diffUpdated")
+            return updated(lang.t("approval.diffUpdated"))
         }
         switch header.title {
         case .updatedCounts:
-            return lang.t("approval.diffUpdated")
+            return updated(lang.t("approval.diffUpdated"))
         case .flightDeckUpdatedCounts:
-            return FlightDeckText.caps(lang.t("approval.diffUpdated"), lang: lang)
+            return updated(FlightDeckText.caps(lang.t("approval.diffUpdated"), lang: lang))
         case let .haloFile(affectedPath):
             guard let path = affectedPath?.trimmingCharacters(in: .whitespacesAndNewlines), !path.isEmpty else {
-                return lang.t("island.halo.approval.diffFileFallback")
+                return .fileName(lang.t("island.halo.approval.diffFileFallback"))
             }
             let fileName = (path as NSString).lastPathComponent
-            return lang.t("island.halo.approval.diffFile", fileName, result.addedCount + result.removedCount)
+            return .fileName(lang.t("island.halo.approval.diffFile", fileName, result.addedCount + result.removedCount))
+        case let .pouredFile(fileName, hunk):
+            return .fileName(pouredDiffHeaderTitle(fileName: fileName, hunk: hunk, lang: lang))
+        }
+    }
+
+    /// The Poured `.fname` copy — `<file leaf> · <hunk>` when both are present,
+    /// gracefully shedding either half rather than emitting a dangling `·`.
+    /// The factory only selects this title when a hunk exists, so the no-hunk
+    /// path resolves through the header-less `Updated` counts branch above.
+    static func pouredDiffHeaderTitle(fileName: String?, hunk: String?, lang: LanguageManager) -> String {
+        let path = fileName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let leaf = path.isEmpty ? nil : (path as NSString).lastPathComponent
+        let hunk = hunk?.trimmingCharacters(in: .whitespacesAndNewlines)
+        switch (leaf, hunk.flatMap { $0.isEmpty ? nil : $0 }) {
+        case let (leaf?, hunk?):
+            return lang.t("island.poured.approval.diffFile", leaf, hunk)
+        case let (leaf?, nil):
+            return leaf
+        case let (nil, hunk?):
+            return hunk
+        case (nil, nil):
+            return lang.t("approval.diffUpdated")
         }
     }
 }
@@ -218,6 +251,7 @@ struct IslandDiffStyle {
         case updatedCounts
         case flightDeckUpdatedCounts
         case haloFile(affectedPath: String?)
+        case pouredFile(fileName: String?, hunk: String?)
     }
 
     /// An optional theme-specific header treatment. The structural renderer owns

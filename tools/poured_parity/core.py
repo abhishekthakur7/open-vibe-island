@@ -28,7 +28,7 @@ LEDGER_STATUSES = {"open", "implementation-in-progress", "implemented-awaiting-c
 DIRECT_CLASSES = {"rendered-canonical", "rendered-motion-exemplar"}
 CONFLICTS = {"PI-REF-001", "PI-REF-002", "PI-REF-003"}
 REQUIRED_SCENARIOS = {
-    "A1-idle","A2-working-one","A2m-working-many","A3-permission","A4-question","A5-success","A6-outcomes",
+    "A1-idle","A2-working-one","A2m-working-many","A3-permission","A3m-permission-queue","A4-question","A5-success","A6-outcomes",
     "B1-hover-peek","B2-pill-peek-panel","C1-grouped-six","C2-cap-boundary","C3-overflow","C4-stress-40",
     "D1-detail","E1-command-permission","E2-diff-permission","E3-jump-codex","E4-notification","F1-question",
     "F2-multi-question","F3-multi-select","F4-compact-question","G1-nested-tasks","G2-compressed-row","G3-task-pill",

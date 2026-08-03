@@ -136,4 +136,41 @@ final class QuestionPromptFormatTests {
             }
         }
     }
+
+    /// Poured Slice 5 (§F″). The board never flags the compact single — it is
+    /// derived from the question's own shape — so this pins the derivation
+    /// against the three §F frames themselves: F″'s fixture takes it, and F′
+    /// (multi-select, three options) and F (three described options plus the
+    /// freeform `Other`) do not. The four one-condition mutations below each
+    /// break it individually, so no single condition can be dropped silently.
+    @Test
+    func compactQuestionLayoutIsDerivedFromTheBoardsOwnFFrames() throws {
+        let now = Date()
+        let compact = AppearancePreviewFixtures.pouredCompactQuestion(now: now)
+        let multiSelect = AppearancePreviewFixtures.pouredMultiSelectQuestion(now: now)
+        let multiQuestion = AppearancePreviewFixtures.questionMulti(now: now)
+
+        #expect(PouredCompactQuestionLayout.applies(to: compact.questionPrompt?.questions ?? []))
+        #expect(!PouredCompactQuestionLayout.applies(to: multiSelect.questionPrompt?.questions ?? []))
+        #expect(!PouredCompactQuestionLayout.applies(to: multiQuestion.questionPrompt?.questions ?? []))
+        #expect(!PouredCompactQuestionLayout.applies(to: []))
+
+        let base = try #require(compact.questionPrompt?.questions.first)
+
+        var multi = base
+        multi.multiSelect = true
+        #expect(!PouredCompactQuestionLayout.applies(to: [multi]))
+
+        var three = base
+        three.options.append(QuestionOption(label: "Roll back"))
+        #expect(!PouredCompactQuestionLayout.applies(to: [three]))
+
+        var described = base
+        described.options[0].description = "Ship the build to prod."
+        #expect(!PouredCompactQuestionLayout.applies(to: [described]))
+
+        var freeform = base
+        freeform.options[1].allowsFreeform = true
+        #expect(!PouredCompactQuestionLayout.applies(to: [freeform]))
+    }
 }

@@ -31,6 +31,83 @@ struct AppearancePreviewFixturesTests {
             == AppearancePreviewFixtures.questionMulti(now: Self.now))
         #expect(AppearancePreviewFixtures.subagentsAndTasks(now: Self.now)
             == AppearancePreviewFixtures.subagentsAndTasks(now: Self.now))
+        #expect(AppearancePreviewFixtures.pouredSessionDetail(now: Self.now)
+            == AppearancePreviewFixtures.pouredSessionDetail(now: Self.now))
+        #expect(AppearancePreviewFixtures.pouredMultiSelectQuestion(now: Self.now)
+            == AppearancePreviewFixtures.pouredMultiSelectQuestion(now: Self.now))
+        #expect(AppearancePreviewFixtures.pouredCompactQuestion(now: Self.now)
+            == AppearancePreviewFixtures.pouredCompactQuestion(now: Self.now))
+    }
+
+    // MARK: - Poured §D detail (Slice 5 · D1-detail)
+
+    /// The three detail blocks §D draws that no earlier Poured fixture could
+    /// reach — `PouredSessionRow` reads each through a different accessor, and
+    /// each renders *nothing* when its field is absent, so a missing one is a
+    /// silently empty board frame rather than a test failure. Pinned here at the
+    /// data layer, where it is cheap and unambiguous.
+    @Test
+    func pouredDetailFixtureCarriesEveryFieldTheDetailBodyRenders() throws {
+        let session = AppearancePreviewFixtures.pouredSessionDetail(now: Self.now)
+
+        // `.mcell` Directory ← `jumpTarget.workingDirectory`. Written absolute so
+        // `directoryDisplayText`'s own home-abbreviation produces the board's
+        // `~/…/open-vibe-island`; a literal `~` would survive it unabbreviated.
+        let directory = try #require(session.jumpTarget?.workingDirectory)
+        #expect(directory.hasPrefix("/"))
+        #expect(directory.hasSuffix("/open-vibe-island"))
+
+        // `.assistant` prose ← `lastAssistantMessageText`, carrying the board's
+        // emphasis, inline code and two-item list as Markdown.
+        let message = try #require(session.lastAssistantMessageText)
+        #expect(message.contains("**AppModel.start()**"))
+        #expect(message.contains("`BridgeServer`"))
+        #expect(message.contains("- Socket bind → registry restore → reconcile"))
+        #expect(message.contains("- Added a guard for the detached-pane case"))
+
+        // `Transcript` ghost ← `trackingTranscriptPath`.
+        #expect(session.trackingTranscriptPath?.hasSuffix(".jsonl") == true)
+
+        // The board's own §D identity: running Claude, `feat/theme-poured`,
+        // `acceptEdits`, and the two-clock split behind `live 1m 42s`.
+        #expect(session.phase == .running)
+        #expect(session.claudeMetadata?.worktreeBranch == "feat/theme-poured")
+        #expect(session.claudeMetadata?.permissionMode == .acceptEdits)
+        #expect(session.firstSeenAt == Self.now.addingTimeInterval(-102))
+    }
+
+    // MARK: - Poured §F′ / §F″ questions (Slice 5 · F3 / F4)
+
+    /// `01-poured-island.html:1210-1240` (F′) and `:1245-1260` (F″), verbatim.
+    /// Copy is the parity contract here — a paraphrase is a silent reference
+    /// divergence — so the strings are asserted literally.
+    @Test
+    func pouredQuestionFixturesCarryTheBoardsCopyVerbatim() throws {
+        let multiSelect = AppearancePreviewFixtures.pouredMultiSelectQuestion(now: Self.now)
+        let f3 = try #require(multiSelect.questionPrompt?.questions.first)
+        #expect(multiSelect.questionPrompt?.questions.count == 1)
+        #expect(f3.header == "Targets")
+        #expect(f3.question == "Which agents should ship in v0.6?")
+        #expect(f3.multiSelect)
+        #expect(f3.options.map(\.label) == ["OpenCode", "Kimi CLI", "Qwen Code"])
+        // F′ has no `.od` and no freeform `Other` anywhere.
+        #expect(f3.options.allSatisfy { $0.description.isEmpty })
+        #expect(f3.options.allSatisfy { !$0.allowsFreeform })
+        #expect(Set(f3.options.map(\.id)).count == 3)
+
+        let compact = AppearancePreviewFixtures.pouredCompactQuestion(now: Self.now)
+        let f4 = try #require(compact.questionPrompt?.questions.first)
+        #expect(compact.questionPrompt?.questions.count == 1)
+        #expect(f4.header == "Deploy")
+        #expect(f4.question == "Proceed to production?")
+        #expect(!f4.multiSelect)
+        #expect(f4.options.map(\.label) == ["Yes, deploy", "Hold"])
+        #expect(f4.options.allSatisfy { $0.description.isEmpty })
+        #expect(Set(f4.options.map(\.id)).count == 2)
+
+        // Both are question surfaces, so the §F hero is what renders them.
+        #expect(multiSelect.phase == .waitingForAnswer)
+        #expect(compact.phase == .waitingForAnswer)
     }
 
     // MARK: - Duplicate-workspace trio
@@ -65,9 +142,14 @@ struct AppearancePreviewFixturesTests {
         // groups rendered as option[0]. `options.count` alone (asserted
         // above) can't catch this, since a list of duplicate ids still has
         // the right *length*; this pins distinctness directly.
+        //
+        // Slice 5 · F3: the Auth question grew a fourth option — the board's
+        // `.opt-other` freeform escape hatch — so both groups now carry four.
         let questions = AppearancePreviewFixtures.conformanceQuestions()
-        #expect(Set(questions[0].options.map(\.id)).count == 3)
+        #expect(Set(questions[0].options.map(\.id)).count == 4)
         #expect(Set(questions[1].options.map(\.id)).count == 4)
+        // And no id collides *across* the two groups either.
+        #expect(Set(questions.flatMap { $0.options.map(\.id) }).count == 8)
     }
 
     // MARK: - Preview scenario mapping (stage 2)

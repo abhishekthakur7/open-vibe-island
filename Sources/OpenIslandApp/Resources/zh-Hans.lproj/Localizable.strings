@@ -380,6 +380,7 @@
 "island.halo.approval.codexDecision" = "Codex 需要一个决定 — 只能在应用内完成";
 "island.halo.approval.diffFile" = "%1$@ · 改动 %2$lld 处";
 "island.halo.approval.diffFileFallback" = "文件";
+"island.poured.approval.diffFile" = "%1$@ · %2$@";
 "island.halo.question.title" = "有个问题请你决定";
 "island.halo.question.tag" = "问题";
 "island.halo.question.multiSelect" = "多选";
@@ -487,6 +488,28 @@
 "approval.codexApprovesInApp" = "Codex 在应用内批准。打开面板以在那里允许或拒绝。";
 "approval.autoCollapseCountdown" = "%lld 秒后自动收起 · 悬停可暂停";
 
+/* Poured §E 权限主卡（Slice 5）——R10 意图问句与 R11 各表面动词 */
+"poured.approval.allowOnce" = "允许一次";
+"poured.approval.approve" = "批准";
+"poured.approval.deny" = "拒绝";
+"poured.approval.intent.runCommand" = "运行 Shell 命令？";
+"poured.approval.intent.editFile" = "编辑文件？";
+"poured.approval.intent.terminalApproval" = "需要在 %@ 中批准";
+/* Poured §F′ 多选 */
+"poured.question.selectAllThatApply" = "选择所有适用项";
+
+/* Poured §E 作用域行（Slice 5 修正轮 2 · E6）。%@ 为等宽代码芯片的位置。 */
+"poured.approval.scope.fromProject" = "始终允许在本项目中 %@";
+"poured.approval.scope.thisSession" = "本次会话始终允许 %@";
+"poured.approval.scope.allCommands" = "始终允许所有 %@ 命令";
+"poured.approval.scope.edits" = "始终允许编辑 %@";
+/* Poured §F 提示（F2）。%@ 为按键芯片。 */
+"poured.question.hint.pick" = "按 %@ 选择";
+/* Poured §F′ 提交（F4）。 */
+"poured.question.submit.multiSelect" = "提交 %lld 项";
+/* Poured §F 自由输入项（F3）。 */
+"poured.question.optionOther" = "其他 — 输入另一种方案";
+
 /* Island Panel - Subagents & Tasks */
 "subagents.title" = "子代理 (%lld)";
 "subagents.completed" = "完成";
@@ -586,6 +609,7 @@
 /* AB-322 — closed-pill right slot: attention / task / usage badges */
 "a11y.rightSlot.attention.permission" = "%lld 个等待授权";
 "a11y.rightSlot.attention.question" = "%lld 个等待回答";
+"poured.a11y.rightSlot.attention.mixed" = "%lld 个等待你处理";
 "a11y.rightSlot.tasks" = "已完成 %2$lld 项中的 %1$lld 项";
 "a11y.rightSlot.subagents" = "%lld 个子智能体";
 "a11y.rightSlot.usage" = "%1$@ %2$@ 用量 %3$lld%%";

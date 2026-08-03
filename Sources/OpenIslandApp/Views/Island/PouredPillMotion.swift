@@ -144,10 +144,18 @@ enum PouredPillMotion {
     /// (`PouredPalette` badge inks + status tokens); this table is geometry only,
     /// so it stays a pure vector `PouredPillMotionTests` can pin.
     enum RightSlot {
-        /// Capsule padding + corner for the `count.attn` / `?` badges.
-        static let badgeHPadding: CGFloat = 5
-        static let badgeVPadding: CGFloat = 1.5
-        static let badgeCornerRadius: CGFloat = 6
+        /// X3 (both reviewers): the board's right-slot badge is `.count`
+        /// (`01-poured-island.html:172-174`) — `min-width:20px; height:20px;
+        /// padding:0 6px; border-radius:10px`. At A3's single digit and A4's `?`
+        /// that resolves to an exact **20 × 20 circle**; native drew an r6
+        /// rounded rectangle sized by 5/1.5 padding, which read as a chip.
+        ///
+        /// `badgeCornerRadius` is stated as half the diameter so a badge that
+        /// *does* grow past 20pt (a three-digit count) becomes the board's
+        /// capsule rather than losing the round ends.
+        static let badgeHPadding: CGFloat = 6
+        static let badgeMinDiameter: CGFloat = 20
+        static let badgeCornerRadius: CGFloat = badgeMinDiameter / 2
 
         /// A3 `count.attn` badge glow — `rgba(255,177,77,.55)` r14 (`SPEC` §4A A3
         /// "glow `rgba(255,177,77,.55)` r14"). The badge is the loud one; the `?`

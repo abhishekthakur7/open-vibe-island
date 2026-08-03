@@ -57,6 +57,17 @@ enum IslandClosedLabelResolver {
     /// - Parameters:
     ///   - spotlight: the session driving the pill — `AppModel`'s
     ///     `islandClosedSpotlight` (attention → running → first).
+    ///
+    ///     R7 / PI-A-002: under Poured with the island collapsed and more than
+    ///     one session waiting, that argument is no longer stable for the
+    ///     lifetime of the state — it is the waiting session whose 3.5 s turn it
+    ///     is (`PouredSpotlightRotation`). Nothing changes here: each rotation
+    ///     item is a perfectly ordinary spotlight and renders the same
+    ///     `Approve …` / `Answer needed` sentence it would as a single winner,
+    ///     which is exactly why the rotation could be confined to the selection
+    ///     and never leak into the vocabulary. The **count** the pill shows
+    ///     beside the label stays aggregate (`IslandRightSlotResolver`
+    ///     `attentionReading`) and therefore constant across the cycle.
     ///   - runningCount: how many surfaced sessions are `.running` right now.
     ///     Drives the aggregate `N working` form.
     ///   - preference: the resolved `IslandCenterLabel` for the active display

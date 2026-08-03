@@ -60,6 +60,62 @@ struct PouredSessionRow: View {
     }
 }
 
+/// The one place outside a Poured row that can see — and undo — an **in-place
+/// hero the user deliberately opened inside the list** (R9's mechanism).
+///
+/// `detailOverride` is per-row `@State` and therefore unreachable from
+/// `OverlayPanelController`, but R8 makes Escape two-stage: the first Esc must
+/// collapse an open hero back to its compact row (list preserved), and only the
+/// second Esc closes the panel. The same fact routes R8's sibling gap — ⌘Y /
+/// ⌘⇧Y / ⌘N and the digit keys currently key off `activeIslandCardSession`, so
+/// an in-list hero can advertise keycaps that fire against a different session
+/// (`mapper-native.md` gap 8); `openHeroSessionID` is the session those
+/// shortcuts should actuate instead.
+///
+/// Shaped as a `@MainActor @Observable` shared object on the `PulseClock`
+/// precedent rather than a preference key, because the consumer is an AppKit
+/// event monitor, not a view — and because `IslandPanelView` (the only view
+/// between the row and the panel controller) must stay untouched.
+///
+/// Deliberately records **only** deliberate, in-list openings: a notification
+/// surface auto-expands its single row (`PouredRowExpansion.resolved`), and
+/// that is not "a hero open inside the list", so Esc there keeps its existing
+/// close-the-panel meaning.
+@MainActor
+@Observable
+final class PouredHeroExpansion {
+    static let shared = PouredHeroExpansion()
+
+    /// The session whose in-list hero is currently open, if any.
+    private(set) var openHeroSessionID: String?
+
+    /// Monotonic collapse-request counter. The owning row observes it and
+    /// collapses itself; a counter (rather than a flag) means repeated requests
+    /// are never swallowed and no view ever writes back into this object during
+    /// its own update.
+    private(set) var collapseRequests: Int = 0
+
+    init() {}
+
+    func heroDidOpen(sessionID: String) {
+        openHeroSessionID = sessionID
+    }
+
+    func heroDidClose(sessionID: String) {
+        guard openHeroSessionID == sessionID else { return }
+        openHeroSessionID = nil
+    }
+
+    /// R8 stage 1. Returns `false` when no in-list hero is open, which is the
+    /// caller's signal to fall through to stage 2 (close the panel).
+    @discardableResult
+    func requestCollapse() -> Bool {
+        guard openHeroSessionID != nil else { return false }
+        collapseRequests &+= 1
+        return true
+    }
+}
+
 /// Pure expansion-state resolver shared by the Poured row's summary and detail
 /// branches. Production rows begin collapsed, the harness may force a row open,
 /// and actionable approval/question/completion rows auto-expand. Once the user
@@ -205,6 +261,12 @@ private struct PouredRowContent: View {
     /// mirroring the approval hero's own `reduceTransparency` branch.
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
+    /// Slice 5 (`PI-A11Y-001`): the compact ⇄ hero disclosure was the last
+    /// un-gated motion on the Poured row — `toggleDetail` animated
+    /// unconditionally. Read here (not inside `PouredApprovalCard`, which has its
+    /// own read for the glow) because the row owns `detailOverride`.
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     /// AB-332: list-level duplicate-workspace disambiguators (AB-323), injected
     /// by `IslandPanelView`. Empty (the default) means "no collisions" and the
     /// title line renders the workspace name alone.
@@ -318,7 +380,21 @@ private struct PouredRowContent: View {
         .onChange(of: isInteractive) { _, interactive in
             if !interactive {
                 detailOverride = nil
+                PouredHeroExpansion.shared.heroDidClose(sessionID: session.id)
             }
+        }
+        // R8 stage 1: something outside the row (the Esc handler) asked the open
+        // in-list hero to collapse. Only the row that actually owns the open hero
+        // reacts, so a list holding several toggled-open rows collapses the one
+        // the user opened last — "the open hero", not all of them.
+        .onChange(of: PouredHeroExpansion.shared.collapseRequests) { _, _ in
+            guard presentation == .list,
+                  detailOverride == true,
+                  PouredHeroExpansion.shared.openHeroSessionID == session.id else { return }
+            setDetailOpen(false)
+        }
+        .onDisappear {
+            PouredHeroExpansion.shared.heroDidClose(sessionID: session.id)
         }
     }
 
@@ -343,15 +419,15 @@ private struct PouredRowContent: View {
                 // the primary affordance of an attention row is reachable by
                 // element navigation and not only by the actions rotor.
                 VStack(alignment: .leading, spacing: 3) {
-                    titleLine(presence: presence)
+                    titleLine(presence: presence, showsDetail: showsDetail)
 
                     // PI-C-005: the board narrates on **every** row, collapsed or
                     // not (`01-poured-island.html:818/835/852/868/886/903`) — a row
                     // that only prints a workspace name says nothing.
-                    activityLine(referenceDate: referenceDate)
+                    activityLine(referenceDate: referenceDate, showsDetail: showsDetail)
                 }
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(accessibilityRowSummaryText(referenceDate: referenceDate))
+                .accessibilityLabel(accessibilityRowSummaryText(referenceDate: referenceDate, showsDetail: showsDetail))
                 .modifier(NestedWorkAccessibilityValue(
                     value: nestedWorkAccessibilityValue(isExpanded: showsDetail)
                 ))
@@ -378,33 +454,26 @@ private struct PouredRowContent: View {
             // nested rollups and SSH / terminal moved into the `.meta` flow row
             // under the activity line, where the board puts them.
             //
-            // R3/C12: an **open** row keeps its pre-slice trailing identity set.
-            // The board's compact-row treatment is a statement about the *list*,
-            // not about the header of a row that has swung its hero open — and
-            // an open row renders no `.meta` flow row at all, so dropping these
-            // deleted the only place the model / transport were stated.
+            // R2/D2 supersedes R3/C12. The board's §D row is the panel's sole
+            // child and its `.body` is the FULL 464pt content width: there is no
+            // trailing column at all — no `.age` ("There is no `.age` element in
+            // §D", `mapper-reference.md` §4.2), no model / permission / transport
+            // chips. Every fact those chips carried is re-stated one block below
+            // in the `.meta-grid` (AGENT / MODEL / PERMISSION / BRANCH / LIVE /
+            // DIRECTORY), and keeping them here cost `.act` ~46% of its width and
+            // truncated the board's own narration to "AppModel.swift · liv…".
+            // Only the collapse chevron survives — it is a native affordance the
+            // board expresses as "tap the row", and it is the sole way back.
             HStack(spacing: IslandSessionRowMetrics.badgeSpacing) {
-                if showsDetail {
-                    if let modelBadge = session.displayModelName {
-                        sideBadge(modelBadge)
-                    }
-                    if let permissionChip = permissionModeBadgeKind {
-                        permissionModeChip(permissionChip)
-                    }
-                    if session.isRemote {
-                        sideBadge("SSH")
-                    }
-                    if let terminalBadge = session.spotlightTerminalBadge {
-                        sideBadge(terminalBadge)
-                    }
+                if !showsDetail {
+                    Text(ageBadgeText(at: referenceDate))
+                        // AB-332: §2 `age` role — SF Pro 11/500 `.monospacedDigit()`
+                        // at tertiary. The mono chrome is retired; only the digits
+                        // stay tabular so ages line up column-to-column.
+                        .font(PouredType.Role.age.font)
+                        .foregroundStyle(summaryAgeColor(for: presence))
+                        .frame(minWidth: IslandSessionRowMetrics.ageColumnWidth, alignment: .trailing)
                 }
-                Text(ageBadgeText(at: referenceDate))
-                    // AB-332: §2 `age` role — SF Pro 11/500 `.monospacedDigit()`
-                    // at tertiary. The mono chrome is retired; only the digits
-                    // stay tabular so ages line up column-to-column.
-                    .font(PouredType.Role.age.font)
-                    .foregroundStyle(summaryAgeColor(for: presence))
-                    .frame(minWidth: IslandSessionRowMetrics.ageColumnWidth, alignment: .trailing)
                 // R4-9 (PI-C-005 · `01-poured-island.html:812-910`): at rest the
                 // board's trailing slot holds `.age` and nothing else — every
                 // trailing control (`.dismiss`, and by the same root rule the
@@ -547,53 +616,6 @@ private struct PouredRowContent: View {
         }
 
         return items
-    }
-
-    // MARK: - Trailing identity badges (open rows only · R3/C12)
-
-    /// The pre-slice capsule badge, verbatim: SF Pro 10.5/500 on a paper wash,
-    /// dimmer inside the notification surface. Only an **open** row draws these
-    /// (see `rowSummary`); the collapsed row states the same facts as `.meta`
-    /// chips instead.
-    private func sideBadge(_ title: String) -> some View {
-        Text(title)
-            .font(PouredType.Role.metaChip.font)
-            .foregroundStyle(tokens.colors.paper.opacity(presentation == .notification ? 0.52 : 0.72))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(.white.opacity(presentation == .notification ? 0.05 : 0.07), in: Capsule())
-    }
-
-    private enum PermissionModeBadgeKind {
-        case plan
-        case bypass
-    }
-
-    private var permissionModeBadgeKind: PermissionModeBadgeKind? {
-        switch session.claudeMetadata?.permissionMode {
-        case .plan:
-            .plan
-        case .bypassPermissions:
-            .bypass
-        default:
-            nil
-        }
-    }
-
-    @ViewBuilder
-    private func permissionModeChip(_ kind: PermissionModeBadgeKind) -> some View {
-        switch kind {
-        case .plan:
-            sideBadge(lang.t("badge.planMode"))
-        case .bypass:
-            Text(lang.t("badge.bypassPermissions"))
-                .font(PouredType.Role.metaChip.font)
-                .foregroundStyle(tokens.colors.statusWarning.opacity(0.94))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(tokens.colors.statusWarning.opacity(0.16), in: Capsule())
-                .overlay(Capsule().stroke(tokens.colors.statusWarning.opacity(0.4), lineWidth: 1))
-        }
     }
 
     private var agentBrandColor: Color {
@@ -742,33 +764,48 @@ private struct PouredRowContent: View {
     /// (`padding:6px 12px; font-size:12px`, board lines 820/822). Approve sits
     /// left of Deny, and both fire exactly the callbacks ⌘Y / ⌘N fire, so the
     /// global shortcuts and the visible controls can never disagree.
+    ///
+    /// **R11 (per-surface verbs), applied here as it is on the §E hero.** The
+    /// board's §C row prints `Approve` / `Deny` (lines 819/821) where the hero
+    /// prints `Allow once` / `Deny` — two surfaces, two verbs, both rendered
+    /// verbatim. Until now this row printed the *agent's* `primaryActionTitle`,
+    /// so it read "Approve" only because the C1 fixture happens to say so; a live
+    /// Claude request saying "Allow" rendered "Allow". The request's own titles
+    /// survive where they carry real information — as the VoiceOver **hint** (E8:
+    /// the accessible *name* must be the visible label) — the same split
+    /// `PouredApprovalCard.actionButtons` uses.
     private var compactApprovalActions: some View {
         HStack(spacing: 8) {
             Button {
                 actions.approve?(.allowOnce)
             } label: {
                 PouredApprovalButtonLabel(
-                    title: session.permissionRequest?.primaryActionTitle ?? lang.t("approval.allowOnce"),
+                    title: lang.t("poured.approval.approve"),
                     shortcut: .allowOnce,
                     kind: .allow,
                     usesStandaloneChrome: false
                 )
             }
             .buttonStyle(PouredFullSizeButtonStyle(kind: .event, isCompact: true))
-            .accessibilityLabel(session.permissionRequest?.primaryActionTitle ?? lang.t("a11y.approval.allowOnce"))
+            // E8: label-in-name — the visible `Approve` is the accessible name;
+            // the agent's own verb becomes the hint.
+            .accessibilityLabel(lang.t("poured.approval.approve"))
+            .modifier(PouredOptionalAccessibilityHint(session.permissionRequest?.primaryActionTitle))
 
             Button {
                 actions.approve?(.deny)
             } label: {
                 PouredApprovalButtonLabel(
-                    title: session.permissionRequest?.secondaryActionTitle ?? lang.t("approval.deny"),
+                    title: lang.t("poured.approval.deny"),
                     shortcut: .deny,
                     kind: .deny,
                     usesStandaloneChrome: false
                 )
             }
             .buttonStyle(PouredFullSizeButtonStyle(kind: .deny, isCompact: true))
-            .accessibilityLabel(session.permissionRequest?.secondaryActionTitle ?? lang.t("a11y.approval.deny"))
+            // E8: same rule on the compact row.
+            .accessibilityLabel(lang.t("poured.approval.deny"))
+            .modifier(PouredOptionalAccessibilityHint(session.permissionRequest?.secondaryActionTitle))
         }
     }
 
@@ -849,7 +886,7 @@ private struct PouredRowContent: View {
     /// disambiguator as a mono span at tertiary. The workspace name yields
     /// (tail-truncates) before the disambiguator, which pins its intrinsic width,
     /// so a long name never squeezes the branch out of view.
-    private func titleLine(presence: IslandSessionPresence) -> some View {
+    private func titleLine(presence: IslandSessionPresence, showsDetail: Bool = false) -> some View {
         HStack(spacing: 8) {
             identityTick(presence: presence)
 
@@ -860,7 +897,7 @@ private struct PouredRowContent: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
 
-            if let disambiguator = disambiguatorSuffix {
+            if let disambiguator = disambiguatorSuffix(showsDetail: showsDetail) {
                 Text(disambiguator)
                     .font(PouredType.Role.branchDisambiguator.font)
                     .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
@@ -893,8 +930,13 @@ private struct PouredRowContent: View {
     /// (`AgentSession.narratedActivity`); every other row speaks a human summary
     /// (permission/question text, last message, outcome) wholly at secondary —
     /// never a raw tool id or a `$ …` command echo.
+    ///
+    /// D2: on an **open** row the line is the board's §D `.act`, which "carries no
+    /// elapsed either — elapsed lives in the `Live` metadata cell"
+    /// (`mapper-reference.md` §4.2). `showsDetail` therefore suppresses the
+    /// `· live 1m 42s` tail a collapsed §C running row keeps.
     @ViewBuilder
-    private func activityLine(referenceDate: Date) -> some View {
+    private func activityLine(referenceDate: Date, showsDetail: Bool = false) -> some View {
         if let ask = actionableAskText() {
             // R2/C1 · C2 (`01-poured-island.html:818`, `:835`): an actionable
             // row's `.act` is the **ask itself**, in the board's own warm ink —
@@ -905,7 +947,7 @@ private struct PouredRowContent: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
         } else {
-            let segments = activitySegments(referenceDate: referenceDate)
+            let segments = activitySegments(referenceDate: referenceDate, showsDetail: showsDetail)
             if !segments.isEmpty {
                 composedActivityText(segments)
                     .font(PouredType.Role.activityLine.font)
@@ -958,13 +1000,13 @@ private struct PouredRowContent: View {
     /// Tone-split runs for the `.act` line. Running rows narrate verb+object;
     /// the rest fall back to the human activity summary (never the `$` echo,
     /// which lived only in the retired running command block).
-    private func activitySegments(referenceDate: Date) -> [PouredRowActivityTone.Segment] {
+    private func activitySegments(referenceDate: Date, showsDetail: Bool) -> [PouredRowActivityTone.Segment] {
         if let narrated = session.narratedActivity {
             return PouredRowActivityTone.segments(
                 verb: narrated.localizedVerb(lang),
-                object: narrated.object,
+                object: detailNarrationObject(base: narrated.object, showsDetail: showsDetail),
                 fallback: nil,
-                liveSuffix: liveElapsedSuffix(at: referenceDate)
+                liveSuffix: showsDetail ? nil : liveElapsedSuffix(at: referenceDate)
             )
         }
         // PI-C-005: expansion no longer gates the line — a collapsed row
@@ -979,6 +1021,27 @@ private struct PouredRowContent: View {
                 lastAssistantMessage: session.lastAssistantMessageText,
                 hasJumpTarget: session.jumpTarget != nil
             )
+        )
+    }
+
+    /// X11 (C's M-12): the board's §D `.act` is
+    /// `Editing` + ` AppModel.swift · narrating the bridge lifecycle change`
+    /// (`01-poured-island.html:940`) — the narrated object **plus** a human
+    /// clause saying what the change is about. That clause only exists on the
+    /// expanded row: R2/D2 gave §D's `.body` the full 464pt content width, and
+    /// with native's bare `Editing AppModel.swift` there was nothing long enough
+    /// on screen to show the width fix had actually landed.
+    ///
+    /// The clause is the session's own one-line `summary` — the field an agent
+    /// already fills with "what I am doing" — appended only when it says
+    /// something the narration does not already say. The collapsed §C row is
+    /// untouched (it has no room, and the board gives it none either).
+    private func detailNarrationObject(base: String?, showsDetail: Bool) -> String? {
+        guard showsDetail else { return base }
+        return PouredDetailNarration.object(
+            base: base,
+            summary: settledSummaryText.flatMap(PouredCompactActivity.plainText(_:)),
+            narratedLine: session.narratedActivityLineText
         )
     }
 
@@ -1019,13 +1082,23 @@ private struct PouredRowContent: View {
     /// The bare branch / recency disambiguator for this row, or `nil` when its
     /// workspace name is unique among the visible sessions. Rendered as its own
     /// mono span (no parentheses) — see `PouredRowDisambiguation`.
-    private var disambiguatorSuffix: String? {
+    ///
+    /// D5: an **open** row always carries the branch, whether or not the list
+    /// needed it to disambiguate. The board's §D title line renders
+    /// `open-vibe-island` `feat/theme-poured` with a single session on screen
+    /// (`mapper-reference.md` §4.2/§4.3), so the branch is part of §D's identity
+    /// statement, not only the list's duplicate-workspace tie-breaker. The
+    /// `.meta-grid`'s BRANCH cell restating it is the board's own redundancy.
+    private func disambiguatorSuffix(showsDetail: Bool = false) -> String? {
         // R2/C4 (`01-poured-island.html:866-867`): when a row is fanned out into
         // subagents, the board composes the disambiguator as
         // `<branch> · <N> subagents` — the fan-out is part of *which* row this
         // is, not a fact chip beside it. Reuses the same localized count string
         // the expanded §4G nest header speaks.
-        let base = PouredRowDisambiguation.suffix(sessionDisambiguators[session.id])
+        var base = PouredRowDisambiguation.suffix(sessionDisambiguators[session.id])
+        if base == nil, showsDetail, let branch = SessionDisambiguation.branch(for: session) {
+            base = PouredRowDisambiguation.suffix(SessionDisambiguation.displayBranch(branch))
+        }
         guard let subagentCount = collapsedSubagentCount else { return base }
         let fanOut = lang.t("poured.subagents.count", subagentCount)
         guard let base else { return fanOut }
@@ -1254,7 +1327,10 @@ private struct PouredRowContent: View {
     /// running, Directory only with a working directory.
     private func metadataGrid(presence: IslandSessionPresence, referenceDate: Date) -> some View {
         PouredFlowLayout(spacing: 8) {
-            metadataCell(key: lang.t("poured.detail.meta.agent")) {
+            metadataCell(
+                key: lang.t("poured.detail.meta.agent"),
+                spokenValue: session.tool.displayName
+            ) {
                 agentIdentityChip
             }
 
@@ -1275,9 +1351,16 @@ private struct PouredRowContent: View {
             }
 
             if session.phase == .running {
+                // D3: the board's LIVE cell reads `1m 42s` at second precision
+                // (`mapper-reference.md` §4.3/§4.5), not the age column's coarse
+                // `1m`. `PouredLiveElapsed` is the same formatter the §C row's
+                // `· live 1m 42s` tail uses, so the two can never disagree —
+                // `elapsedRunningLabel` floors to whole minutes and printed "1m".
                 metadataTextCell(
                     key: lang.t("poured.detail.meta.live"),
-                    value: session.elapsedRunningLabel(at: referenceDate),
+                    value: PouredLiveElapsed.text(
+                        seconds: referenceDate.timeIntervalSince(session.firstSeenAt)
+                    ),
                     tabular: true
                 )
             }
@@ -1295,7 +1378,7 @@ private struct PouredRowContent: View {
 
     private func metadataTextCell(key: String, value: String, mono: Bool = false, tabular: Bool = false) -> some View {
         let baseFont = mono ? PouredType.Role.metadataValueMono.font : PouredType.Role.metadataValue.font
-        return metadataCell(key: key) {
+        return metadataCell(key: key, spokenValue: value) {
             Text(value)
                 .font(tabular ? baseFont.monospacedDigit() : baseFont)
                 .foregroundStyle(metadataValueColor)
@@ -1304,7 +1387,16 @@ private struct PouredRowContent: View {
         }
     }
 
-    private func metadataCell<Content: View>(key: String, @ViewBuilder value: () -> Content) -> some View {
+    /// D6 (PI-A11Y-001): every `.mcell` is **one** accessibility element reading
+    /// `"<key>, <value>"` ("Agent, Claude Code"). Before this the grid exposed the
+    /// uppercase key and its value as two separate stops per cell — twelve stops
+    /// for the board's six facts, and the key's `.uppercased()` chrome was spoken
+    /// as its own word.
+    private func metadataCell<Content: View>(
+        key: String,
+        spokenValue: String,
+        @ViewBuilder value: () -> Content
+    ) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(pouredUppercased(key))
                 .font(PouredType.Role.metadataKey.font)
@@ -1313,6 +1405,8 @@ private struct PouredRowContent: View {
             value()
         }
         .modifier(MetadataCellChrome())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(PouredMetadataCellCopy.accessibilityLabel(key: key, value: spokenValue))
     }
 
     /// The dot+label agent chip that resurfaces the agent's full identity in the
@@ -1368,9 +1462,11 @@ private struct PouredRowContent: View {
     // MARK: - Last assistant message (§4D · mockup `.assistant`)
 
     /// The last assistant message rendered as rich prose (Markdown + the
-    /// `.completionCard` theme so inline `code` reads mono ~11pt and emphasis
-    /// resolves on glass) — never the raw single-line dump the shipped detail
-    /// echoed. Capped in an `AutoHeightScrollView` so a long message can't run
+    /// `.pouredAssistant` style — D1: 12.5/400 at `paper@0.66`, `+4pt` leading,
+    /// `**strong**` lifted to 0.96/640 and inline `code` on the board's
+    /// `white@.06` / `#c9d3e6` 11pt chip) — never the raw single-line dump the
+    /// shipped detail echoed, and no longer `.completionCard`'s 13.5/medium
+    /// borrow. Capped in an `AutoHeightScrollView` so a long message can't run
     /// the row off the panel.
     private func assistantMessageCard(_ message: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -1380,7 +1476,7 @@ private struct PouredRowContent: View {
                 .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
 
             AutoHeightScrollView(maxHeight: 150) {
-                LocalMarkdownText(message, colors: tokens.colors)
+                LocalMarkdownText(message, style: .pouredAssistant, colors: assistantInkColors)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         }
@@ -1397,6 +1493,23 @@ private struct PouredRowContent: View {
         )
     }
 
+    /// X12 (D's F-08): the board's §D `.assistant` block is **paper** ink at
+    /// fractional alpha — body `rgba(242,245,251,.66)`, `strong`
+    /// `rgba(242,245,251,.96)` (`01-poured-island.html:433,437`) — the same
+    /// `#f2f5fb` the `.mv` metadata values already resolve from. The shared
+    /// `LocalMarkdownText` renderer takes its ink from `colors.surfaceText`,
+    /// which every theme's token table sets to pure `.white`, so the r2 report's
+    /// "paper@0.66" claim was true of the *opacity* and false of the *base*.
+    ///
+    /// Fixed by handing the renderer a Poured-local token copy whose
+    /// `surfaceText` **is** paper, rather than editing the shared style table —
+    /// so Halo's, Flight Deck's and Classic's assistant blocks are byte-identical.
+    private var assistantInkColors: IslandColorTokens {
+        var colors = tokens.colors
+        colors.surfaceText = colors.paper
+        return colors
+    }
+
     private var lastAssistantMessageForDetail: String? {
         guard let text = session.lastAssistantMessageText?.trimmedForRow, !text.isEmpty else {
             return nil
@@ -1410,7 +1523,10 @@ private struct PouredRowContent: View {
     /// the transcript as a ghost affordance, and the pane-attachment chip pushed
     /// to the trailing edge.
     private var detailActionRail: some View {
-        HStack(spacing: 10) {
+        // Board `.actions{display:flex; gap:8px; margin-top:12px}` (L346) — the
+        // §D button row is measured at an 8px gap (`mapper-reference.md` §4.5),
+        // the same `.actions` rule §E's Allow/Deny pair already uses.
+        HStack(spacing: 8) {
             Button(action: handlePrimaryTap) {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.up.forward")
@@ -1419,14 +1535,17 @@ private struct PouredRowContent: View {
                         .lineLimit(1)
                 }
             }
-            .buttonStyle(PouredFullSizeButtonStyle(kind: .wayfinding))
+            .buttonStyle(PouredFullSizeButtonStyle(kind: .detailPrimary))
             .accessibilityLabel(lang.t("poured.detail.jump"))
 
             if let transcriptPath = trimmedTranscriptPath {
+                // D4: the board's `.btn.ghost` fill (rgba(242,245,251,.08), r11,
+                // 32pt), not the 0.4-opacity text form that read as disabled.
                 TranscriptAffordance(
                     path: transcriptPath,
                     workspace: session.spotlightWorkspaceName,
-                    lang: lang
+                    lang: lang,
+                    pouredGhost: true
                 )
             }
 
@@ -1441,18 +1560,26 @@ private struct PouredRowContent: View {
     private var attachmentChip: some View {
         let chip = PouredAttachmentChip(session.attachmentState)
         let label = lang.t(chip.localizationKey)
+        // Board `.chip` (L286-287): `padding:2px 7px; border-radius:6px;
+        // background:rgba(242,245,251,.06); color:var(--t2); gap:5px` at 10.5/500
+        // — the same recipe `metaChip` already draws, not a capsule. The dot is
+        // §D's own inline 9×9 `--done` circle (L971), wider than `.chip .cd`'s
+        // 6px, so it is not folded into `metaChip`.
         return HStack(spacing: 5) {
             Circle()
                 .fill(chip.isLive ? tokens.colors.statusCompleted : tokens.colors.paper.opacity(0.3))
-                .frame(width: 7, height: 7)
+                .frame(width: 9, height: 9)
             Text(label)
                 .font(PouredType.Role.metaChip.font)
-                .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
                 .lineLimit(1)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(.white.opacity(0.05), in: Capsule())
+        .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.secondaryTextOpacity)))
+        .padding(.horizontal, 7)
+        .padding(.vertical, 2)
+        .background(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(.white.opacity(0.06))
+        )
         .accessibilityElement(children: .combine)
         .accessibilityLabel(label)
     }
@@ -1536,14 +1663,52 @@ private struct PouredRowContent: View {
             prompt: session.questionPrompt,
             lang: lang,
             keyboardCoordinator: keyboardCoordinator,
+            headContext: pouredQuestionHeadContext,
             onAnswer: { actions.answer?($0) }
         )
-        .padding(3)
+        // B4 · the `.q-hero` inset, split explicitly.
+        //
+        // The board's hero is `padding:14px 16px 15px` (`.q-hero`, L379-381).
+        // The shared interior already applies its own `10 / 8` for Poured and is
+        // owned by another part this round, so the wrapper contributes the
+        // remainder — 6 horizontal, 6 top, 7 bottom — and the two halves sum to
+        // the board's numbers exactly. Documented rather than folded together so
+        // a later round that zeroes the interior padding knows to move 10/8 here
+        // rather than re-deriving the inset.
+        .padding(.horizontal, 6)
+        .padding(.top, 6)
+        .padding(.bottom, 7)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(questionHeroWash)
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .strokeBorder(PouredQuestionColors.ring, lineWidth: 1)
+        )
+        // Y6, honoured: `.q-hero` has NO pulse variant anywhere in the board's
+        // stylesheet and §F contains no CSS animation at all — no
+        // `PouredAmberGlow`, no breathing ring, no clock is acquired here. The
+        // asymmetry against §E's `heropulse` is the board's, and it is kept.
+    }
+
+    /// The `.q-head`'s workspace span (`[dot] niche-radar`), or `nil` where the
+    /// board draws none.
+    ///
+    /// The board carries it on §F only. F′ renders `[TARGETS] ——— Select all
+    /// that apply` with "**no workspace tag, no 'Question x of y'**"
+    /// (`01-poured-island.html:1218-1219`), and F″'s head is the chip and the
+    /// sentence alone (`:1248-1249`). The span therefore rides with the
+    /// *paginated* progress readout, and a prompt holding a single question has
+    /// neither — which is exactly the shape of both frames that drop it, and is
+    /// derived from the prompt rather than from a per-frame flag for the same
+    /// reason `PouredCompactQuestionLayout` is (`IslandPanelView.swift:2930`):
+    /// a live agent prompt reaches these states without anyone wiring a case.
+    /// Neither fact lives on `QuestionPrompt`, so the hero — which owns the
+    /// session — injects them through Part A's seam.
+    private var pouredQuestionHeadContext: QuestionPromptHeadContext? {
+        guard let prompt = session.questionPrompt, prompt.questions.count > 1 else { return nil }
+        return QuestionPromptHeadContext(
+            workspaceName: session.spotlightDisplayName,
+            brandColor: Color(hex: session.tool.brandColorHex) ?? tokens.colors.paper
         )
     }
 
@@ -1896,8 +2061,26 @@ private struct PouredRowContent: View {
 
     private func toggleDetail(currentlyOpen: Bool) {
         guard isInteractive else { return }
-        withAnimation(.easeInOut(duration: 0.2)) {
-            detailOverride = !currentlyOpen
+        setDetailOpen(!currentlyOpen)
+    }
+
+    /// The single write path for the in-place disclosure. Reduce Motion removes
+    /// the transition outright (`PouredRowMotion.HeroDisclosure`), and — for a
+    /// hero the user deliberately opened **inside the list** — the registry is
+    /// kept in step so `OverlayPanelController` can implement R8's two-stage Esc
+    /// without reaching into this view's `@State`.
+    private func setDetailOpen(_ open: Bool) {
+        if let duration = PouredRowMotion.HeroDisclosure.duration(reduceMotion: reduceMotion) {
+            withAnimation(.easeInOut(duration: duration)) { detailOverride = open }
+        } else {
+            detailOverride = open
+        }
+
+        guard presentation == .list else { return }
+        if open {
+            PouredHeroExpansion.shared.heroDidOpen(sessionID: session.id)
+        } else {
+            PouredHeroExpansion.shared.heroDidClose(sessionID: session.id)
         }
     }
 
@@ -1915,7 +2098,7 @@ private struct PouredRowContent: View {
 
     // MARK: - Accessibility (identical wording to Classic)
 
-    private func accessibilityRowSummaryText(referenceDate: Date) -> String {
+    private func accessibilityRowSummaryText(referenceDate: Date, showsDetail: Bool) -> String {
         let base = lang.t(
             "a11y.session.summary",
             session.tool.displayName,
@@ -1926,16 +2109,25 @@ private struct PouredRowContent: View {
         // PI-C-005: the row now narrates on screen, so the single grouped
         // VoiceOver stop must say the same thing rather than stopping at the
         // workspace + phase.
-        guard let narrative = accessibilityActivityNarrative(referenceDate: referenceDate) else { return base }
+        guard let narrative = accessibilityActivityNarrative(
+            referenceDate: referenceDate,
+            showsDetail: showsDetail
+        ) else { return base }
         return "\(base), \(narrative)"
     }
 
     /// R2/C1 · C2: VoiceOver hears the same ask the row prints — the permission's
     /// `Wants to run swift build` / the question's own text — not the generic
     /// narration the shared spotlight line would produce for the same session.
-    private func accessibilityActivityNarrative(referenceDate: Date) -> String? {
+    ///
+    /// X11: and it hears the row's **own** line, so an expanded §D row no longer
+    /// speaks a `· live 1m 42s` tail the board removed from `.act` and moved into
+    /// the `LIVE` metadata cell (which VoiceOver reaches separately). The
+    /// argument used to be hard-coded `false`, so the AX text and the printed
+    /// text disagreed on exactly one row state.
+    private func accessibilityActivityNarrative(referenceDate: Date, showsDetail: Bool) -> String? {
         if let ask = accessibilityAskText { return ask }
-        let joined = activitySegments(referenceDate: referenceDate)
+        let joined = activitySegments(referenceDate: referenceDate, showsDetail: showsDetail)
             .map(\.text)
             .joined()
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -2137,6 +2329,7 @@ private struct PouredApprovalCard: View {
     @Environment(\.islandTokens) private var tokens
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.islandSuppressesNotificationCountdown) private var suppressesCountdown
     private var increasesContrast: Bool { colorSchemeContrast == .increased }
 
     /// E3: a Codex terminal-approval request can't round-trip through the bridge
@@ -2157,12 +2350,39 @@ private struct PouredApprovalCard: View {
         (reduceTransparency || increasesContrast) ? 0.7 : PouredPillMotion.Hero.borderOpacity
     }
 
+    /// The board's §E vertical rhythm is **not** uniform — each block carries its
+    /// own top margin (`mapper-reference.md` §5.7/§5.8, verified against the
+    /// measured offsets): `.hero-head{margin-bottom:10}`, the E1 effect line's
+    /// inline `margin-top:8`, `.actions{margin-top:12}`, `.scopes{margin-top:11}`,
+    /// `.codex-note{margin-top:10}`, and E4's footer `padding:9px 4px 2px`. The
+    /// card used to stack everything at a flat 10, which drifted `.actions` by 2
+    /// and `.scopes` by 1 on every frame.
+    /// E7: `.amber-hero{border-radius:18px}` (`01-poured-island.html:302`), the
+    /// same value `.q-hero` (`:379`) uses. One constant so the fill and the
+    /// stroke can never drift apart again.
+    static let cornerRadius: CGFloat = 18
+
+    /// X13: `.amber-hero{padding:14px 16px 15px}` — the two axes are not equal,
+    /// so they are stated separately (and pinned by `PouredSlice5CorrectionsTests`).
+    static let horizontalPadding: CGFloat = 16
+    static let verticalPadding: CGFloat = 14
+
+    private enum HeroRhythm {
+        static let headToBody: CGFloat = 10
+        static let commandToEffect: CGFloat = 8
+        static let toActions: CGFloat = 12
+        static let toScopes: CGFloat = 11
+        static let toCodexNote: CGFloat = 10
+        static let toCountdownFooter: CGFloat = 9
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 0) {
             heroHead
 
             if let commandText {
                 commandBlock(commandText)
+                    .padding(.top, HeroRhythm.headToBody)
             }
 
             if let effectText {
@@ -2170,38 +2390,81 @@ private struct PouredApprovalCard: View {
                     .font(PouredType.Role.heroSubtitle.font)
                     .foregroundStyle(PouredApprovalColors.effectInk)
                     .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, commandText == nil ? HeroRhythm.headToBody : HeroRhythm.commandToEffect)
             }
 
             // AB-235 / E2: the shared renderer owns the gutter and structural
             // marker column; Poured supplies its exact rounded-card palette.
             if let diffResult = permissionDiffResult {
-                IslandDiffRenderer(
-                    result: diffResult,
-                    lang: lang,
-                    style: .poured(tokens: tokens, reduceTransparency: reduceTransparency)
-                )
+                let clamped = PouredHeroDiff.clamp(diffResult)
+                VStack(alignment: .leading, spacing: 0) {
+                    IslandDiffRenderer(
+                        result: clamped.result,
+                        lang: lang,
+                        style: .poured(
+                            tokens: tokens,
+                            reduceTransparency: reduceTransparency,
+                            fileName: session.permissionRequest?.affectedPath,
+                            hunk: session.permissionRequest?.diffHunkDescription
+                        )
+                    )
+                    if clamped.hiddenLineCount > 0 {
+                        // E1: an explicit, whole-row "+N more lines" affordance —
+                        // the alternative the correction contract blesses. The
+                        // shared renderer scroll-clips at a flat 180pt, which
+                        // sliced the last visible `.dl` through the middle of its
+                        // glyphs; clamping the *rows* means the block always ends
+                        // on a complete line and the remainder is stated instead
+                        // of amputated.
+                        Text(lang.t("approval.diffMoreLines", clamped.hiddenLineCount))
+                            .font(PouredType.Role.diff.font)
+                            .foregroundStyle(tokens.colors.paper.opacity(
+                                tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)
+                            ))
+                            .padding(.top, 5)
+                    }
+                }
+                .padding(.top, HeroRhythm.headToBody)
             }
 
             if requiresTerminalApproval {
                 codexNote
+                    .padding(.top, HeroRhythm.toCodexNote)
                 terminalApprovalCTA
+                    .padding(.top, HeroRhythm.toActions)
             } else {
                 actionButtons
+                    .padding(.top, HeroRhythm.toActions)
+                // `.scopes`' own top margin is applied *inside* the builder —
+                // an absent scope list must contribute no space at all, and a
+                // modified `EmptyView` no longer collapses in a `VStack`.
                 alwaysAllowOptions
             }
 
             // E4: the shared `IslandNotificationCard` stays unchanged, so the
             // honest auto-collapse countdown is printed here, inside the hero, when
-            // it renders in the notification presentation.
-            if presentation == .notification {
+            // it renders in the notification presentation — and only where the
+            // board draws one, which is E4 alone
+            // (`01-poured-island.html:1140-1143`; E1/E2/E3 carry no footer).
+            if presentation == .notification, !suppressesCountdown {
                 notificationCountdownFooter
+                    .padding(.top, HeroRhythm.toCountdownFooter)
             }
         }
-        .padding(14)
+        // X13 (D's F-07): `.amber-hero{padding:14px 16px 15px}`
+        // (`01-poured-island.html:302`) — the card was laid out at a uniform 14,
+        // so every §E hero's content box ran 2pt wide on each side. The
+        // horizontal value is the board's 16; the vertical stays at the measured
+        // 14 this round owns.
+        .padding(.vertical, Self.verticalPadding)
+        .padding(.horizontal, Self.horizontalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardFill)
         .overlay(
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
+            // E7: `.amber-hero{border-radius:18px}` (`01-poured-island.html:302`).
+            // The card carried a 15 inherited from the pre-2.0 hero; the board
+            // states 18 for every §E frame and for `.q-hero`.
+            RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
                 .strokeBorder(accent.opacity(borderOpacity), lineWidth: PouredPillMotion.Hero.borderWidth)
         )
         .modifier(PouredAmberGlow(tint: accent, pulseClock: pulseClock))
@@ -2212,28 +2475,135 @@ private struct PouredApprovalCard: View {
 
     // MARK: Hero head
 
-    /// The event "headline": an accent-tinted glyph chip beside the hero title,
-    /// with the effect-tone subtitle when the request names one (`SPEC` §4E,
-    /// mockup `.hero-head`).
+    /// The event "headline" (`mapper-reference.md` §5.2/§5.7 · board
+    /// `.hero-head`): a 24×24 accent glyph chip, then a two-line stack of the
+    /// per-variant **intent sentence** (`.ht`) over the scope subtitle (`.hs`),
+    /// then the agent tag pushed to the trailing edge by `margin-left:auto`.
+    /// `display:flex; align-items:center; gap:9px`.
+    ///
+    /// R10 (ask-first): the head reads the ask itself — `Run a shell command?` /
+    /// `Edit a file?` / `Approval needed in Codex` — not the generic
+    /// `Tool permission requested` the card used to print for every variant.
     private var heroHead: some View {
         HStack(alignment: .center, spacing: 9) {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(accent.opacity(0.16))
                 .frame(width: 24, height: 24)
-                .overlay(
-                    Image(systemName: requiresTerminalApproval ? "arrow.up.forward.app.fill" : "chevron.left.forwardslash.chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(accent)
-                )
+                .overlay(heroIcon)
                 .accessibilityHidden(true)
 
-            Text(lang.t("approval.toolPermissionRequested"))
-                .font(PouredType.Role.heroTitle.font)
-                .tracking(PouredType.Role.heroTitle.spec.trackingPoints)
-                .foregroundStyle(requiresTerminalApproval ? PouredApprovalColors.codexTitleInk : PouredApprovalColors.titleInk)
+            // `.ht` over `.hs` — the board's `<div>` wrapper, `margin-top:1px`.
+            VStack(alignment: .leading, spacing: 1) {
+                Text(intentTitle)
+                    .font(PouredType.Role.heroTitle.font)
+                    .tracking(PouredType.Role.heroTitle.spec.trackingPoints)
+                    .foregroundStyle(requiresTerminalApproval ? PouredApprovalColors.codexTitleInk : PouredApprovalColors.titleInk)
+                    .fixedSize(horizontal: false, vertical: true)
 
-            Spacer(minLength: 0)
+                if let heroSubtitleText {
+                    Text(heroSubtitleText)
+                        .font(PouredType.Role.heroSubtitle.font)
+                        .foregroundStyle(requiresTerminalApproval ? PouredApprovalColors.codexSubtitleInk : PouredApprovalColors.subtitleInk)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            if let agentTagText {
+                agentTag(agentTagText)
+            }
         }
+        // PI-A11Y-001: one VoiceOver stop for the whole headline — intent, scope
+        // and agent read as a sentence, and the card still reaches Allow / Deny
+        // after it (card-then-controls order preserved).
+        .accessibilityElement(children: .combine)
+    }
+
+    /// E2: the board draws **two** `.hero-icon` glyphs and native drew a third.
+    ///
+    /// - E1 and E3 carry the same terminal chevron — `M4 17l6-6-6-6` (a bare
+    ///   right-pointing chevron) over `M12 19h8` (an underscore rule), 14×14,
+    ///   `stroke-width:2` (`01-poured-island.html:1003-1004`, `:1092`).
+    /// - E2 carries a pencil — `M12 20h9` + the nib path (`:1046-1047`).
+    ///
+    /// Native rendered `chevron.left.forwardslash.chevron.right` (`</>`, a *code*
+    /// mark) for E1/E2 alike and `arrow.up.forward.app.fill` for E3. There is no
+    /// bare `>_` in SF Symbols — `terminal` wraps it in a second rounded box that
+    /// would double the 24pt chip the glyph already sits in — so the chevron is
+    /// drawn as a `Path` pair straight off the board's own SVG coordinates, which
+    /// is more shape-faithful than any available symbol. The pencil is SF
+    /// `pencil`, whose silhouette is the board path.
+    @ViewBuilder
+    private var heroIcon: some View {
+        if PouredApprovalHeroCopy.intent(
+            requiresTerminalApproval: requiresTerminalApproval,
+            hasFileDiff: session.permissionRequest?.fileDiffSource != nil,
+            hasCommand: commandText != nil
+        ) == .editFile {
+            Image(systemName: "pencil")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(accent)
+        } else {
+            PouredTerminalChevron()
+                .stroke(accent, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                .frame(width: 14, height: 14)
+        }
+    }
+
+    /// `.agent-tag` — a 7px brand dot beside the model name, `gap:5px`,
+    /// `font-size:10.5px`, pushed right by `margin-left:auto`.
+    private func agentTag(_ text: String) -> some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(Color(hex: session.tool.brandColorHex) ?? tokens.colors.paper)
+                .frame(width: 7, height: 7)
+                .accessibilityHidden(true)
+            Text(text)
+                .font(PouredType.Role.agentChipLabel.font)
+                .foregroundStyle(requiresTerminalApproval ? PouredApprovalColors.codexAgentTagInk : PouredApprovalColors.agentTagInk)
+                .lineLimit(1)
+        }
+        .fixedSize()
+    }
+
+    private var intentTitle: String {
+        let intent = PouredApprovalHeroCopy.intent(
+            requiresTerminalApproval: requiresTerminalApproval,
+            hasFileDiff: session.permissionRequest?.fileDiffSource != nil,
+            hasCommand: commandText != nil
+        )
+        switch intent {
+        case .terminalApproval:
+            return lang.t(intent.localizationKey, session.tool.displayName)
+        case .editFile, .runCommand, .generic:
+            return lang.t(intent.localizationKey)
+        }
+    }
+
+    private var heroSubtitleText: String? {
+        PouredApprovalHeroCopy.subtitle(
+            workspace: session.spotlightDisplayName,
+            affectedPath: session.permissionRequest?.affectedPath
+        )
+    }
+
+    /// `.agent-tag` copy — `Sonnet 5` / `Opus 4.8` / `codex`.
+    ///
+    /// E4 (correction round 2): the board's E3 head **does** carry a tag, and its
+    /// copy is the agent brand name (`codex`) with the codex dot beside it, not a
+    /// model name — a Codex terminal-approval request reports no
+    /// `displayModelName`, so the tag vanished entirely. The fallback is scoped to
+    /// the terminal-approval variant on purpose: E4's rendered state really is
+    /// *no* `.agent-tag`, so a blanket fallback would have invented one there.
+    /// Lower-cased for the same reason the §C identity chip is
+    /// (`agentIdentityChipLabel`) — the board prints `codex`, not `Codex`.
+    private var agentTagText: String? {
+        if let model = session.displayModelName { return model }
+        guard requiresTerminalApproval else { return nil }
+        let name = session.tool.displayName.trimmedForRow
+        return name.isEmpty ? nil : name.lowercased()
     }
 
     // MARK: Command block (syntax spans — T10)
@@ -2269,36 +2639,55 @@ private struct PouredApprovalCard: View {
 
     // MARK: Buttons + keycaps
 
-    /// `Allow once ⌘Y` (amber gradient) beside `Deny ⌘N`. The keycap glyphs are
-    /// sourced from `PouredApprovalShortcut`, which mirrors the real
-    /// `OverlayPanelController` handler (⌘Y / ⌘N), never the mockup's ⏎/⎋.
+    /// `Allow once ⌘Y` (amber gradient, LEFT) beside `Deny ⌘N` (RIGHT) — the
+    /// board's measured order and its 8px gap (`mapper-reference.md` §5.2:
+    /// x 113.75 vs 260.89). The keycap glyphs are sourced from
+    /// `PouredApprovalShortcut`, which mirrors the real `OverlayPanelController`
+    /// handler (⌘Y / ⌘N), never the mockup's ⏎/⎋.
+    ///
+    /// R11 (per-surface verbs): the hero prints the board's own `Allow once` /
+    /// `Deny` rather than the request's `primaryActionTitle`, which is
+    /// agent-supplied and renders "Allow"/"Yes"/"Approve" depending on the hook.
+    /// The agent's wording is kept where it still helps — the VoiceOver label —
+    /// exactly as Halo does (`HaloSessionRow.swift:2333-2337`).
     private var actionButtons: some View {
         HStack(spacing: 8) {
             Button {
                 actions.approve?(.allowOnce)
             } label: {
                 PouredApprovalButtonLabel(
-                    title: session.permissionRequest?.primaryActionTitle ?? lang.t("approval.allowOnce"),
+                    title: lang.t("poured.approval.allowOnce"),
                     shortcut: .allowOnce,
                     kind: .allow,
                     usesStandaloneChrome: false
                 )
             }
             .buttonStyle(PouredFullSizeButtonStyle(kind: .event))
-            .accessibilityLabel(session.permissionRequest?.primaryActionTitle ?? lang.t("a11y.approval.allowOnce"))
+            // E8 (PI-A11Y-001, WCAG 2.5.3 label-in-name): the accessible name is
+            // the **visible** label. Part B routed the agent-supplied
+            // `primaryActionTitle` here as the label, which meant a request whose
+            // hook says "Yes" was announced as "Yes" while the button reads
+            // "Allow once" — a voice-control user saying what they see would
+            // miss. The agent's own wording is still useful context, so it moves
+            // to the hint, where it supplements rather than replaces.
+            .accessibilityLabel(lang.t("poured.approval.allowOnce"))
+            .modifier(PouredOptionalAccessibilityHint(session.permissionRequest?.primaryActionTitle))
 
             Button {
                 actions.approve?(.deny)
             } label: {
                 PouredApprovalButtonLabel(
-                    title: session.permissionRequest?.secondaryActionTitle ?? lang.t("approval.deny"),
+                    title: lang.t("poured.approval.deny"),
                     shortcut: .deny,
                     kind: .deny,
                     usesStandaloneChrome: false
                 )
             }
             .buttonStyle(PouredFullSizeButtonStyle(kind: .deny))
-            .accessibilityLabel(session.permissionRequest?.secondaryActionTitle ?? lang.t("a11y.approval.deny"))
+            // E8: same rule for Deny — visible label is the name, agent verb is
+            // the hint.
+            .accessibilityLabel(lang.t("poured.approval.deny"))
+            .modifier(PouredOptionalAccessibilityHint(session.permissionRequest?.secondaryActionTitle))
         }
     }
 
@@ -2314,7 +2703,7 @@ private struct PouredApprovalCard: View {
         if let updates = session.permissionRequest?.suggestedUpdates, !updates.isEmpty {
             VStack(spacing: 1) {
                 ForEach(Array(updates.enumerated()), id: \.offset) { index, update in
-                    PouredScopeRow(label: update.displayLabel, showsKeycap: index == 0) {
+                    PouredScopeRow(parts: scopeParts(for: update), showsKeycap: index == 0) {
                         actions.approve?(.allowWithUpdates([update]))
                     }
                 }
@@ -2324,9 +2713,31 @@ private struct PouredApprovalCard: View {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .strokeBorder(.white.opacity(0.05), lineWidth: 1)
             )
-        } else if let toolName = session.permissionRequest?.toolName {
+            .padding(.top, HeroRhythm.toScopes)
+        } else if let toolName = session.permissionRequest?.toolName,
+                  let chip = PouredScopeCopy.genericScopeChip(
+                      toolName: toolName,
+                      commandPreview: session.currentCommandPreviewText
+                  ) {
             VStack(spacing: 1) {
-                PouredScopeRow(label: lang.t("approval.alwaysAllow", toolName), showsKeycap: true) {
+                // E6: the generic fallback is the board's second scope row —
+                // "Always allow all `<tool>` commands" — never the shipped
+                // `Always Allow (Bash)` with its Title-Cased verb and the raw
+                // tool name in parentheses.
+                //
+                // X7: and never a raw tool **identifier** on the gold chip
+                // either. The board's chip is the executable (`swift`); native
+                // printed `permissionRequest.toolName`, which for a shell call
+                // is the harness id `exec_command`. `genericScopeChip` resolves
+                // the honest command word, or `nil` — in which case no generic
+                // row is drawn at all rather than one that lies.
+                PouredScopeRow(
+                    parts: PouredScopeCopy.parts(
+                        format: lang.t("poured.approval.scope.allCommands"),
+                        code: chip
+                    ),
+                    showsKeycap: true
+                ) {
                     let rule = ClaudePermissionRuleValue(toolName: toolName)
                     let update = ClaudePermissionUpdate.addRules(
                         destination: .session,
@@ -2341,7 +2752,18 @@ private struct PouredApprovalCard: View {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .strokeBorder(.white.opacity(0.05), lineWidth: 1)
             )
+            .padding(.top, HeroRhythm.toScopes)
         }
+    }
+
+    /// E6: the board's scope sentence for one update, or the shipped
+    /// `displayLabel` as a whole-sentence fallback for the update kinds the board
+    /// never draws (mode changes, directory grants) — those carry no code chip.
+    private func scopeParts(for update: ClaudePermissionUpdate) -> PouredScopeCopy.Parts {
+        guard let shape = PouredScopeCopy.shape(for: update) else {
+            return PouredScopeCopy.Parts(prefix: update.displayLabel, code: "", suffix: "")
+        }
+        return PouredScopeCopy.parts(format: lang.t(shape.key), code: shape.code)
     }
 
     // MARK: Codex (E3)
@@ -2372,9 +2794,17 @@ private struct PouredApprovalCard: View {
         )
     }
 
-    /// E3: the single honest CTA when `requiresTerminalApproval` is set. No
-    /// keycap — the ⌘Y / ⌘⇧Y / ⌘N handler intentionally no-ops for terminal
-    /// approval, so printing one would be a fake affordance.
+    /// E3: the single honest CTA when `requiresTerminalApproval` is set.
+    ///
+    /// E5 (correction round 2): the board prints `⌘Y` on this blue primary
+    /// (`01-poured-island.html:1106-1108`) and the rendered board is golden, so
+    /// the cap is drawn. **Open follow-up, deliberately recorded rather than
+    /// hidden:** the binding itself lives in
+    /// `OverlayPanelController.handleApprovalShortcut`, which bails on
+    /// `requiresTerminalApproval` (`OverlayPanelController.swift:405-406`) and is
+    /// outside this round's file ownership. Routing that case to
+    /// `handleJumpShortcut` — one guard — is what makes the printed cap fire; the
+    /// card's own CTA and ⌘J already perform the identical jump today.
     private var terminalApprovalCTA: some View {
         Button {
             actions.jump()
@@ -2383,9 +2813,19 @@ private struct PouredApprovalCard: View {
                 Image(systemName: "arrow.up.forward")
                     .accessibilityHidden(true)
                 Text(terminalApprovalCTATitle)
+                // X9 (C's M-7), Y4 replicated as rendered: `.btn.primary .kc kbd`
+                // (board L360) is never overridden per variant, so E3's *blue*
+                // primary carries the same amber-derived caps E1's amber and F2's
+                // gold primaries do — brown glyphs on a darkened chip, not the
+                // dark-surface white-on-grey pair. `onAmber` is the name of that
+                // one `.btn.primary` recipe, not a hue claim.
+                PouredKeycapRow(glyphs: PouredApprovalShortcut.allowOnce.glyphs, onAmber: true)
             }
         }
         .buttonStyle(PouredFullSizeButtonStyle(kind: .wayfinding))
+        // E8: the visible label IS the accessible name. The agent's own verb
+        // survives as the hint, never as a replacement for what the user sees.
+        .accessibilityLabel(terminalApprovalCTATitle)
     }
 
     private var terminalApprovalCTATitle: String {
@@ -2402,7 +2842,6 @@ private struct PouredApprovalCard: View {
             .font(PouredType.Role.heroSubtitle.font)
             .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 2)
     }
 
     // MARK: Fill
@@ -2412,7 +2851,7 @@ private struct PouredApprovalCard: View {
     /// through to stay legible (AB-303).
     @ViewBuilder
     private var cardFill: some View {
-        let shape = RoundedRectangle(cornerRadius: 15, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
         ZStack {
             if reduceTransparency {
                 shape.fill(tokens.colors.surfaceInk)
@@ -2437,13 +2876,17 @@ private struct PouredApprovalCard: View {
         return preview
     }
 
-    /// The plain-English effect line. Prefers the request summary; suppressed
-    /// when it is empty or merely echoes the command already shown above.
+    /// E3: the plain-English effect line — **E1 only**, and never a restatement
+    /// of the ask. The rule is pure (`PouredApprovalHeroCopy.effect`) so the
+    /// suppressions are pinnable without a view.
     private var effectText: String? {
-        let summary = (session.permissionRequest?.summary ?? session.summary)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !summary.isEmpty, summary != commandText else { return nil }
-        return summary
+        PouredApprovalHeroCopy.effect(
+            summary: session.permissionRequest?.summary ?? session.summary,
+            command: commandText,
+            intentTitle: intentTitle,
+            hasFileDiff: session.permissionRequest?.fileDiffSource != nil,
+            requiresTerminalApproval: requiresTerminalApproval
+        )
     }
 
     /// Computes the diff lazily from the request's captured old/new text
@@ -2465,6 +2908,344 @@ private struct PouredApprovalCard: View {
 /// Not `private` (overlay remediation Phase 2A-follow-up · F1): the now
 /// module-internal `PouredApprovalButtonLabel.shortcut: PouredApprovalShortcut?`
 /// property can't be more visible than its own type.
+/// The pure copy decisions behind the §E hero head (`.ht` / `.hs`), lifted out
+/// of the view so `PouredRowMotionTests` can pin them.
+///
+/// R10 (ask-first): the head reads the ask, and which ask it is comes from the
+/// **request**, never from fixture wording — a terminal-approval request names
+/// the app the decision happens in (E3), a request carrying a file diff is an
+/// edit (E2), a request carrying a command is a shell run (E1). Anything else
+/// keeps the generic sentence; the board renders no fourth variant, so inventing
+/// one would be fabrication.
+enum PouredApprovalHeroCopy {
+    enum Intent: Equatable {
+        /// E3 — `Approval needed in Codex` (takes the agent's display name).
+        case terminalApproval
+        /// E2 — `Edit a file?`
+        case editFile
+        /// E1 — `Run a shell command?`
+        case runCommand
+        /// No board frame: the shipped `Tool permission requested`.
+        case generic
+
+        var localizationKey: String {
+            switch self {
+            case .terminalApproval: "poured.approval.intent.terminalApproval"
+            case .editFile: "poured.approval.intent.editFile"
+            case .runCommand: "poured.approval.intent.runCommand"
+            case .generic: "approval.toolPermissionRequested"
+            }
+        }
+    }
+
+    static func intent(
+        requiresTerminalApproval: Bool,
+        hasFileDiff: Bool,
+        hasCommand: Bool
+    ) -> Intent {
+        if requiresTerminalApproval { return .terminalApproval }
+        if hasFileDiff { return .editFile }
+        if hasCommand { return .runCommand }
+        return .generic
+    }
+
+    /// `.hs` — `the-automator · project root`, `open-vibe-island · adds two
+    /// agents`, `niche-radar · run tests`, and (E4) the workspace alone.
+    ///
+    /// The board's second segment is prose scope; the honest native equivalent is
+    /// the request's own `affectedPath` **leaf** — the file or target the decision
+    /// is actually about. It is dropped when it merely repeats the workspace name,
+    /// which reproduces E4's shape (workspace alone) instead of a stuttering
+    /// `the-automator · the-automator`.
+    static func subtitle(workspace: String, affectedPath: String?) -> String? {
+        let workspace = workspace.trimmedForRow
+        guard let scope = scope(workspace: workspace, affectedPath: affectedPath) else {
+            return workspace.isEmpty ? nil : workspace
+        }
+        return workspace.isEmpty ? scope : "\(workspace) · \(scope)"
+    }
+
+    private static func scope(workspace: String, affectedPath: String?) -> String? {
+        guard let raw = affectedPath?.trimmedForRow, !raw.isEmpty else { return nil }
+        let leaf = (raw as NSString).lastPathComponent
+        guard !leaf.isEmpty, leaf != workspace else { return nil }
+        return leaf
+    }
+
+    /// E3: which `.hero-icon` the frame carries — E1/E3 the terminal chevron,
+    /// E2 the pencil. Derived from `intent` so the icon can never disagree with
+    /// the title the same classification produced.
+
+    /// E3 (correction round 2): the plain-English **effect** line, or `nil`.
+    ///
+    /// The board renders it on **E1 only** — one 11.5px amber-ivory sentence
+    /// between `.cmd` and `.actions` (`01-poured-island.html:1010-1011`).
+    /// E2 has none (the diff *is* the statement of effect) and E3 has none
+    /// (the blue `.codex-note` occupies that slot, and nothing amber may appear
+    /// inside the blue card). Native printed the request summary on all three.
+    ///
+    /// On E1 the line must say what running the command *does* — never restate
+    /// the ask. A summary that merely echoes the command, the intent title, or
+    /// wraps the command in "wants to run …" is suppressed rather than printed,
+    /// because a restatement is worse than silence: it costs a line and the
+    /// reader learns nothing.
+    static func effect(
+        summary: String?,
+        command: String?,
+        intentTitle: String?,
+        hasFileDiff: Bool,
+        requiresTerminalApproval: Bool
+    ) -> String? {
+        guard !hasFileDiff, !requiresTerminalApproval else { return nil }
+        guard let summary = summary?.trimmedForRow, !summary.isEmpty else { return nil }
+
+        let folded = summary.lowercased()
+        if let intentTitle = intentTitle?.trimmedForRow, !intentTitle.isEmpty,
+           folded == intentTitle.lowercased() {
+            return nil
+        }
+        guard let command = command?.trimmedForRow, !command.isEmpty else { return summary }
+
+        let foldedCommand = command.lowercased()
+        // An exact echo, or a sentence whose only content is the command with a
+        // "wants to run"-shaped wrapper around it.
+        if folded == foldedCommand { return nil }
+        if folded.contains(foldedCommand) {
+            let residue = folded
+                .replacingOccurrences(of: foldedCommand, with: " ")
+                .components(separatedBy: CharacterSet.alphanumerics.inverted)
+                .filter { !$0.isEmpty }
+            // ≤ 4 remaining words means the summary is a wrapper, not an effect
+            // ("Claude wants to run swift build", "Run: swift build").
+            if residue.count <= 4 { return nil }
+        }
+        return summary
+    }
+}
+
+// MARK: - Countdown suppression seam (§E · capture)
+
+private struct IslandSuppressesNotificationCountdownKey: EnvironmentKey {
+    static let defaultValue: Bool = false
+}
+
+extension EnvironmentValues {
+    /// Slice 5 · §E: drops the `Auto-collapses in Ns · hover pauses` footer from
+    /// the Poured permission hero. The board carries it on E4 only; the E1/E2/E3
+    /// scenarios set it so their frames match, and so a capture round can take an
+    /// E-still without the countdown. `false` (the default) is the shipped
+    /// behaviour on every other path — a real notification surface really does
+    /// auto-collapse and must keep saying so.
+    ///
+    /// Declared beside its only consumer, the same way
+    /// `IslandQuestionPromptPreselectionKey` is.
+    var islandSuppressesNotificationCountdown: Bool {
+        get { self[IslandSuppressesNotificationCountdownKey.self] }
+        set { self[IslandSuppressesNotificationCountdownKey.self] = newValue }
+    }
+}
+
+// MARK: - Hero diff clamp (§E2 `.diff` · E1)
+
+/// E1: the §E hero's inline diff must end on a **whole `.dl` row**.
+///
+/// `IslandDiffRenderer` bounds a long diff with `AutoHeightScrollView(maxHeight:
+/// 180)`, which cuts wherever 180pt lands — in the candidate that was through the
+/// middle of a line's glyphs, with the row below half-drawn and no statement that
+/// anything was elided. The board's E2 renders four complete rows and stops
+/// (`mapper-reference.md` §5.3).
+///
+/// So the *rows* are clamped here, at the Poured call site, and the remainder is
+/// stated as `…and N more lines` — the affordance the correction contract offers
+/// as the alternative to sub-row clipping. `maxRows` is the board's four rows plus
+/// two of headroom: at 11.5pt over a 384pt content width six unwrapped rows plus
+/// the 30pt file header sit comfortably inside the renderer's own 180pt cap, so
+/// the scroll view never engages and nothing can be sliced.
+enum PouredHeroDiff: Sendable {
+    /// Board E2 draws 4 `.dl` rows; 6 keeps a live diff informative while staying
+    /// under the shared renderer's scroll cap.
+    static let maxRows = 6
+
+    struct Clamped: Sendable, Equatable {
+        var result: PermissionDiffResult
+        var hiddenLineCount: Int
+    }
+
+    static func clamp(_ result: PermissionDiffResult, maxRows: Int = maxRows) -> Clamped {
+        guard result.lines.count > maxRows else {
+            return Clamped(result: result, hiddenLineCount: 0)
+        }
+        let kept = Array(result.lines.prefix(maxRows))
+        return Clamped(
+            result: PermissionDiffResult(
+                lines: kept,
+                addedCount: result.addedCount,
+                removedCount: result.removedCount
+            ),
+            hiddenLineCount: result.lines.count - kept.count
+        )
+    }
+}
+
+// MARK: - §D narration clause (X11)
+
+/// X11 (C's M-12): how the **expanded** §D row's `.act` gets the board's second
+/// half.
+///
+/// The board prints `Editing` + ` AppModel.swift · narrating the bridge lifecycle
+/// change` (`01-poured-island.html:940`). Native narrated only the verb+object
+/// pair, so §D's `.act` was a short phrase floating in the 464pt content width
+/// R2/D2 had just given it — the fix landed with nothing on screen long enough
+/// to show it.
+///
+/// The clause is the session's own one-line `summary`: the field an agent
+/// already fills with "what I am doing", which the collapsed §C row has no room
+/// for (and which the board gives it none of either). Pure, so the exact
+/// composed sentence is a test rather than a screenshot.
+enum PouredDetailNarration {
+    /// The narrated object, plus the summary clause when the summary adds
+    /// something the narration does not already say.
+    static func object(base: String?, summary: String?, narratedLine: String?) -> String? {
+        guard let clause = clause(base: base, summary: summary, narratedLine: narratedLine) else {
+            return base
+        }
+        guard let base, !base.isEmpty else { return clause }
+        return "\(base) \u{00B7} \(clause)"
+    }
+
+    /// The clause itself, or `nil` when the summary merely echoes what the
+    /// narration already prints — the common case, e.g.
+    /// `summary: "Editing AppModel.swift."` beside `Editing AppModel.swift`.
+    static func clause(base: String?, summary: String?, narratedLine: String?) -> String? {
+        let trimmed = (summary ?? "").trimmingCharacters(in: CharacterSet(charactersIn: " ."))
+        guard !trimmed.isEmpty else { return nil }
+        let normalized = trimmed.lowercased()
+        if let base, !base.isEmpty, normalized.contains(base.lowercased()) { return nil }
+        if let narratedLine, !narratedLine.isEmpty, normalized.contains(narratedLine.lowercased()) {
+            return nil
+        }
+        return trimmed
+    }
+}
+
+// MARK: - Scope-row copy (§E `.scope` · E6)
+
+/// E6: the board's `.scope` rows are **sentences with a code chip inside them**,
+/// not raw rule dumps:
+///
+/// - `Always allow ` `swift build` ` from this project` (`01-poured-island.html:1021-1022`)
+/// - `Always allow all ` `swift` ` commands` (`:1025`)
+/// - `Always allow edits to ` `README.md` (E2, `:1067-1068`)
+///
+/// Native printed `ClaudePermissionUpdate.displayLabel` verbatim — `Yes, allow
+/// running swift build in this project` — and the generic fallback printed
+/// `Always Allow (Bash)`, a Title-Cased verb with the raw tool name in
+/// parentheses. Both are the shipped copy of four other surfaces, so rather than
+/// re-writing `displayLabel` (which other themes read) this decomposes the
+/// *update* into the board's three parts, Poured-side only.
+///
+/// The localized strings carry the full sentence with a `%@` where the chip goes;
+/// `Parts` splits each one at that marker so a locale can move the chip.
+enum PouredScopeCopy: Sendable, Equatable {
+    struct Parts: Sendable, Equatable {
+        var prefix: String
+        var code: String
+        var suffix: String
+    }
+
+    /// Splits a localized format at its single `%@`, so the chip can be composed
+    /// in the middle of a sentence the translator controls end to end.
+    static func parts(format: String, code: String) -> Parts {
+        guard let marker = format.range(of: "%@") else {
+            return Parts(prefix: format, code: code, suffix: "")
+        }
+        return Parts(
+            prefix: String(format[format.startIndex..<marker.lowerBound]),
+            code: code,
+            suffix: String(format[marker.upperBound...])
+        )
+    }
+
+    /// Which sentence an update takes, and what goes on its chip. `nil` for the
+    /// updates the board never renders as a scope row (mode changes, directory
+    /// grants) — those keep `displayLabel`.
+    static func shape(for update: ClaudePermissionUpdate) -> (key: String, code: String)? {
+        guard case let .addRules(destination, rules, _) = update, let rule = rules.first else {
+            return nil
+        }
+        let content = rule.ruleContent?.trimmedForRow
+        guard let content, !content.isEmpty else {
+            // No rule content — the grant is the whole tool. Board: "Always allow
+            // all `swift` commands".
+            return ("poured.approval.scope.allCommands", rule.toolName)
+        }
+        if rule.toolName == "Edit" || rule.toolName == "Write" {
+            return ("poured.approval.scope.edits", content)
+        }
+        switch destination {
+        case .projectSettings, .localSettings:
+            return ("poured.approval.scope.fromProject", content)
+        default:
+            return ("poured.approval.scope.thisSession", content)
+        }
+    }
+
+    /// X7: what goes on the gold chip of the generic
+    /// "Always allow all `%@` commands" fallback row.
+    ///
+    /// The board's chip is the **executable** (`swift`,
+    /// `01-poured-island.html:1025`), never the harness's tool identifier.
+    /// Native handed it `permissionRequest.toolName`, which for a shell call is
+    /// `exec_command` — a raw internal id printed in the one place the board
+    /// puts a real command word. The rule:
+    ///
+    /// - a shell-exec tool is not itself a command, so the chip becomes the
+    ///   first meaningful token of the request's own command preview;
+    /// - a tool name that still reads as an identifier (`snake_case`) with no
+    ///   usable preview yields `nil`, and the caller draws no row at all;
+    /// - everything else keeps the tool name (`Edit`, `Write`, `git`, …).
+    static func genericScopeChip(toolName: String?, commandPreview: String?) -> String? {
+        let tool = (toolName ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let executable = executableName(in: commandPreview)
+        if shellExecToolNames.contains(tool.lowercased()) { return executable }
+        guard !tool.isEmpty else { return executable }
+        // Still an identifier rather than a word a user typed — prefer the real
+        // command, and print nothing if there isn't one.
+        if tool.contains("_") { return executable }
+        return tool
+    }
+
+    /// Tool identifiers whose payload — not their name — carries the command.
+    private static let shellExecToolNames: Set<String> = [
+        "bash", "exec_command", "shell", "run_command", "run_terminal_cmd", "terminal",
+    ]
+
+    /// The bare executable at the head of a shell command — `sed` from
+    /// `sed -i '' -e 's/…/…/g' …`. A leading `FOO=bar` environment assignment is
+    /// skipped, and an absolute path (`/usr/bin/sed`) is reduced to its last
+    /// component, so the chip is always the word the user would recognise.
+    static func executableName(in commandPreview: String?) -> String? {
+        let preview = (commandPreview ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !preview.isEmpty else { return nil }
+        for token in preview.split(separator: " ") {
+            let word = String(token)
+            if word.contains("=") { continue }
+            let bare = word.split(separator: "/").last.map(String.init) ?? word
+            guard !bare.isEmpty else { continue }
+            return bare
+        }
+        return nil
+    }
+}
+
+/// §F keycap glyphs that are not permission decisions. Pinned here (rather than
+/// inline at the theme seam) so `PouredThemeTests` can assert the Submit cap
+/// stays `↵` — the board's `&#8629;` — and never drifts to `⏎`/`Enter`.
+enum PouredQuestionKeycaps {
+    /// `.q-foot .btn.primary .kc kbd` — `↵` (`01-poured-island.html:1194`).
+    static let submit = ["\u{21B5}"]
+}
+
 enum PouredApprovalShortcut {
     case allowOnce
     case alwaysAllow
@@ -2573,6 +3354,13 @@ struct PouredApprovalButtonLabel: View {
 
     let title: String
     var shortcut: PouredApprovalShortcut?
+    /// Slice 5 · §F: a keycap that is **not** one of the three approval
+    /// decisions — the question submit's `↵` (`01-poured-island.html:1194`,
+    /// `:1234`), which `OverlayPanelController`'s Return handler really fires
+    /// (`handleQuestionSubmitKey`). Kept as glyphs rather than a fourth
+    /// `PouredApprovalShortcut` case so the approval enum stays exactly the three
+    /// permission decisions it documents.
+    var keycapGlyphs: [String]?
     let kind: Kind
     var expands: Bool = true
     var fillOverride: (top: Color, bottom: Color, ink: Color)?
@@ -2594,7 +3382,14 @@ struct PouredApprovalButtonLabel: View {
             Text(title)
                 .lineLimit(1)
             if let shortcut {
-                PouredKeycapRow(shortcut: shortcut, onAmber: kind == .allow)
+                PouredKeycapRow(shortcut: shortcut, onAmber: capsOnAmber)
+            } else if let keycapGlyphs, !keycapGlyphs.isEmpty {
+                // Y4, replicated as rendered: `.btn.primary .kc kbd` (board
+                // L360) is never overridden per variant, so the amber-derived
+                // cap tint leaks onto the gold Submit exactly as the board draws
+                // it — brown caps on a `#ffd58a` face. Recorded as an escalation
+                // candidate; NOT "fixed" here (R5: rendered is golden).
+                PouredKeycapRow(glyphs: keycapGlyphs, onAmber: capsOnAmber)
             }
         }
     }
@@ -2607,11 +3402,21 @@ struct PouredApprovalButtonLabel: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
         .background(buttonBackground)
-        .saturation(isEnabled ? 1 : IslandQuestionSubmitDisabledStyle.saturation)
-        .opacity(isEnabled ? 1 : IslandQuestionSubmitDisabledStyle.opacity)
+        // X6: no blanket `.saturation()/.opacity()` dim any more — see
+        // `PouredQuestionColors.submitDisabled*`. The disabled state is painted,
+        // not faded, because fading a dark ink on a light fill onto a dark panel
+        // collapses both toward the same tone (measured 1.18:1).
     }
 
+    /// X6: the board's brown `.btn.primary .kc kbd` recipe is a *light-face*
+    /// treatment. A disabled Poured Submit no longer has a light face, so its
+    /// caps take the dark-surface pair (white ink on a black chip) — otherwise
+    /// `#5a3a0c` on `#3e3629` would be an invisible keycap. Enabled buttons are
+    /// untouched.
+    private var capsOnAmber: Bool { isEnabled && kind == .allow }
+
     private var ink: Color {
+        guard isEnabled else { return PouredQuestionColors.submitDisabledInk }
         if let fillOverride { return fillOverride.ink }
         return kind == .allow ? PouredApprovalColors.allowInk : PouredApprovalColors.denyInk
     }
@@ -2619,7 +3424,20 @@ struct PouredApprovalButtonLabel: View {
     @ViewBuilder
     private var buttonBackground: some View {
         let shape = RoundedRectangle(cornerRadius: 11, style: .continuous)
-        if let fillOverride {
+        if !isEnabled {
+            // X6: Poured's own disabled face — opaque, so what the user sees is
+            // exactly the pair the contrast test measures, whatever is behind it.
+            shape.fill(
+                LinearGradient(
+                    colors: [
+                        PouredQuestionColors.submitDisabledTop,
+                        PouredQuestionColors.submitDisabledBottom,
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+        } else if let fillOverride {
             shape.fill(
                 LinearGradient(
                     colors: [fillOverride.top, fillOverride.bottom],
@@ -2647,13 +3465,23 @@ struct PouredApprovalButtonLabel: View {
 /// One scoped always-allow row (mockup `.scope`): a lock glyph, the real human
 /// `displayLabel`, and — on the first row — the `⌘⇧Y` key-hint.
 private struct PouredScopeRow: View {
-    let label: String
+    /// E6: the row's copy, decomposed the way the board sets it — a sentence with
+    /// a gold mono code chip inside. `nil` code keeps the plain-sentence form for
+    /// the updates the board never draws as a scope row.
+    let parts: PouredScopeCopy.Parts
     let showsKeycap: Bool
     let action: () -> Void
 
     @Environment(\.islandTokens) private var tokens
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     private var increasesContrast: Bool { colorSchemeContrast == .increased }
+
+    /// The full sentence, chip included — what VoiceOver hears, since the chip is
+    /// a typographic treatment and not a separate control.
+    private var spokenLabel: String {
+        (parts.prefix + parts.code + parts.suffix)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
     var body: some View {
         Button(action: action) {
@@ -2662,7 +3490,7 @@ private struct PouredScopeRow: View {
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
                     .accessibilityHidden(true)
-                Text(label)
+                sentence
                     .font(.system(size: 12, weight: .regular))
                     .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
                     .multilineTextAlignment(.leading)
@@ -2679,6 +3507,20 @@ private struct PouredScopeRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(spokenLabel)
+    }
+
+    /// `.scope code{font-family:var(--mono); font-size:11px; color:#ffd9a8;
+    /// background:rgba(255,177,77,.1); padding:1px 5px; border-radius:4px}`
+    /// (`01-poured-island.html:369-370`). SwiftUI `Text` concatenation carries no
+    /// per-run background, so the chip's fill rides on an `AttributedString` run
+    /// — the same technique `LocalMarkdownText` uses for inline `code`.
+    private var sentence: Text {
+        var chip = AttributedString(parts.code)
+        chip.font = PouredType.Role.assistantInlineCode.font
+        chip.foregroundColor = PouredApprovalColors.scopeCodeInk
+        chip.backgroundColor = PouredPalette.attention.opacity(0.1)
+        return Text(parts.prefix) + Text(chip) + Text(parts.suffix)
     }
 }
 
@@ -2691,6 +3533,17 @@ private enum PouredApprovalColors {
     static let titleInk = Color(red: 0xFF/255, green: 0xE6/255, blue: 0xC2/255)             // #ffe6c2
     static let codexTitleInk = Color(red: 0xCF/255, green: 0xE8/255, blue: 0xFB/255)        // #cfe8fb
     static let effectInk = Color(red: 0xFF/255, green: 0xD6/255, blue: 0xA0/255).opacity(0.75) // rgba(255,214,160,.75)
+    /// `.hero-head .hs` — `rgba(255,214,160,.7)` (a hair quieter than the
+    /// effect line's .75; the board sets both separately).
+    static let subtitleInk = Color(red: 0xFF/255, green: 0xD6/255, blue: 0xA0/255).opacity(0.7)
+    /// `.hero-head .agent-tag` — `rgba(255,214,160,.85)`.
+    static let agentTagInk = Color(red: 0xFF/255, green: 0xD6/255, blue: 0xA0/255).opacity(0.85)
+    /// E3's blue re-tint of the same two roles — `rgba(190,224,246,.7)` / `.85`.
+    static let codexSubtitleInk = Color(red: 0xBE/255, green: 0xE0/255, blue: 0xF6/255).opacity(0.7)
+    static let codexAgentTagInk = Color(red: 0xBE/255, green: 0xE0/255, blue: 0xF6/255).opacity(0.85)
+
+    /// `.scope code{color:#ffd9a8}` on a `rgba(255,177,77,.1)` chip (`:369-370`).
+    static let scopeCodeInk = Color(red: 0xFF/255, green: 0xD9/255, blue: 0xA8/255)         // #ffd9a8
 
     // Command block
     static let commandInk = Color(red: 0xC9/255, green: 0xCE/255, blue: 0xDB/255)           // #c9cedb (plain runs)
@@ -2724,6 +3577,11 @@ private enum PouredApprovalColors {
     static let keycapStrokeOnAmber = Color(red: 0x3A/255, green: 0x24/255, blue: 0x05/255).opacity(0.3)
     static let keycapInkOnAmber = Color(red: 0x5A/255, green: 0x3A/255, blue: 0x0C/255)     // #5a3a0c
 
+    // §D detail primary (Slice 5 · board L963-964) — its OWN blue, not E3's.
+    static let detailButtonTop = Color(red: 0x8F/255, green: 0xBC/255, blue: 0xFF/255)      // #8fbcff
+    static let detailButtonBottom = Color(red: 0x6E/255, green: 0xA7/255, blue: 0xFF/255)   // #6ea7ff
+    static let detailButtonInk = Color(red: 0x0A/255, green: 0x1A/255, blue: 0x35/255)      // #0a1a35
+
     // Codex (E3)
     static let codexBlue = Color(red: 0x4A/255, green: 0xA3/255, blue: 0xDF/255)            // #4aa3df
     static let codexButtonTop = Color(red: 0x8F/255, green: 0xCC/255, blue: 0xF0/255)       // #8fccf0
@@ -2746,8 +3604,34 @@ extension IslandDiffStyle {
     /// style input. The component keeps the gutter and marker structural while
     /// this factory retains the Poured card's exact palette and transparency
     /// fallback.
-    static func poured(tokens: IslandThemeTokens, reduceTransparency: Bool) -> Self {
-        Self(
+    static func poured(
+        tokens: IslandThemeTokens,
+        reduceTransparency: Bool,
+        fileName: String? = nil,
+        hunk: String? = nil
+    ) -> Self {
+        // E2 (X8): a request carrying a hunk description renders the board's
+        // `<file> · <hunk>` `.fname` line; without one the header stays on the
+        // shipped `Updated +N −N` treatment (a header-less style), so a missing
+        // hunk never leaves a dangling separator. The header treatment otherwise
+        // matches the pre-X8 poured header exactly — only the copy differs.
+        let headerColor = tokens.colors.paper.opacity(0.6)
+        let headerBackground = Color.white.opacity(0.03)
+        let normalizedHunk = hunk?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let header: HeaderStyle? = (normalizedHunk?.isEmpty == false)
+            ? HeaderStyle(
+                title: .pouredFile(fileName: fileName, hunk: normalizedHunk),
+                font: PouredType.Role.diff.font,
+                iconFont: PouredType.Role.diff.font,
+                iconOpacity: 1,
+                color: headerColor,
+                background: headerBackground,
+                horizontalPadding: 8,
+                verticalPadding: 6,
+                bottomBorder: nil
+            )
+            : nil
+        return Self(
             gutterWidth: 26,
             markerWidth: 10,
             horizontalPadding: 8,
@@ -2771,11 +3655,12 @@ extension IslandDiffStyle {
                 content: PouredApprovalColors.diffContextInk,
                 background: .clear
             ),
-            headerColor: tokens.colors.paper.opacity(0.6),
-            headerBackground: Color.white.opacity(0.03),
+            headerColor: headerColor,
+            headerBackground: headerBackground,
             containerBackground: reduceTransparency ? tokens.colors.surfaceInk : PouredApprovalColors.codeSurface,
             containerBorder: Border(color: .white.opacity(0.06), width: 1),
-            containerShape: .rounded(cornerRadius: 10)
+            containerShape: .rounded(cornerRadius: 10),
+            header: header
         )
     }
 }
@@ -2806,6 +3691,36 @@ enum PouredQuestionColors {
     static let submitTop = Color(red: 0xFF/255, green: 0xE0/255, blue: 0xA8/255)    // #ffe0a8
     static let submitBottom = Color(red: 0xFF/255, green: 0xD5/255, blue: 0x8A/255) // #ffd58a
     static let submitInk = Color(red: 0x2A/255, green: 0x22/255, blue: 0x05/255)    // #2a2205
+
+    // MARK: X6 — the disabled Submit
+
+    /// X6 (C's M-1): the §F Submit's **disabled** paint.
+    ///
+    /// The shared recipe (`IslandQuestionSubmitDisabledStyle` —
+    /// `.saturation(0.35).opacity(0.5)` over the enabled paint) desaturates the
+    /// gold face *and* the near-black ink toward the same mid tone and then
+    /// half-composites both onto the dark panel: reviewer C measured the
+    /// resulting label-on-fill contrast at **1.18:1**, i.e. an unreadable
+    /// button, which is worse than useless on the one control that tells the
+    /// user what Return will do.
+    ///
+    /// Poured therefore paints its own disabled state instead of dimming the
+    /// enabled one: an opaque, quiet gold-brown face carrying a muted gold ink.
+    /// Both stops clear ≥ 3:1 against the ink they carry
+    /// (`PouredSlice5CorrectionsTests` computes the WCAG ratio from these
+    /// literals, so a future retint fails the build rather than the eye), and
+    /// the button still reads unmistakably quieter than the lit `#ffd58a` face.
+    /// Poured-scoped — the shared constants are untouched, so Halo and Flight
+    /// Deck keep the recipe they shipped with.
+    static let submitDisabledTop = Color(red: 0x3E/255, green: 0x36/255, blue: 0x29/255)    // #3e3629
+    static let submitDisabledBottom = Color(red: 0x33/255, green: 0x2C/255, blue: 0x21/255) // #332c21
+    static let submitDisabledInk = Color(red: 0xC7/255, green: 0xA8/255, blue: 0x71/255)    // #c7a871
+
+    /// The same three literals as sRGB components, so the contrast test can do
+    /// the arithmetic without reaching into `Color`'s opaque storage.
+    static let submitDisabledTopRGB: (Double, Double, Double) = (0x3E/255, 0x36/255, 0x29/255)
+    static let submitDisabledBottomRGB: (Double, Double, Double) = (0x33/255, 0x2C/255, 0x21/255)
+    static let submitDisabledInkRGB: (Double, Double, Double) = (0xC7/255, 0xA8/255, 0x71/255)
 
     /// PI-C-006 · the question row's own inline wash — `rgba(255,213,138,.13)`
     /// (`01-poured-island.html:830`): gold, and a touch quieter than the
@@ -3032,6 +3947,26 @@ private struct PouredPulsingStatusDot: View {
 /// the row's "Dismiss" rotor action, present only for dismissible rows. A
 /// local copy of the same modifier Classic's row uses (that one is file-private
 /// to `IslandPanelView`).
+/// E8: attaches an accessibility **hint** only when the supplementary text
+/// exists and actually adds something the visible label does not already say.
+/// The agent-supplied verb ("Yes", "Allow", "Approve") rides here so the
+/// accessible *name* can stay the visible one.
+struct PouredOptionalAccessibilityHint: ViewModifier {
+    let hint: String?
+
+    init(_ hint: String?) {
+        self.hint = hint
+    }
+
+    func body(content: Content) -> some View {
+        if let hint = hint?.trimmingCharacters(in: .whitespacesAndNewlines), !hint.isEmpty {
+            content.accessibilityHint(Text(hint))
+        } else {
+            content
+        }
+    }
+}
+
 private struct PouredOptionalNamedAccessibilityAction: ViewModifier {
     let name: String?
     let action: () -> Void
@@ -3051,6 +3986,48 @@ private extension String {
     }
 }
 
+// MARK: - Hero icon shapes (§E `.hero-icon` · E2)
+
+/// The board's terminal-chevron `.hero-icon`, drawn from its own SVG paths in a
+/// 24-unit viewBox: `M4 17l6-6-6-6` (the chevron) and `M12 19h8` (the underscore)
+/// — `01-poured-island.html:1003-1004`. Scales to whatever frame it is given, so
+/// the 14×14 the board states is a `.frame`, not a magic number in here.
+struct PouredTerminalChevron: Shape {
+    func path(in rect: CGRect) -> Path {
+        let sx = rect.width / 24
+        let sy = rect.height / 24
+        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            CGPoint(x: rect.minX + x * sx, y: rect.minY + y * sy)
+        }
+
+        var path = Path()
+        // M4 17 l6-6 -6-6
+        path.move(to: point(4, 17))
+        path.addLine(to: point(10, 11))
+        path.addLine(to: point(4, 5))
+        // M12 19 h8
+        path.move(to: point(12, 19))
+        path.addLine(to: point(20, 19))
+        return path
+    }
+}
+
+// MARK: - Metadata cell copy (§D `.mcell` · D6)
+
+/// The one sentence a §D metadata cell speaks. Pure so `PouredThemeTests` can pin
+/// it without standing up a row: the cell is a *key/value pair*, and VoiceOver
+/// should hear `"Agent, Claude Code"` — one stop, the key in its authored case
+/// (never the `.uppercased()` chrome), the value verbatim.
+enum PouredMetadataCellCopy: Sendable {
+    static func accessibilityLabel(key: String, value: String) -> String {
+        let trimmedKey = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedKey.isEmpty { return trimmedValue }
+        if trimmedValue.isEmpty { return trimmedKey }
+        return "\(trimmedKey), \(trimmedValue)"
+    }
+}
+
 // MARK: - Metadata cell chrome (mockup §D `.mcell`)
 
 /// The quiet cell slab every metadata entry sits in — a faint fill with an
@@ -3060,7 +4037,12 @@ private extension String {
 private struct MetadataCellChrome: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .frame(minWidth: 84, alignment: .leading)
+            // Board `.mcell{min-width:88px}` (L445-446) under the sheet's
+            // `box-sizing:border-box`, and the Model cell measures **exactly 88**
+            // (`mapper-reference.md` §4.5). SwiftUI applies `minWidth` to the
+            // content *before* padding, so the floor is the box minus the two
+            // 11pt insets — 66 — where it used to be 84 and forced a 106pt cell.
+            .frame(minWidth: 66, alignment: .leading)
             .padding(.horizontal, 11)
             .padding(.vertical, 8)
             .background(
@@ -3082,6 +4064,16 @@ private struct MetadataCellChrome: ViewModifier {
 enum PouredFullSizeButtonKind: CaseIterable, Equatable {
     case event
     case wayfinding
+    /// Slice 5 (§D): the detail card's `Jump to terminal` primary. The board
+    /// overrides the amber `.btn.primary` with its OWN blue
+    /// (`linear-gradient(180deg,#8fbcff,#6ea7ff)`, ink `#0a1a35`, glow
+    /// `rgba(110,167,255,.6)` — `01-poured-island.html:963-964`), which is a
+    /// different blue from E3's Codex CTA (`#8fccf0→#4aa3df`, ink `#062133`,
+    /// `:1080`). Native collapsed both onto `.wayfinding` and rendered §D in
+    /// E3's colour; splitting them is the whole reason this case exists.
+    /// `.wayfinding` keeps E3 **and** §H's completion jump, whose board blue
+    /// this round never extracted — §H is out of Slice 5, so it stays put.
+    case detailPrimary
     case ghost
     case deny
 
@@ -3096,11 +4088,11 @@ enum PouredFullSizeButtonKind: CaseIterable, Equatable {
     static let compactVerticalPadding: CGFloat = 6
 
     var usesGradient: Bool {
-        self == .event || self == .wayfinding
+        self == .event || self == .wayfinding || self == .detailPrimary
     }
 
     var showsButtonGlow: Bool {
-        self == .event || self == .wayfinding
+        self == .event || self == .wayfinding || self == .detailPrimary
     }
 }
 
@@ -3150,6 +4142,8 @@ private struct PouredFullSizeButtonStyle: ButtonStyle {
                 return PouredApprovalColors.allowInk
             case .wayfinding:
                 return PouredApprovalColors.codexButtonInk
+            case .detailPrimary:
+                return PouredApprovalColors.detailButtonInk
             case .ghost:
                 let increased = colorSchemeContrast == .increased
                 return tokens.colors.paper.opacity(
@@ -3166,6 +4160,11 @@ private struct PouredFullSizeButtonStyle: ButtonStyle {
                 return PouredApprovalColors.allowBottom.opacity(0.5)
             case .wayfinding:
                 return PouredApprovalColors.codexBlue.opacity(0.5)
+            case .detailPrimary:
+                // `box-shadow:0 4px 16px -4px rgba(110,167,255,.6)` — the board
+                // states §D's glow alpha explicitly, so it is taken verbatim
+                // rather than inheriting the shared .5.
+                return PouredApprovalColors.detailButtonBottom.opacity(0.6)
             case .ghost, .deny:
                 return .clear
             }
@@ -3191,6 +4190,14 @@ private struct PouredFullSizeButtonStyle: ButtonStyle {
                 shape.fill(
                     LinearGradient(
                         colors: [PouredApprovalColors.codexButtonTop, PouredApprovalColors.codexBlue],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+            case .detailPrimary:
+                shape.fill(
+                    LinearGradient(
+                        colors: [PouredApprovalColors.detailButtonTop, PouredApprovalColors.detailButtonBottom],
                         startPoint: .top,
                         endPoint: .bottom
                     )

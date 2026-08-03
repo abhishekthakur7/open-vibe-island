@@ -13,6 +13,11 @@ enum PouredParityFixtureCatalog {
         // question — so the peek surfaces one and compresses the rest into the
         // board's `+N more sessions` chip.
         case .b1HoverPeek:.closedAttentionQueue
+        // PI-A-002 (R7): the same two-waiting fixture, read as the *collapsed
+        // pill* rather than the peek — an approval and a question, so the
+        // rotation's two items also differ in glyph/tint (amber permission vs
+        // gold question) and a phase swap is visible, not just a name change.
+        case .a3mPermissionQueue:.closedAttentionQueue
         }
         let now=Date(timeIntervalSince1970:Double(configuration.epochMilliseconds)/1000)
         let snapshot=debug.snapshot(at:now)

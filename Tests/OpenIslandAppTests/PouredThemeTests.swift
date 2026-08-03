@@ -214,6 +214,13 @@ struct PouredThemeTests {
             (.usageResetLabel, 11, 600, false, true),
             (.heroTitle, 14, 640, false, false),
             (.metadataKey, 10, 600, false, false),
+            // Slice 5 §F″: the compact single's inline sentence — 13/560
+            // (`01-poured-island.html:1253`), deliberately NOT `.optionLabel`'s
+            // 13/600 (which resolves one weight step heavier).
+            (.compactQuestionText, 13, 560, false, false),
+            // Slice 5 mapper gap 13: `.opt-other{font-size:12px}` at body
+            // weight (`:400-402`); the italic rides at the call site.
+            (.optionOther, 12, 400, false, false),
         ]
 
         for entry in expected {
@@ -318,6 +325,131 @@ struct PouredThemeTests {
         #expect(PouredIslandTheme().usageMeterCard(providers: providers, lang: lang) != nil)
         #expect(PouredIslandTheme().usageMeterCard(providers: [], lang: lang) == nil)
         #expect(ClassicTheme().usageMeterCard(providers: providers, lang: lang) == nil)
+    }
+
+    // MARK: - §F submit keycap (Slice 5)
+
+    /// The board prints `↵` (`&#8629;`) on both question submit CTAs
+    /// (`01-poured-island.html:1194`, `:1234`) and Return really submits, so the
+    /// cap is an honest affordance. Pinned so it can never drift to `⏎`/`Enter`
+    /// — and, per Y4, it is deliberately drawn with the amber `.btn.primary .kc
+    /// kbd` tint the board never overrides for the gold face.
+    @Test
+    func questionSubmitKeycapIsTheBoardsReturnGlyph() {
+        #expect(PouredQuestionKeycaps.submit == ["\u{21B5}"])
+    }
+
+    /// Slice 5 added the R10 intent sentences and the R11 per-surface verbs as
+    /// Poured-only keys (so `approval.allowOnce` — "Yes" — keeps every other
+    /// theme byte-identical). A key present only in `en` reads as raw dot-case on
+    /// a Chinese install, which is exactly what this sweep catches.
+    @Test @MainActor
+    func pouredHeroCopyLocalizesInEveryLanguage() {
+        let keys = [
+            "poured.approval.allowOnce",
+            "poured.approval.approve",
+            "poured.approval.deny",
+            "poured.approval.intent.runCommand",
+            "poured.approval.intent.editFile",
+            "poured.approval.intent.terminalApproval",
+            "poured.question.selectAllThatApply",
+        ]
+
+        for language in [LanguageManager.AppLanguage.en, .zhHans, .zhHant] {
+            let manager = LanguageManager()
+            manager.language = language
+            for key in keys {
+                let resolved = manager.t(key)
+                #expect(resolved != key, "\(key) is unlocalized in \(language)")
+                #expect(!resolved.isEmpty)
+            }
+        }
+
+        // R11, board-verbatim and PER SURFACE: the §E hero says "Allow once",
+        // the §C in-list row says "Approve" (`01-poured-island.html:819`), and
+        // neither is the shared `approval.allowOnce` ("Yes") the other themes
+        // still use.
+        let english = LanguageManager()
+        english.language = .en
+        #expect(english.t("poured.approval.allowOnce") == "Allow once")
+        #expect(english.t("poured.approval.approve") == "Approve")
+        #expect(english.t("poured.approval.deny") == "Deny")
+        #expect(english.t("approval.allowOnce") == "Yes")
+    }
+
+    // MARK: - §D primary button (Slice 5)
+
+    /// The board draws TWO different blues on Poured's full-size buttons: §D's
+    /// `Jump to terminal` (`linear-gradient(180deg,#8fbcff,#6ea7ff)`, ink
+    /// `#0a1a35`, glow `rgba(110,167,255,.6)` — `01-poured-island.html:963-964`)
+    /// and E3's Codex CTA (`#8fccf0→#4aa3df`, ink `#062133`). Native collapsed
+    /// both onto `.wayfinding`, so §D rendered in E3's colour.
+    ///
+    /// The palette itself is file-private, so the hexes are pinned by scanning
+    /// the source — the same idiom `QuestionPromptAccessibilityTests` uses for
+    /// contracts SwiftUI won't hand back without a host. What it buys is the
+    /// guard that matters: the split can't quietly collapse back onto one kind,
+    /// and §H's completion jump (whose board blue this round never extracted)
+    /// stays on `.wayfinding` where it was.
+    @Test
+    func detailPrimaryIsTheBoardsOwnBlueNotE3sCodexCTA() throws {
+        #expect(PouredFullSizeButtonKind.detailPrimary.usesGradient)
+        #expect(PouredFullSizeButtonKind.detailPrimary.showsButtonGlow)
+        #expect(PouredFullSizeButtonKind.allCases.count == 5)
+
+        let source = try String(
+            contentsOf: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .appendingPathComponent("Sources/OpenIslandApp/Views/Island/PouredSessionRow.swift"),
+            encoding: .utf8
+        )
+
+        for hex in ["0x8F/255, green: 0xBC/255, blue: 0xFF/255",
+                    "0x6E/255, green: 0xA7/255, blue: 0xFF/255",
+                    "0x0A/255, green: 0x1A/255, blue: 0x35/255"] {
+            #expect(source.contains(hex), "§D blue \(hex) missing")
+        }
+
+        // Exactly one surface takes the new kind — §D's `detailActionRail`.
+        #expect(source.components(separatedBy: "kind: .detailPrimary").count - 1 == 1)
+        // E3's terminal CTA and §H's completion jump keep the Codex blue.
+        #expect(source.components(separatedBy: "kind: .wayfinding").count - 1 == 2)
+    }
+
+    /// The board carries the `.q-head` workspace span on §F only: F′ renders
+    /// "no workspace tag, no 'Question x of y'" (`01-poured-island.html:1218-1219`)
+    /// and F″'s head is the chip plus the sentence. Native injected it
+    /// unconditionally, so F′ drew a span the board does not have. Pinned as a
+    /// source scan because the accessor is a private computed property on a
+    /// SwiftUI view — the same idiom `QuestionPromptAccessibilityTests` uses for
+    /// the shared interior's seams.
+    @Test
+    func questionHeroInjectsTheWorkspaceSpanOnlyWhereTheBoardDrawsIt() throws {
+        let source = try String(
+            contentsOf: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .appendingPathComponent("Sources/OpenIslandApp/Views/Island/PouredSessionRow.swift"),
+            encoding: .utf8
+        )
+
+        // One injection site, and it is the gated accessor rather than a
+        // literal `QuestionPromptHeadContext(` in the call.
+        #expect(source.components(separatedBy: "headContext: pouredQuestionHeadContext").count - 1 == 1)
+        #expect(source.components(separatedBy: "private var pouredQuestionHeadContext: QuestionPromptHeadContext?").count - 1 == 1)
+        // The gate itself: a paginated prompt (more than one question) is the
+        // only shape the span rides on.
+        #expect(source.contains("prompt.questions.count > 1"))
+
+        // And the fixtures behind the three board frames really do split that
+        // way — F2 paginates, F′ and F″ do not.
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        #expect((AppearancePreviewFixtures.questionMulti(now: now).questionPrompt?.questions.count ?? 0) > 1)
+        #expect(AppearancePreviewFixtures.pouredMultiSelectQuestion(now: now).questionPrompt?.questions.count == 1)
+        #expect(AppearancePreviewFixtures.pouredCompactQuestion(now: now).questionPrompt?.questions.count == 1)
     }
 }
 

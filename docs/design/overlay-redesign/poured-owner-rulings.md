@@ -1,7 +1,7 @@
 # Poured Island parity — recorded product/design-owner rulings
 
-Version 3 — 2026-08-01 (R7 and the theme-retirement ruling appended; R1–R6
-unchanged from version 2).
+Version 5 — 2026-08-03 (R12 appended at the Slice 5 correction round 3; R1–R11
+and the theme-retirement ruling unchanged from version 4).
 Recorded verbatim by the root orchestrator from the
 owner's written instructions (session `75ecb072`, repo owner). This document is
 the source of record for these rulings until they are formally registered in
@@ -139,3 +139,74 @@ to the default (Poured Island) and `AppModel` normalizes the stored value on
 load — no versioned migration step, no crash, no unstyled overlay.
 
 Applied in the commit that carries this ruling.
+
+## R8 — Escape granularity (closes Slice 4 escalation item 10)
+
+Recorded 2026-08-02 (version 4 of this document), obtained directly from the
+owner at Slice 5 kickoff.
+
+Two-stage: with a hero (permission / question / detail) open inside the expanded
+list, the **first** Esc collapses the hero back to its compact row (list context
+preserved); the **second** Esc closes the panel. This is a behaviour **change**
+from the shipped behaviour, where Esc closed the whole panel from an open hero.
+
+Applied in Slice 5 (`OverlayPanelController.escapeStage` +
+`PouredHeroExpansion`). Poured-scoped: every other theme, and the notification
+surface's auto-expanded single row, keep Esc's shipped close-the-panel meaning.
+
+## R9 — Hero opening mechanism (closes Slice 4 escalation item 8)
+
+Recorded 2026-08-02 (version 4 of this document).
+
+In-place expansion is confirmed: the `Answer` chip / chevron grows the row into
+the hero **inside the list**, with the surrounding rows visible. Slice 5 refines
+the in-place hero's geometry and controls to match the board's D / E / F hero
+cards; there is no dedicated replacing hero panel.
+
+## R10 — Hero header narration (closes Slice 4 escalation item 9)
+
+Recorded 2026-08-02 (version 4 of this document).
+
+Ask-first is confirmed: the open hero's header line reads **the ask itself**
+("Wants to run …" in amber for a permission; the question text for a question),
+not generic activity narration.
+
+## R11 — Permission verb per surface (closes Slice 4 escalation X2)
+
+Recorded 2026-08-02 (version 4 of this document).
+
+Per-surface, as rendered: the compact §C row says **"Approve"**, the §E hero says
+**"Allow once"**. Both stay exactly as the board renders each surface, which is
+consistent with R5 — the rendered mockup is golden.
+
+Slice-5 extension recorded for completeness, **not** ratified by the owner: §E4
+renders a third spelling pair (`Allow` / `Always`). Each surface was implemented
+with its own verbatim verb; the E4 pair remains an open escalation candidate
+because E4 is not reproducible natively today.
+
+Remaining Slice-4 escalation-queue items (X1, X3, X4, X5, wing distribution,
+far-left header glyph, board control glyphs) were **not** ruled on and stay
+pending.
+
+## R12 — Rotation question-phase badge (closes the Slice 5 round-2 review split)
+
+Recorded 2026-08-03 (version 5 of this document), ratified over the "always
+total-N" alternative a round-2 reviewer argued for.
+
+While the R7 spotlight rotation is running and the held item is a **question**,
+the collapsed pill's right-slot badge is the board's A4-verbatim gold **`?`** —
+not the aggregate waiting count. The **permission** hold keeps the amber count
+badge exactly as board A3 draws it.
+
+- The board's A3 and A4 differ in the badge as well as in the lead marker (amber
+  `N` with a `0 0 14px` glow vs a glow-less gold `?`), and the per-item template
+  is what R7 rotates; rendering the count through a question hold would mix A3's
+  badge into A4's frame.
+- The total waiting count stays reachable: the hover peek (§B) lists every
+  waiting session, and the collapsed pill's VoiceOver summary states the
+  aggregate ("N waiting for you") through both holds.
+
+Applied in Slice 5 correction round 3 (`AppModel.pouredRotationRetaggedBadge` +
+`PouredRightSlotView` / `PouredAttentionBadge`). Poured-scoped: every other
+theme, the opened island and any single-waiting pill keep
+`IslandRightSlotResolver`'s own aggregate answer.

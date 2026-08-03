@@ -56,6 +56,7 @@ final class AppModel {
             pruneAgentsGridObservationTicketsIfNeeded()
             bridgeServer.updateStateSnapshot(state)
             refreshAttentionSurfaces()
+            updatePouredSpotlightRotation()
         }
     }
     @ObservationIgnored private var _cachedSessionBuckets: (primary: [AgentSession], overflow: [AgentSession])?
@@ -83,6 +84,19 @@ final class AppModel {
     /// timer for the whole app instead of one per pulsing row — see
     /// `PulseClock`.
     let pulseClock = PulseClock()
+    /// R7 / PI-A-002: publishes the collapsed pill's multi-waiting spotlight
+    /// phase. Runs only while the cycle is live (Poured + collapsed + ≥2
+    /// waiting) — see `updatePouredSpotlightRotation()`.
+    let pouredSpotlightRotationClock = PouredSpotlightRotationClock()
+    /// Deterministic override for the rotation phase, in milliseconds.
+    ///
+    /// `nil` in production, where the live clock above drives the cycle. The
+    /// parity driver installs `--poured-time-ms` here (mirroring
+    /// `HaloParityEventClock.installedManualPhase`, whose consumer happened to
+    /// be a leaf view and so reached it through an `EnvironmentKey` default —
+    /// this one's consumer is the model itself, so it is read directly), and
+    /// unit tests set it to pin an exact phase without a timer.
+    @ObservationIgnored var pouredSpotlightRotationPhaseOverride: Int?
     let discovery = SessionDiscoveryCoordinator()
     let monitoring = ProcessMonitoringCoordinator()
     let codexAppServer = CodexAppServerCoordinator()
@@ -96,6 +110,11 @@ final class AppModel {
             // retires it in the same transaction, so a peek can never hang over
             // a growing or opened panel.
             if newValue != .closed { endHoverPeek() }
+            // R7: the rotation is a *collapsed pill* affordance. Opening the
+            // island shows every waiting session as its own row, so the cycle
+            // stops (and resets) rather than mutating the spotlight behind an
+            // open panel.
+            updatePouredSpotlightRotation()
         }
     }
     var notchOpenReason: NotchOpenReason? {
@@ -494,6 +513,9 @@ final class AppModel {
         didSet {
             guard hasFinishedInit, islandThemeID != oldValue else { return }
             UserDefaults.standard.set(islandThemeID, forKey: Self.islandThemeDefaultsKey)
+            // R7 is Poured-only; switching away from Poured retires the cycle in
+            // the same transaction so no other theme's pill ever rotates.
+            updatePouredSpotlightRotation()
         }
     }
 
@@ -1300,10 +1322,99 @@ final class AppModel {
     /// The spotlight session powering the center label (if any). Attention
     /// sessions first, then the most recent running one, then whatever's
     /// first.
+    ///
+    /// R7 / PI-A-002: under Poured, with the island collapsed and **more than
+    /// one** session waiting, the first rung stops being "the first waiting
+    /// session" and becomes "the waiting session whose turn it is" — a 3.5 s
+    /// round-robin over the same stable order (`PouredSpotlightRotation`). Every
+    /// other theme, the opened island, and any list with fewer than two waiting
+    /// sessions take the untouched ladder below; the rotation's own index 0 is
+    /// that ladder's answer, so the first hold of a cycle is byte-identical too.
     var islandClosedSpotlight: AgentSession? {
-        surfacedSessions.first(where: { $0.phase.requiresAttention })
-            ?? surfacedSessions.first(where: { $0.phase == .running })
-            ?? surfacedSessions.first
+        let sessions = surfacedSessions
+        if let rotated = pouredRotatedWaitingSpotlight(in: sessions) { return rotated }
+        return sessions.first(where: { $0.phase.requiresAttention })
+            ?? sessions.first(where: { $0.phase == .running })
+            ?? sessions.first
+    }
+
+    /// The waiting sessions the R7 cycle rotates through, in the spotlight
+    /// ladder's own stable order (`surfacedSessions` — `computeSessionBuckets`'
+    /// display priority), so the pill, the hover peek and the opened list all
+    /// agree on who is "next".
+    var pouredRotationWaitingSessions: [AgentSession] {
+        surfacedSessions.filter { $0.phase.requiresAttention }
+    }
+
+    /// The elapsed rotation phase, in milliseconds: the deterministic override
+    /// when one is installed (parity driver / tests), else the live clock.
+    var pouredSpotlightRotationElapsedMilliseconds: Int {
+        pouredSpotlightRotationPhaseOverride ?? pouredSpotlightRotationClock.elapsedMilliseconds
+    }
+
+    /// X1: the rotation item actually **on screen**.
+    ///
+    /// Under a deterministic phase override (the parity driver's
+    /// `--poured-time-ms`, or a unit test) this is the phase's own index and the
+    /// swap does not exist — a still must capture the item the phase names, at
+    /// full opacity. Live, it is the clock's *displayed* index, which lags the
+    /// phase by the swap's fade-out leg so that label, lead marker, badge and
+    /// glow all change in one transaction.
+    var pouredSpotlightRotationDisplayedIndex: Int {
+        if let override = pouredSpotlightRotationPhaseOverride {
+            return PouredSpotlightRotation.index(
+                waitingCount: pouredRotationWaitingSessions.count,
+                elapsedMs: override
+            )
+        }
+        return pouredSpotlightRotationClock.displayedIndex
+    }
+
+    /// X1: the opacity of everything the collapsed pill swaps — the centre
+    /// label, the lead marker (including the morph path's traveling glyph), the
+    /// right-slot badge and the ambient glow seam.
+    ///
+    /// One value, mutated once per leg inside `withAnimation` on the rotation
+    /// clock, so all four are literally the same animation. `1` whenever no
+    /// cycle is live and under any deterministic phase override.
+    var pouredClosedRotationContentOpacity: Double {
+        guard pouredSpotlightRotationIsLive,
+              pouredSpotlightRotationPhaseOverride == nil else { return 1 }
+        return pouredSpotlightRotationClock.contentOpacity
+    }
+
+    /// Whether the R7 cycle should be running right now: Poured only, collapsed
+    /// island only, two or more sessions waiting.
+    var pouredSpotlightRotationIsLive: Bool {
+        islandTheme.id == "poured"
+            && notchStatus == .closed
+            && PouredSpotlightRotation.isActive(waitingCount: pouredRotationWaitingSessions.count)
+    }
+
+    private func pouredRotatedWaitingSpotlight(in sessions: [AgentSession]) -> AgentSession? {
+        guard islandTheme.id == "poured", notchStatus == .closed else { return nil }
+        let waiting = sessions.filter { $0.phase.requiresAttention }
+        guard PouredSpotlightRotation.isActive(waitingCount: waiting.count) else { return nil }
+        // X1: the DISPLAYED index, not the phase's. The clock holds the outgoing
+        // item until its fade-out has finished, then swaps every consumer at
+        // once. Clamped because the waiting set can shrink under a live cycle
+        // (a session answered between two ticks).
+        let index = min(max(0, pouredSpotlightRotationDisplayedIndex), waiting.count - 1)
+        return waiting[index]
+    }
+
+    /// Starts/stops the rotation timer as the conditions come and go. Called
+    /// from the three places that can change them — `state` mutation, notch
+    /// open/close and a theme switch — rather than from a view, so the pill
+    /// keeps re-rendering purely off Observation and `IslandPanelView` needs no
+    /// tick plumbing at all.
+    ///
+    /// X1: also the one place the clock learns how many items the cycle holds —
+    /// the input its swap schedule needs. (Reduce Motion the clock reads for
+    /// itself, off `NSWorkspace`, so a live toggle lands on the next hold.)
+    private func updatePouredSpotlightRotation() {
+        pouredSpotlightRotationClock.waitingCount = pouredRotationWaitingSessions.count
+        pouredSpotlightRotationClock.setRunning(pouredSpotlightRotationIsLive)
     }
 
     /// Text to show in the closed island's text lane — centered on external
@@ -1368,11 +1479,75 @@ final class AppModel {
     /// the pure `IslandRightSlotResolver`; this stays a thin adapter that feeds
     /// it live state.
     func islandClosedRightSlotContent() -> IslandRightSlotContent? {
-        IslandRightSlotResolver.content(
+        let content = IslandRightSlotResolver.content(
             attention: IslandRightSlotResolver.attentionReading(for: surfacedSessions),
             spotlightTasks: IslandRightSlotResolver.taskReading(for: islandClosedSpotlight),
             worstUsage: IslandRightSlotResolver.worstUsage(in: islandUsageProviders),
             preferred: islandPreferredRightSlotContent()
+        )
+        return pouredRotationRetaggedBadge(content)
+    }
+
+    /// R1 / PI-A-002: while the R7 cycle is running, the attention badge follows
+    /// the **spotlighted item**, not the aggregate.
+    ///
+    /// `IslandRightSlotResolver.attentionReading` tags the badge `.permission`
+    /// whenever *any* waiting session is a permission (correct for a single
+    /// aggregate badge), so a cycle holding one permission and one question drew
+    /// the amber `N` badge through both holds. The board's A3 and A4 differ in the
+    /// badge too — amber `N` with a `0 0 14px` glow vs a glow-less gold `?`
+    /// (`mapper-reference.md` §7.3) — and the per-item template is what R7
+    /// rotates.
+    ///
+    /// X4 / **R12** (owner, 2026-08-03 —
+    /// `docs/design/overlay-redesign/poured-owner-rulings.md`): only the **kind**
+    /// is re-tagged here, and the question rendering deliberately drops the
+    /// number entirely — `PouredAttentionBadge` draws A4's verbatim gold `?`,
+    /// not the count this case still carries. The `count` payload therefore
+    /// survives the re-tag only because the *permission* hold prints it; it is
+    /// **not** true that "the value stays the aggregate total" on screen through
+    /// both holds, which is what this comment used to claim. The aggregate stays
+    /// reachable through the §B hover peek and the pill's VoiceOver summary
+    /// (`poured.a11y.rightSlot.attention.mixed`, X5).
+    ///
+    /// Inert outside a live Poured rotation, so every other theme, the opened
+    /// island and any single-waiting pill keep the resolver's own answer.
+    private func pouredRotationRetaggedBadge(_ content: IslandRightSlotContent?) -> IslandRightSlotContent? {
+        guard case let .attentionCount(count, kind) = content,
+              pouredSpotlightRotationIsLive,
+              let spotlight = islandClosedSpotlight else {
+            return content
+        }
+        let spotlightKind: IslandAttentionKind = spotlight.phase == .waitingForApproval ? .permission : .question
+        guard spotlightKind != kind else { return content }
+        return .attentionCount(count: count, kind: spotlightKind)
+    }
+
+    /// R2 / PI-A-002: the collapsed pill's rotation state — `nil` unless a cycle
+    /// is live, so the pill's shipped width math and label crossfade are reached
+    /// byte-for-byte on every other path.
+    ///
+    /// `widthReferenceLabel` is the widest sentence the cycle will show, resolved
+    /// through the same `IslandClosedLabelResolver` each item renders and measured
+    /// with the same `V6CenterLabelView.intrinsicWidth` the pill sizes from.
+    func islandClosedPillRotation(at referenceDate: Date = .now) -> PouredClosedPillRotation? {
+        guard pouredSpotlightRotationIsLive else { return nil }
+        let labels = pouredRotationWaitingSessions.compactMap { session in
+            IslandClosedLabelResolver.label(
+                spotlight: session,
+                runningCount: liveRunningCount,
+                preference: islandCenterLabel,
+                language: lang,
+                now: referenceDate
+            )
+        }
+        return PouredClosedPillRotation(
+            widthReferenceLabel: PouredSpotlightRotation.widthReferenceLabel(labels) {
+                V6CenterLabelView.intrinsicWidth(of: $0)
+            },
+            // X1: the one animated value every rotating part of the collapsed
+            // surface rides.
+            contentOpacity: pouredClosedRotationContentOpacity
         )
     }
 
@@ -1516,6 +1691,20 @@ final class AppModel {
     /// path (every other scenario, and the shipping app), so production rows
     /// are unaffected.
     var debugForcesRowExpansion = false
+
+    /// Slice 5 · F4: the §F capture scenarios' preselected option indices,
+    /// populated from `IslandDebugSnapshot.questionPreselection` by
+    /// `loadDebugSnapshot` and injected by `IslandPanelView.body` into
+    /// `\.islandQuestionPromptPreselection`. Exactly the shape and lifetime of
+    /// `debugForcesRowExpansion` above — `nil` on every other path (every other
+    /// scenario, and the shipping app), so a real question card still starts from
+    /// a clean, empty selection.
+    var debugQuestionPreselection: IslandQuestionPromptPreselection?
+
+    /// Slice 5 · §E: drops the auto-collapse countdown from the Poured permission
+    /// hero for the E1/E2/E3 scenarios, which the board draws without one. Same
+    /// shape and lifetime as `debugForcesRowExpansion`; `false` everywhere else.
+    var debugSuppressesNotificationCountdown = false
 
     private func stampAgentsGridObservationTickets(for sessions: [AgentSession]) {
         let newcomers = sessions.filter { _agentsGridObservedSequence[$0.id] == nil }
@@ -1847,6 +2036,8 @@ final class AppModel {
         selectedSessionID = snapshot.selectedSessionID ?? snapshot.sessions.first?.id
         debugUsageProvidersOverride = snapshot.usageProviders
         debugForcesRowExpansion = snapshot.forcesRowExpansion
+        debugQuestionPreselection = snapshot.questionPreselection
+        debugSuppressesNotificationCountdown = snapshot.suppressesNotificationCountdown
         lastActionMessage = "Loaded debug scenario: \(snapshot.title)."
         harnessRuntimeMonitor?.recordMilestone("scenarioLoaded", message: snapshot.title)
 

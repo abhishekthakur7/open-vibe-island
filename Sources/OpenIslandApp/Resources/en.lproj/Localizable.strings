@@ -379,6 +379,7 @@
 "island.halo.approval.codexDecision" = "Codex needs a decision — in-app only";
 "island.halo.approval.diffFile" = "%1$@ · %2$lld changed";
 "island.halo.approval.diffFileFallback" = "File";
+"island.poured.approval.diffFile" = "%1$@ · %2$@";
 "island.halo.question.title" = "A question for you";
 "island.halo.question.tag" = "Question";
 "island.halo.question.multiSelect" = "multi-select";
@@ -490,6 +491,47 @@
 "approval.codexApprovesInApp" = "Codex approves in-app. Open the pane to allow or deny there.";
 "approval.autoCollapseCountdown" = "Auto-collapses in %llds · hover pauses";
 
+/* Poured §E permission hero (Slice 5) — R10 ask-first intent sentences and the
+   R11 per-surface verbs. Board-verbatim and Poured-only: `approval.allowOnce`
+   ("Yes") stays exactly as it is for every other theme. */
+"poured.approval.allowOnce" = "Allow once";
+/* R11's other half: the §C in-list row's verb (`01-poured-island.html:819`),
+   distinct from the hero's "Allow once" above. */
+"poured.approval.approve" = "Approve";
+"poured.approval.deny" = "Deny";
+"poured.approval.intent.runCommand" = "Run a shell command?";
+"poured.approval.intent.editFile" = "Edit a file?";
+"poured.approval.intent.terminalApproval" = "Approval needed in %@";
+/* Poured §F′ multi-select — the board replaces the "Question N of M" readout
+   with this string (`01-poured-island.html:1219`). Key landed here because all
+   Slice 5 copy lands in one commit; the one-line view wiring is still pending
+   (see partB-landmarks.md). */
+"poured.question.selectAllThatApply" = "Select all that apply";
+
+/* Poured §E scope rows (Slice 5 correction round 2 · E6). The board sets each
+   scope as ONE sentence with a gold mono code chip inside it — "Always allow
+   `swift build` from this project" (`01-poured-island.html:1021-1022`), "Always
+   allow all `swift` commands" (`:1025`), "Always allow edits to `README.md`"
+   (`:1067-1068`). The `%@` marks where the chip goes; a locale may move it
+   anywhere in its own sentence. Poured-only — `approval.alwaysAllow`
+   ("Always Allow (%@)") still serves four other surfaces unchanged. */
+"poured.approval.scope.fromProject" = "Always allow %@ from this project";
+"poured.approval.scope.thisSession" = "Always allow %@ for this session";
+"poured.approval.scope.allCommands" = "Always allow all %@ commands";
+"poured.approval.scope.edits" = "Always allow edits to %@";
+/* Poured §F hint (F2). The board's `.q-hint` reads "Press [1–3] to pick" with the
+   range on a real `kbd` chip (`01-poured-island.html:1195-1196`) — it does NOT
+   carry the shipped "Enter submits · Esc closes" tail, which is why Poured takes
+   its own key instead of `question.hint.keyboard.range`. `%@` is the chip. */
+"poured.question.hint.pick" = "Press %@ to pick";
+/* Poured §F′ submit (F4). Board: "Submit 2 selected" — no em dash
+   (`01-poured-island.html:1234`). `question.submit.multiSelect` keeps its
+   "Submit — %lld selected" for every other theme. */
+"poured.question.submit.multiSelect" = "Submit %lld selected";
+/* Poured §F freeform escape hatch (F3). Board `.opt-other`:
+   "Other — type a different approach" (`01-poured-island.html:1189`). */
+"poured.question.optionOther" = "Other — type a different approach";
+
 /* Island Panel - Subagents & Tasks */
 "subagents.title" = "Subagents (%lld)";
 "subagents.completed" = "Completed";
@@ -589,6 +631,11 @@
 /* AB-322 — closed-pill right slot: attention / task / usage badges */
 "a11y.rightSlot.attention.permission" = "%lld waiting for approval";
 "a11y.rightSlot.attention.question" = "%lld waiting for an answer";
+/* Slice 5 X5 — Poured's collapsed pill while the R7 spotlight rotation is
+   running. The set can hold both kinds at once, so the badge speaks the
+   aggregate and drops the kind rather than claiming all N are the kind that
+   currently holds the spotlight. */
+"poured.a11y.rightSlot.attention.mixed" = "%lld waiting for you";
 "a11y.rightSlot.tasks" = "%1$lld of %2$lld tasks done";
 "a11y.rightSlot.subagents" = "%lld subagents";
 "a11y.rightSlot.usage" = "%1$@ %2$@ usage %3$lld percent";

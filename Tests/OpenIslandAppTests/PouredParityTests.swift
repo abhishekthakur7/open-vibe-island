@@ -32,11 +32,42 @@ import Testing
         #expect(reverse.acknowledgedEvents.isEmpty)
     }
 
+    /// PI-A-002 · R7 flipped `consumedByPouredViews`: `--poured-time-ms` now
+    /// really does pin a rendered phase (the collapsed pill's spotlight
+    /// rotation), so the attestation says so. The **guard** is unchanged — a
+    /// manual-clock launch still cannot emit a capture manifest, so manual-clock
+    /// stills never claim canonical pixels. That separation is the point of this
+    /// test: honest attestation, unchanged authority.
     @Test @MainActor func manual_clock_never_claims_canonical_pixels() throws {
         let model=AppModel(); model.pouredParityBootstrapIsolation = .init(runtimeStateLoadingDisabled:true,bridgeStartupDisabled:true)
         let driver=PouredParityDriver(configuration:configuration(time:100)); try driver.apply(to:model,presentOverlay:false)
-        #expect(driver.stateDump(model).clock.consumedByPouredViews == false)
+        #expect(driver.stateDump(model).clock.consumedByPouredViews == true)
+        #expect(model.pouredSpotlightRotationPhaseOverride == 100)
+        #expect(model.pouredSpotlightRotationElapsedMilliseconds == 100)
         #expect(throws:PouredParityError.manualClockNotConsumed){try driver.captureManifest(model:model,executablePath:"/tmp/app",executableSHA256:"abc",gitRevision:"deadbeef",sourceTreeDirty:false,bundleIdentifier:"app",signingIdentity:nil,windowServerPlacement:"window-1")}
+
+        // Without a manual clock nothing is installed and the live clock owns
+        // the phase — production and every canonical still stay on it.
+        let live=PouredParityDriver(configuration:configuration()); try live.apply(to:model,presentOverlay:false)
+        #expect(live.stateDump(model).clock.consumedByPouredViews == false)
+        #expect(model.pouredSpotlightRotationPhaseOverride == nil)
+    }
+
+    /// PI-A-002 · the R7 scenario's driver case. The rotation phase is only
+    /// pinnable here — the plain `OPEN_ISLAND_HARNESS_*` route parses no
+    /// `--poured-time-ms` — so `A3m-permission-queue` exists as a driver
+    /// scenario over the two-waiting fixture, and each pinned phase spotlights a
+    /// different waiting session.
+    @Test @MainActor func rotation_scenario_pins_a_chosen_item_of_the_cycle() throws {
+        let model=AppModel(); model.pouredParityBootstrapIsolation = .init(runtimeStateLoadingDisabled:true,bridgeStartupDisabled:true)
+        func spotlight(at milliseconds:UInt64)throws->String? {
+            let configuration=PouredParityConfiguration(scenario:.a3mPermissionQueue,profile:.notch,accessibility:.standard,event:nil,seed:42,epochMilliseconds:1_700_000_000_000,manualTimeMilliseconds:milliseconds)
+            try PouredParityDriver(configuration:configuration).apply(to:model,presentOverlay:false)
+            return model.islandClosedSpotlight?.id
+        }
+        #expect(PouredParityFixtureCatalog.resolve(PouredParityConfiguration(scenario:.a3mPermissionQueue,profile:.notch,accessibility:.standard,event:nil,seed:42,epochMilliseconds:1_700_000_000_000,manualTimeMilliseconds:nil)).record.sourceScenario == IslandDebugScenario.closedAttentionQueue.rawValue)
+        let first=try spotlight(at:1); let second=try spotlight(at:3_500); let wrapped=try spotlight(at:7_000)
+        #expect(first != nil); #expect(first != second); #expect(wrapped == first)
     }
 
     @Test @MainActor func capture_contract_rejects_theme_fixture_executable_placement_and_partial_authority() throws {

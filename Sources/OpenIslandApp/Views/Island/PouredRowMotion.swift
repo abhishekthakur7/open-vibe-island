@@ -54,6 +54,36 @@ enum PouredRowMotion {
         static let revealedOpacity: Double = 1
     }
 
+    // MARK: Compact ⇄ hero disclosure (Slice 5 · `PI-A11Y-001`)
+
+    /// The in-place open/close of a row's detail — the §D quiet detail and the
+    /// §E/§F heroes alike (R9: the hero grows **inside** the list, it is not a
+    /// replacing panel).
+    ///
+    /// The board renders no open/close transition at all for this (the §D note
+    /// "Tap a row to expand in place" is prose; `mapper-reference.md` §4.6
+    /// classifies it `specified-invariant`), so the duration is native-authored
+    /// and deliberately left at the value the row already shipped — this entry
+    /// exists to make it **pinnable** and, above all, to make it Reduce-Motion
+    /// gated. Before Slice 5 `toggleDetail` animated unconditionally, the one
+    /// un-gated motion left on the Poured row (`mapper-native.md` §4.2 GAP).
+    ///
+    /// Under Reduce Motion the disclosure is not slowed or softened — it is
+    /// removed: the row is *born* open, exactly as `Entrance` treats a row
+    /// insertion, and no clock is involved either way.
+    enum HeroDisclosure {
+        /// The animated open/close duration (`.easeInOut`), unchanged from the
+        /// shipped value.
+        static let duration: TimeInterval = 0.2
+
+        /// The duration to animate the disclosure over, or `nil` when the change
+        /// must be applied instantly. Pure so the Reduce-Motion contract is
+        /// testable without a view.
+        static func duration(reduceMotion: Bool) -> TimeInterval? {
+            reduceMotion ? nil : duration
+        }
+    }
+
     // MARK: Identity tick (mockup §C `.row .tick` · `SPEC` §1b "identity tick")
 
     /// The 2×13 brand-coloured tick that replaces the capsule agent badge in the

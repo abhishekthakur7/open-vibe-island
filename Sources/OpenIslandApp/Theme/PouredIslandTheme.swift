@@ -400,6 +400,11 @@ struct PouredIslandTheme: IslandTheme {
             Button(action: action) {
                 PouredApprovalButtonLabel(
                     title: title,
+                    // §F: the board prints `↵` on both submit CTAs
+                    // (`01-poured-island.html:1194`, `:1234`) and Return really
+                    // submits through `OverlayUICoordinator`, so the cap is an
+                    // honest affordance, not decoration.
+                    keycapGlyphs: PouredQuestionKeycaps.submit,
                     kind: .allow,
                     expands: false,
                     fillOverride: (

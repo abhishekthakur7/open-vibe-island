@@ -14,6 +14,12 @@ enum PouredParityScenario: String, CaseIterable, Codable, Sendable {
     // and doubly so here, because the driver reaches the peek *endpoint*
     // directly and never runs the 0.15s dwell (see `applyConfiguredEvent`).
     case b1HoverPeek = "B1-hover-peek"
+    // PI-A-002 (R7): the collapsed pill with more than one session waiting.
+    // The board draws no such frame — the authority is owner ruling R7 — so the
+    // manifest row is `specified-invariant`. This case exists because the
+    // rotation phase is only pinnable on the driver path: the plain
+    // `OPEN_ISLAND_HARNESS_*` route parses no `--poured-time-ms`.
+    case a3mPermissionQueue = "A3m-permission-queue"
 }
 
 enum PouredParityProfile: String, CaseIterable, Codable, Sendable { case notch = "notch-v1"; case topBar = "top-bar-v1" }
