@@ -17,6 +17,10 @@ struct PouredHeaderControls: View {
     static let headerControlButtonSize: CGFloat = 22
     static let headerControlSpacing: CGFloat = 8
     private static let headerTopPadding: CGFloat = 2
+    /// The gap between the single flush-left lane and the control cluster on the
+    /// top-bar / external profile (unchanged from the `HStack(spacing: 12)` this
+    /// profile always used — named so C4-2's lane bound can subtract it).
+    private static let topBarLaneGap: CGFloat = 12
 
     let providers: [UsageProviderPresentation]
     let usesNotchAwareLayout: Bool
@@ -58,7 +62,7 @@ struct PouredHeaderControls: View {
                 )
 
                 HStack(spacing: 0) {
-                    usageLaneView(providerGroups.left, alignment: .leading)
+                    usageLaneView(providerGroups.left, alignment: .leading, laneWidth: metrics.leftUsageWidth)
                         .frame(width: metrics.leftUsageWidth, alignment: .leading)
 
                     Color.clear
@@ -66,7 +70,7 @@ struct PouredHeaderControls: View {
 
                     HStack(spacing: Self.headerControlSpacing) {
                         if metrics.rightUsageWidth > 0, !providerGroups.right.isEmpty {
-                            usageLaneView(providerGroups.right, alignment: .trailing)
+                            usageLaneView(providerGroups.right, alignment: .trailing, laneWidth: metrics.rightUsageWidth)
                                 .frame(width: metrics.rightUsageWidth, alignment: .trailing)
                         }
                         openedHeaderButtons
@@ -77,15 +81,30 @@ struct PouredHeaderControls: View {
                 .padding(.top, Self.headerTopPadding)
             }
         } else {
-            HStack(spacing: 12) {
-                openedUsageSummary
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            // C4-2: the single flush-left lane needs the same hard bound. Its
+            // width is everything the band has left once both gutters, the
+            // control cluster and the gap before it are paid for — computed,
+            // not inferred from a `maxWidth: .infinity` the meters were free to
+            // ignore.
+            GeometryReader { geometry in
+                let laneWidth = max(
+                    0,
+                    geometry.size.width
+                        - (openedHeaderHorizontalPadding * 2)
+                        - openedHeaderButtonsWidth
+                        - Self.topBarLaneGap
+                )
 
-                openedHeaderButtons
+                HStack(spacing: Self.topBarLaneGap) {
+                    usageLaneView(providers, alignment: .leading, laneWidth: laneWidth)
+                        .frame(width: laneWidth, alignment: .leading)
+
+                    openedHeaderButtons
+                }
+                .padding(.leading, openedHeaderHorizontalPadding)
+                .padding(.trailing, openedHeaderHorizontalPadding)
+                .padding(.top, Self.headerTopPadding)
             }
-            .padding(.leading, openedHeaderHorizontalPadding)
-            .padding(.trailing, openedHeaderHorizontalPadding)
-            .padding(.top, Self.headerTopPadding)
         }
     }
 
@@ -117,26 +136,37 @@ struct PouredHeaderControls: View {
         }
     }
 
-    @ViewBuilder
-    private var openedUsageSummary: some View {
-        if providers.isEmpty == false {
-            PouredUsageSummary(providers: providers, lang: lang, ringDiameter: headerRingDiameter)
-        } else {
-            Color.clear
-        }
-    }
-
+    /// C4-2 (PI-X-001/I1-I2 · review round 1): the lane is **bounded**.
+    ///
+    /// Two things happen here that didn't before. `PouredUsageSummary` is told
+    /// the lane's real width, so `PouredHeaderMeterLane` can elide the
+    /// lowest-severity meter rather than let it overrun (the worst band always
+    /// survives — see that type for the full rule). And the lane `.clipped()`s
+    /// at its own frame, so even a meter the fitter chose to keep can only ever
+    /// truncate *inside* the lane instead of drawing under the mute / settings /
+    /// close cluster, which is what the 620pt notch capture showed. Elision is
+    /// visual only: every meter keeps its VoiceOver stop.
+    ///
+    /// Distribution across the wings is untouched (R15) — that is
+    /// `IslandHeaderLaneLayout.laneGroups`', not this function's, call.
     @ViewBuilder
     private func usageLaneView(
         _ providers: [UsageProviderPresentation],
-        alignment: Alignment
+        alignment: Alignment,
+        laneWidth: CGFloat
     ) -> some View {
         if providers.isEmpty {
             Color.clear
                 .frame(maxWidth: .infinity)
         } else {
-            PouredUsageSummary(providers: providers, lang: lang, ringDiameter: headerRingDiameter)
-                .frame(maxWidth: .infinity, alignment: alignment)
+            PouredUsageSummary(
+                providers: providers,
+                lang: lang,
+                ringDiameter: headerRingDiameter,
+                laneWidth: laneWidth
+            )
+            .frame(maxWidth: .infinity, alignment: alignment)
+            .clipped()
         }
     }
 

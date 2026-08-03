@@ -569,6 +569,28 @@ struct V6ClosedPill: View {
         return max(notchLaneLabelMaxWidth, lane)
     }
 
+    /// The width a notch-lane label may actually *render* into — the reserved
+    /// lane plus the trailing safety margin sitting between it and the modelled
+    /// notch edge (PI-X-001/G3, Slice 6 correction 2).
+    ///
+    /// `macbookOuterWidth` reserves `pad + glyph + trailingMargin + gap + lane`
+    /// per side, so those 4 points are already inside the pill's own half
+    /// reserve: painting into them moves **no** geometry — `notchLaneLabelWidth`
+    /// stays the width-math input, and every `*OuterWidth` static is untouched.
+    /// The clearance is real, not theoretical: `NSScreen.notchSize` over-reports
+    /// the physical cutout by 4pt (2 per side) on purpose, so a label that ends
+    /// at this width still stops short of the glass.
+    ///
+    /// Why it exists: at a 189pt reported notch and the 540pt panel ceiling the
+    /// lane resolves to 125.5pt, and the board's own §G″ sentence
+    /// (`Refactoring · 3 agents` at `.pill .lab`) measures a shade over that —
+    /// so the pill truncated a label the board draws whole while holding 4pt of
+    /// its own reserve empty.
+    static func notchLaneLabelRenderWidth(physicalNotchWidth: CGFloat, height: CGFloat) -> CGFloat {
+        notchLaneLabelWidth(physicalNotchWidth: physicalNotchWidth, height: height)
+            + notchLaneLabelTrailingMargin
+    }
+
     /// Intrinsic outer pill width for the MacBook layout — shared with
     /// `IslandPanelView`'s notch-morph container (AB-243); see
     /// `externalOuterWidth` doc above.

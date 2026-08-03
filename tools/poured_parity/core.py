@@ -243,7 +243,7 @@ def verify_manifests(require_ready: bool = False) -> dict[str, Any]:
         "A2m-working-many": ("rendered-canonical", "IslandDebugScenario.closedMultiRunning", "partial"),
         "A3-permission": ("rendered-canonical", "IslandDebugScenario.closedAttention", "partial"),
         "C4-stress-40": ("derived-validation", None, "not-located"),
-        "H1-completed": ("rendered-canonical", "IslandDebugScenario.completionCard", "partial"),
+        "H1-completed": ("rendered-canonical", "IslandDebugScenario.completedSuccess", "partial"),
     }
     for scenario_id, (expected_class, mapping, status) in expected_contract.items():
         row = by_id.get(scenario_id)

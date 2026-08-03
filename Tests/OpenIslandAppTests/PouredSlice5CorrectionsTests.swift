@@ -90,8 +90,14 @@ struct PouredSlice5CorrectionsTests {
         #expect(!source.contains("private func permissionModeChip("))
         // `.age` renders only while collapsed — "There is no `.age` element in §D".
         #expect(source.contains("if !showsDetail {\n                    Text(ageBadgeText(at: referenceDate))"))
-        // And the elapsed tail is suppressed on the open row.
-        #expect(source.contains("liveSuffix: showsDetail ? nil : liveElapsedSuffix(at: referenceDate)"))
+        // And the elapsed tail is suppressed on the open row. Slice 6 · G1 fills
+        // that slot with the board's `· N subagents live` suffix
+        // (`01-poured-island.html:1286`) — a fan-out reading, not an elapsed one,
+        // so D2's rule is intact: `liveElapsedSuffix` stays collapsed-only.
+        #expect(source.contains("liveSuffix: showsDetail"))
+        #expect(source.contains("? liveSubagentsSuffix(showsDetail: showsDetail)"))
+        #expect(source.contains(": liveElapsedSuffix(at: referenceDate)"))
+        #expect(!source.contains("liveSuffix: liveElapsedSuffix(at: referenceDate)"))
     }
 
     /// D3: the LIVE metadata cell reads the board's second-precision `1m 42s`,

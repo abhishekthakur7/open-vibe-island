@@ -15,6 +15,13 @@ struct IslandDebugSnapshot {
     /// scenario. `nil` (the default) leaves the real usage path untouched, so
     /// every pre-existing scenario renders exactly as before.
     var usageProviders: [UsageProviderPresentation]? = nil
+    /// Slice 6 · J1 (PI-X-001): the installed-agent display names to pin for the
+    /// §J reassurance pill. The live list is derived from whichever agents the
+    /// running machine has hooks for, so the board's
+    /// `Hooks installed for Claude, Codex, Gemini` was not reproducible in a
+    /// capture. `nil` (the default) leaves `AppModel.installedAgentDisplayNames`
+    /// deriving from real hook status, exactly as before.
+    var installedAgentNames: [String]? = nil
     /// Overlay remediation Phase 1 item 1.7 (P1.a): forces the lead row's
     /// expanded detail open via `\.islandRowExpandedByDefault`, so the
     /// `subagentsExpanded` scenario can capture Flight Deck's/Halo's §D/§G
@@ -89,6 +96,12 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
     case pouredSessionDetail
     case pouredMultiSelectQuestion
     case pouredCompactQuestion
+    // Poured parity Slice 6 (PI-X-001): the board's §H hero and §G″ pill.
+    // `completionCard`'s fixture is a Codex session with a 15-second run (no
+    // duration) and none of the board's copy, and no pre-existing closed
+    // scenario has a Claude running spotlight, so neither frame was reachable.
+    case completedSuccess
+    case closedTaskCounter
     case emptyState
 
     var id: String { rawValue }
@@ -139,6 +152,10 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
             "Poured §F′ — Multi-Select"
         case .pouredCompactQuestion:
             "Poured §F″ — Compact Question"
+        case .completedSuccess:
+            "Poured §H — Completed Success"
+        case .closedTaskCounter:
+            "Poured §G″ — Task Counter Pill"
         case .emptyState:
             "Empty State"
         }
@@ -190,6 +207,10 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
             "The Poured board's §F′: a single multi-select question — square checks, running count in the submit label, no descriptions and no freeform Other."
         case .pouredCompactQuestion:
             "The Poured board's §F″: the compact single question — a two-option Yes/Hold with no descriptions, no submit CTA and no keyboard hint."
+        case .completedSuccess:
+            "The Poured board's §H: one clean success expanded into the completion hero — outcome tile, model sub-line, the result as prose, duration/agent footer and the jump/reply/transcript/dismiss rail."
+        case .closedTaskCounter:
+            "The Poured board's §G″: a collapsed pill whose spotlight is a Claude session fanned out across subagents — left wing \"Refactoring · 3 agents\", right slot the ⏲ 2/5 task counter."
         case .emptyState:
             "Expanded surface with zero sessions — the empty scaffold."
         }
@@ -588,6 +609,50 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
                 questionPreselection: .firstOption
             )
 
+        case .completedSuccess:
+            // Poured parity Slice 6 (H1-completed). The board draws §H as a
+            // standalone 440px panel holding one completion card, so the fixture
+            // is a one-session list like §D's.
+            //
+            // Two seams are both required and neither is optional: the row must
+            // be the surface's *actionable* one (`shouldShowEmbeddedDetailBody`
+            // gates a completed row's hero on `isActionable`), and
+            // `forcesRowExpansion` must be set (a completed row in a
+            // click-opened list is collapsed by construction — PI-C-006). The
+            // pairing is what makes the §H hero reachable without a tap.
+            let session = AppearancePreviewFixtures.completedSuccess(now: now)
+            return IslandDebugSnapshot(
+                title: title,
+                summary: summary,
+                previewHeight: 360,
+                notchStatus: .opened,
+                notchOpenReason: .click,
+                islandSurface: .sessionList(actionableSessionID: session.id),
+                sessions: [session],
+                selectedSessionID: session.id,
+                forcesRowExpansion: true
+            )
+
+        case .closedTaskCounter:
+            // Poured parity Slice 6 (G3-task-pill). The right-slot resolver only
+            // reaches `.taskCounter` when the spotlight is a *running* session
+            // carrying `claudeMetadata.activeTasks` / `activeSubagents`
+            // (`IslandRightSlotResolver.taskReading(for:)`) — every other closed
+            // scenario spotlights a Codex fixture with no Claude metadata, so
+            // the slot was unreachable. `subagentsAndTasks` is that session, and
+            // it is the only one here so nothing outranks it.
+            let session = AppearancePreviewFixtures.subagentsAndTasks(now: now)
+            return IslandDebugSnapshot(
+                title: title,
+                summary: summary,
+                previewHeight: 78,
+                notchStatus: .closed,
+                notchOpenReason: nil,
+                islandSurface: .sessionList(),
+                sessions: [session],
+                selectedSessionID: session.id
+            )
+
         case .emptyState:
             return IslandDebugSnapshot(
                 title: title,
@@ -597,7 +662,9 @@ enum IslandDebugScenario: String, CaseIterable, Identifiable {
                 notchOpenReason: .click,
                 islandSurface: .sessionList(),
                 sessions: AppearancePreviewFixtures.empty,
-                selectedSessionID: nil
+                selectedSessionID: nil,
+                // J1: the board's own three (`01-poured-island.html:1535`).
+                installedAgentNames: ["Claude", "Codex", "Gemini"]
             )
         }
     }

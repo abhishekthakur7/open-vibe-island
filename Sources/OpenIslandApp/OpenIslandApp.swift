@@ -50,6 +50,10 @@ final class OpenIslandAppDelegate: NSObject, NSApplicationDelegate {
             // var — see `AppModel.debugSuppressesInstallHint` for why this can't
             // reach a real user.
             model.debugSuppressesInstallHint = harnessLaunchConfiguration.suppressInstallHint
+            // Poured Slice 6 (PI-X-001 I1/I2): harness-only, opt-in via env var
+            // — see `AppModel.debugAppearancePreviewScenarioOverride` for why
+            // this exists and why it can't reach a real user.
+            model.debugAppearancePreviewScenarioOverride = harnessLaunchConfiguration.previewScenario
             #if HALO_PARITY_TESTING
             if parityRequested {
                 model.haloParityBootstrapIsolation = HaloParityBootstrapIsolationProof(

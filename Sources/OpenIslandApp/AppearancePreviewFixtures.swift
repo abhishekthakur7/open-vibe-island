@@ -298,16 +298,20 @@ enum AppearancePreviewFixtures {
     /// A clean success completion — `outcome: .success` — mirroring the mockup
     /// §H card: `the-automator` on `docs/agents-md`, a rich `<strong>` + inline
     /// `code` result and a `43m` run length (`firstSeenAt` sits 43 minutes before
-    /// `updatedAt`). Finished 2 minutes ago so it stays inside the 5-minute
-    /// non-stale window and the completion card expands (the mockup's "12m" is
-    /// illustrative; the acceptance criterion is a *tabular* finished-ago). Pins
-    /// the Poured §4H Success badge + tabular duration that `completedInterrupted`
-    /// / `completedFailed` can't.
+    /// `updatedAt`). Pins the Poured §4H Success badge + tabular duration that
+    /// `completedInterrupted` / `completedFailed` can't.
+    ///
+    /// PI-X-001/H1 (correction 2): finished **12 minutes** ago, not 2 — the
+    /// board's sub-line is the literal `Fable 5 · finished 12m ago`
+    /// (`01-poured-island.html:1399`), and an illustrative-only reading of it
+    /// left the §H hero capture one word off the board. `firstSeenAt` moves with
+    /// it so the 43-minute duration the board's footer prints is unchanged.
+    /// Expansion no longer rides the 5-minute non-stale window: the H1 scenario
+    /// forces it (`IslandDebugScenario.completedSuccess.forcesRowExpansion`).
     static func completedSuccess(now: Date) -> AgentSession {
-        // -150s: 2 minutes ago, mid "2m" age bucket (safely off a 60s boundary
-        // per the snapshot harness's determinism contract) and inside the 5-minute
-        // non-stale window so the card expands.
-        let finishedAt = now.addingTimeInterval(-150)
+        // -12m + 10s: mid "12m" age bucket, safely off a 60s boundary per the
+        // snapshot harness's determinism contract.
+        let finishedAt = now.addingTimeInterval(-12 * 60 - 10)
         return AgentSession(
             id: "fixture-completed-success",
             title: "Claude · the-automator",
@@ -343,6 +347,11 @@ enum AppearancePreviewFixtures {
                 - 2 files changed
                 - Support matrix now matches README
                 """,
+                // PI-X-001/H1: the §H hero's sub-line restates the model
+                // (`Fable 5 · finished 12m ago`, `01-poured-island.html:1399`).
+                // `displayModelName` shortens a raw id, so the board's literal
+                // string is produced from one rather than hard-coded.
+                model: "claude-fable-5-20260101",
                 worktreeBranch: "docs/agents-md"
             )
         )
@@ -752,55 +761,72 @@ enum AppearancePreviewFixtures {
 
     // MARK: - Subagents + tasks (AB-326 item 8)
 
-    /// Running Claude session fanned out across three subagents (Explore /
-    /// general-purpose / Plan) with a five-item task list (two completed, one
-    /// in progress, two pending) so the row's orchestration detail is fully
-    /// exercised.
+    /// Running Claude session fanned out across three subagents with a five-item
+    /// task list (two completed, one in progress, two pending) so the row's
+    /// orchestration detail is fully exercised.
+    ///
+    /// PI-X-001/G (correction 2, R5 exact-copy acceptance): every string here is
+    /// the board's §G session verbatim (`01-poured-island.html:1281-1321` for the
+    /// expanded frame, `:1333-1372` for G′/G″), not a native-flavoured paraphrase:
+    ///
+    /// - workspace `the-automator` on branch `main`, so G2's disambiguator reads
+    ///   the board's `main · 3 subagents`.
+    /// - narration `Refactoring hook installers` — verb from `currentTool`,
+    ///   object from `currentToolInputPreview`, exactly the seam
+    ///   `duplicateWorkspaceTrioReleaseSession` uses (the shared `ActivityNarrator`
+    ///   hard-wires `Task` to `Orchestrating`, which is *not* the board's verb).
+    ///   The expanded `.act` adds the live rollup (`· 3 subagents live`), the
+    ///   collapsed one stops at the object, and the closed pill says
+    ///   `Refactoring · 3 agents` (`:1364-1365`).
+    /// - the board's three subagent rows (`explore` / `edit` / `test`) at its own
+    ///   elapsed times (`0:42` / `1:15` / `0:08`), and its five todos.
     static func subagentsAndTasks(now: Date) -> AgentSession {
         AgentSession(
             id: "fixture-subagents-tasks",
-            title: "Claude · open-vibe-island",
+            title: "Claude · the-automator",
             tool: .claudeCode,
             origin: .demo,
             attachmentState: .attached,
             phase: .running,
-            summary: "Coordinating the overlay redesign rollout.",
+            summary: "Refactoring the shared hook installers.",
             updatedAt: now.addingTimeInterval(-6),
             jumpTarget: JumpTarget(
                 terminalApp: "Ghostty",
-                workspaceName: "open-vibe-island",
-                paneTitle: "claude ~/open-vibe-island",
+                workspaceName: "the-automator",
+                paneTitle: "claude ~/the-automator",
                 terminalSessionID: "fixture-subagents-tasks"
             ),
             claudeMetadata: ClaudeSessionMetadata(
-                lastUserPrompt: "Drive the redesign tickets in parallel.",
-                currentTool: "Task",
+                lastUserPrompt: "Refactor the per-agent hook installers in parallel.",
+                currentTool: "Refactoring",
+                currentToolInputPreview: "hook installers",
+                worktreeBranch: "main",
                 activeSubagents: [
                     ClaudeSubagentInfo(
                         agentID: "subagent-explore",
-                        agentType: "Explore",
-                        taskDescription: "Map the theme token surface",
+                        agentType: "explore",
+                        taskDescription: "Map every ClaudeHooks call site",
                         startedAt: now.addingTimeInterval(-42)
                     ),
                     ClaudeSubagentInfo(
-                        agentID: "subagent-general",
-                        agentType: "general-purpose",
-                        taskDescription: "Port the session rows to Poured 2.0",
+                        agentID: "subagent-edit",
+                        agentType: "edit",
+                        taskDescription: "Rewrite CodexHooks payload model",
                         startedAt: now.addingTimeInterval(-75)
                     ),
                     ClaudeSubagentInfo(
-                        agentID: "subagent-plan",
-                        agentType: "Plan",
-                        taskDescription: "Sequence the Flight Deck follow-ups",
+                        agentID: "subagent-test",
+                        agentType: "test",
+                        taskDescription: "Add BridgeCodec round-trip tests",
                         startedAt: now.addingTimeInterval(-8)
                     ),
                 ],
                 activeTasks: [
-                    ClaudeTaskInfo(id: "task-1", title: "Palette + material tokens", status: .completed),
-                    ClaudeTaskInfo(id: "task-2", title: "Closed-pill ambient states", status: .completed),
-                    ClaudeTaskInfo(id: "task-3", title: "Header + meters + scaffold", status: .inProgress),
-                    ClaudeTaskInfo(id: "task-4", title: "Session rows", status: .pending),
-                    ClaudeTaskInfo(id: "task-5", title: "Permission hero + conformance", status: .pending),
+                    ClaudeTaskInfo(id: "task-1", title: "Extract shared hook installer", status: .completed),
+                    ClaudeTaskInfo(id: "task-2", title: "Unify NDJSON envelope codec", status: .completed),
+                    ClaudeTaskInfo(id: "task-3", title: "Rewrite per-agent payload models", status: .inProgress),
+                    ClaudeTaskInfo(id: "task-4", title: "Wire fail-open fallback", status: .pending),
+                    ClaudeTaskInfo(id: "task-5", title: "Update AGENTS.md matrix", status: .pending),
                 ]
             )
         )
@@ -830,9 +856,9 @@ enum AppearancePreviewFixtures {
     /// `docs/agents-md` / `Success` / `43m` completion. The *identity* matches;
     /// the copy does not (see the divergence table below). They are rebuilt
     /// against a **shifted `now`** rather than copied: passing
-    /// `now - 428s` to the trio lands its `-52s` row on the board's `8m`, and
-    /// `now - 570s` lands `completedSuccess`'s `-150s` row on the board's `12m`.
-    /// Every nested offset (subagent `startedAt`, the 43-minute `firstSeenAt`)
+    /// `now - 428s` to the trio lands its `-52s` row on the board's `8m`.
+    /// `completedSuccess` needs no shift at all since correction 2 — its own
+    /// `-730s` *is* the board's `12m`. Every nested offset (subagent `startedAt`, the 43-minute `firstSeenAt`)
     /// shifts with it, so the reused payloads stay internally consistent and no
     /// second copy of them can drift.
     ///
@@ -869,7 +895,7 @@ enum AppearancePreviewFixtures {
             pouredGroupedSixQuestion(now: now),
             pouredGroupedSixRunning(now: now),
             duplicateWorkspaceTrio(now: now.addingTimeInterval(-8 * 60 + 52))[1],
-            completedSuccess(now: now.addingTimeInterval(-12 * 60 + 150)),
+            completedSuccess(now: now),
             pouredGroupedSixInterrupted(now: now),
         ]
     }
@@ -1222,9 +1248,22 @@ enum AppearancePreviewFixtures {
 
     // MARK: - Usage meters (AB-326 item 9)
 
+    /// PI-I-001 (correction 2) — countdown floor padding.
+    ///
+    /// `UsageCountdownFormatter` **floors** (`DateComponentsFormatter` drops the
+    /// sub-unit remainder), so a window built at exactly `now + 18h40m` renders
+    /// `18h 40m` for one instant and `18h 39m` for every second after — which is
+    /// what the Slice 6 captures recorded, one minute off the board. Every reset
+    /// offset below therefore carries `+59s`, so the *rendered* string is the
+    /// board-exact value throughout a capture window (and for a whole minute of
+    /// live preview) instead of only at t=0.
+    private static let countdownFloorPad: TimeInterval = 59
+
     /// Fixture usage providers exposed for the header meter path. Claude carries
     /// two windows (`5h` 34%, `7d` 78%); Codex carries one (`7d` 92%). Reset
-    /// times are offsets from `now` so the "resets in …" readouts stay stable.
+    /// times are offsets from `now` (plus ``countdownFloorPad``) so the
+    /// "resets in …" readouts render the board's `2h 10m` / `3d 4h` / `18h 40m`
+    /// and stay stable.
     /// Stage 2 injects these into the settings preview header; the debug
     /// `usageMeters` scenario feeds them to the live overlay header.
     static func usageProviders(now: Date) -> [UsageProviderPresentation] {
@@ -1237,13 +1276,13 @@ enum AppearancePreviewFixtures {
                         id: "claude-5h",
                         label: "5h",
                         usedPercentage: 34,
-                        resetsAt: now.addingTimeInterval(2 * 3_600 + 10 * 60)
+                        resetsAt: now.addingTimeInterval(2 * 3_600 + 10 * 60 + countdownFloorPad)
                     ),
                     UsageWindowPresentation(
                         id: "claude-7d",
                         label: "7d",
                         usedPercentage: 78,
-                        resetsAt: now.addingTimeInterval(3 * 86_400 + 4 * 3_600)
+                        resetsAt: now.addingTimeInterval(3 * 86_400 + 4 * 3_600 + countdownFloorPad)
                     ),
                 ]
             ),
@@ -1251,11 +1290,17 @@ enum AppearancePreviewFixtures {
                 id: "codex",
                 title: "Codex",
                 windows: [
+                    // I2 (PI-I-001): the board's third meter reads
+                    // `Codex · 7d · Pro` / `resets in 18h 40m`
+                    // (`01-poured-island.html:1477-1478`). `label` is freeform
+                    // presentation text, so the plan tier rides it without a
+                    // schema change, and the reset offset is the board's exact
+                    // 18h40m rather than a round 19h.
                     UsageWindowPresentation(
                         id: "codex-7d",
-                        label: "7d",
+                        label: "7d · Pro",
                         usedPercentage: 92,
-                        resetsAt: now.addingTimeInterval(19 * 3_600)
+                        resetsAt: now.addingTimeInterval(18 * 3_600 + 40 * 60 + countdownFloorPad)
                     ),
                 ]
             ),
@@ -1277,13 +1322,13 @@ enum AppearancePreviewFixtures {
                         id: "claude-5h",
                         label: "5h",
                         usedPercentage: 34,
-                        resetsAt: now.addingTimeInterval(2 * 3_600 + 10 * 60)
+                        resetsAt: now.addingTimeInterval(2 * 3_600 + 10 * 60 + countdownFloorPad)
                     ),
                     UsageWindowPresentation(
                         id: "claude-7d",
                         label: "7d",
                         usedPercentage: 78,
-                        resetsAt: now.addingTimeInterval(3 * 86_400 + 4 * 3_600)
+                        resetsAt: now.addingTimeInterval(3 * 86_400 + 4 * 3_600 + countdownFloorPad)
                     ),
                 ]
             ),

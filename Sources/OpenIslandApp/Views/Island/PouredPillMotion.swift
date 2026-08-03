@@ -167,11 +167,39 @@ enum PouredPillMotion {
         /// tabular `done/total` fraction.
         static let taskChipSpacing: CGFloat = 3
 
+        /// PI-X-001/G3 (correction 2): the §G″ counter is the board's `.count`
+        /// capsule, not bare text — `background:rgba(242,245,251,.1)` with `--t1`
+        /// ink (`01-poured-island.html:174-176`). `--t1` is paper at `.96`, the
+        /// same primary ink the pill's own label uses; the box reuses
+        /// `badgeHPadding` / `badgeMinDiameter` / `badgeCornerRadius` above,
+        /// because the board states one `.count` rule for both right-slot kinds.
+        static let countBadgeFillOpacity: Double = 0.1
+        static let countBadgeInkOpacity: Double = 0.96
+
         /// Worst-window usage dial (`SPEC` §I "small dial + `92%`"): a compact
-        /// conic ring beside the tabular percentage.
-        static let usageDialDiameter: CGFloat = 13
-        static let usageDialLineWidth: CGFloat = 2.5
+        /// conic ring beside the tabular percentage, inside a tinted chip.
+        ///
+        /// PI-I-001/I3 proportions: the board's chip dial is `r15` / `stroke 6`
+        /// on a `viewBox 0 0 42 42` rendered at 12px
+        /// (`01-poured-island.html:1503-1504`) — a stroke exactly **1/5** of the
+        /// ring path's diameter, and 12px of total ink. A SwiftUI `Circle` in a
+        /// `d`-point frame draws its path at `d` and the stroke straddles it, so
+        /// `10 + 2 = 12` reproduces both the extent and the ratio (native drew
+        /// `13 + 2.5`, a hair heavier and wider than the board).
+        static let usageDialDiameter: CGFloat = 10
+        static let usageDialLineWidth: CGFloat = 2
         static let usageDialValueSpacing: CGFloat = 3
+        /// The chip dial's track — the band colour at `rgba(219,82,82,.3)`
+        /// (`:1503`), not the neutral paper the bare dial used.
+        static let usageDialTrackOpacity: Double = 0.3
+
+        /// The §I′ readout's `.chip` box (`01-poured-island.html:286-289`,
+        /// `:1502`): `padding:2px 7px; border-radius:6px` over the band colour at
+        /// `.16`.
+        static let usageChipHPadding: CGFloat = 7
+        static let usageChipVPadding: CGFloat = 2
+        static let usageChipCornerRadius: CGFloat = 6
+        static let usageChipFillOpacity: Double = 0.16
 
         /// Usage threshold cutoffs (`SPEC` §I / §3.2 — the shipped `usageColor`
         /// rule): `≥ critical` red, `≥ warn` gold, else green. The pill only ever

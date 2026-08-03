@@ -14,9 +14,30 @@ struct AppearanceSettingsPane: View {
     @State private var previewMode: UnifiedBars.Mode = .idle
     @State private var previewAutoCycle: Bool = true
     /// AB-326: which conformance scenario the session-list preview renders.
-    @State private var previewScenario: AppearancePreviewScenario = .list
+    @State private var previewScenario: AppearancePreviewScenario
 
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    init(model: AppModel) {
+        self.model = model
+        _previewScenario = State(
+            initialValue: Self.initialPreviewScenario(
+                override: model.debugAppearancePreviewScenarioOverride
+            )
+        )
+    }
+
+    /// Poured Slice 6 (PI-X-001 I1/I2): the scenario the picker starts on.
+    /// `nil` — every normal launch — keeps the AB-326 `.list` default; a value
+    /// arrives only from the harness-only `OPEN_ISLAND_HARNESS_PREVIEW_SCENARIO`
+    /// env var (see `AppModel.debugAppearancePreviewScenarioOverride`), giving
+    /// deterministic Settings-preview capture without driving the transient
+    /// `.menu` picker through accessibility.
+    static func initialPreviewScenario(
+        override: AppearancePreviewScenario?
+    ) -> AppearancePreviewScenario {
+        override ?? .list
+    }
 
     private static let autoCycleOrder: [UnifiedBars.Mode] = [.idle, .running, .waiting]
     private static let autoCycleInterval: TimeInterval = 2.0

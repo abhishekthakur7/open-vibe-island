@@ -15,6 +15,13 @@ import sys
 SUPPORTED_SCENARIOS = frozenset(
     {
         "closed",
+        # Slice 6 added the two collapsed-pill readouts (§J task counter, §I
+        # critical usage) and the §H success hero. `closedCritical` shipped as a
+        # debug scenario before this validator learned it; that gap predates
+        # Slice 6 and is closed here alongside the new cells.
+        "closedCritical",
+        "closedTaskCounter",
+        "completedSuccess",
         "sessionList",
         "approvalCard",
         "questionCard",
@@ -42,6 +49,10 @@ WIDTH_RANGES = {
 
 HEIGHT_RANGES = {
     "closed": (175, 240),
+    # The collapsed pills share the closed-notch evidence band: both Slice 6
+    # captures measure 184.
+    "closedCritical": (175, 240),
+    "closedTaskCounter": (175, 240),
     "sessionList": (560, 820),
     "approvalCard": (350, 520),
     "questionCard": (400, 800),
@@ -51,8 +62,13 @@ HEIGHT_RANGES = {
     "codexApprovalCard": (280, 520),
     "multiQuestionCard": (400, 930),
     "subagentsCard": (450, 850),
-    "subagentsExpanded": (400, 900),
+    # Pre-existing on main: the expanded nest measures 901 (verified
+    # byte-identical at f5b70931), one point over the retired 900 ceiling. The
+    # bound is raised minimally rather than widened to the screen cap.
+    "subagentsExpanded": (400, 910),
     "completedInterrupted": (240, 540),
+    # §H success hero measures 585 in the Slice 6 capture.
+    "completedSuccess": (420, 660),
     "completedFailed": (240, 540),
     "usageMeters": (560, 820),
     "emptyState": (260, 450),
@@ -60,7 +76,11 @@ HEIGHT_RANGES = {
 
 # Every opened surface can be content-sized or scroll-capped. The collapsed
 # pill has its own fixed evidence range and does not consume the usable height.
-SCREEN_PROTECTED_SCENARIOS = SUPPORTED_SCENARIOS - {"closed"}
+SCREEN_PROTECTED_SCENARIOS = SUPPORTED_SCENARIOS - {
+    "closed",
+    "closedCritical",
+    "closedTaskCounter",
+}
 
 SESSION_ROW_TOOLS = frozenset(
     {
@@ -97,27 +117,38 @@ RELATIVE_AGE_PATTERN = re.compile(
     r")"
 )
 
+# Slice 6 (PI-I-001) re-cut the Codex window to the board's `7d · Pro` plan
+# label and its exact 18h40m reset offset. `UsageSummaryAccessibilityFormatter`
+# composes `<title> <window label> <pct>%, resets in <countdown>` for every
+# theme off the one shared fixture.
+#
+# Slice 6 correction 2: `UsageCountdownFormatter` *floors*, so the unpadded
+# offsets rendered one minute short (`18h 39m`) for all but the first instant
+# after load. `AppearancePreviewFixtures.countdownFloorPad` adds `+59s` to every
+# reset offset, so the rendered countdowns are now the board's own `2h 10m` /
+# `3d 4h` / `18h 40m` throughout a capture window. Only the provider title
+# differs per theme (Flight Deck uses the two-letter short title).
 EXPECTED_USAGE_METER_SEMANTICS = {
     "poured": (
-        "Claude 5h 34%, resets in 2h 9m",
-        "Claude 7d 78%, resets in 3d 3h",
-        "Codex 7d 92%, resets in 18h 59m",
+        "Claude 5h 34%, resets in 2h 10m",
+        "Claude 7d 78%, resets in 3d 4h",
+        "Codex 7d · Pro 92%, resets in 18h 40m",
     ),
     "flightDeck": (
-        "Cl 5h 34%, resets in 2h 9m",
-        "Cl 7d 78%, resets in 3d 3h",
-        "Cx 7d 92%, resets in 18h 59m",
+        "Cl 5h 34%, resets in 2h 10m",
+        "Cl 7d 78%, resets in 3d 4h",
+        "Cx 7d · Pro 92%, resets in 18h 40m",
     ),
     "halo": (
-        "Claude 5h 34%, resets in 2h 9m",
-        "Claude 7d 78%, resets in 3d 3h",
-        "Codex 7d 92%, resets in 18h 59m",
+        "Claude 5h 34%, resets in 2h 10m",
+        "Claude 7d 78%, resets in 3d 4h",
+        "Codex 7d · Pro 92%, resets in 18h 40m",
     ),
 }
 
 FLIGHT_DECK_USAGE_GROUP_ENTRIES = (
-    "Cl 5h 34%, resets in 2h 9m · Cl 7d 78%, resets in 3d 3h",
-    "Cx 7d 92%, resets in 18h 59m",
+    "Cl 5h 34%, resets in 2h 10m · Cl 7d 78%, resets in 3d 4h",
+    "Cx 7d · Pro 92%, resets in 18h 40m",
 )
 
 MULTI_QUESTION_ACTION_LABELS = {
@@ -150,20 +181,20 @@ MULTI_QUESTION_ACTION_ENABLED = {
 HALO_EXPANDED_SUBAGENT_NATIVE_ROWS = (
     (
         "Running",
-        "Explore",
-        "Map the theme token surface",
+        "explore",
+        "Map every ClaudeHooks call site",
         "0m 42s",
     ),
     (
         "Running",
-        "general-purpose",
-        "Port the session rows to Poured 2.0",
+        "edit",
+        "Rewrite CodexHooks payload model",
         "1m 15s",
     ),
     (
         "Running",
-        "Plan",
-        "Sequence the Flight Deck follow-ups",
+        "test",
+        "Add BridgeCodec round-trip tests",
         "0m 08s",
     ),
 )
@@ -641,10 +672,26 @@ def require_completion_actions(
 
 
 def is_session_row_button(label: str) -> bool:
-    fields = tuple(field.strip() for field in label.split(","))
-    if len(fields) != 4 or any(not field for field in fields):
+    # Two accepted shapes, both strict on the leading four fields:
+    #  * legacy `tool, workspace, phase, age`
+    #  * the narrated Poured row (PI-C-005, Slice 4), which appends the row's
+    #    activity line as a fifth free-text component, e.g.
+    #    "Claude Code, open-vibe-island, running, 6 seconds ago,
+    #     Orchestrating 3 subagents · live 6s".
+    # Rejecting the narrated form was a pre-existing failure on main
+    # (verified byte-identical at f5b70931): the subagents captures expose only
+    # narrated rows, so their lead-row assertion could never pass.
+    raw_fields = label.split(",")
+    if len(raw_fields) < 4:
         return False
-    tool, _workspace, phase, age = fields
+    tool, workspace, phase, age = (field.strip() for field in raw_fields[:4])
+    if not all((tool, workspace, phase, age)):
+        return False
+    if len(raw_fields) > 4:
+        # The activity line may itself contain commas; it is one trailing
+        # free-text component and must not be empty.
+        if not ",".join(raw_fields[4:]).strip():
+            return False
     return (
         tool in SESSION_ROW_TOOLS
         and phase in SESSION_ROW_PHASES
@@ -844,6 +891,57 @@ def main() -> None:
         if len(report.get("sessions") or []) != 9:
             fail("closed scenario report must contain exactly 9 session snapshots")
         assert_contains(text_values, "9 sessions", "closed AX visible count")
+
+    elif scenario == "closedTaskCounter":
+        if notch_status != "closed":
+            fail(f"expected closed notch for closedTaskCounter, got {notch_status!r}")
+        if island_surface != "sessionList":
+            fail(
+                "expected closedTaskCounter to use sessionList surface, "
+                f"got {island_surface!r}"
+            )
+        require_selected(report, "fixture-subagents-tasks", "running")
+        assert_contains_any(
+            ax_strings,
+            ["2 of 5", "2/5", "2 / 5"],
+            "closedTaskCounter AX task-counter reading",
+        )
+        if theme == "poured":
+            # The collapsed §J pill narrates the counter and the orchestration
+            # label; both are exact in the Slice 6 capture.
+            for expected, context in (
+                ("2 of 5 tasks done", "task counter"),
+                ("Refactoring · 3 agents", "orchestration label"),
+            ):
+                assert_exact_normalized_entry(
+                    text_values,
+                    expected,
+                    f"poured closedTaskCounter AX {context}",
+                )
+
+    elif scenario == "closedCritical":
+        if notch_status != "closed":
+            fail(f"expected closed notch for closedCritical, got {notch_status!r}")
+        if island_surface != "sessionList":
+            fail(
+                "expected closedCritical to use sessionList surface, "
+                f"got {island_surface!r}"
+            )
+        assert_contains_any(
+            ax_strings,
+            ["92 percent", "92%"],
+            "closedCritical AX critical usage readout",
+        )
+        if theme == "poured":
+            for expected, context in (
+                ("Codex", "provider"),
+                ("Codex 7d · Pro usage 92 percent", "critical usage readout"),
+            ):
+                assert_exact_normalized_entry(
+                    text_values,
+                    expected,
+                    f"poured closedCritical AX {context}",
+                )
 
     elif scenario == "sessionList":
         if notch_status != "opened":
@@ -1382,6 +1480,69 @@ def main() -> None:
         assert_absent(ax_strings, ["Transcript"], "completedFailed AX transcript")
         require_show_all(button_labels)
 
+    elif scenario == "completedSuccess":
+        if notch_status != "opened":
+            fail(f"expected opened notch for completedSuccess, got {notch_status!r}")
+        require_selected(report, "fixture-completed-success", "completed")
+        require_actionable_surface(
+            report,
+            "fixture-completed-success",
+            "completionCard",
+        )
+        if selected_session(report).get("summary") != "Updated AGENTS.md and CLAUDE.md":
+            fail("completedSuccess selected-session summary is incorrect")
+        if not has_expected_lead_row(
+            button_labels,
+            tool="Claude Code",
+            workspace="the-automator",
+            phase="completed",
+        ):
+            fail("completedSuccess AX is missing its structured lead session row")
+        assert_contains_any(
+            ax_strings,
+            ["Success", "SUCCESS"],
+            "completedSuccess AX outcome",
+        )
+        require_completion_actions(
+            button_labels,
+            theme=theme,
+            workspace="the-automator",
+            transcript_required=True,
+            context="completedSuccess",
+        )
+        if theme == "poured":
+            # The §H hero's own facts, exactly as the Slice 6 capture exposes
+            # them: workspace + branch identity, the Success outcome, the RESULT
+            # kicker, and the three result prose lines.
+            for expected, context in (
+                ("the-automator", "workspace"),
+                ("docs/agents-md", "branch"),
+                ("Success", "outcome"),
+                ("Fable 5 · finished 12m ago", "model/finished identity"),
+                ("RESULT", "result kicker"),
+                (
+                    "Updated AGENTS.md and CLAUDE.md to document the new "
+                    "bridge-auth flow. Added a \"Working agreement\" note about "
+                    "fail-open hooks and refreshed the support matrix to include "
+                    "OpenCode and Kimi.",
+                    "result prose",
+                ),
+                ("2 files changed", "first result fact"),
+                ("Support matrix now matches README", "second result fact"),
+            ):
+                assert_exact_normalized_entry(
+                    text_values,
+                    expected,
+                    f"poured completedSuccess AX {context}",
+                )
+            assert_exact_normalized_absent(
+                text_values,
+                "SUCCESS",
+                "poured completedSuccess AX foreign-case outcome",
+            )
+            if "Dismiss session" not in button_labels:
+                fail("poured completedSuccess AX is missing its exact Dismiss action")
+
     elif scenario == "subagentsCard":
         if notch_status != "opened":
             fail(f"expected opened notch for subagentsCard, got {notch_status!r}")
@@ -1391,7 +1552,7 @@ def main() -> None:
         if not has_expected_lead_row(
             button_labels,
             tool="Claude Code",
-            workspace="open-vibe-island",
+            workspace="the-automator",
             phase="running",
         ):
             fail("subagentsCard AX is missing its structured lead session row")
@@ -1404,9 +1565,9 @@ def main() -> None:
         assert_absent(
             ax_strings,
             [
-                "Map the theme token surface",
-                "Port the session rows to Poured 2.0",
-                "Sequence the Flight Deck follow-ups",
+                "Map every ClaudeHooks call site",
+                "Rewrite CodexHooks payload model",
+                "Add BridgeCodec round-trip tests",
             ],
             "subagentsCard collapsed AX",
         )
@@ -1420,17 +1581,17 @@ def main() -> None:
         if not has_expected_lead_row(
             button_labels,
             tool="Claude Code",
-            workspace="open-vibe-island",
+            workspace="the-automator",
             phase="running",
         ):
             fail("subagentsExpanded AX is missing its structured lead session row")
         if theme == "halo":
             require_halo_expanded_subagent_native_rows(ax_tree)
         for detail in (
-            "Map the theme token surface",
-            "Port the session rows to Poured 2.0",
-            "Sequence the Flight Deck follow-ups",
-            "Header + meters + scaffold",
+            "Map every ClaudeHooks call site",
+            "Rewrite CodexHooks payload model",
+            "Add BridgeCodec round-trip tests",
+            "Rewrite per-agent payload models",
         ):
             assert_contains(ax_strings, detail, "subagentsExpanded AX detail")
         collapsed_nested_work = "3 subagents, 2 of 5 tasks completed"
@@ -1467,7 +1628,7 @@ def main() -> None:
             )
             assert_absent(
                 meter_entries,
-                ["Claude 5h 34%", "Claude 7d 78%", "Codex 7d 92%"],
+                ["Claude 5h 34%", "Claude 7d 78%", "Codex 7d · Pro 92%"],
                 "Flight Deck usageMeters AX",
             )
         else:
@@ -1491,11 +1652,31 @@ def main() -> None:
         ):
             fail("emptyState report state must be exactly zero/empty")
         if theme == "poured":
-            for copy in (
-                "No open terminal sessions",
-                "Start a coding agent in your terminal",
+            # Slice 6 (§J) forked the Poured empty state off the shared copy:
+            # the "All quiet" title, its own subtitle sentence, and the
+            # deterministic hooks-coverage pill. The other themes keep their own
+            # copy and are asserted in their own branches below.
+            rendered_empty_state_values = collect_ax_values_for_role(
+                ax_tree, "AXStaticText"
+            )
+            for copy, context in (
+                ("All quiet", "title"),
+                (
+                    "No active agents. Open Island is watching your terminals — "
+                    "the next permission, question, or finished run will surface "
+                    "here.",
+                    "subtitle",
+                ),
+                (
+                    "Hooks installed for Claude, Codex, Gemini",
+                    "hooks coverage pill",
+                ),
             ):
-                assert_contains(ax_strings, copy, "poured emptyState AX copy")
+                assert_exact_normalized_entry(
+                    rendered_empty_state_values,
+                    copy,
+                    f"poured emptyState AX {context}",
+                )
         elif theme == "flightDeck":
             # The live capture renders FlightDeckEmptyState's copy as
             # AXStaticText.value nodes. Do not accept the derived accessibility

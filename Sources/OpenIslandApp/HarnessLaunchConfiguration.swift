@@ -26,6 +26,14 @@ struct HarnessLaunchConfiguration {
     /// unset var changes nothing for existing capture runs — only an
     /// explicit `OPEN_ISLAND_HARNESS_ENABLE_KEY_MONITOR=1` opts in.
     let enableKeyMonitor: Bool
+    /// Poured Slice 6 (PI-X-001 I1/I2): the Settings → Appearance preview
+    /// scenario the pane should start on. The §I meter card renders *only*
+    /// inside that preview, and its `.menu` `Picker` opens a transient menu
+    /// that accessibility automation cannot drive, so evidence capture had no
+    /// deterministic driver. `nil` for an absent or unrecognized value, so an
+    /// unset var leaves the pane's own `.list` default untouched — the same
+    /// harness-only seam shape as `AppModel.debugInstalledAgentNamesOverride`.
+    let previewScenario: AppearancePreviewScenario?
     let shouldStartBridge: Bool
     let shouldPerformBootAnimation: Bool
     let captureDelay: TimeInterval?
@@ -54,6 +62,9 @@ struct HarnessLaunchConfiguration {
         enableKeyMonitor = Self.boolValue(
             environment["OPEN_ISLAND_HARNESS_ENABLE_KEY_MONITOR"],
             default: false
+        )
+        previewScenario = Self.previewScenarioValue(
+            from: environment["OPEN_ISLAND_HARNESS_PREVIEW_SCENARIO"]
         )
         shouldStartBridge = Self.boolValue(
             environment["OPEN_ISLAND_HARNESS_START_BRIDGE"],
@@ -243,6 +254,21 @@ struct HarnessLaunchConfiguration {
         }
 
         return IslandDebugScenario.allCases.first { scenario in
+            scenario.rawValue.caseInsensitiveCompare(normalized) == .orderedSame
+        }
+    }
+
+    private static func previewScenarioValue(from rawValue: String?) -> AppearancePreviewScenario? {
+        guard let rawValue else {
+            return nil
+        }
+
+        let normalized = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty else {
+            return nil
+        }
+
+        return AppearancePreviewScenario.allCases.first { scenario in
             scenario.rawValue.caseInsensitiveCompare(normalized) == .orderedSame
         }
     }

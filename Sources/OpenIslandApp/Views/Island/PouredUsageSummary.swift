@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import OpenIslandCore
 
@@ -26,6 +27,107 @@ enum PouredUsageMetrics {
     /// The §I dial stroke, proportional to the mockup's `stroke-width 5` on its
     /// `viewBox 42` dial scaled up to 52pt.
     static let meterDialLineWidth: CGFloat = 6
+    /// The §I **card** dial's unused-track alpha — `rgba(242,245,251,.1)`
+    /// (`01-poured-island.html:1456`). Fainter than the §C header ring's `.12`
+    /// (`:229`), which R4-8 pinned and which must not move with it.
+    static let meterDialTrackOpacity: Double = 0.1
+}
+
+/// The §C header meter lane's **hard trailing bound and its overflow rule**
+/// (C4-2 · PI-X-001/I1-I2, review round 1).
+///
+/// **The defect.** `PouredHeaderControls` hands each usage lane a fixed
+/// `.frame(width:)` that never clipped, and `PouredUsageWindowRing`'s label
+/// block is `.fixedSize(horizontal: true)` — so a lane holding more meters than
+/// it has room for simply drew past its own frame. At the shipped 620pt notch
+/// profile with the three-window fixture that put `CODEX 7D · PRO` /
+/// `resets 18h 40m` **under** the mute / settings / close cluster. The board
+/// never lets a meter touch the controls (`01-poured-island.html:781-796`).
+///
+/// **The rule.** Severity-first, deterministic, and independent of render
+/// order:
+/// 1. If every meter fits (`Σ widths + spacing·(n−1) ≤ availableWidth`), all of
+///    them render, in board order.
+/// 2. Otherwise meters are dropped one at a time from the **bottom of a
+///    severity ranking** — `critical` outranks `warn` outranks `fine`, ties
+///    broken by the higher percentage, then by board order — until the rest
+///    fit. The worst band is therefore the last thing to go: a header that can
+///    only afford one meter shows the one that matters.
+/// 3. The lane never renders empty while it has a meter and a positive width:
+///    the top-ranked meter always survives, clipped by the lane bound if even
+///    it doesn't fit. A truncated worst-band number beats no number.
+/// 4. Survivors render in **board order**, not ranked order — elision must not
+///    reshuffle the lane.
+///
+/// R15 is untouched: this decides *what a lane shows*, never which wing a
+/// window belongs to (`IslandHeaderLaneLayout.laneGroups` still owns that, and
+/// both meters landing in the left wing on notch hardware stays accepted).
+///
+/// Visual elision only: an elided meter stays in the accessibility tree (see
+/// `PouredUsageSummary.elidedMeterAccessibilityMirror`), so VoiceOver still
+/// reads every window the app knows about.
+enum PouredHeaderMeterLane {
+    /// The gap between two meters in one lane (`PouredUsageSummary`'s `HStack`).
+    static let meterSpacing: CGFloat = 12
+    /// The ring → label gap inside one meter (`PouredUsageWindowRing`'s `HStack`).
+    static let ringLabelSpacing: CGFloat = 8
+
+    /// One meter's measured footprint plus the band that decides its priority.
+    /// `width` is measured by the view (real font metrics) and handed in, so the
+    /// rule itself stays pure arithmetic.
+    struct Candidate: Equatable, Sendable {
+        let id: String
+        let width: CGFloat
+        /// The candidate's worst window percentage — the band it is ranked by.
+        let usedPercentage: Double
+
+        init(id: String, width: CGFloat, usedPercentage: Double) {
+            self.id = id
+            self.width = width
+            self.usedPercentage = usedPercentage
+        }
+    }
+
+    /// The ids that may render in a lane of `availableWidth`, in input order.
+    static func fitted(_ candidates: [Candidate], availableWidth: CGFloat) -> [String] {
+        guard !candidates.isEmpty, availableWidth > 0 else { return [] }
+
+        let ranked = candidates.indices.sorted { lhs, rhs in
+            let lhsRank = severityRank(candidates[lhs].usedPercentage)
+            let rhsRank = severityRank(candidates[rhs].usedPercentage)
+            if lhsRank != rhsRank { return lhsRank > rhsRank }
+            if candidates[lhs].usedPercentage != candidates[rhs].usedPercentage {
+                return candidates[lhs].usedPercentage > candidates[rhs].usedPercentage
+            }
+            return lhs < rhs
+        }
+
+        var keptCount = candidates.count
+        while keptCount > 1, !fits(ranked.prefix(keptCount).map { candidates[$0] }, availableWidth: availableWidth) {
+            keptCount -= 1
+        }
+
+        let kept = Set(ranked.prefix(keptCount))
+        return candidates.indices.filter { kept.contains($0) }.map { candidates[$0].id }
+    }
+
+    /// Whether `candidates` laid out in one row fit `availableWidth`.
+    static func fits(_ candidates: [Candidate], availableWidth: CGFloat) -> Bool {
+        guard !candidates.isEmpty else { return true }
+        let content = candidates.reduce(0) { $0 + $1.width }
+        let gaps = meterSpacing * CGFloat(candidates.count - 1)
+        return content + gaps <= availableWidth
+    }
+
+    /// `critical` 2 › `warn` 1 › `fine` 0 — the same cut-offs as
+    /// `PouredUsageThreshold`, which is the app-wide usage rule.
+    static func severityRank(_ usedPercentage: Double) -> Int {
+        switch PouredUsageThreshold.threshold(for: usedPercentage) {
+        case .critical: 2
+        case .warn: 1
+        case .fine: 0
+        }
+    }
 }
 
 /// The **single** usage threshold rule for Poured Island 2.0 (AB-331,
@@ -92,6 +194,20 @@ enum PouredUsageThreshold: String, CaseIterable, Sendable {
 
     /// The localized band word (`island.poured.usage.fine/warn/critical`).
     var localizationKey: String { "island.poured.usage.\(rawValue)" }
+
+    /// The §I threshold pill's fill alpha over the band colour. The board tints
+    /// each band separately — `.thlabel.fine` and `.warn` at `.14`, `.crit` at
+    /// `.16` (`01-poured-island.html:481-483`) — where the card painted one
+    /// uniform `0.15`, so the critical pill read a shade too faint and the two
+    /// calm bands a shade too loud.
+    var pillFillOpacity: Double {
+        switch self {
+        case .fine, .warn:
+            0.14
+        case .critical:
+            0.16
+        }
+    }
 }
 
 /// Poured Island's usage readout (AB-301 / AB-331): one ring-and-readout per
@@ -103,9 +219,9 @@ enum PouredUsageThreshold: String, CaseIterable, Sendable {
 /// per-window summary retained in the `.help()` tooltip. Threshold colour is the
 /// unified `PouredUsageThreshold` rule (the ring arc + the value both light the
 /// token status colour, never the retired raw `.red/.orange/.green`). Rings
-/// settle with a short sweep and the danger glow breathes, both gated off under
-/// Reduce Motion. Ring labels read their opacities through the token contrast
-/// floor so they survive Increase Contrast.
+/// settle with a short sweep, gated off under Reduce Motion — the critical
+/// band's breathing glow is gone (see `PouredUsageRing`). Ring labels read their
+/// opacities through the token contrast floor so they survive Increase Contrast.
 struct PouredUsageSummary: View {
     let providers: [UsageProviderPresentation]
     let lang: LanguageManager
@@ -114,6 +230,11 @@ struct PouredUsageSummary: View {
     /// Injected so the inline reset countdowns are deterministic in previews /
     /// tests; defaults to the wall clock in the live overlay.
     var now: Date = .now
+    /// C4-2: the lane's hard bound. `nil` (previews, any caller that is not a
+    /// header lane) renders every meter exactly as before; a header lane passes
+    /// its real frame width and gets `PouredHeaderMeterLane`'s severity-first
+    /// elision instead of an overrun into the control cluster.
+    var laneWidth: CGFloat?
 
     /// R3/C8 (`01-poured-island.html:785`, `:790`): the wings render the **full**
     /// provider title (`CLAUDE 5H` / `CLAUDE 7D`), unconditionally.
@@ -140,8 +261,12 @@ struct PouredUsageSummary: View {
     /// wing, overflowing it — is reported separately; it is a distribution
     /// question, not a typography one.)
     var body: some View {
-        HStack(spacing: 12) {
-            ForEach(providers) { provider in
+        let visibleIDs = fittedProviderIDs
+        let visible = providers.filter { visibleIDs.contains($0.id) }
+        let elided = providers.filter { !visibleIDs.contains($0.id) }
+
+        return HStack(spacing: PouredHeaderMeterLane.meterSpacing) {
+            ForEach(visible) { provider in
                 PouredUsageProviderGroup(
                     provider: provider,
                     ringDiameter: ringDiameter,
@@ -151,6 +276,75 @@ struct PouredUsageSummary: View {
             }
         }
         .lineLimit(1)
+        .overlay(alignment: .leading) {
+            elidedMeterAccessibilityMirror(elided)
+        }
+    }
+
+    /// The ids `PouredHeaderMeterLane` allows this lane to draw. Every id when
+    /// the caller set no bound.
+    private var fittedProviderIDs: Set<String> {
+        guard let laneWidth else { return Set(providers.map(\.id)) }
+        let candidates = providers.map { provider in
+            PouredHeaderMeterLane.Candidate(
+                id: provider.id,
+                width: measuredWidth(of: provider),
+                usedPercentage: provider.windows.map(\.usedPercentage).max() ?? 0
+            )
+        }
+        return Set(PouredHeaderMeterLane.fitted(candidates, availableWidth: laneWidth))
+    }
+
+    /// One provider group's rendered footprint: its windows' meters plus the
+    /// `HStack` gaps between them (the group and the lane share one spacing).
+    private func measuredWidth(of provider: UsageProviderPresentation) -> CGFloat {
+        let meters = provider.windows.map { window in
+            PouredUsageWindowRing.measuredWidth(
+                providerTitle: provider.title,
+                window: window,
+                ringDiameter: ringDiameter,
+                now: now,
+                lang: lang
+            )
+        }
+        guard !meters.isEmpty else { return 0 }
+        return meters.reduce(0, +) + PouredHeaderMeterLane.meterSpacing * CGFloat(meters.count - 1)
+    }
+
+    /// C4-2: a meter elided for width is elided **visually only**. It keeps its
+    /// VoiceOver stop — the same one-per-group `.help()`/label the visible
+    /// meters expose — inside a zero-size, fully transparent, non-hit-testable
+    /// overlay, so the lane's hard bound can never delete a usage number from
+    /// the accessibility tree.
+    @ViewBuilder
+    private func elidedMeterAccessibilityMirror(_ elided: [UsageProviderPresentation]) -> some View {
+        if elided.isEmpty {
+            EmptyView()
+        } else {
+            HStack(spacing: PouredHeaderMeterLane.meterSpacing) {
+                ForEach(elided) { provider in
+                    PouredUsageProviderGroup(
+                        provider: provider,
+                        ringDiameter: ringDiameter,
+                        now: now,
+                        lang: lang
+                    )
+                }
+            }
+            .lineLimit(1)
+            // How it stays invisible matters. `.fixedSize()` first, so the
+            // mirror keeps its **real** layout size and every group resolves a
+            // real accessibility frame; the zero-size frame then takes it back
+            // out of the lane's layout; the clip hides the drawing. Measured on
+            // the `usageMeters` capture: squeezing the groups to a 0×0 proposal
+            // — and likewise a transparent `opacity` — deleted the elided meters
+            // from `overlay.ax.json` outright. Clipping a real layout is the one
+            // form that hides the pixels and keeps the VoiceOver stops.
+            .fixedSize()
+            .frame(width: 0, height: 0, alignment: .leading)
+            .clipped()
+            .allowsHitTesting(false)
+        }
     }
 }
 
@@ -215,13 +409,52 @@ struct PouredUsageWindowRing: View {
 
     private var color: Color { threshold.color(tokens.colors) }
 
+    /// C4-2: this meter's rendered width — the ring, the ring→label gap, and
+    /// whichever of the two label lines is wider — measured against the real
+    /// font metrics the two `Text`s below render in (title: 10pt medium with
+    /// 0.7pt tracking; countdown: the `usageResetLabel` role). The label block
+    /// is `.fixedSize(horizontal: true)`, so this *is* the footprint the lane
+    /// has to pay for. Feeds `PouredHeaderMeterLane.fitted`.
+    static func measuredWidth(
+        providerTitle: String,
+        window: UsageWindowPresentation,
+        ringDiameter: CGFloat,
+        now: Date,
+        lang: LanguageManager
+    ) -> CGFloat {
+        let title = "\(providerTitle) \(window.label)".uppercased()
+        let titleWidth = textWidth(
+            title,
+            font: .systemFont(ofSize: 10, weight: .medium),
+            tracking: 0.7
+        )
+
+        var countdownWidth: CGFloat = 0
+        if let remaining = headerCountdownLabel(for: window, now: now) {
+            let spec = PouredType.Role.usageResetLabel.spec
+            countdownWidth = textWidth(
+                lang.t("island.poured.usage.resets", remaining),
+                font: .systemFont(ofSize: spec.size, weight: .semibold)
+            )
+        }
+
+        return ringDiameter + PouredHeaderMeterLane.ringLabelSpacing + max(titleWidth, countdownWidth)
+    }
+
+    private static func textWidth(_ string: String, font: NSFont, tracking: CGFloat = 0) -> CGFloat {
+        var attributes: [NSAttributedString.Key: Any] = [.font: font]
+        if tracking != 0 {
+            attributes[.kern] = tracking
+        }
+        return NSAttributedString(string: string, attributes: attributes).size().width.rounded(.up)
+    }
+
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: PouredHeaderMeterLane.ringLabelSpacing) {
             ZStack {
                 PouredUsageRing(
                     fraction: window.usedPercentage / 100,
                     color: color,
-                    isDanger: threshold.isCritical,
                     diameter: ringDiameter,
                     lineWidth: PouredUsageMetrics.headerRingLineWidth
                 )
@@ -263,7 +496,7 @@ struct PouredUsageWindowRing: View {
                 .lineLimit(1)
                 .foregroundStyle(.white.opacity(tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
 
-            if let remaining = headerCountdownLabel {
+            if let remaining = Self.headerCountdownLabel(for: window, now: now) {
                 Text(lang.t("island.poured.usage.resets", remaining))
                     .font(PouredType.Role.usageResetLabel.font)
                     .lineLimit(1)
@@ -280,7 +513,7 @@ struct PouredUsageWindowRing: View {
     /// rendered, so both are golden in their own frame: in a header wing the
     /// whole-day answer is what a glance needs, so anything a day or more out
     /// coarsens to days here — and only here.
-    private var headerCountdownLabel: String? {
+    static func headerCountdownLabel(for window: UsageWindowPresentation, now: Date) -> String? {
         guard let resetsAt = window.resetsAt else { return nil }
         let interval = resetsAt.timeIntervalSince(now)
         guard interval > 0 else { return nil }
@@ -296,30 +529,35 @@ struct PouredUsageWindowRing: View {
 }
 
 /// The ring itself: a faint track under a conic-gradient progress arc. The arc
-/// sweeps in on appear and the danger band's glow breathes — both disabled under
-/// Reduce Motion, where the ring paints its final fraction statically. The track
-/// opacity lifts under Reduce Transparency so the gauge stays readable. Reused at
-/// both the header lane size and the §I meter dial.
+/// sweeps in on appear, disabled under Reduce Motion, where the ring paints its
+/// final fraction statically. The track opacity lifts under Reduce Transparency
+/// so the gauge stays readable. Reused at both the header lane size and the §I
+/// meter dial.
+///
+/// Slice 6 (PI-I-001/I2) **dropped the critical danger glow** — a 0.8s repeating
+/// breathe on the `>= 90` dial. The board's §I dials are static SVG with no
+/// animation rule anywhere in the section (`01-poured-island.html:1455-1483`),
+/// and the §C header rings carry none either, so the pulse was un-referenced
+/// motion under R5. Both surfaces lost it together rather than one drifting from
+/// the other. (Adjudicated by the root pending owner ratification.)
 struct PouredUsageRing: View {
     let fraction: Double
     let color: Color
-    let isDanger: Bool
     var diameter: CGFloat = 16
     var lineWidth: CGFloat = 2.6
+    /// The unused-track alpha. The §C header ring keeps
+    /// `rgba(242,245,251,.12)` (`01-poured-island.html:229`); the §I **card**
+    /// dial is a touch fainter at `rgba(242,245,251,.1)` (`:1456`), so the card
+    /// passes its own value rather than the two surfaces sharing one number
+    /// (R4-8 ruled the header's track — it must not move).
+    var trackOpacity: Double = 0.12
 
     @State private var animatedFraction: Double = 0
-    @State private var glowPulse = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     private var clampedFraction: Double { min(1, max(0, fraction)) }
-
-    private var glowRadius: CGFloat {
-        guard isDanger else { return 0 }
-        if reduceMotion { return 2.5 }
-        return glowPulse ? 3.5 : 1.5
-    }
 
     var body: some View {
         ZStack {
@@ -330,7 +568,7 @@ struct PouredUsageRing: View {
             // circle and measured green-grey at 34%.
             Circle()
                 .stroke(
-                    Color.white.opacity(reduceTransparency ? 0.24 : 0.12),
+                    Color.white.opacity(reduceTransparency ? trackOpacity * 2 : trackOpacity),
                     lineWidth: lineWidth
                 )
 
@@ -345,7 +583,6 @@ struct PouredUsageRing: View {
                     style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
-                .shadow(color: isDanger ? color.opacity(reduceMotion ? 0.7 : (glowPulse ? 0.85 : 0.4)) : .clear, radius: glowRadius)
         }
         .frame(width: diameter, height: diameter)
         .onAppear {
@@ -354,11 +591,6 @@ struct PouredUsageRing: View {
             } else {
                 withAnimation(.easeOut(duration: 0.6)) {
                     animatedFraction = clampedFraction
-                }
-                if isDanger {
-                    withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-                        glowPulse = true
-                    }
                 }
             }
         }

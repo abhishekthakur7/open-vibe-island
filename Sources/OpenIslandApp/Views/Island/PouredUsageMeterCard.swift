@@ -10,8 +10,9 @@ import OpenIslandCore
 /// percentage, the inline `resets in …` countdown (T06), and a threshold pill
 /// that states the band as **word + shape** (`Fine ●` / `Warn ▲` / `Critical ●`)
 /// so the state is never colour-alone. Higher percentage = more consumed (the
-/// dial fills proportionally). The `>= 90` critical dial keeps Poured's 0.8s
-/// danger-glow breathe, held static under Reduce Motion by `PouredUsageRing`.
+/// dial fills proportionally). The card is **still** — §I renders no animation
+/// in the board, so the `>= 90` dial's danger breathe is gone (see
+/// `PouredUsageRing`); only the sweep-in on appear remains.
 ///
 /// Colour is the single `PouredUsageThreshold` rule shared with the header ring:
 /// `fine → statusCompleted`, `warn → statusWaitingForAnswer`,
@@ -52,7 +53,17 @@ struct PouredUsageMeterCard: View {
                 .tracking(0.9)
                 .foregroundStyle(.white.opacity(tokens.colors.tertiaryTextOpacity))
 
-            HStack(alignment: .top, spacing: 22) {
+            // PI-I-001/I1: the board's `.meters` is `display:flex; gap:22px;
+            // flex-wrap:wrap` over `.meter{flex:1 1 200px}`
+            // (`01-poured-island.html:469-470`) — inside its 484pt content box
+            // (520 − 18 − 18) three 200pt meters can't share a row, so the card
+            // renders **2 + 1**, not a single row of three. A plain `HStack`
+            // always drew one row and squeezed each meter, so a board-width card
+            // never reproduced the board composition.
+            PouredMeterFlowLayout(
+                minItemWidth: PouredMeterFlow.minItemWidth,
+                spacing: PouredMeterFlow.spacing
+            ) {
                 ForEach(entries) { entry in
                     PouredUsageMeter(
                         providerTitle: entry.providerTitle,
@@ -60,7 +71,6 @@ struct PouredUsageMeterCard: View {
                         now: now,
                         lang: lang
                     )
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
@@ -93,6 +103,123 @@ struct PouredUsageMeterCard: View {
     }
 }
 
+/// The board's `.meters` wrap rule as pure arithmetic (PI-I-001/I1,
+/// `01-poured-island.html:469-470`), so the composition is pinnable without a
+/// render: `.meter{flex:1 1 200px}` inside a `gap:22px` wrapping flex row.
+///
+/// A row fits `n` meters when `n * minItemWidth + (n - 1) * spacing <= width`;
+/// every row then shares the width equally (flex-grow), which is why the board's
+/// 484pt content box renders **2 + 1** rather than three squeezed meters.
+enum PouredMeterFlow {
+    /// `.meter{flex-basis:200px}`.
+    static let minItemWidth: CGFloat = 200
+    /// `.meters{gap:22px}` — the board applies the same gap on both axes.
+    static let spacing: CGFloat = 22
+
+    /// How many meters share one row at `width` (never below 1 — a card
+    /// narrower than one meter still renders it, clipped by nothing).
+    static func columns(
+        forWidth width: CGFloat,
+        minItemWidth: CGFloat = minItemWidth,
+        spacing: CGFloat = spacing
+    ) -> Int {
+        guard width.isFinite, width > 0 else { return 1 }
+        let fitted = Int(((width + spacing) / (minItemWidth + spacing)).rounded(.down))
+        return max(1, fitted)
+    }
+
+    /// The per-row meter counts for `count` meters at `width` — `[2, 1]` for the
+    /// board's three-meter card.
+    static func rowCounts(
+        count: Int,
+        width: CGFloat,
+        minItemWidth: CGFloat = minItemWidth,
+        spacing: CGFloat = spacing
+    ) -> [Int] {
+        guard count > 0 else { return [] }
+        let perRow = columns(forWidth: width, minItemWidth: minItemWidth, spacing: spacing)
+        var rows: [Int] = []
+        var remaining = count
+        while remaining > 0 {
+            let take = min(perRow, remaining)
+            rows.append(take)
+            remaining -= take
+        }
+        return rows
+    }
+
+    /// The width one meter gets on a row of `columns` (flex-grow: the row's
+    /// leftover space is shared equally).
+    static func itemWidth(
+        forWidth width: CGFloat,
+        columns: Int,
+        spacing: CGFloat = spacing
+    ) -> CGFloat {
+        let columns = max(1, columns)
+        let gaps = spacing * CGFloat(columns - 1)
+        return max(0, (width - gaps) / CGFloat(columns))
+    }
+}
+
+/// The `Layout` that draws `PouredMeterFlow`: equal-width columns, wrapping at
+/// the 200pt flex basis, `22pt` between meters on both axes.
+struct PouredMeterFlowLayout: Layout {
+    var minItemWidth: CGFloat = PouredMeterFlow.minItemWidth
+    var spacing: CGFloat = PouredMeterFlow.spacing
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? minItemWidth
+        let rows = resolvedRows(width: width, subviews: subviews)
+        let itemWidth = PouredMeterFlow.itemWidth(
+            forWidth: width,
+            columns: PouredMeterFlow.columns(forWidth: width, minItemWidth: minItemWidth, spacing: spacing),
+            spacing: spacing
+        )
+        let height = rowHeight(itemWidth: itemWidth, subviews: subviews) * CGFloat(rows.count)
+            + spacing * CGFloat(max(0, rows.count - 1))
+        return CGSize(width: width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let width = bounds.width
+        let columns = PouredMeterFlow.columns(forWidth: width, minItemWidth: minItemWidth, spacing: spacing)
+        let itemWidth = PouredMeterFlow.itemWidth(forWidth: width, columns: columns, spacing: spacing)
+        var y = bounds.minY
+        var index = 0
+        for row in resolvedRows(width: width, subviews: subviews) {
+            let indices = Array(index..<(index + row))
+            for (column, subviewIndex) in indices.enumerated() {
+                let x = bounds.minX + CGFloat(column) * (itemWidth + spacing)
+                subviews[subviewIndex].place(
+                    at: CGPoint(x: x, y: y),
+                    anchor: .topLeading,
+                    proposal: ProposedViewSize(width: itemWidth, height: nil)
+                )
+            }
+            y += rowHeight(itemWidth: itemWidth, subviews: subviews) + spacing
+            index += row
+        }
+    }
+
+    private func resolvedRows(width: CGFloat, subviews: Subviews) -> [Int] {
+        PouredMeterFlow.rowCounts(
+            count: subviews.count,
+            width: width,
+            minItemWidth: minItemWidth,
+            spacing: spacing
+        )
+    }
+
+    /// Every row is as tall as the tallest meter, so the card's rows line up
+    /// even when one window has no countdown line.
+    private func rowHeight(itemWidth: CGFloat, subviews: Subviews) -> CGFloat {
+        subviews.map {
+            $0.sizeThatFits(ProposedViewSize(width: itemWidth, height: nil)).height
+        }
+        .max() ?? 0
+    }
+}
+
 /// One provider window's §I meter: a 52pt conic dial beside the label, oversized
 /// percentage, inline reset countdown, and the word+shape threshold pill.
 struct PouredUsageMeter: View {
@@ -117,14 +244,14 @@ struct PouredUsageMeter: View {
             PouredUsageRing(
                 fraction: window.usedPercentage / 100,
                 color: color,
-                isDanger: threshold.isCritical,
                 diameter: PouredUsageMetrics.meterDial,
-                lineWidth: PouredUsageMetrics.meterDialLineWidth
+                lineWidth: PouredUsageMetrics.meterDialLineWidth,
+                trackOpacity: PouredUsageMetrics.meterDialTrackOpacity
             )
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(providerTitle) · \(window.label)")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(PouredType.Role.usageMeterLabel.font)
                     .foregroundStyle(.white.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
 
                 Text("\(window.roundedUsedPercentage)%")
@@ -157,7 +284,9 @@ struct PouredUsageMeter: View {
         .foregroundStyle(color)
         .padding(.horizontal, 7)
         .padding(.vertical, 1)
-        .background(color.opacity(0.15), in: Capsule())
+        // Per-band fill (`.thlabel.fine/.warn` `.14`, `.crit` `.16` —
+        // `01-poured-island.html:481-483`), not one uniform alpha.
+        .background(color.opacity(threshold.pillFillOpacity), in: Capsule())
         .padding(.top, 2)
     }
 

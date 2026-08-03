@@ -223,7 +223,18 @@ final class AppModel {
     /// is hidden entirely when the array is empty. Names are the short,
     /// conversational forms the mockup uses ("Claude", not "Claude Code"), since
     /// the pill is a calm reassurance, not the settings matrix.
+    ///
+    /// Slice 6 (PI-X-001/J1): a debug scenario may pin this list
+    /// (`debugInstalledAgentNamesOverride`) — the live value depends on what the
+    /// developer happens to have installed, so the board's
+    /// `Hooks installed for Claude, Codex, Gemini` was not reproducible in the
+    /// harness. `nil` in every other path, so production behavior is untouched
+    /// (the `debugUsageProvidersOverride` precedent).
     var installedAgentDisplayNames: [String] {
+        if let debugInstalledAgentNamesOverride {
+            return debugInstalledAgentNamesOverride
+        }
+
         var names: [String] = []
         if claudeHooksInstalled { names.append("Claude") }
         if codexHooksInstalled { names.append("Codex") }
@@ -805,6 +816,21 @@ final class AppModel {
     /// .suppressInstallHint`) — no real user sets it. `hasAnyInstalledAgent`
     /// itself, the real probe, is untouched.
     var debugSuppressesInstallHint = false
+
+    /// Poured Slice 6 (PI-X-001 I1/I2): harness-only starting value for the
+    /// Settings → Appearance preview scenario picker. The §I meter card renders
+    /// only inside that preview and its `.menu` `Picker` opens a transient menu
+    /// accessibility automation cannot reach, so evidence capture had no
+    /// deterministic driver.
+    ///
+    /// **Provably unreachable from the shipping app**: defaults to `nil`, and
+    /// its only writer is `OpenIslandAppDelegate.applicationDidFinishLaunching`
+    /// mirroring the harness-only env var
+    /// `OPEN_ISLAND_HARNESS_PREVIEW_SCENARIO`
+    /// (`HarnessLaunchConfiguration.previewScenario`) — no real user sets it.
+    /// When `nil` the pane keeps its own `.list` default, and the picker stays
+    /// fully interactive either way.
+    var debugAppearancePreviewScenarioOverride: AppearancePreviewScenario?
 
     #if HALO_PARITY_TESTING
     /// Populated only by the dedicated parity build. External capture
@@ -1619,6 +1645,12 @@ final class AppModel {
     /// in every other path, so production behavior is untouched.
     var debugUsageProvidersOverride: [UsageProviderPresentation]?
 
+    /// PI-X-001/J1: when a debug scenario (`emptyState`) pins the installed-agent
+    /// names, they short-circuit the live hook-status derivation so the §J
+    /// reassurance pill renders the board's exact
+    /// `Hooks installed for Claude, Codex, Gemini`. `nil` everywhere else.
+    var debugInstalledAgentNamesOverride: [String]?
+
     var islandUsageProviders: [UsageProviderPresentation] {
         if let debugUsageProvidersOverride {
             return debugUsageProvidersOverride
@@ -2035,6 +2067,7 @@ final class AppModel {
         state = SessionState(sessions: snapshot.sessions)
         selectedSessionID = snapshot.selectedSessionID ?? snapshot.sessions.first?.id
         debugUsageProvidersOverride = snapshot.usageProviders
+        debugInstalledAgentNamesOverride = snapshot.installedAgentNames
         debugForcesRowExpansion = snapshot.forcesRowExpansion
         debugQuestionPreselection = snapshot.questionPreselection
         debugSuppressesNotificationCountdown = snapshot.suppressesNotificationCountdown

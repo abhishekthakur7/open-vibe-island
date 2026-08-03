@@ -3,11 +3,18 @@ import OpenIslandCore
 
 /// Poured Island's empty state (AB-301 · AB-331, `SPEC-poured-island` §3.6/§4J).
 ///
-/// The same "No terminals" copy and the "start an agent" / "recent sessions"
-/// second line Classic shows, but recessed into the glass — a faint frosted
-/// panel behind the text so the empty surface reads as part of the poured slab
-/// rather than a blank hole. The copy and the `hasRecentSessions` branch are
-/// unchanged.
+/// The empty surface recessed into the glass — a faint frosted panel behind the
+/// text so it reads as part of the poured slab rather than a blank hole.
+///
+/// PI-X-001/J1: the copy is **Poured's own** (`island.poured.empty.title` /
+/// `.subtitle`), forked from the cross-theme `island.noTerminals` /
+/// `island.startAgent` pair every other theme still reads. The board's §J states
+/// what the island is *doing* — `All quiet` over "No active agents. Open Island
+/// is watching your terminals — the next permission, question, or finished run
+/// will surface here." (`01-poured-island.html:1531-1533`) — where the shared
+/// copy states what the user should do. The board renders a single subtitle, so
+/// Poured no longer forks it on `hasRecentSessions`; the flag stays in the
+/// signature because it is the shared theme seam.
 ///
 /// Poured 2.0 adds the two §4J touches that turn silence into "quiet confidence,
 /// not a hole": a slow-breathing monitor glyph above the copy (the only motion
@@ -34,13 +41,11 @@ struct PouredEmptyState: View {
 
             PouredEmptyMonitorGlyph()
 
-            Text(lang.t("island.noTerminals"))
+            Text(lang.t("island.poured.empty.title"))
                 .font(PouredType.Role.emptyTitle.font)
                 .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(0.96, increaseContrast: increasesContrast)))
 
-            Text(hasRecentSessions
-                ? lang.t("island.recentSessions")
-                : lang.t("island.startAgent"))
+            Text(lang.t("island.poured.empty.subtitle"))
                 .font(PouredType.Role.emptySubtitle.font)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(tokens.colors.secondaryTextOpacity, increaseContrast: increasesContrast)))
@@ -91,6 +96,29 @@ struct PouredEmptyState: View {
     }
 }
 
+/// The §J monitor mark's geometry (PI-X-001/J1). Kept as a table so the
+/// proportions are pinnable without a render: every value is the board's
+/// `viewBox 24` SVG scaled by the 18/24 render ratio
+/// (`01-poured-island.html:1527-1530`).
+enum PouredEmptyGlyphMetrics {
+    /// `.eglyph` — the 34px recessed disc the mark sits in (`:460`).
+    static let discDiameter: CGFloat = 34
+    /// The SVG's rendered box inside that disc.
+    static let glyphBounds: CGFloat = 18
+    /// `viewBox 0 0 24 24` → 18px.
+    static let scale: CGFloat = glyphBounds / 24
+    /// `stroke-width: 1.8` — shared by the hub ring and the ticks (an SVG
+    /// `<path>` tick is its stroke).
+    static let strokeWidth: CGFloat = 1.8 * scale
+    /// `circle r3` → a ø6-unit ring.
+    static let hubDiameter: CGFloat = 6 * scale
+    /// `M12 3v3` — a 3-unit tick.
+    static let tickLength: CGFloat = 3 * scale
+    /// Tick centre at 4.5 units from the top of a 24-unit box ⇒ 7.5 units out
+    /// from the centre.
+    static let tickCenterOffset: CGFloat = 7.5 * scale
+}
+
 /// The §4J monitor glyph: a small hollow ring with four cardinal ticks (the
 /// mockup's radial "watching" mark) inside a recessed disc, wrapped in a slow
 /// `lumen` 3s cool-blue breathing glow — the single moment of life in the empty
@@ -108,19 +136,30 @@ private struct PouredEmptyMonitorGlyph: View {
     var body: some View {
         let active = reduceMotion ? true : breathe
         ZStack {
+            // J1 proportions, read off the board SVG
+            // (`01-poured-island.html:1529-1530`): an 18px render of a
+            // `viewBox 0 0 24 24` mark — scale ×0.75 — with `circle r3`,
+            // `stroke-width 1.8`, and four `M12 3v3`-style cardinal ticks. So
+            // the hub is a ø4.5pt / 1.35pt ring, each tick is 1.35 × 2.25pt, and
+            // the tick centres sit 5.625pt out (7.5 units × 0.75). Native's
+            // hand-built 8pt hub with 4pt ticks at an 11pt radius was a
+            // different mark at a different scale inside the same 34pt disc.
             Circle()
-                .stroke(glyphColor, lineWidth: 1.6)
-                .frame(width: 8, height: 8)
+                .stroke(glyphColor, lineWidth: PouredEmptyGlyphMetrics.strokeWidth)
+                .frame(width: PouredEmptyGlyphMetrics.hubDiameter,
+                       height: PouredEmptyGlyphMetrics.hubDiameter)
 
             ForEach(0..<4, id: \.self) { index in
                 Capsule()
                     .fill(glyphColor)
-                    .frame(width: 1.6, height: 4)
-                    .offset(y: -11)
+                    .frame(width: PouredEmptyGlyphMetrics.strokeWidth,
+                           height: PouredEmptyGlyphMetrics.tickLength)
+                    .offset(y: -PouredEmptyGlyphMetrics.tickCenterOffset)
                     .rotationEffect(.degrees(Double(index) * 90))
             }
         }
-        .frame(width: 34, height: 34)
+        .frame(width: PouredEmptyGlyphMetrics.discDiameter,
+               height: PouredEmptyGlyphMetrics.discDiameter)
         .background(Circle().fill(.white.opacity(0.03)))
         // `lumen`: the cool-blue running tint bloom, breathing 0 → r22 (CSS) so
         // the disc reads as a live sensor. Held mid-glow under Reduce Motion.

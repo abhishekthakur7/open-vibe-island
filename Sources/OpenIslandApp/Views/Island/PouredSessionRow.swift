@@ -250,6 +250,10 @@ private struct PouredRowContent: View {
 
     @State private var detailOverride: Bool?
     @State private var replyText: String = ""
+    /// PI-X-001/H1: the §H rail's `Reply` ghost is a *disclosure* — the inline
+    /// field only exists once it has been pressed, and it folds away again with
+    /// the hero so a re-opened card is back to the board's four calm controls.
+    @State private var isReplyDisclosed = false
 
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     private var increasesContrast: Bool { colorSchemeContrast == .increased }
@@ -377,6 +381,11 @@ private struct PouredRowContent: View {
         .animation(.easeInOut(duration: 0.2), value: session.outcome)
         .animation(.easeInOut(duration: 0.2), value: presence)
         .onTapGesture(perform: handlePrimaryTap)
+        // The §H reply disclosure is scoped to one open hero: collapsing the row
+        // resets it (and drops any half-typed draft's affordance with it).
+        .onChange(of: showsDetail) { _, open in
+            if !open { isReplyDisclosed = false }
+        }
         .onChange(of: isInteractive) { _, interactive in
             if !interactive {
                 detailOverride = nil
@@ -911,12 +920,19 @@ private struct PouredRowContent: View {
     /// The 2×13 brand-colour tick that replaces the capsule agent badge in the
     /// collapsed row. Radius 1, brand hue from `AgentSession.brandColorHex`; it
     /// dims with the row when a stale/inactive row recedes into the glass.
-    private func identityTick(presence: IslandSessionPresence) -> some View {
+    ///
+    /// `height` is overridden by the §H hero, whose in-card title line runs the
+    /// same tick one point taller (`height:14px`, `01-poured-island.html:1396`)
+    /// against its larger 15pt workspace name.
+    private func identityTick(
+        presence: IslandSessionPresence,
+        height: CGFloat = PouredRowMotion.IdentityTick.height
+    ) -> some View {
         RoundedRectangle(cornerRadius: PouredRowMotion.IdentityTick.cornerRadius, style: .continuous)
             .fill(Color(hex: session.tool.brandColorHex) ?? tokens.colors.paper)
             .frame(
                 width: PouredRowMotion.IdentityTick.width,
-                height: PouredRowMotion.IdentityTick.height
+                height: height
             )
             .opacity(presence == .inactive ? 0.7 : 1)
             .accessibilityHidden(true)
@@ -1006,7 +1022,9 @@ private struct PouredRowContent: View {
                 verb: narrated.localizedVerb(lang),
                 object: detailNarrationObject(base: narrated.object, showsDetail: showsDetail),
                 fallback: nil,
-                liveSuffix: showsDetail ? nil : liveElapsedSuffix(at: referenceDate)
+                liveSuffix: showsDetail
+                    ? liveSubagentsSuffix(showsDetail: showsDetail)
+                    : liveElapsedSuffix(at: referenceDate)
             )
         }
         // PI-C-005: expansion no longer gates the line — a collapsed row
@@ -1020,8 +1038,25 @@ private struct PouredRowContent: View {
                 spotlight: session.spotlightActivityLineText,
                 lastAssistantMessage: session.lastAssistantMessageText,
                 hasJumpTarget: session.jumpTarget != nil
-            )
+            ),
+            liveSuffix: liveSubagentsSuffix(showsDetail: showsDetail)
         )
+    }
+
+    /// PI-X-001/G1 (`01-poured-island.html:1286`): an **expanded** fanned-out
+    /// row's `.act` reads `Refactoring hook installers · 3 subagents live` — the
+    /// nest below states *which* subagents, the line states *how many are still
+    /// going*. It rides the same `· ` middot join the `live 1m 42s` tail uses.
+    ///
+    /// Collapsed rows are untouched: there the fan-out is identity and lives in
+    /// the disambiguator (R2/C4, `disambiguatorSuffix`), and the board's §G′ row
+    /// carries no such suffix.
+    private func liveSubagentsSuffix(showsDetail: Bool) -> String? {
+        guard let live = PouredLiveSubagents.liveCount(
+            session.claudeMetadata?.activeSubagents ?? [],
+            isExpanded: showsDetail
+        ) else { return nil }
+        return lang.t("poured.subagents.live", live)
     }
 
     /// X11 (C's M-12): the board's §D `.act` is
@@ -1095,11 +1130,20 @@ private struct PouredRowContent: View {
         // `<branch> · <N> subagents` — the fan-out is part of *which* row this
         // is, not a fact chip beside it. Reuses the same localized count string
         // the expanded §4G nest header speaks.
+        //
+        // C4-4 (PI-X-001/G1 · review round 1): **collapsed only**. The board's
+        // §G *expanded* frame prints the title-line disambiguator as `main`
+        // alone (`01-poured-island.html:1284-1286`) — once the row is open the
+        // fan-out is stated twice below it, by the `.act` line
+        // (`· 3 subagents live`) and by the nest header (`3 subagents`), so a
+        // third copy on the title line is redundancy the board never draws. The
+        // compressed composition above is untouched (it is under owner
+        // escalation E2).
         var base = PouredRowDisambiguation.suffix(sessionDisambiguators[session.id])
         if base == nil, showsDetail, let branch = SessionDisambiguation.branch(for: session) {
             base = PouredRowDisambiguation.suffix(SessionDisambiguation.displayBranch(branch))
         }
-        guard let subagentCount = collapsedSubagentCount else { return base }
+        guard !showsDetail, let subagentCount = collapsedSubagentCount else { return base }
         let fanOut = lang.t("poured.subagents.count", subagentCount)
         guard let base else { return fanOut }
         return base + " \u{00B7} " + fanOut
@@ -1131,9 +1175,15 @@ private struct PouredRowContent: View {
     private func subagentNest(_ subagents: [ClaudeSubagentInfo]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 6) {
-                Image(systemName: "arrow.triangle.branch")
-                    .font(.system(size: 9, weight: .semibold))
-                    .accessibilityHidden(true)
+                // PI-X-001/G1 (`01-poured-island.html:1289`): the board's nest
+                // header leads with the three-bar `.glyph.run` at `10×11`, not
+                // an SF branch icon — the fan-out is *live work*, and the run
+                // glyph is the theme's own word for that.
+                PouredRunBarsGlyph(
+                    tint: tokens.colors.statusRunning,
+                    height: PouredRunGlyphMetrics.nestHeaderHeight
+                )
+                .frame(width: 10, alignment: .leading)
                 Text(pouredUppercased(lang.t("poured.subagents.count", subagents.count)))
                     .font(PouredType.Role.nestHeader.font)
                     .tracking(PouredType.Role.nestHeader.spec.trackingPoints)
@@ -1764,34 +1814,37 @@ private struct PouredRowContent: View {
     /// one; the markdown / link / code colours still resolve from
     /// `.completionCard(tokens.colors)` and the reply stays wired to
     /// `actions.reply` exactly as Classic.
+    ///
+    /// R14 board conformance (PI-X-001/H1, `01-poured-island.html:1389-1429`):
+    /// the card is one padded block (`14px 16px 12px`), not a divided stack —
+    /// a 30×30 tinted outcome tile beside the in-card title line and its
+    /// `<model> · finished Xm ago` sub-line, the result under a `Result` kicker,
+    /// then a footer meta strip (`⏱ 43m duration` · `● Claude Code`) and the
+    /// action rail. Duration moved out of the header into that footer; the reply
+    /// field is disclosed by the rail's `Reply` ghost rather than always shown.
     private var completionActionBody: some View {
         VStack(alignment: .leading, spacing: 0) {
-            completionOutcomeHeader
+            completionHeroHeader
+                .padding(.bottom, 10)
 
             if !completionMessageText.trimmedForRow.isEmpty {
-                AutoHeightScrollView(maxHeight: 160) {
-                    LocalMarkdownText(completionMessageText, colors: tokens.colors)
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
-                        .padding(.horizontal, 14)
-                        .padding(.top, 2)
-                        .padding(.bottom, 9)
-                }
+                completionResultBlock
             }
 
-            if actions.reply != nil {
-                Rectangle()
-                    .fill(.white.opacity(0.05))
-                    .frame(height: 1)
-
-                completionReplyInput
-            }
-
-            Rectangle()
-                .fill(.white.opacity(0.05))
-                .frame(height: 1)
+            completionFooterMeta
+                .padding(.top, 12)
 
             completionActionRail
+                .padding(.top, 12)
+
+            if isReplyDisclosed, actions.reply != nil {
+                completionReplyInput
+                    .padding(.top, 10)
+            }
         }
+        .padding(.horizontal, 16)
+        .padding(.top, 14)
+        .padding(.bottom, 12)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color.white.opacity(0.05))
@@ -1813,43 +1866,150 @@ private struct PouredRowContent: View {
         presentation == .notification ? 0.82 : 0.96
     }
 
-    /// §4H header: the outcome badge beside its tabular duration / finished-ago
-    /// meta line.
-    private var completionOutcomeHeader: some View {
+    /// §4H header (`01-poured-island.html:1390-1403`): the tinted outcome tile,
+    /// the in-card identity line, its model / finished-ago sub-line, and the
+    /// outcome badge pinned to the trailing edge.
+    private var completionHeroHeader: some View {
         HStack(alignment: .center, spacing: 10) {
+            completionOutcomeTile
+
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 8) {
+                    identityTick(presence: .active, height: 14)
+
+                    Text(session.spotlightDisplayName)
+                        .font(PouredType.Role.completionHeaderTitle.font)
+                        .tracking(PouredType.Role.completionHeaderTitle.spec.trackingPoints)
+                        .foregroundStyle(tokens.colors.paper.opacity(contrastText(completionDoneOpacity)))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+
+                    if let disambiguator = disambiguatorSuffix(showsDetail: true) {
+                        Text(disambiguator)
+                            .font(PouredType.Role.branchDisambiguator.font)
+                            .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .fixedSize(horizontal: true, vertical: false)
+                    }
+                }
+
+                Text(completionHeroSublineText)
+                    .font(PouredType.Role.heroSubtitle.font)
+                    .monospacedDigit()
+                    .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
             PouredOutcomeBadge(
                 glyphName: completionOutcomeGlyphName,
                 label: completionOutcomeLabel,
                 tint: completionOutcomeTint.opacity(completionDoneOpacity),
-                fill: completionOutcomeFill
+                fill: completionOutcomeFill,
+                isHero: true
             )
-            completionMetaLine
-            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 11)
-        .padding(.bottom, 9)
     }
 
-    /// Tabular `43m duration · finished 12m ago` (`SPEC` §4H). Duration is derived
-    /// from `firstSeenAt → updatedAt` (the run's own length, frozen at completion,
-    /// so it never drifts with wall-clock time) and is shown only when the run
-    /// actually lasted a minute or more; finished-ago reuses the row's age
-    /// vocabulary.
-    @ViewBuilder
-    private var completionMetaLine: some View {
-        let finishedAgo = lang.t("poured.completion.finishedAgo", session.spotlightAgeBadge)
-        HStack(spacing: 7) {
-            if let duration = completionDurationText {
-                Text(lang.t("poured.completion.duration", duration))
-                Text("·").foregroundStyle(tokens.colors.paper.opacity(0.28))
+    /// The board's 30×30 radius-9 outcome tile (`:1391-1394`): the outcome's own
+    /// tinted fill — the same `.outcome.ok/.intr/.fail` alpha the badge wears —
+    /// under the outcome glyph at 16pt. State is glyph + colour, never colour
+    /// alone; the badge beside it already speaks the word, so the tile is chrome.
+    private var completionOutcomeTile: some View {
+        RoundedRectangle(cornerRadius: 9, style: .continuous)
+            .fill(completionOutcomeFill)
+            .frame(width: 30, height: 30)
+            .overlay(
+                Image(systemName: completionOutcomeGlyphName)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(completionOutcomeTint.opacity(completionDoneOpacity))
+            )
+            .accessibilityHidden(true)
+    }
+
+    /// `Fable 5 · finished 12m ago` (`:1399`) — the model the §C compact row
+    /// prints in its chip, joined to the row's own finished-ago vocabulary. A
+    /// session with no model metadata drops the segment *and* the middot.
+    private var completionHeroSublineText: String {
+        PouredCompletionSubline.text(
+            model: session.displayModelName,
+            finishedAgo: lang.t("poured.completion.finishedAgo", session.spotlightAgeBadge)
+        )
+    }
+
+    /// The result prose under the board's `Result` kicker (`.assistant .amh`,
+    /// `:1406`) — the §D assistant slab's chrome **and its prose style**, reused
+    /// so the two prose blocks read as one component.
+    ///
+    /// C4-1 (PI-X-001/H1 · review round 1): the renderer used to take the
+    /// default `.completionCard` style (13.5/medium at 0.88 ink, no strong lift,
+    /// no inline-code chip) while §D's identical slab already passed
+    /// `.pouredAssistant`. The board draws **one** `.assistant` rule for both
+    /// (`01-poured-island.html:433-441`): 12.5/400 at `paper@.66`, `**strong**`
+    /// lifted to `.96`/640, inline `code` on a `white@.06` 4px chip in `#c9d3e6`.
+    /// The style — and `assistantInkColors`, the Poured-local paper-ink token
+    /// copy the §D slab hands the shared renderer — are now shared too.
+    private var completionResultBlock: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(pouredUppercased(lang.t("poured.completion.result")))
+                .font(PouredType.Role.assistantLabel.font)
+                .tracking(PouredType.Role.assistantLabel.spec.trackingPoints)
+                .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
+
+            AutoHeightScrollView(maxHeight: 160) {
+                LocalMarkdownText(completionMessageText, style: .pouredAssistant, colors: assistantInkColors)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
             }
-            Text(finishedAgo)
         }
-        .font(PouredType.Role.metaChip.font)
-        .monospacedDigit()
+        .padding(.horizontal, 13)
+        .padding(.vertical, 11)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.white.opacity(0.025))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(.white.opacity(0.045), lineWidth: 1)
+                )
+        )
+    }
+
+    /// The board's footer meta strip (`:1413-1418`): `⏱ 43m duration` and the
+    /// agent's own dot + display name, `gap:14px` at 11pt tertiary. Duration is
+    /// derived from `firstSeenAt → updatedAt` (the run's own length, frozen at
+    /// completion, so it never drifts with wall-clock time) and is shown only
+    /// when the run actually lasted a minute or more.
+    private var completionFooterMeta: some View {
+        HStack(spacing: 14) {
+            if let duration = completionDurationText {
+                HStack(spacing: 5) {
+                    Image(systemName: "clock")
+                        .font(.system(size: 11, weight: .medium))
+                        .accessibilityHidden(true)
+                    Text(lang.t("poured.completion.duration", duration))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                }
+            }
+
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(agentBrandColor)
+                    .frame(width: 7, height: 7)
+                    .accessibilityHidden(true)
+                Text(session.tool.displayName)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .font(PouredType.Role.heroSubtitle.font)
         .foregroundStyle(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)))
-        .lineLimit(1)
+        // R4-2: the strip restates facts the row's narrative label already
+        // carries — a fact line, not a control.
+        .accessibilityHidden(true)
     }
 
     /// Run length (`43m`), or `nil` for a sub-minute run where a duration chip
@@ -1860,11 +2020,12 @@ private struct PouredRowContent: View {
         return session.elapsedRunningLabel(at: session.updatedAt)
     }
 
-    /// §4H action rail: Jump primary + Transcript / Dismiss ghosts. The transcript
-    /// rides here (not the shared footnote) for completed rows, so it isn't shown
-    /// twice.
+    /// §4H action rail (`01-poured-island.html:1421-1428`): Jump primary, then
+    /// the `Reply` / `Transcript` ghosts, then `Dismiss` right-aligned at
+    /// tertiary ink. The transcript rides here (not the shared footnote) for
+    /// completed rows, so it isn't shown twice.
     private var completionActionRail: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             Button(action: handlePrimaryTap) {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.up.forward")
@@ -1876,12 +2037,24 @@ private struct PouredRowContent: View {
             .buttonStyle(PouredFullSizeButtonStyle(kind: .wayfinding))
             .accessibilityLabel(lang.t("poured.detail.jump"))
 
+            // The board's `Reply` is a ghost *button* (`:1426`), not a standing
+            // text field: it discloses the field in place. The field, its send
+            // button and the keyboard semantics are unchanged — only their entry
+            // point moved, so a completed card at rest is a rail of four calm
+            // controls instead of a rail plus an empty input.
+            if actions.reply != nil, !isReplyDisclosed {
+                Button {
+                    isReplyDisclosed = true
+                } label: {
+                    Text(lang.t("poured.completion.reply"))
+                        .lineLimit(1)
+                }
+                .buttonStyle(PouredFullSizeButtonStyle(kind: .ghost))
+                .accessibilityLabel(lang.t("poured.completion.reply"))
+            }
+
             if let transcriptPath = trimmedTranscriptPath {
-                TranscriptAffordance(
-                    path: transcriptPath,
-                    workspace: session.spotlightWorkspaceName,
-                    lang: lang
-                )
+                completionTranscriptButton(path: transcriptPath)
             }
 
             Spacer(minLength: 8)
@@ -1891,12 +2064,47 @@ private struct PouredRowContent: View {
                     Text(lang.t("poured.completion.dismiss"))
                         .lineLimit(1)
                 }
-                .buttonStyle(PouredFullSizeButtonStyle(kind: .ghost))
+                // C4-3: the same ghost chip, its label dropped to `--t3`
+                // (`01-poured-island.html:1428`).
+                .buttonStyle(PouredFullSizeButtonStyle(kind: .ghost, isDimmed: true))
                 .accessibilityLabel(lang.t("a11y.session.dismiss"))
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 11)
+    }
+
+    /// C4-3 (PI-X-001/H1 · `01-poured-island.html:1427`): §H's `Transcript` is a
+    /// plain `.btn.ghost` — the *same* chip as `Reply` beside it, and with **no**
+    /// document glyph: the board draws one only in §D's rail (`:967`), never
+    /// here. Native rendered it as `TranscriptAffordance`'s bare 10.5pt / 0.4-ink
+    /// text form, which inverted the rail's weights — the throwaway `Dismiss`
+    /// looked like the live control and `Transcript` like a disabled one.
+    ///
+    /// §D's rail is untouched: it keeps the shared affordance in its Poured
+    /// ghost mode, glyph and all (Slice 5 · D4, dual-PASSed), as do the footnote
+    /// form and every other theme. The tooltip, the open/reveal/copy context menu
+    /// and the workspace-qualified VoiceOver label are the affordance's, reused
+    /// verbatim through the same file-scope seams.
+    private func completionTranscriptButton(path: String) -> some View {
+        Button {
+            openTranscriptFile(at: path)
+        } label: {
+            Text(lang.t("island.transcript.label"))
+                .lineLimit(1)
+        }
+        .buttonStyle(PouredFullSizeButtonStyle(kind: .ghost))
+        .help(path)
+        .accessibilityLabel(lang.t("a11y.transcript", session.spotlightWorkspaceName))
+        .contextMenu {
+            Button(lang.t("island.transcript.open")) {
+                openTranscriptFile(at: path)
+            }
+            Button(lang.t("island.transcript.reveal")) {
+                revealTranscriptFileInFinder(at: path)
+            }
+            Button(lang.t("island.transcript.copyPath")) {
+                copyTranscriptPath(path)
+            }
+        }
     }
 
     private var completionOutcomeGlyphName: String {
@@ -1937,7 +2145,11 @@ private struct PouredRowContent: View {
             ReplyTextField(
                 placeholder: lang.t("completion.replyPlaceholder", session.completionReplyRecipientName),
                 text: $replyText,
-                onSubmit: { submitReply() }
+                onSubmit: { submitReply() },
+                // The field only exists once `Reply` disclosed it, so it takes
+                // the caret immediately — the click that revealed it *was* the
+                // intent to type.
+                focusesOnAppear: true
             )
             .frame(height: 32)
 
@@ -1953,8 +2165,6 @@ private struct PouredRowContent: View {
             .disabled(replyText.trimmingCharacters(in: .whitespaces).isEmpty)
             .accessibilityLabel(lang.t("a11y.completion.sendReply"))
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
     }
 
     private func submitReply() {
@@ -2313,16 +2523,17 @@ private struct PouredRowContent: View {
                 .foregroundStyle(tokens.colors.statusCompleted)
                 .accessibilityLabel(lang.t("a11y.task.completed"))
         case .inProgress:
-            if let pulseClock {
-                PouredPulsingStatusDot(pulseClock: pulseClock, tint: tokens.colors.statusRunning)
-                    .frame(width: 8, height: 8)
-                    .accessibilityLabel(lang.t("a11y.task.inProgress"))
-            } else {
-                Circle()
-                    .fill(tokens.colors.statusRunning)
-                    .frame(width: 7, height: 7)
-                    .accessibilityLabel(lang.t("a11y.task.inProgress"))
-            }
+            // PI-X-001/G1 (`01-poured-island.html:1313`): the doing tick is the
+            // three-bar `.glyph.run` at `8×9` inside the 14×14 `.tk` box — the
+            // same mark the nest header and the row's lead carry, so "in
+            // progress" reads as one shape everywhere. Replaces the pulsing dot,
+            // which was a marker vocabulary the board's todo list never uses.
+            PouredRunBarsGlyph(
+                tint: tokens.colors.statusRunning,
+                height: PouredRunGlyphMetrics.todoTickHeight,
+                isDecorative: false
+            )
+            .accessibilityLabel(lang.t("a11y.task.inProgress"))
         case .pending:
             Circle()
                 .strokeBorder(tokens.colors.paper.opacity(contrastText(tokens.colors.tertiaryTextOpacity)), lineWidth: 1.4)
@@ -3870,22 +4081,35 @@ enum PouredRowEntrance {
 /// amplitude. The lead marker is a *state* mark rather than a liveness meter
 /// (the row's `.act` already carries `live 1m 42s`), so it is drawn statically at
 /// the board's own frame and reads identically in every capture.
+/// **Scaling.** The board draws the same glyph at four sizes — `width:12px`
+/// (`.lead`), `10×11` (`.nest-h`, `:1289`), `9×10` (a rollup chip) and `8×9`
+/// (`.todo.doing .tk`, `:1313`) — by shrinking the box while leaving `.glyph i`
+/// at its literal `2.5px`/`5px` metrics, so the bars overflow every reduced box
+/// (mapper contradiction C-7). Native scales the *bars* with the box instead:
+/// `height` is the glyph's rendered height and every metric rides the same
+/// `height / 15` factor, so a 9pt tick reads as the same mark, one size down.
 private struct PouredRunBarsGlyph: View {
     let tint: Color
 
-    private static let barWidth: CGFloat = 2.5
-    private static let barHeights: [CGFloat] = [14, 14, 11]
+    /// Rendered height. `15` is the board's unscaled `.glyph` box.
+    var height: CGFloat = PouredRunGlyphMetrics.referenceHeight
+
+    /// `false` when the glyph *is* the status statement for its row (the §G
+    /// todo tick), so the call site can label it and the row's combined
+    /// VoiceOver stop keeps speaking done / doing / pending.
+    var isDecorative: Bool = true
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: Self.barWidth) {
-            ForEach(Array(Self.barHeights.enumerated()), id: \.offset) { _, height in
+        let barWidth = PouredRunGlyphMetrics.barWidth(height: height)
+        HStack(alignment: .bottom, spacing: barWidth) {
+            ForEach(Array(PouredRunGlyphMetrics.barHeights(height: height).enumerated()), id: \.offset) { _, barHeight in
                 Capsule(style: .continuous)
                     .fill(tint)
-                    .frame(width: Self.barWidth, height: height)
+                    .frame(width: barWidth, height: barHeight)
             }
         }
-        .frame(height: 15, alignment: .bottom)
-        .accessibilityHidden(true)
+        .frame(height: height, alignment: .bottom)
+        .accessibilityHidden(isDecorative)
     }
 }
 
@@ -4139,14 +4363,26 @@ private struct PouredFullSizeButtonStyle: ButtonStyle {
     let kind: PouredFullSizeButtonKind
     /// PI-C-006: the in-list compact override of the same button.
     var isCompact: Bool = false
+    /// C4-3 (PI-X-001/H1 · `01-poured-island.html:1428`): §H's `Dismiss` is the
+    /// **same** ghost chip as `Reply` / `Transcript` beside it with one inline
+    /// override — `color:var(--t3)`. The chip is unchanged; only the label ink
+    /// drops to tertiary, which is what makes the rail read left-to-right in
+    /// descending weight instead of ending on its brightest control.
+    var isDimmed: Bool = false
 
     func makeBody(configuration: Configuration) -> some View {
-        PouredFullSizeButtonChrome(kind: kind, isCompact: isCompact, configuration: configuration)
+        PouredFullSizeButtonChrome(
+            kind: kind,
+            isCompact: isCompact,
+            isDimmed: isDimmed,
+            configuration: configuration
+        )
     }
 
     private struct PouredFullSizeButtonChrome: View {
         let kind: PouredFullSizeButtonKind
         let isCompact: Bool
+        let isDimmed: Bool
         let configuration: Configuration
 
         @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -4181,9 +4417,17 @@ private struct PouredFullSizeButtonStyle: ButtonStyle {
             case .detailPrimary:
                 return PouredApprovalColors.detailButtonInk
             case .ghost:
+                // C4-3: `.btn.ghost{color:var(--t1)}` — `rgba(242,245,251,.96)`
+                // (`01-poured-island.html:352`). The ghost is a *filled* chip,
+                // not a dimmed one; only a call site that opts into `isDimmed`
+                // (§H's `Dismiss`, whose inline rule is `color:var(--t3)`) drops
+                // to tertiary. Native had the two inverted: every ghost painted
+                // tertiary, so Dismiss and Transcript could not be told apart by
+                // weight.
                 let increased = colorSchemeContrast == .increased
+                let alpha = isDimmed ? tokens.colors.tertiaryTextOpacity : 0.96
                 return tokens.colors.paper.opacity(
-                    tokens.colors.text(tokens.colors.tertiaryTextOpacity, increaseContrast: increased)
+                    tokens.colors.text(alpha, increaseContrast: increased)
                 )
             case .deny:
                 return PouredApprovalColors.denyInk
@@ -4261,17 +4505,22 @@ private struct PouredOutcomeBadge: View {
     let tint: Color
     let fill: Color
 
+    /// PI-X-001/H1: the §H completion hero draws the same pill one step up —
+    /// `font-size:11px;padding:3px 10px` (`01-poured-island.html:1400`). The §C
+    /// row's badge (R13/X5) keeps the base metrics.
+    var isHero: Bool = false
+
     var body: some View {
         HStack(spacing: 5) {
             Image(systemName: glyphName)
                 .font(.system(size: 9, weight: .bold))
                 .accessibilityHidden(true)
             Text(label)
-                .font(PouredType.Role.outcomeBadge.font)
+                .font(isHero ? PouredType.Role.outcomeBadgeHero.font : PouredType.Role.outcomeBadge.font)
                 .lineLimit(1)
         }
         .foregroundStyle(tint)
-        .padding(.horizontal, 9)
+        .padding(.horizontal, isHero ? 10 : 9)
         .padding(.vertical, 3)
         .background(Capsule().fill(fill))
         .accessibilityElement(children: .combine)

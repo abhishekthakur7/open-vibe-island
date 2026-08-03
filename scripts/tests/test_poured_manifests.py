@@ -38,7 +38,7 @@ class PouredManifestTests(unittest.TestCase):
         rows={x["id"]:x for x in load(VALIDATION/"scenarios-v1.json")["scenarios"]}
         self.assertEqual(rows["F1-question"]["class"],"derived-validation")
         self.assertEqual(rows["C4-stress-40"]["native"]["status"],"not-located")
-        self.assertEqual(rows["H1-completed"]["native"]["mapping"],"IslandDebugScenario.completionCard")
+        self.assertEqual(rows["H1-completed"]["native"]["mapping"],"IslandDebugScenario.completedSuccess")
         for key in ("D1-detail","E1-command-permission","E2-diff-permission","E3-jump-codex"): self.assertIn(key,rows)
     def test_unknown_class_duplicate_and_false_direct_claim_rejected(self):
         original=load(VALIDATION/"scenarios-v1.json")

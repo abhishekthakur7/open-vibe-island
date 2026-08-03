@@ -112,9 +112,11 @@ enum PouredType {
         case summaryNumber           // .n    — summary strip count (tabular)
         case agentChipLabel          // agent identity chip label
         case outcomeBadge            // .outcome — Success / Interrupted / Failed
+        case outcomeBadgeHero        // .outcome — §H hero override (11px)
         case jumpChip                // .jump — jump-to-terminal chip
 
         // Meters
+        case usageMeterLabel         // .ml   — §I meter `provider · window` label
         case displayNumeral          // .mpct — big meter percentage (tabular)
         case usageRingValue          // .uv   — ring value readout (tabular)
         case usageResetLabel         // .ut b — header wing reset countdown
@@ -148,6 +150,8 @@ enum PouredType {
         case subagentElapsed         // .sa-time — live elapsed (tabular)
         case nestHeader              // .nest-h — nested-list header
         case todo                    // .todo — task list item
+        case pillCountBadge          // .count — closed-pill right-slot capsule
+        case pillLabel               // .pill .lab — closed-pill narrated label
 
         // Assistant prose / metadata
         case assistantBody           // .assistant — last-message rich prose
@@ -195,8 +199,18 @@ enum PouredType {
         .summaryNumber:         Spec(size: 12,   weight: 700, trackingEm: 0,     isMono: false, isTabular: true,  isUppercase: false),
         .agentChipLabel:        Spec(size: 10.5, weight: 500, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
         .outcomeBadge:          Spec(size: 10.5, weight: 650, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
+        // PI-X-001/H1: inside the §H completion hero the board inline-bumps the
+        // same pill to `font-size:11px;padding:3px 10px`
+        // (`01-poured-island.html:1400`) — size only, the 650 weight of
+        // `.outcome` (`:292`) is untouched. The §C row keeps `outcomeBadge`.
+        .outcomeBadgeHero:      Spec(size: 11,   weight: 650, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
         .jumpChip:              Spec(size: 11.5, weight: 600, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
 
+        // PI-I-001/I1: the board's `.mtx .ml` — `12px`, `font-weight:550`
+        // (`01-poured-island.html:473`). The card drew it at `.medium` (500);
+        // 550 is the same rendered face here, but the design intent is now
+        // pinned in the table instead of being re-decided at the view.
+        .usageMeterLabel:       Spec(size: 12,   weight: 550, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
         .displayNumeral:        Spec(size: 20,   weight: 640, trackingEm: -0.02, isMono: false, isTabular: true,  isUppercase: false),
         // Mockup range 9.5–11.5; readable end taken so the role holds the floor.
         .usageRingValue:        Spec(size: 11.5, weight: 700, trackingEm: 0,     isMono: false, isTabular: true,  isUppercase: false),
@@ -241,6 +255,21 @@ enum PouredType {
         .subagentElapsed:       Spec(size: 11,   weight: 400, trackingEm: 0,     isMono: false, isTabular: true,  isUppercase: false),
         .nestHeader:            Spec(size: 10,   weight: 650, trackingEm: 0.08,  isMono: false, isTabular: false, isUppercase: true),
         .todo:                  Spec(size: 12,   weight: 400, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
+        // PI-X-001/G3 (correction 2): the board's right-slot `.count` capsule —
+        // `font-size:12px; font-weight:650` (`01-poured-island.html:174-176`).
+        // Tabular so a ticking `2/5 → 3/5` cannot jitter the capsule's width.
+        .pillCountBadge:        Spec(size: 12,   weight: 650, trackingEm: 0,     isMono: false, isTabular: true,  isUppercase: false),
+        // PI-X-001/G3 (correction 2): the closed pill's label is the board's
+        // `.pill .lab` — `font-size:12.5px; letter-spacing:-.01em` and **no**
+        // `font-weight`, i.e. the inherited body 400 (`01-poured-island.html:154`).
+        // Native rendered it in `activityLine`, which is the *row*'s `.act` rule
+        // (12.5/550, tracking 0, `:266`) — a different board rule that happens to
+        // share the size. The extra weight and the missing negative tracking cost
+        // ~6.4pt on the board's own §G″ sentence, which is exactly what pushed
+        // `Refactoring · 3 agents` past the notch lane and truncated it to
+        // `Refactoring · 3 a…`. No width math moves: `V6ClosedPill`'s statics
+        // measure the label by character count, not by face.
+        .pillLabel:             Spec(size: 12.5, weight: 400, trackingEm: -0.01, isMono: false, isTabular: false, isUppercase: false),
 
         .assistantBody:         Spec(size: 12.5, weight: 400, trackingEm: 0,     isMono: false, isTabular: false, isUppercase: false),
         .assistantLabel:        Spec(size: 10,   weight: 650, trackingEm: 0.08,  isMono: false, isTabular: false, isUppercase: true),

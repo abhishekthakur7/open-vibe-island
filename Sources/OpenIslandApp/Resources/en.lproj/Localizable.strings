@@ -317,6 +317,8 @@
 "island.poured.footer.groupedByAgent" = "Grouped by agent";
 "island.poured.footer.groupedByProject" = "Grouped by project";
 "island.poured.footer.idle" = "All quiet elsewhere · %lld idle";
+"island.poured.empty.title" = "All quiet";
+"island.poured.empty.subtitle" = "No active agents. Open Island is watching your terminals — the next permission, question, or finished run will surface here.";
 "island.poured.empty.hooksInstalled" = "Hooks installed for %@";
 
 /* Island Panel - Halo theme (AB-340) */
@@ -555,6 +557,7 @@
 "poured.row.live" = "live %@";
 "poured.age.now" = "now";
 "poured.subagents.count" = "%lld subagents";
+"poured.subagents.live" = "%lld subagents live";
 "poured.tasks.chip" = "%1$lld/%2$lld tasks";
 "poured.tasks.header" = "Tasks · %1$lld of %2$lld done";
 "poured.tasks.doing" = "now";
@@ -582,6 +585,8 @@
 "poured.completion.duration" = "%@ duration";
 "poured.completion.finishedAgo" = "finished %@ ago";
 "poured.completion.dismiss" = "Dismiss";
+"poured.completion.reply" = "Reply";
+"poured.completion.result" = "Result";
 "completion.replyPlaceholder" = "Reply to %@…";
 
 /* Island Panel - Badges */

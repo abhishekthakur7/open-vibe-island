@@ -17,9 +17,16 @@ struct IslandDebugScenarioTests {
     ///   in the list is collapsed by construction (PI-C-006), which is exactly
     ///   the state §D expands *from*, so the seam is the only non-interactive
     ///   way to reach it.
+    /// - `completedSuccess` (Poured parity Slice 6 · `H1-completed`): the board's
+    ///   §H hero. A completed row in a click-opened list is collapsed by
+    ///   construction (PI-C-006) exactly like §D's running row, so the seam —
+    ///   paired with the surface's `actionableSessionID`, which
+    ///   `shouldShowEmbeddedDetailBody` also requires — is the only
+    ///   non-interactive way to reach the completion card.
     private static let expansionForcingScenarios: Set<IslandDebugScenario> = [
         .subagentsExpanded,
         .pouredSessionDetail,
+        .completedSuccess,
     ]
 
     @Test

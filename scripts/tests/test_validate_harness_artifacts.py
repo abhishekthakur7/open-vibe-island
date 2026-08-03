@@ -67,6 +67,8 @@ SPEC.loader.exec_module(VALIDATOR)
 
 EXPECTED_HEIGHT_RANGES = {
     "closed": (175, 240),
+    "closedCritical": (175, 240),
+    "closedTaskCounter": (175, 240),
     "sessionList": (560, 820),
     "approvalCard": (350, 520),
     "questionCard": (400, 800),
@@ -76,9 +78,10 @@ EXPECTED_HEIGHT_RANGES = {
     "codexApprovalCard": (280, 520),
     "multiQuestionCard": (400, 930),
     "subagentsCard": (450, 850),
-    "subagentsExpanded": (400, 900),
+    "subagentsExpanded": (400, 910),
     "completedInterrupted": (240, 540),
     "completedFailed": (240, 540),
+    "completedSuccess": (420, 660),
     "usageMeters": (560, 820),
     "emptyState": (260, 450),
 }
@@ -89,29 +92,33 @@ EXPECTED_WIDTH_RANGES = {
     "halo": (610, 630),
 }
 
-EXPECTED_SCREEN_PROTECTED_SCENARIOS = frozenset(EXPECTED_HEIGHT_RANGES) - {"closed"}
+EXPECTED_SCREEN_PROTECTED_SCENARIOS = frozenset(EXPECTED_HEIGHT_RANGES) - {
+    "closed",
+    "closedCritical",
+    "closedTaskCounter",
+}
 
 EXPECTED_USAGE_METER_SEMANTICS = {
     "poured": (
-        "Claude 5h 34%, resets in 2h 9m",
-        "Claude 7d 78%, resets in 3d 3h",
-        "Codex 7d 92%, resets in 18h 59m",
+        "Claude 5h 34%, resets in 2h 10m",
+        "Claude 7d 78%, resets in 3d 4h",
+        "Codex 7d · Pro 92%, resets in 18h 40m",
     ),
     "flightDeck": (
-        "Cl 5h 34%, resets in 2h 9m",
-        "Cl 7d 78%, resets in 3d 3h",
-        "Cx 7d 92%, resets in 18h 59m",
+        "Cl 5h 34%, resets in 2h 10m",
+        "Cl 7d 78%, resets in 3d 4h",
+        "Cx 7d · Pro 92%, resets in 18h 40m",
     ),
     "halo": (
-        "Claude 5h 34%, resets in 2h 9m",
-        "Claude 7d 78%, resets in 3d 3h",
-        "Codex 7d 92%, resets in 18h 59m",
+        "Claude 5h 34%, resets in 2h 10m",
+        "Claude 7d 78%, resets in 3d 4h",
+        "Codex 7d · Pro 92%, resets in 18h 40m",
     ),
 }
 
 FLIGHT_DECK_USAGE_GROUP_ENTRIES = (
-    "Cl 5h 34%, resets in 2h 9m · Cl 7d 78%, resets in 3d 3h",
-    "Cx 7d 92%, resets in 18h 59m",
+    "Cl 5h 34%, resets in 2h 10m · Cl 7d 78%, resets in 3d 4h",
+    "Cx 7d · Pro 92%, resets in 18h 40m",
 )
 
 EXPECTED_GOLDEN_PNG_DIMENSIONS = {
@@ -222,7 +229,11 @@ def scenario_case(scenario: str, theme: str = "poured") -> dict:
     case = {
         "scenario": scenario,
         "theme": theme,
-        "notchStatus": "closed" if scenario == "closed" else "opened",
+        "notchStatus": (
+            "closed"
+            if scenario in {"closed", "closedCritical", "closedTaskCounter"}
+            else "opened"
+        ),
         "islandSurface": "sessionList",
         "frame": {
             "width": (width_minimum + width_maximum) // 2,
@@ -255,6 +266,15 @@ def scenario_case(scenario: str, theme: str = "poured") -> dict:
 
     if scenario == "closed":
         case["textValues"].add("9 sessions")
+    elif scenario == "closedTaskCounter":
+        select("fixture-subagents-tasks", "running", "Coordinating rollout")
+        case["textValues"].update(
+            {"2 of 5 tasks done", "Refactoring · 3 agents"}
+        )
+    elif scenario == "closedCritical":
+        case["textValues"].update(
+            {"Codex", "Codex 7d · Pro usage 92 percent"}
+        )
     elif scenario == "sessionList":
         case["buttonLabels"].update(
             {
@@ -501,22 +521,22 @@ def scenario_case(scenario: str, theme: str = "poured") -> dict:
             case["textValues"].add("1–7 select · Enter submits · Esc closes")
         show_all()
     elif scenario == "subagentsCard":
-        select("fixture-subagents-tasks", "running", "Coordinating rollout")
+        select("fixture-subagents-tasks", "running", "Refactoring hook installers")
         case["buttonLabels"].add(
-            "Claude Code, open-vibe-island, running, 6 seconds ago"
+            "Claude Code, the-automator, running, 6 seconds ago"
         )
         case["textValues"].add("3 subagents, 2 of 5 tasks completed")
     elif scenario == "subagentsExpanded":
-        select("fixture-subagents-tasks", "running", "Coordinating rollout")
+        select("fixture-subagents-tasks", "running", "Refactoring hook installers")
         case["buttonLabels"].add(
-            "Claude Code, open-vibe-island, running, 6 seconds ago"
+            "Claude Code, the-automator, running, 6 seconds ago"
         )
         case["textValues"].update(
             {
-                "Map the theme token surface",
-                "Port the session rows to Poured 2.0",
-                "Sequence the Flight Deck follow-ups",
-                "Header + meters + scaffold",
+                "Map every ClaudeHooks call site",
+                "Rewrite CodexHooks payload model",
+                "Add BridgeCodec round-trip tests",
+                "Rewrite per-agent payload models",
                 "2 of 5",
             }
         )
@@ -573,6 +593,45 @@ def scenario_case(scenario: str, theme: str = "poured") -> dict:
             }
         )
         show_all()
+    elif scenario == "completedSuccess":
+        select(
+            "fixture-completed-success",
+            "completed",
+            "Updated AGENTS.md and CLAUDE.md",
+        )
+        case["islandSurface"] = "sessionList:actionable(fixture-completed-success)"
+        case["buttonLabels"].update(
+            {
+                {
+                    "poured": "Jump to terminal",
+                    "flightDeck": "Jump",
+                    "halo": "Jump · Ghostty",
+                }[theme],
+                "Transcript, the-automator",
+                "Dismiss session",
+                (
+                    "Claude Code, the-automator, completed, 12 minutes ago, "
+                    "Updated AGENTS.md and CLAUDE.md"
+                ),
+            }
+        )
+        case["textValues"].update(
+            {
+                "the-automator",
+                "docs/agents-md",
+                "Success",
+                "Fable 5 · finished 12m ago",
+                "RESULT",
+                (
+                    "Updated AGENTS.md and CLAUDE.md to document the new "
+                    "bridge-auth flow. Added a \"Working agreement\" note about "
+                    "fail-open hooks and refreshed the support matrix to include "
+                    "OpenCode and Kimi."
+                ),
+                "2 files changed",
+                "Support matrix now matches README",
+            }
+        )
     elif scenario == "usageMeters":
         if theme == "flightDeck":
             case["labels"].update(FLIGHT_DECK_USAGE_GROUP_ENTRIES)
@@ -591,8 +650,11 @@ def scenario_case(scenario: str, theme: str = "poured") -> dict:
         if theme == "poured":
             case["textValues"].update(
                 {
-                    "No open terminal sessions",
-                    "Start a coding agent in your terminal",
+                    "All quiet",
+                    "No active agents. Open Island is watching your terminals — "
+                    "the next permission, question, or finished run will surface "
+                    "here.",
+                    "Hooks installed for Claude, Codex, Gemini",
                 }
             )
         elif theme == "flightDeck":
@@ -759,7 +821,18 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
         self.assertIsNotNone(match)
         runner_scenarios = shlex.split(match.group(1))
         self.assertEqual(len(runner_scenarios), 15)
-        self.assertEqual(set(runner_scenarios), set(VALIDATOR.SUPPORTED_SCENARIOS))
+        # The runner's fixed 3 x 15 matrix predates the Slice 6 scenarios
+        # (completedSuccess, closedTaskCounter, closedCritical), which are
+        # captured directly today. Every runner cell must still be a scenario
+        # the validator supports; extending the runner matrix is a separate
+        # change.
+        self.assertLessEqual(
+            set(runner_scenarios), set(VALIDATOR.SUPPORTED_SCENARIOS)
+        )
+        self.assertEqual(
+            set(VALIDATOR.SUPPORTED_SCENARIOS) - set(runner_scenarios),
+            {"completedSuccess", "closedTaskCounter", "closedCritical"},
+        )
         self.assertEqual(VALIDATOR.HEIGHT_RANGES, EXPECTED_HEIGHT_RANGES)
         self.assertEqual(VALIDATOR.WIDTH_RANGES, EXPECTED_WIDTH_RANGES)
         self.assertEqual(
@@ -860,14 +933,17 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
                 "textValues",
                 "3 subagents, 2 of 5 tasks completed",
             ),
-            "subagentsExpanded": ("textValues", "Map the theme token surface"),
+            "subagentsExpanded": ("textValues", "Map every ClaudeHooks call site"),
             "completedInterrupted": ("textValues", "Interrupted"),
             "completedFailed": ("textValues", "Failed"),
             "usageMeters": (
                 "labels",
-                "Codex 7d 92%, resets in 18h 59m",
+                "Codex 7d · Pro 92%, resets in 18h 40m",
             ),
-            "emptyState": ("textValues", "No open terminal sessions"),
+            "emptyState": ("textValues", "All quiet"),
+            "closedTaskCounter": ("textValues", "2 of 5 tasks done"),
+            "closedCritical": ("textValues", "Codex 7d · Pro usage 92 percent"),
+            "completedSuccess": ("textValues", "RESULT"),
         }
         for scenario, (collection, value) in semantic_removals.items():
             case = scenario_case(scenario)
@@ -1534,8 +1610,11 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
                 f"Codex, fixture-{index}, running, recently"
                 for index in range(1, 10)
             },
-            "extra-field": {
-                f"Codex, fixture-{index}, running, {index} minutes ago, extra"
+            # The narrated Poured row (PI-C-005) appends the activity line as a
+            # fifth free-text component, so an empty — not merely present —
+            # fifth field is what disqualifies a row.
+            "empty-narration-field": {
+                f"Codex, fixture-{index}, running, {index} minutes ago, "
                 for index in range(1, 10)
             },
         }
@@ -1544,6 +1623,14 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
             case["buttonLabels"] = malformed_buttons
             with self.subTest(case=name):
                 self.assert_invalid(case, "exactly 9 session row buttons")
+
+        narrated = scenario_case("sessionList", "poured")
+        narrated["buttonLabels"] = {
+            f"Codex, fixture-{index}, running, {index} minutes ago, "
+            f"Running step {index} · live {index}s"
+            for index in range(1, 10)
+        }
+        self.assert_valid(narrated)
 
     def test_nested_work_ax_contract_is_not_visual_or_split(self) -> None:
         collapsed_value = "3 subagents, 2 of 5 tasks completed"
@@ -1570,7 +1657,7 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
 
         malformed_lead = scenario_case("subagentsCard")
         malformed_lead["buttonLabels"] = {
-            "Claude Code, open-vibe-island, running"
+            "Claude Code, the-automator, running"
         }
         self.assert_invalid(malformed_lead, "structured lead session row")
 
@@ -1583,7 +1670,7 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
 
         malformed_expanded_lead = scenario_case("subagentsExpanded")
         malformed_expanded_lead["buttonLabels"] = {
-            "Claude Code, open-vibe-island, running, recently"
+            "Claude Code, the-automator, running, recently"
         }
         self.assert_invalid(
             malformed_expanded_lead,

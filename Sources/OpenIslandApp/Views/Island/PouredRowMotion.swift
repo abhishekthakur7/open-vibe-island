@@ -223,6 +223,55 @@ enum PouredSubagentTiming {
     }
 }
 
+// MARK: - Run-glyph metrics (mockup `.glyph.run` at its four rendered sizes)
+
+/// The three-bar `.glyph.run` measured off the board (`01-poured-island.html:160-166`)
+/// plus the two §G sizes Slice 6 adopts.
+///
+/// The board keeps `.glyph i` at a literal `2.5px` wide / `5px` tall while
+/// shrinking only the *box* (`10×11` for `.nest-h` at `:1289`, `8×9` for
+/// `.todo.doing .tk` at `:1313`), so its bars overflow every reduced instance
+/// (mapper contradiction C-7). Native scales the bars with the box off a single
+/// `height / 15` factor, which is what these helpers compute — pinned so the two
+/// swapped §G sites can never drift apart or away from the board's sizes.
+enum PouredRunGlyphMetrics {
+    /// The board's unscaled `.glyph` box.
+    static let referenceHeight: CGFloat = 15
+    static let barWidth: CGFloat = 2.5
+    static let barHeights: [CGFloat] = [14, 14, 11]
+
+    /// `.nest-h > .glyph.run{width:10px;height:11px}` (`:1289`).
+    static let nestHeaderHeight: CGFloat = 11
+    /// `.todo.doing .tk > .glyph.run{width:8px;height:9px}` (`:1313`).
+    static let todoTickHeight: CGFloat = 9
+
+    static func scale(height: CGFloat) -> CGFloat { height / referenceHeight }
+
+    static func barWidth(height: CGFloat) -> CGFloat { barWidth * scale(height: height) }
+
+    static func barHeights(height: CGFloat) -> [CGFloat] {
+        barHeights.map { $0 * scale(height: height) }
+    }
+}
+
+// MARK: - Live subagent rollup (mockup §G `· 3 subagents live`)
+
+/// How many subagents are still running, for the **expanded** row's `.act`
+/// suffix (`01-poured-island.html:1286`).
+///
+/// A subagent that has reported a `summary` has handed its work back, so it is
+/// no longer live. Returns `nil` — not `0` — for every case that must render no
+/// suffix at all: a collapsed row (where the fan-out is identity and rides the
+/// disambiguator per R2/C4), and an expanded row whose subagents have all
+/// finished.
+enum PouredLiveSubagents {
+    nonisolated static func liveCount(_ subagents: [ClaudeSubagentInfo], isExpanded: Bool) -> Int? {
+        guard isExpanded else { return nil }
+        let live = subagents.filter { $0.summary == nil }.count
+        return live > 0 ? live : nil
+    }
+}
+
 // MARK: - Task rollup (mockup §G nest header + §G′ compressed chip)
 
 /// The done / total split the todo list rolls up to — the nest header
@@ -242,6 +291,25 @@ struct PouredTaskRollup: Equatable {
     init(statuses: [ClaudeTaskInfo.Status]) {
         self.total = statuses.count
         self.done = statuses.filter { $0 == .completed }.count
+    }
+}
+
+// MARK: - Completion hero sub-line (mockup §H `Fable 5 · finished 12m ago`)
+
+/// The §H hero's identity sub-line (`01-poured-island.html:1399`): the model
+/// name and the finished-ago reading, joined by the board's own middot.
+///
+/// A session with no model metadata (`AgentSession.displayModelName == nil` —
+/// every Codex.app / MCP session, and any agent that never reported one) drops
+/// the model segment **and** the separator, so the line never renders as a
+/// dangling `· finished 12m ago`. Pure so the composition is pinnable without
+/// building the card.
+enum PouredCompletionSubline {
+    nonisolated static func text(model: String?, finishedAgo: String) -> String {
+        let finished = finishedAgo.pouredTrimmed
+        guard let model = model?.pouredTrimmed, !model.isEmpty else { return finished }
+        guard !finished.isEmpty else { return model }
+        return model + " \u{00B7} " + finished
     }
 }
 

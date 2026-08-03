@@ -32,4 +32,11 @@ enum PouredPalette {
     /// (`SPEC-poured-island` §4A A4 "text `#2a2205`"). The question twin of
     /// `attentionBadgeInk`, over the `statusWaitingForAnswer` gold fill.
     static let questionBadgeInk = Color(red: 0x2A / 255.0, green: 0x22 / 255.0, blue: 0x05 / 255.0)
+
+    /// Ink drawn *inside* the §I′ critical usage chip — `#f0a8a8`
+    /// (`01-poured-island.html:1502`). A desaturated pink lift of `--fail`: the
+    /// full `#db5252` would vibrate against its own `.16` fill at 10.5pt, so the
+    /// board reads the number in this lighter ink while the dial arc keeps the
+    /// saturated band colour.
+    static let usageCriticalChipInk = Color(red: 0xF0 / 255.0, green: 0xA8 / 255.0, blue: 0xA8 / 255.0)
 }

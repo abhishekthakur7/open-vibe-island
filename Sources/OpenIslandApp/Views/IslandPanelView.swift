@@ -4837,6 +4837,10 @@ struct ReplyTextField: NSViewRepresentable {
     var placeholder: String
     @Binding var text: String
     var onSubmit: () -> Void
+    /// PI-X-001/H1: Poured's §H rail discloses this field behind a `Reply`
+    /// ghost, so by the time it exists the user has already asked to type.
+    /// `false` (the default) leaves every standing-field caller untouched.
+    var focusesOnAppear: Bool = false
 
     func makeNSView(context: Context) -> NSTextField {
         let field = NSTextField()
@@ -4855,6 +4859,14 @@ struct ReplyTextField: NSViewRepresentable {
         field.delegate = context.coordinator
         field.cell?.lineBreakMode = .byTruncatingTail
         field.cell?.usesSingleLineMode = true
+        if focusesOnAppear {
+            // The field has no window yet inside `makeNSView`; hop a runloop so
+            // it is in the hierarchy before asking for first responder.
+            DispatchQueue.main.async { [weak field] in
+                guard let field, let window = field.window else { return }
+                window.makeFirstResponder(field)
+            }
+        }
         return field
     }
 
@@ -5143,13 +5155,18 @@ struct TranscriptAffordance: View {
 
 /// The transcript action is Finder-only. Session data is not allowed to select
 /// a default application, URL scheme, or application bundle identifier.
-private func openTranscriptFile(at path: String) {
+///
+/// C4-3: internal (not `private`) so Poured's §H completion rail — which draws
+/// its Transcript as a plain `PouredFullSizeButtonStyle(kind: .ghost)` rather
+/// than through `TranscriptAffordance`'s own chrome — opens, reveals and copies
+/// through this one seam instead of re-implementing it.
+func openTranscriptFile(at path: String) {
     LocalFileReveal.reveal(URL(fileURLWithPath: path))
 }
 
 /// Reveals only an existing, validated transcript in Finder. Missing paths and
 /// paths outside approved local agent roots fail closed.
-private func revealTranscriptFileInFinder(at path: String) {
+func revealTranscriptFileInFinder(at path: String) {
     LocalFileReveal.reveal(URL(fileURLWithPath: path))
 }
 
@@ -5157,7 +5174,7 @@ private func revealTranscriptFileInFinder(at path: String) {
 /// clipboard, so the identifier the label no longer spells out stays one
 /// click away for debugging. Same pasteboard pattern as the copyable command
 /// rows in `SettingsView.swift`.
-private func copyTranscriptPath(_ path: String) {
+func copyTranscriptPath(_ path: String) {
     NSPasteboard.general.clearContents()
     NSPasteboard.general.setString(path, forType: .string)
 }

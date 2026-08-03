@@ -195,7 +195,12 @@ struct PouredClosedPill: View {
         PouredClosedPillLabel(
             text: text,
             ambient: ambient,
-            maxWidth: V6ClosedPill.notchLaneLabelWidth(
+            // G3 (correction 2): render into the lane *plus* the trailing safety
+            // margin the pill's own half-reserve already holds — see
+            // `V6ClosedPill.notchLaneLabelRenderWidth`. No width math moves; the
+            // §G″ label simply stops being truncated inside space the pill had
+            // already paid for.
+            maxWidth: V6ClosedPill.notchLaneLabelRenderWidth(
                 physicalNotchWidth: physicalNotchWidth,
                 height: height
             )
@@ -721,7 +726,7 @@ enum PouredClosedPillCommandSpan: Sendable {
 
 /// The closed pill's narrated activity, split into primary / dim tone runs by
 /// `PouredPillLabelTone` (verb dim + object primary, count semibold). Renders at
-/// the Poured `activityLine` role but is capped at `maxWidth` — the width the
+/// the Poured `pillLabel` role but is capped at `maxWidth` — the width the
 /// fluid-layout math already reserved — so it never renders wider than the pill
 /// sized itself for (the `V6ClosedPill.*OuterWidth` statics are untouched).
 private struct PouredClosedPillLabel: View {
@@ -762,9 +767,12 @@ private struct PouredClosedPillLabel: View {
     }
 
     var body: some View {
+        // G3 (correction 2): the board's own `.pill .lab` face, not the row's
+        // `.act` — see `PouredType.Role.pillLabel`. The label is the same string
+        // either way; it now fits the notch lane the pill already reserved.
         let styled = composed
-            .font(PouredType.Role.activityLine.font)
-            .tracking(PouredType.Role.activityLine.spec.trackingPoints)
+            .font(PouredType.Role.pillLabel.font)
+            .tracking(PouredType.Role.pillLabel.spec.trackingPoints)
             .lineLimit(1)
             .truncationMode(.tail)
 
@@ -917,6 +925,14 @@ private struct PouredAttentionBadge: View {
 /// subagents but no todo list). Tabular digits so a ticking counter doesn't
 /// jitter; drawn in the neutral paper tone since a running task list is
 /// progress, not attention (`SPEC-poured-island` §G "pill: right slot `⏲ 2/5`").
+///
+/// PI-X-001/G3 (correction 2): the board draws this as its right-slot `.count`
+/// capsule (`01-poured-island.html:174-176`, drawn at `:1367`) — `height:20;
+/// min-width:20; padding:0 6; border-radius:10` over `rgba(242,245,251,.1)` with
+/// `--t1` ink at `12px/650`. Native drew bare 11pt text at `.82` paper, which
+/// read as loose furniture in the wing rather than the board's one compact
+/// counter. Same geometry vocabulary as the A3/A4 attention badge beside it, so
+/// the two right-slot kinds finally share a silhouette.
 private struct PouredTaskCounterChip: View {
     let completed: Int
     let total: Int
@@ -929,11 +945,23 @@ private struct PouredTaskCounterChip: View {
             Image(systemName: "timer")
                 .font(.system(size: 9, weight: .semibold))
             Text(fraction)
-                .font(PouredType.Role.age.font)
+                .font(PouredType.Role.pillCountBadge.font)
         }
         .lineLimit(1)
         .fixedSize(horizontal: true, vertical: false)
-        .foregroundStyle(tokens.colors.paper.opacity(0.82))
+        .foregroundStyle(tokens.colors.paper.opacity(PouredPillMotion.RightSlot.countBadgeInkOpacity))
+        .padding(.horizontal, PouredPillMotion.RightSlot.badgeHPadding)
+        .frame(
+            minWidth: PouredPillMotion.RightSlot.badgeMinDiameter,
+            minHeight: PouredPillMotion.RightSlot.badgeMinDiameter
+        )
+        .background(
+            RoundedRectangle(
+                cornerRadius: PouredPillMotion.RightSlot.badgeCornerRadius,
+                style: .continuous
+            )
+            .fill(tokens.colors.paper.opacity(PouredPillMotion.RightSlot.countBadgeFillOpacity))
+        )
     }
 
     /// A todo list is the headline (`2/5`); a pure subagent fan-out with no todos
@@ -943,12 +971,20 @@ private struct PouredTaskCounterChip: View {
     }
 }
 
-/// I usage dial — a small conic ring + tabular `92%`, tinted by threshold
-/// (`≥90` critical red, `≥70` warn gold, else green). The pill only surfaces the
-/// worst window once it is critical (`IslandRightSlotResolver.usageAlertThreshold
-/// == 90`), so in practice this is always the red crit dial; the tint is still
-/// computed from the value so a fixture at any percent reads truthfully
-/// (`SPEC-poured-island` §I "pill compression: small red dial + `92%`").
+/// I usage dial — a small conic ring + tabular `92%` inside a **tinted capsule**,
+/// tinted by threshold (`≥90` critical red, `≥70` warn gold, else green). The
+/// pill only surfaces the worst window once it is critical
+/// (`IslandRightSlotResolver.usageAlertThreshold == 90`), so in practice this is
+/// always the red crit dial; the tint is still computed from the value so a
+/// fixture at any percent reads truthfully (`SPEC-poured-island` §I "pill
+/// compression: small red dial + `92%`").
+///
+/// PI-I-001/I3: the board draws the readout as a `.chip`
+/// (`01-poured-island.html:1502-1505`) — `background:rgba(219,82,82,.16)` with
+/// its own lighter `#f0a8a8` ink for the numerals, and a dial whose track is the
+/// band tint at `.3` rather than neutral paper. Native drew a bare dial and text
+/// at the full band colour, which read as loose furniture in the wing instead of
+/// one compact readout.
 private struct PouredUsageDialChip: View {
     let percent: Int
 
@@ -966,11 +1002,20 @@ private struct PouredUsageDialChip: View {
 
     private var fraction: Double { min(1, max(0, Double(percent) / 100)) }
 
+    /// The numerals' ink. The board only renders the critical chip, so only that
+    /// band gets the lifted `#f0a8a8`; the warn / fine code paths keep reading
+    /// the band colour itself, exactly as before.
+    private var readoutInk: Color {
+        percent >= PouredPillMotion.RightSlot.usageCriticalThreshold
+            ? PouredPalette.usageCriticalChipInk
+            : tint
+    }
+
     var body: some View {
         HStack(spacing: PouredPillMotion.RightSlot.usageDialValueSpacing) {
             ZStack {
                 Circle()
-                    .stroke(tokens.colors.paper.opacity(0.14),
+                    .stroke(tint.opacity(PouredPillMotion.RightSlot.usageDialTrackOpacity),
                             lineWidth: PouredPillMotion.RightSlot.usageDialLineWidth)
                 Circle()
                     .trim(from: 0, to: fraction)
@@ -983,10 +1028,18 @@ private struct PouredUsageDialChip: View {
 
             Text("\(percent)%")
                 .font(PouredType.Role.age.font)
-                .foregroundStyle(tint)
+                .foregroundStyle(readoutInk)
         }
         .lineLimit(1)
         .fixedSize(horizontal: true, vertical: false)
+        // The board's `.chip` box (`01-poured-island.html:286-289`) carrying the
+        // band's own `.16` fill.
+        .padding(.horizontal, PouredPillMotion.RightSlot.usageChipHPadding)
+        .padding(.vertical, PouredPillMotion.RightSlot.usageChipVPadding)
+        .background(
+            RoundedRectangle(cornerRadius: PouredPillMotion.RightSlot.usageChipCornerRadius, style: .continuous)
+                .fill(tint.opacity(PouredPillMotion.RightSlot.usageChipFillOpacity))
+        )
     }
 }
 

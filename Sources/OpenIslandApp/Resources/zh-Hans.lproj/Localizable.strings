@@ -318,6 +318,8 @@
 "island.poured.footer.groupedByAgent" = "按代理分组";
 "island.poured.footer.groupedByProject" = "按项目分组";
 "island.poured.footer.idle" = "别处一切安静 · %lld 个空闲";
+"island.poured.empty.title" = "一切平静";
+"island.poured.empty.subtitle" = "当前没有活动的智能体。Open Island 正在监视你的终端 — 下一个权限请求、提问或完成的运行都会出现在这里。";
 "island.poured.empty.hooksInstalled" = "已为 %@ 安装 Hooks";
 
 /* Island Panel - Halo theme (AB-340) */
@@ -533,6 +535,7 @@
 "poured.row.live" = "已运行 %@";
 "poured.age.now" = "刚刚";
 "poured.subagents.count" = "%lld 个子代理";
+"poured.subagents.live" = "%lld 个子代理运行中";
 "poured.tasks.chip" = "%1$lld/%2$lld 任务";
 "poured.tasks.header" = "任务 · %2$lld 个中 %1$lld 个已完成";
 "poured.tasks.doing" = "进行中";
@@ -560,6 +563,8 @@
 "poured.completion.duration" = "耗时 %@";
 "poured.completion.finishedAgo" = "%@前完成";
 "poured.completion.dismiss" = "关闭";
+"poured.completion.reply" = "回复";
+"poured.completion.result" = "结果";
 "completion.replyPlaceholder" = "回复 %@…";
 
 /* Island Panel - Badges */
