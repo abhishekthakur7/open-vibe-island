@@ -49,8 +49,16 @@ resource_bundle="$build_root/OpenIsland_OpenIslandApp.bundle"
 if [ -d "$resource_bundle" ]; then
     rm -rf "$bundle_dir/OpenIsland_OpenIslandApp.bundle"
     command cp -R "$resource_bundle" "$bundle_dir/"
+    # SwiftPM's .process("Resources") flattens directories, so the templates
+    # land at the resource bundle root rather than in a ClaudeStatusLineTemplates
+    # subdirectory. ClaudeStatusLineInstallationManager still resolves them at
+    # Contents/Resources/ClaudeStatusLineTemplates/, so rebuild that layout the
+    # same way package-local-app.sh does.
     rm -rf "$bundle_dir/Contents/Resources/ClaudeStatusLineTemplates"
-    command cp -R "$resource_bundle/ClaudeStatusLineTemplates" "$bundle_dir/Contents/Resources/"
+    mkdir -p "$bundle_dir/Contents/Resources/ClaudeStatusLineTemplates"
+    for template in status-line-v1.sh.template status-line-wrapper-v1.sh.template status-line-delegate-v1.sh.template; do
+        command cp "$resource_bundle/$template" "$bundle_dir/Contents/Resources/ClaudeStatusLineTemplates/$template"
+    done
 fi
 
 cat > "$plist_path" <<EOF

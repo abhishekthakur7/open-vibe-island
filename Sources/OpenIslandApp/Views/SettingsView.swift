@@ -551,6 +551,167 @@ private struct HookInstallConfirmation: Identifiable {
     var id: String { preview.id }
 }
 
+/// Consent sheet for a hook install or removal.
+///
+/// The full provenance record (per-path snapshots, digests, journal and backup
+/// paths) is audit material, not a decision aid, so it lives behind a
+/// disclosure inside a scroll view. What the user needs in order to decide —
+/// which files change and how — stays visible without scrolling, and the
+/// buttons are pinned to the bottom of a fixed frame.
+private struct HookConsentSheet: View {
+    let confirmation: HookInstallConfirmation
+    let onConfirm: () -> Void
+    let onCancel: () -> Void
+
+    @State private var showsTechnicalDetails = false
+
+    private var preview: HookConsentPreview { confirmation.preview }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            header
+            Divider()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    filesSection
+                    changesSection
+                    technicalDetailsSection
+                }
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            Divider()
+            footer
+        }
+        .frame(width: 560, height: 460)
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(confirmation.isUninstall ? "Remove Open Island hooks?" : "Install Open Island hooks?")
+                .font(.headline)
+            Text(summary)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var summary: String {
+        let fileCount = preview.targetPaths.count
+        let files = fileCount == 1 ? "1 file" : "\(fileCount) files"
+        if confirmation.isUninstall {
+            return "Open Island will remove its own managed entries from \(files) for \(preview.integrationID). Your other settings in those files are left as they are."
+        }
+        return "Open Island will add its own managed entries to \(files) for \(preview.integrationID). Your other settings in those files are left as they are, and a backup is kept for \(preview.target.backupRetentionDays) days."
+    }
+
+    private var filesSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Files changed")
+                .font(.subheadline.weight(.semibold))
+            ForEach(preview.targetPaths, id: \.self) { path in
+                Text(abbreviate(path))
+                    .font(.system(.caption, design: .monospaced))
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var changesSection: some View {
+        if !preview.managedAdditions.isEmpty || !preview.managedRemovals.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Changes")
+                    .font(.subheadline.weight(.semibold))
+                ForEach(preview.managedAdditions, id: \.self) { addition in
+                    Label(addition, systemImage: "plus.circle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(preview.managedRemovals, id: \.self) { removal in
+                    Label(removal, systemImage: "minus.circle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private var technicalDetailsSection: some View {
+        DisclosureGroup("Technical details", isExpanded: $showsTechnicalDetails) {
+            Text(technicalDetails)
+                .font(.system(.caption2, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 8)
+        }
+        .font(.subheadline.weight(.semibold))
+    }
+
+    private var footer: some View {
+        HStack {
+            Spacer()
+            Button("Cancel", role: .cancel, action: onCancel)
+                .keyboardShortcut(.cancelAction)
+            Button(confirmation.isUninstall ? "Remove" : "Install", action: onConfirm)
+                .keyboardShortcut(.defaultAction)
+        }
+        .padding(20)
+    }
+
+    /// Collapse the home directory so the paths that matter stay readable.
+    private func abbreviate(_ path: String) -> String {
+        let home = NSHomeDirectory()
+        return path.hasPrefix(home) ? "~" + path.dropFirst(home.count) : path
+    }
+
+    private var technicalDetails: String {
+        var lines: [String] = [
+            "Integration: \(preview.integrationID)",
+            "Source: \(preview.sourceBundlePath)",
+            "Version: \(preview.artifactVersion)",
+            "SHA-256: \(preview.sha256)",
+            "Modes: \(preview.requestedModes.joined(separator: ", "))",
+            "Wrapping: \(preview.involvesWrapping ? "yes" : "no") · restoration: \(preview.involvesRestoration ? "yes" : "no")",
+        ]
+        appendPaths(&lines, title: "Backups (\(preview.target.backupRetentionDays)d)", paths: preview.backupPaths)
+        appendPaths(&lines, title: "Journals", paths: preview.journalPaths)
+        appendPaths(&lines, title: "Provenance", paths: preview.provenancePaths)
+        if !preview.targetSnapshots.isEmpty {
+            lines.append("")
+            lines.append("Target snapshots:")
+            for snapshot in preview.targetSnapshots {
+                lines.append(describe(snapshot))
+            }
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private func appendPaths(_ lines: inout [String], title: String, paths: [String]) {
+        guard !paths.isEmpty else { return }
+        lines.append("")
+        lines.append("\(title):")
+        lines.append(contentsOf: paths)
+    }
+
+    private func describe(_ snapshot: HookConsentPreview.TargetSnapshot) -> String {
+        let mode = snapshot.mode.map { String($0, radix: 8) } ?? "—"
+        let owner = snapshot.ownerID.map(String.init) ?? "—"
+        let links = snapshot.linkCount.map(String.init) ?? "—"
+        return """
+        \(snapshot.canonicalPath): \(snapshot.exists ? snapshot.fileType : "absent"), \
+        mode \(mode), owner \(owner), links \(links), SHA \(snapshot.sha256 ?? "absent"), \
+        provenance \(snapshot.provenanceGeneration ?? "absent"), outcome \(snapshot.managementOutcome.rawValue)
+        """
+    }
+}
+
 struct SetupSettingsPane: View {
     var model: AppModel
 
@@ -823,15 +984,20 @@ struct SetupSettingsPane: View {
         }
         .formStyle(.grouped)
         .navigationTitle(lang.t("settings.tab.setup"))
-        .alert(item: $pendingHookInstall) { request in
-            Alert(
-                title: Text("Review Open Island changes"),
-                message: Text(consentMessage(request.preview)),
-                primaryButton: .default(Text(request.isUninstall ? "Confirm removal" : "Confirm install"), action: {
+        // A sheet, not an `Alert`. The consent copy includes a per-path
+        // snapshot table, so as an alert message it grew unbounded and pushed
+        // its own buttons off-screen, leaving no way to confirm or cancel.
+        // The sheet has a fixed frame and pinned buttons, so the detail can
+        // never displace the controls.
+        .sheet(item: $pendingHookInstall) { request in
+            HookConsentSheet(
+                confirmation: request,
+                onConfirm: {
                     if request.isUninstall { model.confirmHookUninstall(request.request, preview: request.preview) }
                     else { model.confirmHookInstall(request.request, preview: request.preview) }
-                }),
-                secondaryButton: .cancel()
+                    pendingHookInstall = nil
+                },
+                onCancel: { pendingHookInstall = nil }
             )
         }
     }
@@ -846,13 +1012,6 @@ struct SetupSettingsPane: View {
         pendingHookInstall = HookInstallConfirmation(preview: preview, request: request, isUninstall: true)
     }
 
-    private func consentMessage(_ preview: HookConsentPreview) -> String {
-        let changes = (preview.managedAdditions.map { "+ \($0)" } + preview.managedRemovals.map { "− \($0)" }).joined(separator: "\n")
-        let snapshots = preview.targetSnapshots.map { snapshot in
-            "\(snapshot.canonicalPath): \(snapshot.exists ? snapshot.fileType : "absent"), mode \(snapshot.mode.map { String($0, radix: 8) } ?? "—"), owner \(snapshot.ownerID.map(String.init) ?? "—"), links \(snapshot.linkCount.map(String.init) ?? "—"), SHA \(snapshot.sha256 ?? "absent"), provenance \(snapshot.provenanceGeneration ?? "absent"), outcome \(snapshot.managementOutcome.rawValue)"
-        }.joined(separator: "\n")
-        return "Integration: \(preview.integrationID)\nSource: \(preview.sourceBundlePath)\nVersion: \(preview.artifactVersion)\nSHA-256: \(preview.sha256)\nTargets:\n\(preview.targetPaths.joined(separator: "\n"))\nTarget snapshots:\n\(snapshots)\nModes: \(preview.requestedModes.joined(separator: ", "))\nChanges:\n\(changes)\nBackups (\(preview.target.backupRetentionDays)d):\n\(preview.backupPaths.joined(separator: "\n"))\nJournals:\n\(preview.journalPaths.joined(separator: "\n"))\nProvenance:\n\(preview.provenancePaths.joined(separator: "\n"))\nWrapping: \(preview.involvesWrapping ? "yes" : "no") · restoration: \(preview.involvesRestoration ? "yes" : "no")"
-    }
 
     @ViewBuilder
     private var claudeConfigDirectorySection: some View {
