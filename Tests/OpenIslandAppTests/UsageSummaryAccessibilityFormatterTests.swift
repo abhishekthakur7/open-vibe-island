@@ -45,8 +45,6 @@ struct UsageSummaryAccessibilityFormatterTests {
     func resetPhraseLocalizesInEverySupportedLanguage() {
         let expected: [LanguageManager.AppLanguage: String] = [
             .en: "Claude 5h 34%, resets in 2h 9m",
-            .zhHans: "Claude 5h 34%, 2h 9m 后重置",
-            .zhHant: "Claude 5h 34%, 2h 9m 後重置",
         ]
 
         for (appLanguage, expectedSummary) in expected {

@@ -333,8 +333,7 @@ enum PouredAttachmentChip {
         }
     }
 
-    /// Localization key for the chip label — resolved ×3 (en / zh-Hans /
-    /// zh-Hant) in `Localizable.strings`.
+    /// Localization key for the chip label — resolved in `Localizable.strings`.
     var localizationKey: String {
         switch self {
         case .attached: "poured.detail.attachment.attached"

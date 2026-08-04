@@ -62,7 +62,7 @@ struct HaloInstallHooksHint: View {
                 Spacer(minLength: 6)
                 Text(lang.t("island.halo.hint.setup"))
                     .font(.system(size: HaloTypography.keycapSize, weight: .semibold))
-                    .tracking(lang.usesCJKScript ? 0 : 1.0)
+                    .tracking(1.0)
                     .foregroundStyle(tokens.colors.paper.opacity(tokens.colors.text(hovering ? tokens.colors.secondaryTextOpacity : tokens.colors.tertiaryTextOpacity, increaseContrast: increasesContrast)))
                     .accessibilityHidden(true)
                 Image(systemName: "chevron.right")

@@ -1223,10 +1223,6 @@ public enum CodexRolloutReducer {
             return false
         }
 
-        if trimmed.contains("你已达到使用上限") || trimmed.contains("使用上限") {
-            return true
-        }
-
         let normalized = trimmed.lowercased()
         let englishPatterns = [
             "usage limit",

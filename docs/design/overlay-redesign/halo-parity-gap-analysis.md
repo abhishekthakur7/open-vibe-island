@@ -372,7 +372,7 @@ Two things real mode *did* settle:
 (`IslandDebugScenario.swift:353-421`) is not synthetic filler — it is a transcript-shaped
 fixture set (real workspaces, real bilingual last-assistant messages). Native renders
 those messages **verbatim and truncated** as the row's activity line in every state:
-`整理完了，已经提炼出和 autoreserach 相关的几段…`, `PR 已经提好了：`,
+`Cleaned up, extracted the relevant sections…`, `PR is up:`,
 `[README.md](/Users/wangruobing/Personal/open-island/R…`. The mockup's rows never show a
 raw message — they show a *narration* ("Updated `AGENTS.md` & `CLAUDE.md` with the new
 worktree workflow"). Nothing about that changes with live data, so G-49 is upgraded from

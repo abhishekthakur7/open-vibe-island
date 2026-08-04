@@ -38,8 +38,6 @@ struct NestedWorkAccessibilityTests {
         defer { restoreLanguagePreference(originalLanguage) }
         let expectations: [LanguageManager.AppLanguage: String] = [
             .en: "3 subagents, 2 of 5 tasks completed",
-            .zhHans: "3 个子代理，5 个任务中已完成 2 个",
-            .zhHant: "3 個子代理，5 個任務中已完成 2 個",
         ]
 
         for (language, expected) in expectations {

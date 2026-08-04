@@ -700,10 +700,9 @@ enum HaloHeroFormat {
 
     private enum ScopeSegmentSide { case leading, trailing }
 
-    /// The parentheses a localized template wraps `%@` in — ASCII for `en`
-    /// (`Always Allow (%@)`), fullwidth for `zh-Hans` / `zh-Hant`
-    /// (`始终允许（%@）`).
-    private static let scopeBracketCharacters: Set<Character> = ["(", "（", ")", "）"]
+    /// The parentheses the localized template wraps `%@` in — ASCII for the
+    /// `Always Allow (%@)` form.
+    private static let scopeBracketCharacters: Set<Character> = ["(", ")"]
 
     /// N2: the shared `approval.alwaysAllow` template parenthesises its `%@`, so
     /// splitting it around the tool name would leave the brackets orphaned either

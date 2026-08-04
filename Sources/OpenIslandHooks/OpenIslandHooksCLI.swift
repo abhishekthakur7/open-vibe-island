@@ -32,8 +32,7 @@ struct OpenIslandHooksCLI {
 
     static func main() {
         do {
-            // Allow wrappers to delegate one child process away from Open Island without changing global hook installation.
-            // 允许外部控制器只让当前子进程跳过 Open Island hook，不影响全局安装状态。
+            // Lets an external controller make only the current subprocess skip the Open Island hook, without affecting global install state.
             if HookSkipConfiguration.shouldSkipHooks(environment: ProcessInfo.processInfo.environment) {
                 return
             }

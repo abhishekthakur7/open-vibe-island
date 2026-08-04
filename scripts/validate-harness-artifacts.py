@@ -1024,7 +1024,7 @@ def main() -> None:
             fail(f"expected opened notch for questionCard, got {notch_status!r}")
         require_selected(report, "session-question", "waitingForAnswer")
         require_actionable_surface(report, "session-question", "questionCard")
-        if selected_session(report).get("summary") != "这个提醒态需要自动收起吗？":
+        if selected_session(report).get("summary") != "Should this reminder auto-collapse?":
             fail("questionCard selected-session summary is incorrect")
         assert_contains(
             ax_strings,
@@ -1055,7 +1055,7 @@ def main() -> None:
         )
         assert_contains(
             ax_strings,
-            "Plan 文件已写好。你的 hooks 触发情况如何？",
+            "Plan file written. How are your hooks firing?",
             "completionCard AX content",
         )
         require_show_all(button_labels)

@@ -282,7 +282,7 @@ def scenario_case(scenario: str, theme: str = "poured") -> dict:
             )
         show_all()
     elif scenario == "questionCard":
-        select("session-question", "waitingForAnswer", "这个提醒态需要自动收起吗？")
+        select("session-question", "waitingForAnswer", "Should this reminder auto-collapse?")
         case["islandSurface"] = "sessionList:actionable(session-question)"
         case["labels"].add("Which authentication method should we use?")
         case["buttonLabels"].update(
@@ -298,7 +298,7 @@ def scenario_case(scenario: str, theme: str = "poured") -> dict:
             "halo": "Jump · Ghostty",
         }[theme]
         case["buttonLabels"].update({jump, "Transcript, open-island"})
-        case["textValues"].add("Plan 文件已写好。你的 hooks 触发情况如何？")
+        case["textValues"].add("Plan file written. How are your hooks firing?")
         show_all()
     elif scenario == "longCompletionCard":
         select("session-completion-long", "completed", "README complete")
@@ -808,7 +808,7 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
             ),
             "approvalCard": ("buttonLabels", "Allow"),
             "questionCard": ("buttonLabels", "JWT tokens"),
-            "completionCard": ("textValues", "Plan 文件已写好。你的 hooks 触发情况如何？"),
+            "completionCard": ("textValues", "Plan file written. How are your hooks firing?"),
             "longCompletionCard": ("textValues", "README.md committed from an isolated worktree"),
             "diffApprovalCard": ("roles", "AXScrollArea"),
             "codexApprovalCard": ("buttonLabels", "Jump to Codex to approve"),

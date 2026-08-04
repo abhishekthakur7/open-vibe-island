@@ -88,11 +88,10 @@ struct PouredEmptyState: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// The installed agent names joined for the sentence, using each locale's
-    /// natural list separator (`, ` for Latin, the ideographic `、` for CJK) so
-    /// the join reads correctly in every language.
+    /// The installed agent names joined for the sentence, using a
+    /// comma-separated list.
     private var joinedInstalledNames: String {
-        installedAgentNames.joined(separator: lang.usesCJKScript ? "、" : ", ")
+        installedAgentNames.joined(separator: ", ")
     }
 }
 

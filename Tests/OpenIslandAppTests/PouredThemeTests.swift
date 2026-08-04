@@ -347,7 +347,7 @@ struct PouredThemeTests {
             "poured.question.selectAllThatApply",
         ]
 
-        for language in [LanguageManager.AppLanguage.en, .zhHans, .zhHant] {
+        for language in [LanguageManager.AppLanguage.en] {
             let manager = LanguageManager()
             manager.language = language
             for key in keys {

@@ -215,7 +215,7 @@ struct PouredSlice6UsageAndEmptyTests {
             .deletingLastPathComponent()
             .appending(path: "Sources/OpenIslandApp/Resources")
 
-        for locale in ["en", "zh-Hans", "zh-Hant"] {
+        for locale in ["en"] {
             let catalog = try String(
                 contentsOf: root.appending(path: "\(locale).lproj/Localizable.strings"),
                 encoding: .utf8

@@ -47,8 +47,6 @@
 "settings.general.language" = "Language";
 "settings.general.languageSystem" = "System";
 "settings.general.languageEnglish" = "English";
-"settings.general.languageChinese" = "Chinese (Simplified)";
-"settings.general.languageTraditionalChinese" = "Chinese (Traditional)";
 
 /* Settings - Personalization (v6) */
 "settings.tab.appearance" = "Personalization";

@@ -588,8 +588,8 @@ struct PouredSlice5CorrectionsTests {
         #expect(span?.command == "swift build")
         #expect(span?.suffix == "?")
 
-        // A locale that moves the command still resolves.
-        let moved = PouredClosedPillCommandSpan.split(label: "需要批准 swift build", format: "需要批准 %@")
+        // A format where the placeholder is not at the end still resolves.
+        let moved = PouredClosedPillCommandSpan.split(label: "Run swift build now", format: "Run %@ now")
         #expect(moved?.command == "swift build")
 
         // Anything that is not that sentence falls back to the two-tone split.

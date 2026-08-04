@@ -671,7 +671,7 @@ private struct HaloClosedPillLabel: View {
     /// The `Approve %@?` template's prefix/suffix around the command placeholder,
     /// so the embedded command can be lifted into a mono run without re-parsing
     /// localized words. Computed by formatting the shared template with a sentinel
-    /// (locale-correct: works for `Approve %@?` and `批准 %@？`).
+    /// (locale-correct: works for the `Approve %@?` form).
     private var commandAffixes: (prefix: String, suffix: String)? {
         guard ambient == .permission else { return nil }
         let sentinel = "\u{2063}HALOCMD\u{2063}"

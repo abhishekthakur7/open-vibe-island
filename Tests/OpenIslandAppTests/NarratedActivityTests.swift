@@ -143,7 +143,7 @@ struct NarratedActivityTests {
             }
         }
 
-        for language in [LanguageManager.AppLanguage.en, .zhHans, .zhHant] {
+        for language in [LanguageManager.AppLanguage.en] {
             let manager = LanguageManager()
             manager.language = language
             for verb in NarrationVerb.allCases {

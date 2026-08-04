@@ -150,7 +150,7 @@ struct ShellCommandTokenizerTests {
         // A stress alphabet: letters, digits, the token-shaping punctuation
         // (dash, slash, dot, both quotes), whitespace incl. tab/newline, plus
         // multi-scalar graphemes (emoji, combining, CJK) to exercise indexing.
-        let alphabet: [Character] = Array("abcXYZ019 \t\n-/.\"'=:_") + ["🎉", "🚀", "é", "汉", "👩‍💻"]
+        let alphabet: [Character] = Array("abcXYZ019 \t\n-/.\"'=:_") + ["🎉", "🚀", "é", "👩‍💻"]
 
         for iteration in 0..<600 {
             let length = Int(rng.next() % 42)

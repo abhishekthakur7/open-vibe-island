@@ -1359,7 +1359,7 @@ enum AppearancePreviewScenario: String, CaseIterable, Identifiable, Sendable {
 
     var id: String { rawValue }
 
-    /// Localization key for the picker label (en / zh-Hans / zh-Hant).
+    /// Localization key for the picker label.
     var labelKey: String {
         "settings.appearance.previewScenario.\(rawValue)"
     }

@@ -1865,10 +1865,9 @@ enum HaloActivityNarration {
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    /// The first sentence, terminator dropped. Handles the CJK stops too — the
-    /// fixtures (and real transcripts) are bilingual.
+    /// The first sentence, terminator dropped.
     static func firstSentence(of text: String) -> String {
-        let terminators: Set<Character> = [".", "!", "?", "。", "！", "？"]
+        let terminators: Set<Character> = [".", "!", "?"]
         var result = ""
         for character in text {
             if terminators.contains(character) {

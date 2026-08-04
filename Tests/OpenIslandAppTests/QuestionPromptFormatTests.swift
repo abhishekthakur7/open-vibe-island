@@ -127,7 +127,7 @@ final class QuestionPromptFormatTests {
             "question.next",
         ]
 
-        for language in [LanguageManager.AppLanguage.en, .zhHans, .zhHant] {
+        for language in [LanguageManager.AppLanguage.en] {
             let manager = manager(language)
             for key in keys {
                 let resolved = manager.t(key)
