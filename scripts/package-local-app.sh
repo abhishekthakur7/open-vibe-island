@@ -1,6 +1,11 @@
 #!/bin/zsh
 # Build a local-only Open Island bundle and ZIP archive.
 #
+# Pass --install to also copy the finished bundle into /Applications (replacing
+# any previous install). The build always runs as the current user; only the
+# /Applications write escalates with sudo, and only when the folder is not
+# already writable.
+#
 # This script never resolves dependencies, contacts a notary service, uploads,
 # publishes, creates a feed, or mutates a remote service. It requires the
 # checkout to contain all of its own source; it has no external SwiftPM
@@ -8,6 +13,14 @@
 # to supply the actual network denial without SwiftPM attempting a nested one.
 
 set -euo pipefail
+
+install_to_applications=0
+for arg in "$@"; do
+    case "$arg" in
+        --install) install_to_applications=1 ;;
+        *) echo "Unknown option: $arg (supported: --install)" >&2; exit 2 ;;
+    esac
+done
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
     echo "Open Island packaging runs only on macOS." >&2
@@ -126,3 +139,16 @@ ditto -c -k --keepParent "$bundle_dir" "$zip_path"
 echo "Local bundle: $bundle_dir"
 echo "Local archive: $zip_path"
 echo "Signed with local identity: $sign_identity"
+
+if (( install_to_applications )); then
+    install_target="/Applications/$app_name.app"
+    if [[ -w "/Applications" && ( ! -e "$install_target" || -w "$install_target" ) ]]; then
+        rm -rf "$install_target"
+        ditto "$bundle_dir" "$install_target"
+    else
+        echo "Writing $install_target needs administrator access; you may be prompted for your password."
+        sudo rm -rf "$install_target"
+        sudo ditto "$bundle_dir" "$install_target"
+    fi
+    echo "Installed: $install_target"
+fi

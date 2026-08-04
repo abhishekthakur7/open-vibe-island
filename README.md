@@ -12,66 +12,30 @@ or storage.
 
 ## Install
 
-One command builds the release bundle and installs it to `/Applications`
-(sudo is required to write there; the copy replaces any previous install):
+Requires macOS 14+ and Swift 6.2 (Xcode). One command builds the release bundle
+and installs it to `/Applications`, replacing any previous copy:
 
 ```bash
-zsh scripts/package-local-app.sh && sudo rm -rf "/Applications/Open Island.app" && sudo ditto "output/local-package/Open Island.app" "/Applications/Open Island.app"
+zsh scripts/package-local-app.sh --install
 ```
 
-## Requirements
+It signs with a local identity when available (otherwise ad-hoc) and never
+uploads, notarizes, publishes, checks for updates, or contacts a service. Drop
+`--install` to only build the bundle under `output/local-package/`. You may be
+prompted for your password if `/Applications` is not writable.
 
-- macOS 14+
-- Swift 6.2 (Xcode)
-
-## Build and verify locally
-
-The package has no third-party SwiftPM dependencies. These commands build only
-the current checkout; use an outer network-denial environment when verification
-must prove offline execution.
+## Develop
 
 ```bash
-swift build
-swift test
-swift run OpenIslandApp
-zsh scripts/harness.sh ci
+swift run OpenIslandApp   # canonical dev runtime (or open Package.swift in Xcode)
+swift build && swift test # build and verify the current checkout
 ```
 
-`swift run OpenIslandApp` is the canonical development runtime. Opening
-`Package.swift` in Xcode and selecting `OpenIslandApp` is equivalent for
-interactive development.
-
-## Local app bundles
-
-The only packaging workflow is:
-
-```bash
-zsh scripts/package-local-app.sh
-```
-
-It produces `output/local-package/Open Island.app` and
-`output/local-package/Open Island.zip` from the checkout. It uses a local
-identity when available (otherwise ad-hoc signing) and never uploads,
-notarizes, publishes, checks for updates, or contacts a service. Replacing an
-installed local copy is a deliberate manual action.
-
-For a refreshable development bundle, use:
-
-```bash
-zsh scripts/launch-dev-app.sh
-```
-
-This rebuilds and refreshes `~/Applications/Open Island Dev.app` before
-launching it. For stable Accessibility and Automation grants during repeated
-manual verification, first create the local signing identity:
-
-```bash
-zsh scripts/setup-dev-signing.sh
-```
-
-That command creates a self-signed identity in the current login keychain; it
-does not contact an Apple or Open Island service. See
-[docs/packaging.md](docs/packaging.md) before using either workflow.
+The package has no third-party SwiftPM dependencies, so these build only the
+current checkout. For a refreshable dev bundle at `~/Applications/Open Island
+Dev.app`, use `zsh scripts/launch-dev-app.sh`; run `zsh scripts/setup-dev-signing.sh`
+once first for stable Accessibility/Automation grants across rebuilds. See
+[docs/packaging.md](docs/packaging.md) for details.
 
 ## First launch and integrations
 
