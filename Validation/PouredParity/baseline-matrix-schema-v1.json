@@ -1,6 +1,0 @@
-{
-  "schema_version": 1,
-  "required": ["schema_version", "applicability_sha256", "ledger_sha256", "source_evidence_sha256", "records"],
-  "record_required": ["scenario", "profile", "variant", "authority_class", "complete", "ledger_ids", "evidence", "source_evidence_sha256"],
-  "evidence_required": ["role", "path", "sha256", "sidecar_path", "sidecar_sha256", "disposition"]
-}

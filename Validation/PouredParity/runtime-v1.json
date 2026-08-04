@@ -1,1 +1,0 @@
-{"schema_version":1,"id":"poured-runtime-v1","supported_python":{"major":3,"minor":13},"packages":{"numpy":"2.4.6","opencv-python":"4.13.0.92","Pillow":"12.2.0","scipy":"1.17.1","websockets":"16.0"},"secure_wheel_hashes":false,"status":"diagnostic-reproducibility-only"}
