@@ -24,17 +24,17 @@ struct HaloThemeTests {
     /// `theme(id:)` resolves the real theme instead of falling back. This pins
     /// the position so a reorder (or a change of default) is caught.
     ///
-    /// The roster is four since the 2026-08-01 owner ruling retired Annual and
-    /// Instrument; Halo used to sit directly after Annual and now simply stays
-    /// last.
+    /// The roster is two: the 2026-08-01 owner ruling retired Annual and
+    /// Instrument, and Classic and Flight Deck were retired the same way —
+    /// Halo is now the sole non-default theme.
     @Test
     func haloIsRegisteredLastAndIsNotTheDefault() {
         let ids = ThemeRegistry.all.map(\.id)
         // Present and resolvable by id.
         #expect(ids.contains("halo"))
         #expect(ThemeRegistry.theme(id: "halo").id == "halo")
-        // Full registry order after the retirement: the surviving four.
-        #expect(ids == ["poured", "classic", "flightDeck", "halo"])
+        // Full registry order after the retirement: the surviving two.
+        #expect(ids == ["poured", "halo"])
         #expect(ids.firstIndex(of: "halo") == ids.count - 1)   // last entry
         // Non-default: Poured stays the product's face at slot 0.
         #expect(ThemeRegistry.default.id == "poured")

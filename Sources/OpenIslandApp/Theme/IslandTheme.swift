@@ -38,7 +38,7 @@ protocol IslandTheme: Sendable {
     /// lookup. Never localized — it's data, not display text.
     var id: String { get }
 
-    /// Localized display name (e.g. "Classic"), resolved through `lang.t`.
+    /// Localized display name (e.g. "Poured Island"), resolved through `lang.t`.
     func name(_ lang: LanguageManager) -> String
 
     /// Localized one-line descriptor shown under the name in the picker.
@@ -53,22 +53,22 @@ protocol IslandTheme: Sendable {
     // MARK: Capability flags
 
     /// Whether this theme's rows are safe to rasterize with `.drawingGroup()`.
-    /// Classic returns `true`; blur/glow themes that would be flattened by the
-    /// off-screen render return `false`, and `IslandSessionRow` drops the
-    /// `ConditionalDrawingGroup` accordingly.
+    /// A flat, opaque-surfaced theme returns `true`; blur/glow themes that would
+    /// be flattened by the off-screen render return `false`, and
+    /// `IslandSessionRow` drops the `ConditionalDrawingGroup` accordingly.
     var rowIsDrawingGroupSafe: Bool { get }
 
-    /// Whether the opened surface draws a native vibrancy base. Classic returns
-    /// `true`; a flat-ink theme returns `false` and the surface falls back to a
-    /// solid fill (the same path Reduce Transparency already takes).
+    /// Whether the opened surface draws a native vibrancy base. Most themes
+    /// return `true`; a flat-ink theme returns `false` and the surface falls
+    /// back to a solid fill (the same path Reduce Transparency already takes).
     var usesVibrancy: Bool { get }
 
     // MARK: Geometry strategy
 
-    /// The closed-island agents-grid geometry. Classic delegates to the
-    /// `V6RightSlotView` statics pinned by `AgentsGridLayoutTests`, which encode
-    /// Classic's shape rather than a universal invariant, so a theme can supply
-    /// its own matrix.
+    /// The closed-island agents-grid geometry. A theme typically delegates to
+    /// the shared `V6RightSlotView` statics pinned by `AgentsGridLayoutTests`,
+    /// which encode one particular grid shape rather than a universal
+    /// invariant, so a theme can supply its own matrix instead.
     var agentsGridGeometry: IslandAgentsGridGeometry { get }
 
     // MARK: Slot factories
@@ -398,13 +398,12 @@ protocol IslandTheme: Sendable {
     ///
     /// `IslandActionButtonStyle` — the button style every theme falls back to —
     /// fills with a flat `Color` and can't express a gradient, is always
-    /// `RoundedRectangle`, and always spans the card's full width. None of the
-    /// three redesigned boards want that: Poured/Halo want an intrinsic-width
-    /// amber-gradient pill, Flight Deck wants a translucent chamfered outline
-    /// chip. Each theme already owns the right chrome for this (Poured's
-    /// `PouredJumpButtonStyle`/`PouredApprovalButtonLabel`, Flight Deck's
-    /// `FlightDeckApprovalButton`, Halo's `HaloHeroButton`) — this seam is where
-    /// a conformer exposes it, rather than the shared view rebuilding it.
+    /// `RoundedRectangle`, and always spans the card's full width. Poured/Halo
+    /// want an intrinsic-width amber-gradient pill instead. Each theme already
+    /// owns the right chrome for this (Poured's
+    /// `PouredJumpButtonStyle`/`PouredApprovalButtonLabel`, Halo's
+    /// `HaloHeroButton`) — this seam is where a conformer exposes it, rather
+    /// than the shared view rebuilding it.
     ///
     /// Returns `nil` — the default every theme takes today — so the card falls
     /// back to `IslandActionButtonStyle`, exactly the rendering every theme
@@ -432,13 +431,10 @@ protocol IslandTheme: Sendable {
     /// content (`IslandPanelView.swift`). The view always drew its own literal
     /// `RoundedRectangle(cornerRadius: 10).fill(.white.opacity(0.03))` card with a
     /// matching hairline `strokeBorder` — correct for Poured's layered-glass
-    /// identity, but wrong for two themes (remediation plan §2 F1 DO-NOT-FIX
+    /// identity, but wrong for Halo (remediation plan §2 F1 DO-NOT-FIX
     /// table): Halo is a pure-black void whose only chrome is the 1.5pt
     /// edge-light, so a nested translucent box reads as a second, unwanted card
-    /// layered inside `HaloHeroShell`'s own black-fill/ring/glow hero; Flight Deck
-    /// is opaque hardware with chamfer geometry, so a rounded translucent panel is
-    /// foreign to it — every other FD actionable-body card (`completionBody`,
-    /// `runningPreviewBox`) already seats on an opaque chamfered tile instead.
+    /// layered inside `HaloHeroShell`'s own black-fill/ring/glow hero.
     ///
     /// `content` arrives pre-built — the shared view's own padding/frame already
     /// applied — so a conformer only supplies the fill/border/clip-shape around
@@ -457,16 +453,16 @@ protocol IslandTheme: Sendable {
     /// The number of `structuredQuestions` `StructuredQuestionPromptView` renders
     /// together on one page.
     ///
-    /// `nil` — the default every theme took before this ticket — means "no
-    /// pagination": every question renders in one unbounded stack, exactly the
-    /// literal behaviour every theme has always shipped, and the keyboard
-    /// 1-9/Enter wiring stays disabled whenever there is more than one question
+    /// `nil` means "no pagination": every question renders in one unbounded
+    /// stack, and the keyboard 1-9/Enter wiring stays disabled whenever there
+    /// is more than one question
     /// (`StructuredQuestionPromptView.registerKeyboardHandlersIfNeeded`'s pre-D1
-    /// guard). Classic take this default and are therefore
-    /// byte-identical.
+    /// guard). This remains the protocol's fallback default; no
+    /// currently-registered theme relies on it, since both take a concrete
+    /// value below.
     ///
     /// A concrete value opts a theme into the D1 pagination mechanism — **one**
-    /// mechanism, not two parallel code paths, because the three approved boards
+    /// mechanism, not two parallel code paths, because the approved boards
     /// (REMEDIATION-PLAN.md §5 D1) only disagree on *how big* a page is, never
     /// on the underlying machinery:
     /// - `1` (Poured `01-poured-island.html:1154-1205`, Halo
@@ -474,14 +470,13 @@ protocol IslandTheme: Sendable {
     ///   "1 of 2" with a "Submit & next" / "Next" advance button, then "…2 of
     ///   2" with "Submit". Digits are unambiguous on a one-question page, so
     ///   both themes *gain* keyboard selection they don't have today.
-    /// - A size at or past the question count — Flight Deck uses `Int.max`
-    ///   (`02-flight-deck.html:1194-1265`) — collapses every question onto one
+    /// - A size at or past the question count collapses every question onto one
     ///   page, visually identical to the `nil` default's "show everything". But
     ///   unlike `nil` it is a *distinct*, theme-opted-in configuration: the
     ///   keyboard stays active, with digits running **continuously** across the
-    ///   stacked questions (1-3 then 4-7, never restarting at 1), matching
-    ///   Flight Deck's MASTER-CAUTION "show every active caution at once"
-    ///   identity.
+    ///   stacked questions (1-3 then 4-7, never restarting at 1) — useful for a
+    ///   theme whose identity favors showing every active item at once rather
+    ///   than paging one at a time.
     ///
     /// The keyboard model is never special-cased per theme — it falls out of
     /// whichever questions land on the *current* page (`StructuredQuestionPromptView
@@ -504,22 +499,21 @@ protocol IslandTheme: Sendable {
     /// `OverlayPanelController.panelSize` budgets into the window's total
     /// content height alongside the measured body.
     ///
-    /// `nil` — the default every theme but Flight Deck takes — means "use the
-    /// closed pill's own height" (`closedNotchHeight` /
+    /// `nil` — the default every currently-registered theme takes — means "use
+    /// the closed pill's own height" (`closedNotchHeight` /
     /// `NSScreen.islandClosedHeight`), exactly the fixed, shared band every
-    /// theme has always rendered into. Classic/Poured/Halo
-    /// take this default and are therefore byte-identical.
+    /// theme has always rendered into. Poured/Halo take this default and are
+    /// therefore byte-identical.
     ///
-    /// Flight Deck overrides it: its avionics gauge chip (with a reset-time
-    /// readout, the production-normal case) runs to ≈57pt tall, and once its
+    /// The seam exists for a theme whose opened chrome needs more room: e.g. a
+    /// gauge-style summary chip that runs taller than the shared band, once its
     /// controls stack *above* the gauge in the notch lane
-    /// (`ControlsLaneArrangement.columnStacked`, `IslandUsageSummary.swift`)
-    /// the band must clear controls (22pt) + spacing (8pt) + the chip (57pt)
-    /// + the header's own top padding (2pt) — the closed pill's ~24-38pt band
-    /// (`F8`, overlay remediation) overflows this by 2-3×. Growing this
-    /// per-theme value, rather than `closedNotchHeight` itself, keeps the
-    /// **closed pill** — shared geometry every theme's morph animates from —
-    /// completely unaffected.
+    /// (`ControlsLaneArrangement.columnStacked`, `IslandUsageSummary.swift`) and
+    /// the band must clear controls (22pt) + spacing (8pt) + the chip + the
+    /// header's own top padding (2pt) — well past the closed pill's ~24-38pt
+    /// band (`F8`, overlay remediation). Growing this per-theme value, rather
+    /// than `closedNotchHeight` itself, keeps the **closed pill** — shared
+    /// geometry every theme's morph animates from — completely unaffected.
     ///
     /// **Declared here (not only in the extension)** for the same
     /// dynamic-dispatch reason as `questionPageSize` / `closedGlyphTint`: a
@@ -533,13 +527,12 @@ protocol IslandTheme: Sendable {
 /// remediation Phase 2A-follow-up · F1): keep the button's own hue, just mute
 /// it, rather than falling back to `IslandActionButtonStyle`'s shared grey
 /// disabled literal (`IslandPanelView.swift`, `guard isEnabled else { … }`).
-/// None of Poured's `PouredApprovalButtonLabel`, Halo's `HaloHeroButton`, or
-/// Flight Deck's `FlightDeckApprovalButton` had a disabled state before this —
-/// each was only ever mounted while unconditionally actionable — so this is one
-/// shared pair (not three independently-tuned ones) applied as
-/// `.saturation(_:).opacity(_:)` over the conformer's own enabled paint, so a
-/// disabled Submit dims consistently across themes instead of drifting per
-/// conformer.
+/// Neither Poured's `PouredApprovalButtonLabel` nor Halo's `HaloHeroButton` had
+/// a disabled state before this — each was only ever mounted while
+/// unconditionally actionable — so this is one shared pair (not independently
+/// tuned per theme) applied as `.saturation(_:).opacity(_:)` over the
+/// conformer's own enabled paint, so a disabled Submit dims consistently
+/// across themes instead of drifting per conformer.
 enum IslandQuestionSubmitDisabledStyle {
     /// `.saturation()` floor for a disabled themed Submit button.
     static let saturation: Double = 0.35
@@ -701,8 +694,8 @@ extension IslandTheme {
     ) -> AnyView? { nil }
 
     /// Default: no themed CTA — `StructuredQuestionPromptView` falls back to
-    /// `IslandActionButtonStyle`. Classic take this default;
-    /// Poured/Flight Deck/Halo override it (overlay remediation Phase
+    /// `IslandActionButtonStyle`, the protocol's fallback for a theme that
+    /// doesn't override it. Poured/Halo override it (overlay remediation Phase
     /// 2A-follow-up · F1).
     func questionSubmitButton(
         title: String,
@@ -711,29 +704,28 @@ extension IslandTheme {
     ) -> AnyView? { nil }
 
     /// Default: no themed card container — the shared view keeps drawing its
-    /// own literal translucent rounded card. Classic/Poured
-    /// take this default (Poured's layered glass already reads correctly with
-    /// the literal card nested inside its own gold wash); Halo/Flight Deck
-    /// override it (overlay remediation Phase 2A-follow-up · F1).
+    /// own literal translucent rounded card. Poured takes this default (its
+    /// layered glass already reads correctly with the literal card nested
+    /// inside its own gold wash); Halo overrides it (overlay remediation Phase
+    /// 2A-follow-up · F1).
     func questionCardContainer(content: AnyView) -> AnyView? { nil }
 
     /// Default: no pagination — every question renders on one page and
     /// `registerKeyboardHandlersIfNeeded` keeps multi-question keyboard
-    /// selection disabled (its pre-D1 behaviour). Classic
-    /// take this default and are therefore byte-identical; Poured/Halo/Flight
-    /// Deck override it (overlay remediation Phase 2B · F1a/D1).
+    /// selection disabled (its pre-D1 behaviour); this remains the protocol's
+    /// fallback for a theme that doesn't opt in. Poured/Halo override it
+    /// (overlay remediation Phase 2B · F1a/D1).
     var questionPageSize: Int? { nil }
 
     /// Default: use the closed pill's own height — the shared, unchanged
     /// band every theme has always rendered its opened header into.
-    /// Classic/Poured/Halo take this default and are
-    /// therefore byte-identical (overlay remediation Phase 5 · F8); Flight
-    /// Deck overrides it.
+    /// Poured/Halo take this default and are therefore byte-identical
+    /// (overlay remediation Phase 5 · F8).
     var openedHeaderHeight: CGFloat? { nil }
 }
 
 /// The closed-island agents-grid geometry a theme supplies. Expressed as plain
-/// functions (rather than a subclass) so Classic can delegate straight to the
+/// functions (rather than a subclass) so a theme can delegate straight to the
 /// `V6RightSlotView` statics, which stay the single implementation the layout
 /// math and `AgentsGridLayoutTests` share.
 struct IslandAgentsGridGeometry {
@@ -747,13 +739,13 @@ struct IslandAgentsGridGeometry {
 // MARK: - Environment
 
 private struct IslandThemeKey: EnvironmentKey {
-    static let defaultValue: any IslandTheme = ClassicTheme()
+    static let defaultValue: any IslandTheme = PouredIslandTheme()
 }
 
 extension EnvironmentValues {
     /// The active island theme.
     ///
-    /// Defaults to `ClassicTheme` — the look Open Island ships today — so a
+    /// Defaults to `PouredIslandTheme` — the look Open Island ships today — so a
     /// view that reads this without an explicit injection renders unchanged,
     /// mirroring `\.islandTokens`. `IslandPanelView` injects the model's active
     /// theme (and its `tokens`) at the overlay root.

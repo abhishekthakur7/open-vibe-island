@@ -43,8 +43,8 @@ struct OptionalShadow: ViewModifier {
 /// here (AB-295). AB-320 routed the remaining `IslandChromeMetrics` call sites
 /// (content padding, hover scale) through these tokens too, so this struct is
 /// now the sole definition of the overlay's chrome geometry; the legacy enum
-/// survives only as the Classic drift pin. `IslandChromeLayout` turns these
-/// values into the actual window / content / hit-test rects.
+/// survives only as a drift pin for these values. `IslandChromeLayout` turns
+/// these values into the actual window / content / hit-test rects.
 struct IslandMetricsTokens: Equatable, Sendable {
     /// Concave top-corner radius of the opened island shape.
     var openedTopRadius: CGFloat
@@ -89,7 +89,7 @@ struct IslandMetricsTokens: Equatable, Sendable {
 
     /// Concave fillet radius at the notch junction of the opened (`.notch`)
     /// profile — the "poured" curve that merges the black stem into the panel
-    /// body. `0` reproduces the plain concave top corner Classic ships; a
+    /// body. `0` reproduces the plain concave top corner the default takes; a
     /// positive value deepens and softens the transition. Ignored by the
     /// top-bar profile, which has no physical notch to merge with.
     var filletRadius: CGFloat
@@ -111,59 +111,6 @@ extension IslandMetricsTokens {
             yOffset: 0
         )
     }
-}
-
-// MARK: - Classic
-
-extension IslandMetricsTokens {
-    /// Today's shipping geometry, expressed as literals so the token layer is
-    /// self-contained once the legacy constants are retired.
-    static let classic = IslandMetricsTokens(
-        openedTopRadius: 22,
-        openedBottomRadius: 22,
-        surfaceShadow: IslandShadowToken(
-            color: .black,
-            opacity: 0.36,
-            radius: 22,
-            yOffset: 12
-        ),
-        openedShadowHorizontalInset: 18,
-        openedShadowBottomInset: 22,
-        closedShadowHorizontalInset: 12,
-        closedShadowBottomInset: 14,
-        closedHoverScale: 1.028,
-        filletRadius: 0
-    )
-}
-
-// MARK: - Flight Deck
-
-extension IslandMetricsTokens {
-    /// Flight Deck's chrome: a tightly-cut annunciator panel. The opened radii
-    /// are small (8pt) so the corners read as
-    /// *chamfered* — a cut instrument bezel rather than a soft "poured" curve —
-    /// while `filletRadius` stays `0`, the plain concave top corner, so the panel
-    /// still merges cleanly from the physical notch and morphs from the closed
-    /// pill in both display profiles. The drop shadow is crisp and shallow: an
-    /// avionics panel is seated in the airframe, it does not float. The shadow
-    /// insets match Classic's, which already contain the tighter blur, so
-    /// `OverlayPanelController`'s window sizing never clips the chrome.
-    static let flightDeck = IslandMetricsTokens(
-        openedTopRadius: 6,
-        openedBottomRadius: 6,
-        surfaceShadow: IslandShadowToken(
-            color: .black,
-            opacity: 0.42,
-            radius: 14,
-            yOffset: 7
-        ),
-        openedShadowHorizontalInset: 18,
-        openedShadowBottomInset: 22,
-        closedShadowHorizontalInset: 12,
-        closedShadowBottomInset: 14,
-        closedHoverScale: 1.028,
-        filletRadius: 0
-    )
 }
 
 // MARK: - Poured Island

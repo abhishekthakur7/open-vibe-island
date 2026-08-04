@@ -14,8 +14,8 @@ import OpenIslandCore
 /// itself derived from the *previous* measurement
 /// (`OverlayPanelController.panelSize` → `openedContentHeight`, which adds a
 /// flat 8pt `measuredContentSafetyPadding` on every recompute). Every
-/// `*EmptyState` / `*BootstrapPlaceholder` body (Classic, Poured, Flight
-/// Deck, Halo, …) is a `VStack { Spacer(); <content>; Spacer() }` used to
+/// `*EmptyState` / `*BootstrapPlaceholder` body (Poured, Halo, …) is a
+/// `VStack { Spacer(); <content>; Spacer() }` used to
 /// vertically centre its content — a layout that, left unguarded, is greedy
 /// for *whatever* height its parent proposes. That closes a feedback loop:
 /// propose H, the `Spacer`s fill to H, the measurement reports H, the window
@@ -54,12 +54,12 @@ struct OpenedContentEmptyStateConvergenceTests {
     @MainActor
     private static func theme(at index: Int) -> any IslandTheme {
         let themes: [any IslandTheme] = [
-            ClassicTheme(), PouredIslandTheme(), FlightDeckTheme(), HaloTheme(),
+            PouredIslandTheme(), HaloTheme(),
         ]
         return themes[index]
     }
 
-    private static let themeCount = 4
+    private static let themeCount = 2
 
     @MainActor
     private static func measuredHeight(

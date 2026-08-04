@@ -5,7 +5,7 @@ import Testing
 
 /// Stage-1 pins for Poured Island 2.0 (AB-329): the attention palette, the new
 /// material gradient / hard-specular / inner-hairline tokens, the grown
-/// closed-pill shadow insets, and Classic status-colour parity.
+/// closed-pill shadow insets, and cross-theme status-colour parity.
 ///
 /// This is a **starter** suite — stage 2 (typography table + full conformance
 /// suite) EXTENDS it. Keep new Poured pins in this struct rather than a parallel
@@ -35,8 +35,6 @@ struct PouredThemeTests {
 
         let preserved = IslandHairlineToken(opacity: 0.07, width: 1)
         for material in [
-            IslandMaterialTokens.classic,
-            IslandMaterialTokens.flightDeck,
             IslandMaterialTokens.halo,
         ] {
             #expect(material.contentEdgeStroke == preserved)
@@ -45,15 +43,13 @@ struct PouredThemeTests {
 
     /// PI-B-002: pill, peek and panel are ONE continuous glass body, so Poured's
     /// morph paints one material for the whole interpolant. Every other theme
-    /// keeps the two-layer crossfade it shipped with — Classic explicitly, since
+    /// keeps the two-layer crossfade it shipped with — Halo explicitly, since
     /// it is a vibrancy theme too and must stay byte-identical.
     @Test
     func onlyPouredMorphsAsOneBody() {
         #expect(IslandMaterialTokens.poured.morphsAsOneBody)
 
         for material in [
-            IslandMaterialTokens.classic,
-            IslandMaterialTokens.flightDeck,
             IslandMaterialTokens.halo,
         ] {
             #expect(material.morphsAsOneBody == false)
@@ -89,7 +85,7 @@ struct PouredThemeTests {
         #expect(poured.closedSurfaceSuppressesInnerHairline(mode: .idle, rightSlot: nil, activity: nil) == false)
         // … while every other theme takes the protocol default and never drops
         // an edge it drew.
-        for theme in [ClassicTheme(), HaloTheme()] as [any IslandTheme] {
+        for theme in [HaloTheme()] as [any IslandTheme] {
             #expect(theme.closedSurfaceSuppressesInnerHairline(mode: .waiting, rightSlot: nil, activity: nil) == false)
         }
     }
@@ -111,8 +107,6 @@ struct PouredThemeTests {
         #expect(fillet.resolvedColor == fillet.color.opacity(0.92))
 
         for material in [
-            IslandMaterialTokens.classic,
-            IslandMaterialTokens.flightDeck,
             IslandMaterialTokens.halo,
         ] {
             #expect(material.cornerFillet == nil)
@@ -139,21 +133,21 @@ struct PouredThemeTests {
 
     // MARK: - Closed-inset growth (SPEC §3.1 / AB-329)
 
-    // MARK: - Classic status-colour parity (SPEC §1a)
+    // MARK: - Cross-theme status-colour parity (SPEC §1a)
 
     /// The documented divergence from full parity: idle / inactive derive from
     /// each theme's own *paper* tone, not a shared status literal, so Poured's
-    /// cool paper (`#f2f5fb`) makes them legitimately differ from Classic's warm
-    /// paper (`#f1ead9`). Pinned so the difference stays a decision, not drift.
+    /// cool paper (`#f2f5fb`) makes them legitimately differ from Halo's white
+    /// void. Pinned so the difference stays a decision, not drift.
     @Test
     func idleAndInactiveFollowPouredsOwnPaper() {
         let poured = IslandThemeTokens.poured.colors
-        let classic = IslandThemeTokens.classic.colors
+        let halo = IslandThemeTokens.halo.colors
 
         #expect(poured.statusIdle == poured.paper.opacity(0.35))
         #expect(poured.statusInactive == poured.paper.opacity(0.38))
-        #expect(poured.statusIdle != classic.statusIdle)
-        #expect(poured.statusInactive != classic.statusInactive)
+        #expect(poured.statusIdle != halo.statusIdle)
+        #expect(poured.statusInactive != halo.statusInactive)
     }
 
     // MARK: - Text-ramp & hairline opacities (SPEC §1a)
@@ -311,20 +305,18 @@ struct PouredThemeTests {
 
     // MARK: - §I meter-card hosting seam (AB-331)
 
-    /// The full §I meter card is hosted only by Poured, and only when there are
-    /// usage windows to show: `usageMeterCard` returns the card for Poured with
-    /// providers, `nil` for Poured with none, and `nil` for every other theme
-    /// (they carry no full-meter surface, so the `meters` preview keeps drawing
-    /// only their compact header ring).
+    /// Poured hosts the full §I meter card only when there are usage windows to
+    /// show: `usageMeterCard` returns the card for Poured with providers and
+    /// `nil` for Poured with none (with no providers the `meters` preview keeps
+    /// drawing only the compact header ring).
     @Test @MainActor
-    func usageMeterCardHostsOnlyForPouredWithProviders() {
+    func usageMeterCardHostsForPouredOnlyWithProviders() {
         let lang = LanguageManager()
         let providers = AppearancePreviewFixtures.usageProviders(now: Date())
         #expect(!providers.isEmpty)
 
         #expect(PouredIslandTheme().usageMeterCard(providers: providers, lang: lang) != nil)
         #expect(PouredIslandTheme().usageMeterCard(providers: [], lang: lang) == nil)
-        #expect(ClassicTheme().usageMeterCard(providers: providers, lang: lang) == nil)
     }
 
     // MARK: - §F submit keycap (Slice 5)

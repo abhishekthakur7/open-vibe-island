@@ -3,8 +3,7 @@ import SwiftUI
 
 /// A bright specular highlight painted along the top edge of a frosted
 /// surface, expressed as data so a theme can declare one and the surface view
-/// can apply it. `nil` on a theme means "no specular" — the flat, unlit look
-/// Classic ships.
+/// can apply it. `nil` on a theme means "no specular" — a flat, unlit look.
 struct IslandSpecularEdge: Equatable, Sendable {
     /// Highlight colour, before `opacity` is applied.
     var color: Color
@@ -22,8 +21,8 @@ struct IslandSpecularEdge: Equatable, Sendable {
 /// a `resolvedColor` convenience — plus the `location` along the 0→1 axis.
 ///
 /// A theme carries `nil` for its body gradient (see `IslandMaterialTokens`) to
-/// keep the flat single-ink fill Classic ships; a non-`nil` list paints inner
-/// luminance (lighter top → darker bottom) so the slab reads as elevated glass.
+/// keep a flat single-ink fill; a non-`nil` list paints inner luminance
+/// (lighter top → darker bottom) so the slab reads as elevated glass.
 struct IslandGradientStop: Equatable, Sendable {
     /// Base stop colour, before `opacity` is applied.
     var color: Color
@@ -44,7 +43,7 @@ struct IslandGradientStop: Equatable, Sendable {
 /// expressed as data so a theme can declare one and the surface view can apply
 /// it. The stroke colour is white (matching the specular light-catch family);
 /// only its `opacity` and `width` vary. `nil` on a theme means "no inner
-/// hairline" — the un-edged look Classic ships.
+/// hairline" — an un-edged look.
 ///
 /// A dedicated `Equatable`/`Sendable` struct rather than a bare tuple so the
 /// enclosing `IslandMaterialTokens` keeps synthesising `Equatable`.
@@ -117,13 +116,13 @@ struct IslandMaterialTokens: Equatable, Sendable {
     /// surface's identity and text contrast against bright wallpapers.
     var tintOpacity: Double
 
-    /// Specular top edge, or `nil` for a flat, unlit surface (Classic).
+    /// Specular top edge, or `nil` for a flat, unlit surface.
     var specularTopEdge: IslandSpecularEdge?
 
     // MARK: - Poured 2.0 liquid-glass layers (AB-329)
     //
     // All three are optional and default to `nil` so the memberwise
-    // initializer keeps the four flat themes' `static let` call sites compiling
+    // initializer keeps the non-Poured theme's `static let` call site compiling
     // unchanged — `nil` reproduces exactly today's rendering
     // (`OpenedSurfaceBackground` byte-identical). Only Poured opts in.
 
@@ -144,9 +143,9 @@ struct IslandMaterialTokens: Equatable, Sendable {
 
     /// The white edge stroke the opened surface's *content* layer carries
     /// (`IslandPanelView` / `AppearanceSettingsPane`), previously hardcoded as
-    /// `0.07 @ 1pt` for every theme. Defaulted to exactly that value so the five
-    /// non-Poured themes render byte-identically without touching their
-    /// `static let`s; `nil` drops the stroke entirely.
+    /// `0.07 @ 1pt` for every theme. Defaulted to exactly that value so Halo
+    /// renders byte-identically without touching its `static let`; `nil` drops
+    /// the stroke entirely.
     ///
     /// Poured opts out (PI-M-002): the reference glass body
     /// (`01-poured-island.html:48-53`) declares exactly ONE inner edge — the
@@ -179,21 +178,6 @@ struct IslandMaterialTokens: Equatable, Sendable {
     /// and the hover peek draw. `nil` (every theme but Poured) keeps the
     /// square-topped surface they have always rendered.
     var cornerFillet: IslandCornerFilletToken? = nil
-}
-
-// MARK: - Classic
-
-extension IslandMaterialTokens {
-    /// Today's shipping vibrancy: the `.hudWindow` HUD family sampling what's
-    /// behind the window, tinted `0.6` toward ink, with no specular edge.
-    /// Lifted verbatim from `OpenedSurfaceMaterial.swift`.
-    static let classic = IslandMaterialTokens(
-        material: .hudWindow,
-        blendingMode: .behindWindow,
-        appearanceName: .vibrantDark,
-        tintOpacity: 0.6,
-        specularTopEdge: nil
-    )
 }
 
 // MARK: - Poured Island
@@ -259,24 +243,5 @@ extension IslandMaterialTokens {
             opacity: 0.92,
             size: 12
         )
-    )
-}
-
-// MARK: - Flight Deck
-
-extension IslandMaterialTokens {
-    /// Flight Deck is unlit hardware, not glass: `FlightDeckTheme.usesVibrancy`
-    /// is `false`, so `OpenedSurfaceBackground` takes the opaque `surfaceInk`
-    /// path and never instantiates a vibrancy view. These values are the fallback
-    /// the surface would use if vibrancy were ever forced on — a fully opaque ink
-    /// tint (`1.0`) and no specular edge, i.e. the same flat annunciator ground
-    /// even then. Reduce Transparency is therefore a no-op for this theme: the
-    /// panel is already opaque.
-    static let flightDeck = IslandMaterialTokens(
-        material: .hudWindow,
-        blendingMode: .behindWindow,
-        appearanceName: .vibrantDark,
-        tintOpacity: 1.0,
-        specularTopEdge: nil
     )
 }

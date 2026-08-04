@@ -19,31 +19,6 @@ import zlib
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 VALIDATOR_PATH = REPO_ROOT / "scripts" / "validate-harness-artifacts.py"
 RUNNER_PATH = REPO_ROOT / "scripts" / "smoke-all-scenarios.sh"
-FRESH_FLIGHT_DECK_SESSION_LIST_REPORT = (
-    REPO_ROOT
-    / "shots/after/matrix-20260728-023316-5F1D9909-2DC3-419B-8B41-66B3ED152BA7"
-    / "flightDeck-sessionList/report.json"
-)
-FRESH_FLIGHT_DECK_APPROVAL_REPORT = (
-    REPO_ROOT
-    / "shots/after/matrix-20260728-024241-E6A64B8D-E22B-43E1-9A70-F1626D4909EF"
-    / "flightDeck-approvalCard/report.json"
-)
-FRESH_FLIGHT_DECK_DIFF_APPROVAL_REPORT = (
-    REPO_ROOT
-    / "shots/after/matrix-20260728-030727-31B76852-E558-4160-B91C-EB7C6AC214D4"
-    / "flightDeck-diffApprovalCard/report.json"
-)
-FRESH_FLIGHT_DECK_INTERRUPTED_REPORT = (
-    REPO_ROOT
-    / "shots/after/matrix-20260728-031634-0C660081-C8D6-44B2-B097-EB280A441420"
-    / "flightDeck-completedInterrupted/report.json"
-)
-FRESH_FLIGHT_DECK_USAGE_REPORT = (
-    REPO_ROOT
-    / "shots/after/matrix-20260728-033024-6EA31EB6-1C01-42E1-A7A2-B5CB35C740C2"
-    / "flightDeck-usageMeters/report.json"
-)
 PRESERVED_POURED_USAGE_REPORT = (
     REPO_ROOT
     / "shots/after/matrix-20260728-033024-6EA31EB6-1C01-42E1-A7A2-B5CB35C740C2"
@@ -88,7 +63,6 @@ EXPECTED_HEIGHT_RANGES = {
 
 EXPECTED_WIDTH_RANGES = {
     "poured": (610, 630),
-    "flightDeck": (566, 586),
     "halo": (610, 630),
 }
 
@@ -104,11 +78,6 @@ EXPECTED_USAGE_METER_SEMANTICS = {
         "Claude 7d 78%, resets in 3d 4h",
         "Codex 7d · Pro 92%, resets in 18h 40m",
     ),
-    "flightDeck": (
-        "Cl 5h 34%, resets in 2h 10m",
-        "Cl 7d 78%, resets in 3d 4h",
-        "Cx 7d · Pro 92%, resets in 18h 40m",
-    ),
     "halo": (
         "Claude 5h 34%, resets in 2h 10m",
         "Claude 7d 78%, resets in 3d 4h",
@@ -116,20 +85,11 @@ EXPECTED_USAGE_METER_SEMANTICS = {
     ),
 }
 
-FLIGHT_DECK_USAGE_GROUP_ENTRIES = (
-    "Cl 5h 34%, resets in 2h 10m · Cl 7d 78%, resets in 3d 4h",
-    "Cx 7d · Pro 92%, resets in 18h 40m",
-)
-
 EXPECTED_GOLDEN_PNG_DIMENSIONS = {
     (
         "Tests/OpenIslandAppTests/__Snapshots__/PouredConformanceSnapshotTests/"
         "testPermissionCommandHero.poured-E1-permission-command-notch.png"
     ): (1080, 818),
-    (
-        "Tests/OpenIslandAppTests/__Snapshots__/ThemeSnapshotHarnessTests/"
-        "testFlightDeckPermissionMasterWarningNotch.flightdeck-permission-master-warning-notch.png"
-    ): (1080, 848),
     (
         "Tests/OpenIslandAppTests/__Snapshots__/HaloConformanceSnapshotTests/"
         "testPermissionCommandHero.halo-E1-permission-command-notch.png"
@@ -139,10 +99,6 @@ EXPECTED_GOLDEN_PNG_DIMENSIONS = {
         "testQuestionHero.poured-F-question-notch.png"
     ): (1080, 844),
     (
-        "Tests/OpenIslandAppTests/__Snapshots__/ThemeSnapshotHarnessTests/"
-        "testFlightDeckQuestionMasterCautionNotch.flightdeck-question-master-caution-notch.png"
-    ): (1080, 1338),
-    (
         "Tests/OpenIslandAppTests/__Snapshots__/HaloConformanceSnapshotTests/"
         "testQuestionHero.halo-F-question-notch.png"
     ): (1080, 1048),
@@ -150,10 +106,6 @@ EXPECTED_GOLDEN_PNG_DIMENSIONS = {
         "Tests/OpenIslandAppTests/__Snapshots__/PouredConformanceSnapshotTests/"
         "testExpandedDetailAndSubagents.poured-D-G-subagents-notch.png"
     ): (1080, 1086),
-    (
-        "Tests/OpenIslandAppTests/__Snapshots__/ThemeSnapshotHarnessTests/"
-        "testFlightDeckEngineClusterNotch.flightdeck-engine-cluster-notch.png"
-    ): (1080, 1256),
     (
         "Tests/OpenIslandAppTests/__Snapshots__/HaloConformanceSnapshotTests/"
         "testExpandedDetailAndSubagents.halo-D-G-subagents-notch.png"
@@ -170,10 +122,6 @@ EXPECTED_GOLDEN_PNG_DIMENSIONS = {
         "Tests/OpenIslandAppTests/__Snapshots__/PouredConformanceSnapshotTests/"
         "testEmptyState.poured-J-empty-notch.png"
     ): (1080, 472),
-    (
-        "Tests/OpenIslandAppTests/__Snapshots__/ThemeSnapshotHarnessTests/"
-        "testFlightDeckEmptyNominalNotch.flightdeck-empty-nominal-notch.png"
-    ): (1080, 462),
     (
         "Tests/OpenIslandAppTests/__Snapshots__/HaloConformanceSnapshotTests/"
         "testEmptyState.halo-J-empty-notch.png"
@@ -291,13 +239,6 @@ def scenario_case(scenario: str, theme: str = "poured") -> dict:
                     "All quiet elsewhere · 7 idle",
                 }
             )
-        elif theme == "flightDeck":
-            case["textValues"].update(
-                {
-                    "Sessions 0 Attn, 1 Run, 1 Done, 7 Idle",
-                    "BRIDGE LINK, NO LINK, 9 SESSIONS",
-                }
-            )
         else:
             case["textValues"].update(
                 {
@@ -330,16 +271,6 @@ def scenario_case(scenario: str, theme: str = "poured") -> dict:
                     "Allow exec_command to rewrite SettingsView.swift?",
                 }
             )
-        elif theme == "flightDeck":
-            case["textValues"].update(
-                {
-                    "PERMISSION REQUIRED",
-                    "HELD, 0m 20s",
-                    "Opus 4.8 · feat/approval-flow",
-                    f"$ {raw_command}",
-                    "Sources/OpenIslandApp/Views/SettingsView.swift",
-                }
-            )
         else:
             case["textValues"].update(
                 {
@@ -364,7 +295,6 @@ def scenario_case(scenario: str, theme: str = "poured") -> dict:
         case["islandSurface"] = "sessionList:actionable(session-completion)"
         jump = {
             "poured": "Jump to terminal",
-            "flightDeck": "Jump",
             "halo": "Jump · Ghostty",
         }[theme]
         case["buttonLabels"].update({jump, "Transcript, open-island"})
@@ -375,7 +305,6 @@ def scenario_case(scenario: str, theme: str = "poured") -> dict:
         case["islandSurface"] = "sessionList:actionable(session-completion-long)"
         jump = {
             "poured": "Jump to terminal",
-            "flightDeck": "Jump",
             "halo": "Jump · Ghostty",
         }[theme]
         case["buttonLabels"].update({jump, "Transcript, open-island"})
@@ -420,19 +349,6 @@ def scenario_case(scenario: str, theme: str = "poured") -> dict:
                     "Auto-collapses in 10s · hover pauses",
                 }
             )
-        elif theme == "flightDeck":
-            case["textValues"].update(
-                {
-                    "PERMISSION REQUIRED",
-                    "HELD, 0m 11s",
-                    "Opus 4.8 · main",
-                    "Claude wants to edit AGENTS.md.",
-                    "AGENTS.md",
-                    "UPDATED",
-                    "+3",
-                    "−2",
-                }
-            )
         else:
             case["textValues"].update(
                 {
@@ -467,17 +383,6 @@ def scenario_case(scenario: str, theme: str = "poured") -> dict:
                     "Auto-collapses in 10s · hover pauses",
                 }
             )
-        elif theme == "flightDeck":
-            case["buttonLabels"].add("Jump to Codex")
-            case["textValues"].update(
-                {
-                    "PERMISSION REQUIRED",
-                    "HELD, 0m 16s",
-                    "$ git push origin main",
-                    "~/Developer/open-vibe-island",
-                    "Codex approves in-app. Open the pane to allow or deny there.",
-                }
-            )
         else:
             case["buttonLabels"].add("Jump to Codex")
             case["textValues"].update(
@@ -499,7 +404,6 @@ def scenario_case(scenario: str, theme: str = "poured") -> dict:
         case["labels"].update({"Auth", "Which auth method should the bridge use?"})
         action_title = {
             "poured": "Submit & next",
-            "flightDeck": "Submit Answers",
             "halo": "Next",
         }[theme]
         case["buttonLabels"].add(action_title)
@@ -561,13 +465,12 @@ def scenario_case(scenario: str, theme: str = "poured") -> dict:
         )
         jump = {
             "poured": "Jump to terminal",
-            "flightDeck": "Jump",
             "halo": "Jump · Ghostty",
         }[theme]
         case["buttonLabels"].update({jump, "Transcript, niche-radar"})
         case["textValues"].update(
             {
-                "INTERRUPTED" if theme == "flightDeck" else "Interrupted",
+                "Interrupted",
                 "Interrupted while moving the scorer — no files were left half-written.",
             }
         )
@@ -582,13 +485,12 @@ def scenario_case(scenario: str, theme: str = "poured") -> dict:
         case["buttonLabels"].add(
             {
                 "poured": "Jump to terminal",
-                "flightDeck": "Jump",
                 "halo": "Jump · Ghostty",
             }[theme]
         )
         case["textValues"].update(
             {
-                "FAILED" if theme == "flightDeck" else "Failed",
+                "Failed",
                 "swift build exited non-zero — BridgeServer.swift has two type errors I could not resolve.",
             }
         )
@@ -604,7 +506,6 @@ def scenario_case(scenario: str, theme: str = "poured") -> dict:
             {
                 {
                     "poured": "Jump to terminal",
-                    "flightDeck": "Jump",
                     "halo": "Jump · Ghostty",
                 }[theme],
                 "Transcript, the-automator",
@@ -633,10 +534,7 @@ def scenario_case(scenario: str, theme: str = "poured") -> dict:
             }
         )
     elif scenario == "usageMeters":
-        if theme == "flightDeck":
-            case["labels"].update(FLIGHT_DECK_USAGE_GROUP_ENTRIES)
-        else:
-            case["labels"].update(EXPECTED_USAGE_METER_SEMANTICS[theme])
+        case["labels"].update(EXPECTED_USAGE_METER_SEMANTICS[theme])
     elif scenario == "emptyState":
         case.update(
             {
@@ -657,15 +555,6 @@ def scenario_case(scenario: str, theme: str = "poured") -> dict:
                     "Hooks installed for Claude, Codex, Gemini",
                 }
             )
-        elif theme == "flightDeck":
-            case["textValues"].update(
-                {
-                    "ALL SYSTEMS NOMINAL",
-                    "No active sessions. Open Island is watching the bridge — the moment an agent needs approval, asks a question, or finishes, a lamp lights here.",
-                    "BRIDGE LINK · NO LINK · 0 SESSIONS",
-                }
-            )
-            case["staticTextValues"] = set(case["textValues"])
         else:
             case["textValues"].update(
                 {
@@ -843,10 +732,6 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
             VALIDATOR.EXPECTED_USAGE_METER_SEMANTICS,
             EXPECTED_USAGE_METER_SEMANTICS,
         )
-        self.assertEqual(
-            VALIDATOR.FLIGHT_DECK_USAGE_GROUP_ENTRIES,
-            FLIGHT_DECK_USAGE_GROUP_ENTRIES,
-        )
         self.assertIn('--theme "$theme" "$final_report"', RUNNER_PATH.read_text())
         self.assertEqual(VALIDATOR.THEMES, frozenset(EXPECTED_WIDTH_RANGES))
         for theme in sorted(EXPECTED_WIDTH_RANGES):
@@ -908,7 +793,6 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
         for theme, wrong_width in (
             ("poured", 576),
             ("halo", 576),
-            ("flightDeck", 620),
         ):
             case = scenario_case("approvalCard", theme)
             case["frame"]["width"] = wrong_width
@@ -978,192 +862,6 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
         missing_idle_rollup["textValues"].remove("All quiet elsewhere · 7 idle")
         self.assert_invalid(missing_idle_rollup, "idle rollup")
 
-    def test_flight_deck_session_list_requires_source_truthful_ax_entries(self) -> None:
-        summary = "Sessions 0 Attn, 1 Run, 1 Done, 7 Idle"
-        footer = "BRIDGE LINK, NO LINK, 9 SESSIONS"
-        self.assert_valid(scenario_case("sessionList", "flightDeck"))
-
-        normalized_spacing = scenario_case("sessionList", "flightDeck")
-        normalized_spacing["textValues"].remove(summary)
-        normalized_spacing["textValues"].add(
-            "  Sessions 0 Attn,1 Run,  1 Done, 7 Idle  "
-        )
-        self.assert_valid(normalized_spacing)
-
-        malformed_entries = {
-            "missing-count": (
-                footer,
-                "BRIDGE LINK, NO LINK, SESSIONS",
-                "bridge/count footer",
-            ),
-            "wrong-session-count": (
-                footer,
-                "BRIDGE LINK, NO LINK, 8 SESSIONS",
-                "bridge/count footer",
-            ),
-            "missing-rollup": (
-                summary,
-                "Sessions 0 Attn",
-                "annunciator rollup",
-            ),
-            "wrong-rollup": (
-                summary,
-                "Sessions 0 Attn, 1 Run, 0 Done, 8 Idle",
-                "annunciator rollup",
-            ),
-            "wrong-case": (
-                footer,
-                "Bridge Link, No Link, 9 Sessions",
-                "bridge/count footer",
-            ),
-            "wrong-case-rollup": (
-                summary,
-                "SESSIONS 0 ATTN, 1 RUN, 1 DONE, 7 IDLE",
-                "annunciator rollup",
-            ),
-            "wrong-footer-content": (
-                footer,
-                "BRIDGE LINK, LINK, 9 SESSIONS",
-                "bridge/count footer",
-            ),
-        }
-        for name, (original, replacement, message) in malformed_entries.items():
-            case = scenario_case("sessionList", "flightDeck")
-            case["textValues"].remove(original)
-            case["textValues"].add(replacement)
-            with self.subTest(case=name):
-                self.assert_invalid(case, message)
-
-    def test_flight_deck_empty_state_requires_source_truthful_ax_entries(self) -> None:
-        heading = "ALL SYSTEMS NOMINAL"
-        description = (
-            "No active sessions. Open Island is watching the bridge — the moment "
-            "an agent needs approval, asks a question, or finishes, a lamp lights here."
-        )
-        sysline = "BRIDGE LINK · NO LINK · 0 SESSIONS"
-        self.assert_valid(scenario_case("emptyState", "flightDeck"))
-
-        live_bridge = scenario_case("emptyState", "flightDeck")
-        live_bridge["staticTextValues"].remove(sysline)
-        live_bridge["staticTextValues"].add(
-            "BRIDGE LINK · MONITORING · 0 SESSIONS"
-        )
-        self.assert_valid(live_bridge)
-
-        normalized_live_bridge = scenario_case("emptyState", "flightDeck")
-        normalized_live_bridge["staticTextValues"].remove(sysline)
-        normalized_live_bridge["staticTextValues"].add(
-            "  BRIDGE LINK \t·\n MONITORING · 0 SESSIONS  "
-        )
-        self.assert_valid(normalized_live_bridge)
-
-        malformed_entries = {
-            "title-case-heading": (
-                heading,
-                "All Systems Nominal",
-                "uppercase heading",
-            ),
-            "truncated-description": (
-                description,
-                "No active sessions. Open Island is watching the bridge",
-                "exact description",
-            ),
-            "title-case-sysline": (
-                sysline,
-                "Bridge Link · No Link · 0 Sessions",
-                "bridge telemetry",
-            ),
-            "unknown-link-status": (
-                sysline,
-                "BRIDGE LINK · STANDBY · 0 SESSIONS",
-                "bridge telemetry",
-            ),
-            "missing-link-status": (
-                sysline,
-                "BRIDGE LINK · 0 SESSIONS",
-                "bridge telemetry",
-            ),
-            "wrong-session-count": (
-                sysline,
-                "BRIDGE LINK · NO LINK · 1 SESSIONS",
-                "bridge telemetry",
-            ),
-            "wrong-session-case": (
-                sysline,
-                "BRIDGE LINK · NO LINK · 0 sessions",
-                "bridge telemetry",
-            ),
-            "missing-dot-spacing": (
-                sysline,
-                "BRIDGE LINK·MONITORING·0 SESSIONS",
-                "bridge telemetry",
-            ),
-            "missing-leading-dot-spacing": (
-                sysline,
-                "BRIDGE LINK ·MONITORING · 0 SESSIONS",
-                "bridge telemetry",
-            ),
-            "telemetry-prefix": (
-                sysline,
-                "STATUS BRIDGE LINK · NO LINK · 0 SESSIONS",
-                "bridge telemetry",
-            ),
-            "telemetry-suffix": (
-                sysline,
-                "BRIDGE LINK · NO LINK · 0 SESSIONS READY",
-                "bridge telemetry",
-            ),
-        }
-        for name, (original, replacement, message) in malformed_entries.items():
-            case = scenario_case("emptyState", "flightDeck")
-            case["staticTextValues"].remove(original)
-            case["staticTextValues"].add(replacement)
-            with self.subTest(case=name):
-                self.assert_invalid(case, message)
-
-    def test_flight_deck_empty_state_uses_only_ax_static_text_values(self) -> None:
-        heading = "ALL SYSTEMS NOMINAL"
-        description = (
-            "No active sessions. Open Island is watching the bridge — the moment "
-            "an agent needs approval, asks a question, or finishes, a lamp lights here."
-        )
-        sysline = "BRIDGE LINK · NO LINK · 0 SESSIONS"
-        case = scenario_case("emptyState", "flightDeck")
-
-        # The report summary and arbitrary AX fields can repeat the required
-        # strings, but they are not evidence that FlightDeckEmptyState rendered
-        # them. The captured source uses AXStaticText.value exclusively.
-        case["staticTextValues"] = {"unrelated rendered static text"}
-        case["summaryTextValues"] = {heading, description, sysline}
-        case["summaryLabels"] = {heading, description, sysline}
-        case["extraAXNodes"] = [
-            {
-                "role": "AXButton",
-                "label": heading,
-                "value": description,
-                "help": sysline,
-                "description": heading,
-                "children": [],
-            },
-            {
-                "role": "AXGroup",
-                "label": description,
-                "value": sysline,
-                "help": heading,
-                "description": description,
-                "children": [],
-            },
-            {
-                "role": "AXStaticText",
-                "label": heading,
-                "value": "unrelated static-text value",
-                "help": description,
-                "description": sysline,
-                "children": [],
-            },
-        ]
-        self.assert_invalid(case, "uppercase heading")
-
     def test_halo_session_list_requires_source_truthful_ax_entries(self) -> None:
         summary = "9 total, 1 running, 1 done, 7 idle"
         footer = "9 sessions · 0 need you"
@@ -1221,7 +919,7 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
                 self.assert_invalid(case, message)
 
     def test_non_poured_session_lists_require_all_nine_structured_rows(self) -> None:
-        for theme in ("flightDeck", "halo"):
+        for theme in ("halo",):
             case = scenario_case("sessionList", theme)
             case["buttonLabels"].remove(
                 "Codex, fixture-9, completed, 9 minutes ago"
@@ -1229,25 +927,8 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
             with self.subTest(theme=theme):
                 self.assert_invalid(case, "exactly 9 session row buttons")
 
-    def test_fresh_flight_deck_session_list_artifact_regression(self) -> None:
-        if not FRESH_FLIGHT_DECK_SESSION_LIST_REPORT.exists():
-            self.skipTest("preserved fresh Flight Deck artifact is not present")
-        result = subprocess.run(
-            [
-                sys.executable,
-                str(VALIDATOR_PATH),
-                "--theme",
-                "flightDeck",
-                str(FRESH_FLIGHT_DECK_SESSION_LIST_REPORT),
-            ],
-            capture_output=True,
-            check=False,
-            text=True,
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
-
     def test_approval_card_theme_semantics_are_source_truthful(self) -> None:
-        for theme in ("poured", "flightDeck", "halo"):
+        for theme in ("poured", "halo"):
             with self.subTest(theme=theme, case="valid"):
                 self.assert_valid(scenario_case("approvalCard", theme))
 
@@ -1267,65 +948,6 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
             case["textValues"].remove(semantic)
             with self.subTest(theme="poured", missing=semantic):
                 self.assert_invalid(case, message)
-
-        flight_deck_requirements = (
-            ("PERMISSION REQUIRED", "permission kicker"),
-            ("Opus 4.8 · feat/approval-flow", "model/branch identity"),
-            (
-                "$ head -5000 /Users/wangruobing/Personal/claude-research/"
-                "extracts/claude-bun-2.1.81-v3/islands/000_cli.js.txt",
-                "command",
-            ),
-            (
-                "Sources/OpenIslandApp/Views/SettingsView.swift",
-                "affected path",
-            ),
-        )
-        for semantic, message in flight_deck_requirements:
-            case = scenario_case("approvalCard", "flightDeck")
-            case["textValues"].remove(semantic)
-            with self.subTest(theme="flightDeck", missing=semantic):
-                self.assert_invalid(case, message)
-
-        valid_held_boundaries = {
-            "59-seconds": "HELD, 0m 59s",
-            "60-seconds": "HELD, 1m 00s",
-            "23h-59m-59s": "HELD, 1439m 59s",
-            "24h-exact": "HELD, 1440m 00s",
-        }
-        for name, held in valid_held_boundaries.items():
-            case = scenario_case("approvalCard", "flightDeck")
-            case["textValues"].remove("HELD, 0m 20s")
-            case["textValues"].add(held)
-            with self.subTest(theme="flightDeck", held=name):
-                self.assert_valid(case)
-
-        invalid_held_values = {
-            "freeform": "HELD, 20 seconds",
-            "seconds-out-of-domain": "HELD, 12m 99s",
-            "over-24h-by-one-second": "HELD, 1440m 01s",
-            "huge-minutes": "HELD, 999999m 00s",
-            "negative-minutes": "HELD, -1m 00s",
-            "negative-seconds": "HELD, 0m -1s",
-            "padded-minutes": "HELD, 00m 59s",
-            "underpadded-seconds": "HELD, 0m 5s",
-            "overpadded-seconds": "HELD, 0m 005s",
-        }
-        for name, held in invalid_held_values.items():
-            case = scenario_case("approvalCard", "flightDeck")
-            case["textValues"].remove("HELD, 0m 20s")
-            case["textValues"].add(held)
-            with self.subTest(theme="flightDeck", held=name):
-                self.assert_invalid(case, "held count-up")
-
-        for forbidden in (
-            "Allow exec_command to rewrite SettingsView.swift?",
-            "Auto-collapses in 10s · hover pauses",
-        ):
-            case = scenario_case("approvalCard", "flightDeck")
-            case["textValues"].add(forbidden)
-            with self.subTest(theme="flightDeck", forbidden=forbidden):
-                self.assert_invalid(case, "Poured-only copy")
 
         halo_requirements = (
             ("Permission needed", "title"),
@@ -1353,7 +975,7 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
         self.assert_invalid(halo_with_countdown, "foreign-theme copy")
 
     def test_approval_card_requires_structured_lead_row(self) -> None:
-        for theme in ("poured", "flightDeck", "halo"):
+        for theme in ("poured", "halo"):
             case = scenario_case("approvalCard", theme)
             case["buttonLabels"].remove(
                 "Claude Code, open-island, waiting for permission, 20 seconds ago"
@@ -1365,38 +987,21 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
                 self.assert_invalid(case, "structured lead session row")
 
     def test_approval_card_cross_theme_substitution_fails(self) -> None:
-        for target_theme, donor_theme in (
-            ("poured", "flightDeck"),
-            ("flightDeck", "poured"),
-            ("flightDeck", "halo"),
-            ("halo", "poured"),
-            ("halo", "flightDeck"),
-        ):
+        # Poured's approvalCard contract only asserts presence of its own
+        # required entries (it never asserts absence of foreign copy), so a
+        # halo-donor -> poured-target substitution is not a meaningful
+        # negative case here. Halo's contract does assert absence of Poured's
+        # countdown string, so the reverse direction still catches
+        # contamination.
+        for target_theme, donor_theme in (("halo", "poured"),):
             target = scenario_case("approvalCard", target_theme)
             donor = scenario_case("approvalCard", donor_theme)
             target["textValues"] = set(donor["textValues"])
             with self.subTest(target=target_theme, donor=donor_theme):
                 self.assert_invalid(target, f"{target_theme} approvalCard")
 
-    def test_fresh_flight_deck_approval_artifact_regression(self) -> None:
-        if not FRESH_FLIGHT_DECK_APPROVAL_REPORT.exists():
-            self.skipTest("preserved fresh Flight Deck approval artifact is absent")
-        result = subprocess.run(
-            [
-                sys.executable,
-                str(VALIDATOR_PATH),
-                "--theme",
-                "flightDeck",
-                str(FRESH_FLIGHT_DECK_APPROVAL_REPORT),
-            ],
-            capture_output=True,
-            check=False,
-            text=True,
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
-
     def test_diff_approval_theme_semantics_and_common_structure(self) -> None:
-        for theme in ("poured", "flightDeck", "halo"):
+        for theme in ("poured", "halo"):
             with self.subTest(theme=theme, case="valid"):
                 self.assert_valid(scenario_case("diffApprovalCard", theme))
 
@@ -1419,32 +1024,12 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
             ),
             ("roles", "AXScrollArea", "AXScrollArea"),
         )
-        for theme in ("poured", "flightDeck", "halo"):
+        for theme in ("poured", "halo"):
             for collection, semantic, message in common_removals:
                 case = scenario_case("diffApprovalCard", theme)
                 case[collection].remove(semantic)
                 with self.subTest(theme=theme, missing=semantic):
                     self.assert_invalid(case, message)
-
-        flight_deck_requirements = (
-            ("PERMISSION REQUIRED", "permission kicker"),
-            ("Opus 4.8 · main", "model/branch identity"),
-            ("Claude wants to edit AGENTS.md.", "summary"),
-            ("AGENTS.md", "affected path"),
-            ("UPDATED", "diff header"),
-            ("+3", "added count"),
-            ("−2", "removed count"),
-        )
-        for semantic, message in flight_deck_requirements:
-            case = scenario_case("diffApprovalCard", "flightDeck")
-            case["textValues"].remove(semantic)
-            with self.subTest(theme="flightDeck", missing=semantic):
-                self.assert_invalid(case, message)
-
-        invalid_held = scenario_case("diffApprovalCard", "flightDeck")
-        invalid_held["textValues"].remove("HELD, 0m 11s")
-        invalid_held["textValues"].add("HELD, 12m 99s")
-        self.assert_invalid(invalid_held, "held count-up")
 
         halo_requirements = (
             ("Approve file edit", "title"),
@@ -1458,7 +1043,7 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
             with self.subTest(theme="halo", missing=semantic):
                 self.assert_invalid(case, message)
 
-        for theme in ("flightDeck", "halo"):
+        for theme in ("halo",):
             countdown = scenario_case("diffApprovalCard", theme)
             countdown["textValues"].add(
                 "Auto-collapses in 10s · hover pauses"
@@ -1468,12 +1053,8 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
 
     def test_diff_approval_cross_theme_substitution_fails(self) -> None:
         for target_theme, donor_theme in (
-            ("poured", "flightDeck"),
             ("poured", "halo"),
-            ("flightDeck", "poured"),
-            ("flightDeck", "halo"),
             ("halo", "poured"),
-            ("halo", "flightDeck"),
         ):
             target = scenario_case("diffApprovalCard", target_theme)
             donor = scenario_case("diffApprovalCard", donor_theme)
@@ -1482,29 +1063,12 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
             with self.subTest(target=target_theme, donor=donor_theme):
                 self.assert_invalid(target, f"{target_theme} diffApprovalCard")
 
-    def test_fresh_flight_deck_diff_approval_artifact_regression(self) -> None:
-        if not FRESH_FLIGHT_DECK_DIFF_APPROVAL_REPORT.exists():
-            self.skipTest("preserved fresh Flight Deck diff artifact is absent")
-        result = subprocess.run(
-            [
-                sys.executable,
-                str(VALIDATOR_PATH),
-                "--theme",
-                "flightDeck",
-                str(FRESH_FLIGHT_DECK_DIFF_APPROVAL_REPORT),
-            ],
-            capture_output=True,
-            check=False,
-            text=True,
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
-
     def test_codex_approval_theme_semantics_are_source_truthful(self) -> None:
-        for theme in ("poured", "flightDeck", "halo"):
+        for theme in ("poured", "halo"):
             with self.subTest(theme=theme, case="valid"):
                 self.assert_valid(scenario_case("codexApprovalCard", theme))
 
-        for theme in ("poured", "flightDeck", "halo"):
+        for theme in ("poured", "halo"):
             missing_row = scenario_case("codexApprovalCard", theme)
             missing_row["buttonLabels"].remove(
                 "Codex, open-vibe-island, waiting for permission, 16 seconds ago"
@@ -1532,16 +1096,6 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
                     "terminal CTA",
                 ),
             ),
-            "flightDeck": (
-                ("textValues", "PERMISSION REQUIRED", "permission kicker"),
-                ("textValues", "$ git push origin main", "command"),
-                (
-                    "textValues",
-                    "~/Developer/open-vibe-island",
-                    "affected path",
-                ),
-                ("buttonLabels", "Jump to Codex", "terminal CTA"),
-            ),
             "halo": (
                 ("textValues", "Approval waiting", "title"),
                 (
@@ -1565,19 +1119,10 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
                 with self.subTest(theme=theme, missing=semantic):
                     self.assert_invalid(case, message)
 
-        invalid_held = scenario_case("codexApprovalCard", "flightDeck")
-        invalid_held["textValues"].remove("HELD, 0m 16s")
-        invalid_held["textValues"].add("HELD, 1440m 01s")
-        self.assert_invalid(invalid_held, "held count-up")
-
     def test_codex_approval_cross_theme_substitution_fails(self) -> None:
         for target_theme, donor_theme in (
-            ("poured", "flightDeck"),
             ("poured", "halo"),
-            ("flightDeck", "poured"),
-            ("flightDeck", "halo"),
             ("halo", "poured"),
-            ("halo", "flightDeck"),
         ):
             target = scenario_case("codexApprovalCard", target_theme)
             donor = scenario_case("codexApprovalCard", donor_theme)
@@ -1784,26 +1329,14 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
                 self.assert_invalid(target_case, target)
 
     def test_completion_outcome_badges_require_exact_text_values(self) -> None:
-        for theme in ("poured", "flightDeck", "halo"):
+        for theme in ("poured", "halo"):
             for scenario, title_case, wrong_title_case in (
                 ("completedInterrupted", "Interrupted", "Failed"),
                 ("completedFailed", "Failed", "Interrupted"),
             ):
-                expected = (
-                    title_case.upper()
-                    if theme == "flightDeck"
-                    else title_case
-                )
-                wrong_outcome = (
-                    wrong_title_case.upper()
-                    if theme == "flightDeck"
-                    else wrong_title_case
-                )
-                foreign_case = (
-                    title_case
-                    if theme == "flightDeck"
-                    else title_case.upper()
-                )
+                expected = title_case
+                wrong_outcome = wrong_title_case
+                foreign_case = title_case.upper()
 
                 with self.subTest(
                     theme=theme,
@@ -1863,24 +1396,12 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
     def test_completion_outcome_cross_theme_and_cross_outcome_substitution_fails(
         self,
     ) -> None:
-        for scenario in ("completedInterrupted", "completedFailed"):
-            for target_theme, donor_theme in (
-                ("poured", "flightDeck"),
-                ("flightDeck", "poured"),
-                ("flightDeck", "halo"),
-                ("halo", "flightDeck"),
-            ):
-                target = scenario_case(scenario, target_theme)
-                donor = scenario_case(scenario, donor_theme)
-                target["textValues"] = set(donor["textValues"])
-                with self.subTest(
-                    scenario=scenario,
-                    target=target_theme,
-                    donor=donor_theme,
-                ):
-                    self.assert_invalid(target, "exact outcome")
-
-        for theme in ("poured", "flightDeck", "halo"):
+        # Poured and Halo render identical outcome-badge text ("Interrupted" /
+        # "Failed"), so a cross-theme textValues swap between them is not a
+        # meaningful negative case here (it was only ever invalid because
+        # Flight Deck rendered the uppercase EICAS form). The cross-scenario
+        # substitution below still exercises the exact-outcome contract.
+        for theme in ("poured", "halo"):
             for target_scenario, donor_scenario in (
                 ("completedInterrupted", "completedFailed"),
                 ("completedFailed", "completedInterrupted"),
@@ -1896,7 +1417,7 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
                     self.assert_invalid(target, "exact outcome")
 
     def test_completed_failed_keeps_transcript_absent_for_every_theme(self) -> None:
-        for theme in ("poured", "flightDeck", "halo"):
+        for theme in ("poured", "halo"):
             case = scenario_case("completedFailed", theme)
             case["buttonLabels"].add("Transcript, open-vibe-island")
             with self.subTest(theme=theme):
@@ -1913,7 +1434,6 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
         }
         jump_labels = {
             "poured": "Jump to terminal",
-            "flightDeck": "Jump",
             "halo": "Jump · Ghostty",
         }
         for theme, expected_jump in jump_labels.items():
@@ -2012,33 +1532,15 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
                             "incorrect Transcript actions",
                         )
 
-    def test_fresh_flight_deck_interrupted_artifact_regression(self) -> None:
-        if not FRESH_FLIGHT_DECK_INTERRUPTED_REPORT.exists():
-            self.skipTest("preserved fresh Flight Deck interrupted artifact is absent")
-        result = subprocess.run(
-            [
-                sys.executable,
-                str(VALIDATOR_PATH),
-                "--theme",
-                "flightDeck",
-                str(FRESH_FLIGHT_DECK_INTERRUPTED_REPORT),
-            ],
-            capture_output=True,
-            check=False,
-            text=True,
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
-
     def test_usage_meter_semantics_are_complete_per_ax_entry(self) -> None:
         for theme in EXPECTED_USAGE_METER_SEMANTICS:
             self.assert_valid(scenario_case("usageMeters", theme))
 
-            if theme != "flightDeck":
-                grouped = scenario_case("usageMeters", theme)
-                grouped["labels"] = {
-                    " · ".join(EXPECTED_USAGE_METER_SEMANTICS[theme])
-                }
-                self.assert_invalid(grouped, "missing exact normalized entry")
+            grouped = scenario_case("usageMeters", theme)
+            grouped["labels"] = {
+                " · ".join(EXPECTED_USAGE_METER_SEMANTICS[theme])
+            }
+            self.assert_invalid(grouped, "missing exact normalized entry")
 
             for semantic in EXPECTED_USAGE_METER_SEMANTICS[theme]:
                 meter, reset = semantic.split(", ", 1)
@@ -2110,28 +1612,6 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
             with self.subTest(theme=theme, case="padded-full-semantics"):
                 self.assert_invalid(padded, "missing exact normalized entry")
 
-            short_meters_with_button_decoys = scenario_case("usageMeters", theme)
-            short_meters_with_button_decoys["labels"] = set(
-                EXPECTED_USAGE_METER_SEMANTICS["flightDeck"]
-            )
-            short_meters_with_button_decoys["buttonLabels"].update(expected_entries)
-            with self.subTest(theme=theme, case="short-meters-with-button-decoys"):
-                self.assert_invalid(
-                    short_meters_with_button_decoys,
-                    "missing exact normalized entry",
-                )
-
-            short_meters_with_summary_decoys = scenario_case("usageMeters", theme)
-            short_meters_with_summary_decoys["labels"] = set(
-                EXPECTED_USAGE_METER_SEMANTICS["flightDeck"]
-            )
-            short_meters_with_summary_decoys["summaryLabels"] = expected_entries
-            with self.subTest(theme=theme, case="short-meters-with-summary-decoys"):
-                self.assert_invalid(
-                    short_meters_with_summary_decoys,
-                    "missing exact normalized entry",
-                )
-
             wrong_role = scenario_case("usageMeters", theme)
             wrong_role["usageMeterRole"] = "AXStaticText"
             with self.subTest(theme=theme, case="full-semantics-in-static-text"):
@@ -2166,59 +1646,6 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
                     "missing exact normalized entry",
                 )
 
-    def test_flight_deck_usage_requires_native_grouped_entries(self) -> None:
-        separate = scenario_case("usageMeters", "flightDeck")
-        separate["labels"] = set(EXPECTED_USAGE_METER_SEMANTICS["flightDeck"])
-        self.assert_invalid(separate, "missing exact normalized entry")
-
-        full_titles = scenario_case("usageMeters", "flightDeck")
-        full_titles["labels"] = set(EXPECTED_USAGE_METER_SEMANTICS["poured"])
-        self.assert_invalid(full_titles, "full per-meter semantic")
-
-        button_group_decoys = scenario_case("usageMeters", "flightDeck")
-        button_group_decoys["labels"] = set(
-            EXPECTED_USAGE_METER_SEMANTICS["flightDeck"]
-        )
-        button_group_decoys["buttonLabels"].update(
-            FLIGHT_DECK_USAGE_GROUP_ENTRIES
-        )
-        self.assert_invalid(button_group_decoys, "missing exact normalized entry")
-
-        summary_group_decoys = scenario_case("usageMeters", "flightDeck")
-        summary_group_decoys["labels"] = set(
-            EXPECTED_USAGE_METER_SEMANTICS["flightDeck"]
-        )
-        summary_group_decoys["summaryLabels"] = FLIGHT_DECK_USAGE_GROUP_ENTRIES
-        self.assert_invalid(summary_group_decoys, "missing exact normalized entry")
-
-        wrong_role = scenario_case("usageMeters", "flightDeck")
-        wrong_role["usageMeterRole"] = "AXStaticText"
-        self.assert_invalid(wrong_role, "full per-meter semantic")
-
-        partial_grouping = scenario_case("usageMeters", "flightDeck")
-        partial_grouping["usageMeterLabels"] = [
-            EXPECTED_USAGE_METER_SEMANTICS["flightDeck"][0],
-            EXPECTED_USAGE_METER_SEMANTICS["flightDeck"][1],
-            FLIGHT_DECK_USAGE_GROUP_ENTRIES[1],
-        ]
-        partial_grouping["summaryLabels"] = FLIGHT_DECK_USAGE_GROUP_ENTRIES
-        self.assert_invalid(partial_grouping, "missing exact normalized entry")
-
-        duplicate_groups = scenario_case("usageMeters", "flightDeck")
-        duplicate_groups["usageMeterLabels"] = [
-            *FLIGHT_DECK_USAGE_GROUP_ENTRIES,
-            FLIGHT_DECK_USAGE_GROUP_ENTRIES[0],
-        ]
-        self.assert_valid(duplicate_groups)
-
-        duplicate_missing_group = scenario_case("usageMeters", "flightDeck")
-        duplicate_missing_group["usageMeterLabels"] = [
-            FLIGHT_DECK_USAGE_GROUP_ENTRIES[0],
-            FLIGHT_DECK_USAGE_GROUP_ENTRIES[0],
-        ]
-        duplicate_missing_group["summaryLabels"] = FLIGHT_DECK_USAGE_GROUP_ENTRIES
-        self.assert_invalid(duplicate_missing_group, "full per-meter semantic")
-
     def test_usage_meter_theme_substitution_contracts(self) -> None:
         themes = tuple(EXPECTED_USAGE_METER_SEMANTICS)
         for target_theme in themes:
@@ -2239,7 +1666,6 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
 
     def test_preserved_usage_meter_artifact_regressions(self) -> None:
         for theme, report_path in (
-            ("flightDeck", FRESH_FLIGHT_DECK_USAGE_REPORT),
             ("poured", PRESERVED_POURED_USAGE_REPORT),
         ):
             if not report_path.exists():
@@ -2262,7 +1688,6 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
     def test_multi_question_action_requires_identified_native_name_and_disabled_state(self) -> None:
         expected_actions = {
             "poured": "Submit & next",
-            "flightDeck": "Submit Answers",
             "halo": "Next",
         }
         self.assertEqual(VALIDATOR.MULTI_QUESTION_ACTION_LABELS, expected_actions)
@@ -2498,7 +1923,7 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
             text=True,
         )
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("--theme poured|flightDeck|halo", result.stderr)
+        self.assertIn("--theme poured|halo", result.stderr)
 
         unsupported = scenario_case("closed")
         unsupported["scenario"] = "closedAttention"

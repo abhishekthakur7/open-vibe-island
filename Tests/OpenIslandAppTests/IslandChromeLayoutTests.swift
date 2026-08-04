@@ -8,9 +8,9 @@ import Testing
 /// The bug this pins: `OverlayPanelController` sized the overlay window (and
 /// its hit-test rect) from the *live theme's* `IslandMetricsTokens`, while
 /// `IslandPanelView` padded its content with the legacy `IslandChromeMetrics`
-/// statics. For every theme whose insets differ from Classic's — Poured, whose
-/// opened horizontal inset is 28 against Classic's 18 — the surface therefore
-/// rendered 2 × 10pt wider than the window's interactive area, leaving a visible
+/// statics. For every theme whose insets differ from the legacy statics —
+/// Poured, whose opened horizontal inset is 28 against the legacy 18 — the
+/// surface therefore rendered 2 × 10pt wider than the window's interactive area, leaving a visible
 /// but unclickable rim.
 ///
 /// Both sides now derive from `IslandChromeLayout`, so the tests below assert
@@ -108,51 +108,6 @@ struct IslandChromeLayoutTests {
         ))
     }
 
-    // MARK: - 1b. Opened-header band height override (overlay remediation Phase 5 · F8)
-
-    /// `OverlayPanelController.panelSize` budgets `model?.islandTheme
-    /// .openedHeaderHeight ?? screen.notchSize.height` for the header band —
-    /// mirrored here (via the same `IslandChromeLayout.windowSize` the real
-    /// method calls) since `panelSize` itself is private and has no seam to
-    /// call directly. Flight Deck's 96pt override must grow the *window* by
-    /// exactly its own delta over the shared notch height (so the taller
-    /// header never squeezes the measured body content below it); a theme
-    /// that doesn't override `openedHeaderHeight` (every theme but Flight
-    /// Deck) must see zero change between the pre-seam and post-seam formula.
-    @MainActor
-    @Test
-    func openedHeaderHeightOverrideGrowsOnlyFlightDecksWindow() {
-        let bodyContentHeight: CGFloat = 200
-        let notchHeight: CGFloat = 36 // representative real-hardware safeAreaInsets.top
-
-        func windowHeight(headerBand: CGFloat, metrics: IslandMetricsTokens) -> CGFloat {
-            IslandChromeLayout.windowSize(
-                preferredContentWidth: 480,
-                contentHeight: headerBand + bodyContentHeight,
-                metrics: metrics,
-                availableWidth: Self.roomyWidth
-            ).height
-        }
-
-        // Every non-Flight-Deck theme: the header band is `notchHeight`
-        // whether or not `openedHeaderHeight` is consulted — zero delta.
-        for theme in ThemeRegistry.all where theme.id != "flightDeck" {
-            let metrics = theme.tokens.metrics
-            let preSeam = windowHeight(headerBand: notchHeight, metrics: metrics)
-            let postSeam = windowHeight(headerBand: theme.openedHeaderHeight ?? notchHeight, metrics: metrics)
-            #expect(preSeam == postSeam, "\(theme.id) window height moved without overriding openedHeaderHeight")
-        }
-
-        // Flight Deck: the window must grow by exactly (96 - notchHeight)pt —
-        // the same delta `IslandPanelView`'s header `.frame(height:)` grows by.
-        let flightDeckMetrics = FlightDeckTheme().tokens.metrics
-        let flightDeckHeaderHeight = FlightDeckTheme().openedHeaderHeight ?? notchHeight
-        let preSeam = windowHeight(headerBand: notchHeight, metrics: flightDeckMetrics)
-        let postSeam = windowHeight(headerBand: flightDeckHeaderHeight, metrics: flightDeckMetrics)
-        #expect(postSeam - preSeam == flightDeckHeaderHeight - notchHeight)
-        #expect(postSeam > preSeam)
-    }
-
     // MARK: - 2. Window vs surface, every registered theme
 
     /// The generalization of the above across the whole registry: whatever a
@@ -213,7 +168,21 @@ struct IslandChromeLayoutTests {
     /// `SPEC-halo` §1b — must grow the window rather than have the glow clipped.
     @Test
     func closedInsetsLargerThanOpenedGrowTheWindow() {
-        var quiet = IslandMetricsTokens.classic
+        // Independent literal fixture (not a shipping theme's tokens): opened
+        // insets of 18/22 with a hover scale and radii lifted from the
+        // overlay's original chrome numbers, so the assertions below stay
+        // stable regardless of what any registered theme declares.
+        var quiet = IslandMetricsTokens(
+            openedTopRadius: 22,
+            openedBottomRadius: 22,
+            surfaceShadow: IslandShadowToken(color: .black, opacity: 0.36, radius: 22, yOffset: 12),
+            openedShadowHorizontalInset: 18,
+            openedShadowBottomInset: 22,
+            closedShadowHorizontalInset: 12,
+            closedShadowBottomInset: 14,
+            closedHoverScale: 1.028,
+            filletRadius: 0
+        )
         quiet.closedShadowHorizontalInset = 0
         quiet.closedShadowBottomInset = 0
 
@@ -349,40 +318,4 @@ struct IslandChromeLayoutTests {
         }
     }
 
-    // MARK: - 5. Classic is unchanged
-
-    /// AB-320 must be a pure no-op for Classic. Its tokens equal the legacy
-    /// `IslandChromeMetrics` statics (pinned in `IslandThemeTokensTests`), so
-    /// routing the window, the padding and the hit rect through
-    /// `IslandChromeLayout` has to reproduce the pre-ticket arithmetic exactly:
-    /// window = content + 2 × 18 wide, content height + 22 tall.
-    @Test
-    func classicWindowMathMatchesTheLegacyConstants() {
-        let metrics = IslandMetricsTokens.classic
-        let reserved = IslandChromeLayout.reservedInsets(for: metrics)
-
-        #expect(reserved.horizontal == IslandChromeMetrics.openedShadowHorizontalInset)
-        #expect(reserved.bottom == IslandChromeMetrics.openedShadowBottomInset)
-
-        let window = IslandChromeLayout.windowSize(
-            preferredContentWidth: 540,
-            contentHeight: Self.contentHeight,
-            metrics: metrics,
-            availableWidth: Self.roomyWidth
-        )
-
-        #expect(window.width == 540 + (IslandChromeMetrics.openedShadowHorizontalInset * 2))
-        #expect(window.height == Self.contentHeight + IslandChromeMetrics.openedShadowBottomInset)
-
-        let insets = IslandChromeLayout.insets(forWindowWidth: window.width, metrics: metrics)
-        #expect(insets.horizontal == IslandChromeMetrics.openedShadowHorizontalInset)
-        #expect(insets.bottom == IslandChromeMetrics.openedShadowBottomInset)
-
-        // The closed pill casts nothing, so the morph and the Reduce Motion
-        // path are both no-ops for Classic.
-        #expect(metrics.closedSurfaceShadow == nil)
-        #expect(metrics.resolvedClosedSurfaceShadow.opacity == 0)
-        #expect(metrics.resolvedClosedSurfaceShadow.radius == 0)
-        #expect(metrics.resolvedClosedSurfaceShadow.yOffset == 0)
-    }
 }

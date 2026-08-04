@@ -3,10 +3,9 @@ import Testing
 @testable import OpenIslandApp
 import OpenIslandCore
 
-/// AB-299: the theme runtime — registry lookup + fallback, `AppModel`
-/// persistence via `appearance.island.v8.theme`, and the byte-identical
-/// invariants Classic must keep (chrome metrics feeding panel sizing, and the
-/// grid geometry strategy delegating to the pinned statics).
+/// AB-299: the theme runtime — registry lookup + fallback, and `AppModel`
+/// persistence via `appearance.island.v8.theme`, including retired-id
+/// normalization to the default.
 ///
 /// Serialized and defaults-clearing like `AppModelAttentionSurfacesTests`,
 /// since it constructs real `AppModel`s that read `UserDefaults.standard`.
@@ -32,7 +31,9 @@ struct ThemeSelectionTests {
 
     @Test
     func registryResolvesKnownAndFallsBackForNilOrUnknown() {
-        #expect(ThemeRegistry.theme(id: "classic").id == "classic")
+        // "classic" is retired (owner ruling): it now takes the unknown-id
+        // path and resolves to the default, not to itself.
+        #expect(ThemeRegistry.theme(id: "classic").id == ThemeRegistry.default.id)
         #expect(ThemeRegistry.theme(id: "poured").id == "poured")
         // Nil (never selected) and garbage (stale / hand-edited defaults) both
         // resolve to the default rather than crashing or rendering blank.
@@ -41,13 +42,14 @@ struct ThemeSelectionTests {
     }
 
     /// Retirement migration (owner ruling 2026-08-01, "yes delete annual and
-    /// instrument"): the two deleted ids are no longer registered, so a stored
-    /// selection of either takes the same unknown-id path a garbage value does
-    /// and resolves to the default. Pinned by id rather than by symbol, since
-    /// the theme types are gone.
+    /// instrument"; extended to Classic and Flight Deck): the four deleted ids
+    /// are no longer registered, so a stored selection of any of them takes
+    /// the same unknown-id path a garbage value does and resolves to the
+    /// default. Pinned by id rather than by symbol, since the theme types are
+    /// gone.
     @Test
     func retiredAnnualAndInstrumentIdsResolveToTheDefault() {
-        let retired = ["annual", "instrument"]
+        let retired = ["annual", "instrument", "classic", "flightDeck"]
         let ids = ThemeRegistry.all.map(\.id)
         for id in retired {
             #expect(ids.contains(id) == false)
@@ -55,12 +57,13 @@ struct ThemeSelectionTests {
         }
     }
 
-    /// The same migration through persistence: an install that had Annual or
-    /// Instrument selected reloads on Poured Island, and the stale id is
-    /// normalized out of `UserDefaults` rather than lingering.
+    /// The same migration through persistence: an install that had Annual,
+    /// Instrument, Classic, or Flight Deck selected reloads on Poured Island,
+    /// and the stale id is normalized out of `UserDefaults` rather than
+    /// lingering.
     @Test
     func persistedRetiredThemeSelectionMigratesToTheDefault() {
-        for id in ["annual", "instrument"] {
+        for id in ["annual", "instrument", "classic", "flightDeck"] {
             UserDefaults.standard.set(id, forKey: Self.themeKey)
             let model = AppModel()
             #expect(model.islandThemeID == ThemeRegistry.default.id)
@@ -78,16 +81,6 @@ struct ThemeSelectionTests {
         #expect(model.islandThemeID == "poured")
         #expect(model.islandTheme.id == "poured")
         #expect(model.islandThemeID == ThemeRegistry.default.id)
-    }
-
-    @Test
-    func explicitClassicSelectionIsPreservedOverTheNewDefault() {
-        // A user who explicitly chose Classic before the flip keeps Classic —
-        // the new default only applies when nothing is stored.
-        UserDefaults.standard.set("classic", forKey: Self.themeKey)
-        let reloaded = AppModel()
-        #expect(reloaded.islandThemeID == "classic")
-        #expect(reloaded.islandTheme.id == "classic")
     }
 
     @Test

@@ -83,11 +83,11 @@ struct OverlayPanelControllerTests {
 
     @Test
     func escapeKeepsItsShippedMeaningInEveryOtherTheme() {
-        // The ruling is Poured-scoped, and the other three themes must stay
-        // byte-identical. `hasOpenInListHero` can only ever be true under
+        // The ruling is Poured-scoped, and the other registered theme must
+        // stay byte-identical. `hasOpenInListHero` can only ever be true under
         // Poured (`PouredSessionRow` is the sole registrar), but the theme term
         // is asserted anyway so a future registrar cannot silently widen it.
-        for themeID in ["classic", "flightDeck", "halo"] {
+        for themeID in ["halo"] {
             #expect(
                 OverlayPanelController.escapeStage(themeID: themeID, hasOpenInListHero: true)
                     == .closePanel
@@ -158,7 +158,7 @@ struct OverlayPanelControllerTests {
     func ordinaryApprovalsAndEveryOtherThemeKeepTheirShippedApprovalShortcut() {
         // Non-terminal requests are untouched in every theme, for every action
         // that reaches this path.
-        for themeID in ["poured", "classic", "flightDeck", "halo"] {
+        for themeID in ["poured", "halo"] {
             #expect(
                 OverlayPanelController.approvalShortcutOutcome(
                     themeID: themeID,
@@ -176,7 +176,7 @@ struct OverlayPanelControllerTests {
         }
         // Only Poured's E3 prints ⌘Y on a terminal-approval card, so no other
         // theme gains a binding it does not advertise — they keep bailing.
-        for themeID in ["classic", "flightDeck", "halo"] {
+        for themeID in ["halo"] {
             #expect(
                 OverlayPanelController.approvalShortcutOutcome(
                     themeID: themeID,

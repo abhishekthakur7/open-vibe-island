@@ -151,8 +151,6 @@ struct IslandDiffRenderer: View {
         switch header.title {
         case .updatedCounts:
             return updated(lang.t("approval.diffUpdated"))
-        case .flightDeckUpdatedCounts:
-            return updated(FlightDeckText.caps(lang.t("approval.diffUpdated"), lang: lang))
         case let .haloFile(affectedPath):
             guard let path = affectedPath?.trimmingCharacters(in: .whitespacesAndNewlines), !path.isEmpty else {
                 return .fileName(lang.t("island.halo.approval.diffFileFallback"))
@@ -253,7 +251,6 @@ struct IslandDiffStyle {
 
     enum HeaderTitle: Equatable {
         case updatedCounts
-        case flightDeckUpdatedCounts
         case haloFile(affectedPath: String?)
         case pouredFile(fileName: String?, hunk: String?)
     }
@@ -413,58 +410,6 @@ struct IslandDiffStyle {
             containerBackground: tokens.colors.surfaceInk.opacity(0.6),
             containerBorder: Border(color: .white.opacity(0.06), width: 1),
             containerShape: containerShape
-        )
-    }
-
-    /// Flight Deck's recessed, phosphor-lit diff card. The renderer owns this
-    /// single chamfered container — callers must not add a second well or bezel.
-    static func flightDeck(tokens: IslandThemeTokens, increasesContrast: Bool) -> Self {
-        Self(
-            gutterWidth: 26,
-            markerWidth: 10,
-            horizontalPadding: 8,
-            font: sharedFont,
-            typography: sharedTypography,
-            added: LineColors(
-                gutter: tokens.colors.statusCompleted.opacity(0.7),
-                marker: tokens.colors.statusCompleted,
-                content: tokens.colors.paper.opacity(0.86),
-                background: tokens.colors.statusCompleted.opacity(0.12)
-            ),
-            removed: LineColors(
-                gutter: tokens.colors.statusFailed.opacity(0.7),
-                marker: tokens.colors.statusFailed,
-                content: tokens.colors.paper.opacity(0.86),
-                background: tokens.colors.statusFailed.opacity(0.12)
-            ),
-            context: LineColors(
-                gutter: FlightDeckSurfaces.faintInk,
-                marker: FlightDeckSurfaces.faintInk,
-                content: FlightDeckSurfaces.dimInk,
-                background: .clear
-            ),
-            headerColor: FlightDeckSurfaces.dimInk,
-            headerBackground: FlightDeckSurfaces.tile,
-            containerBackground: FlightDeckSurfaces.well,
-            containerBorder: Border(
-                color: FlightDeckSurfaces.hairline(tier: 2, increaseContrast: increasesContrast),
-                width: 1
-            ),
-            containerShape: .chamfered(chamfer: 5),
-            header: HeaderStyle(
-                title: .flightDeckUpdatedCounts,
-                font: FlightDeckTypography.microLabel,
-                iconFont: FlightDeckTypography.microLabel,
-                iconOpacity: 0.7,
-                color: FlightDeckSurfaces.dimInk,
-                background: FlightDeckSurfaces.tile,
-                horizontalPadding: 8,
-                verticalPadding: 6,
-                bottomBorder: Border(
-                    color: FlightDeckSurfaces.hairline(tier: 1, increaseContrast: increasesContrast),
-                    width: 1
-                )
-            )
         )
     }
 }

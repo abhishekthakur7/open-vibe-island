@@ -260,7 +260,7 @@ struct AppModelSessionListTests {
         let model = AppModel()
         UserDefaults.standard.removeObject(forKey: notchLabelKey)
         UserDefaults.standard.removeObject(forKey: notchLabelMarkerKey)
-        model.islandThemeID = "classic"
+        model.islandThemeID = "halo"
 
         var running = listSession(id: "running", phase: .running, updatedAt: now)
         running.isProcessAlive = true
@@ -340,7 +340,7 @@ struct AppModelSessionListTests {
 
         // (c3) explicitly opting in on the notch profile surfaces the label
         // under a non-Poured theme too, independent of the topBar profile.
-        model.islandThemeID = "classic"
+        model.islandThemeID = "halo"
         model.updateAppearancePreferences(for: .notch) { $0.centerLabel = .agentAction }
         #expect(model.islandClosedLabel() != nil)
     }

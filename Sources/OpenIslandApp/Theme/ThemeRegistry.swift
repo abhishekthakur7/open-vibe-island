@@ -11,13 +11,10 @@ enum ThemeRegistry {
 
     /// Every theme, in picker order. Poured Island is first, so it's the
     /// default — the final Poured slice (AB-304, poured 5/5) flipped the default
-    /// to it, making it the product's face. Classic stays registered and
-    /// selectable (second in the picker) for anyone who prefers the original
-    /// ink-and-paper look.
+    /// to it, making it the product's face. Halo is the only other theme,
+    /// second in the picker, for anyone who prefers its look.
     static let all: [any IslandTheme] = [
         PouredIslandTheme(),
-        ClassicTheme(),
-        FlightDeckTheme(),
         HaloTheme(),
     ]
 
@@ -33,7 +30,10 @@ enum ThemeRegistry {
     /// `appearance.island.v8.theme` still holds `"annual"` or `"instrument"`
     /// takes exactly the unknown-id path here and lands on Poured Island, and
     /// `AppModel` normalizes the stored value back on load. No versioned
-    /// migration step is needed — `ThemeSelectionTests` pins both ids.
+    /// migration step is needed — `ThemeSelectionTests` pins both ids. Classic
+    /// and Flight Deck were retired the same way: `"classic"` and
+    /// `"flightDeck"` now also resolve to `default` via this same unknown-id
+    /// path.
     static func theme(id: String?) -> any IslandTheme {
         guard let id, let match = all.first(where: { $0.id == id }) else {
             return `default`

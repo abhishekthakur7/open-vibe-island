@@ -122,8 +122,8 @@ struct PouredSpotlightRotationTests {
         model.pouredSpotlightRotationPhaseOverride = 3_500
 
         // Every other theme keeps the shipped first-waiting winner — R7 is a
-        // Poured ruling and the other three themes stay byte-identical.
-        for themeID in ["classic", "flightDeck", "halo"] {
+        // Poured ruling and the other registered theme stays byte-identical.
+        for themeID in ["halo"] {
             model.islandThemeID = themeID
             #expect(!model.pouredSpotlightRotationIsLive)
             #expect(model.islandClosedSpotlight?.id == waiting[0].id)

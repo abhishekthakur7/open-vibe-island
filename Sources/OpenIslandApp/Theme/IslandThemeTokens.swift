@@ -22,19 +22,6 @@ struct IslandThemeTokens: Equatable, Sendable {
     var material: IslandMaterialTokens
 }
 
-// MARK: - Classic
-
-extension IslandThemeTokens {
-    /// The look Open Island ships today: ink/paper island, v6 status tints,
-    /// 22pt opened radii, spring open / smooth close, `.hudWindow` vibrancy.
-    static let classic = IslandThemeTokens(
-        colors: .classic,
-        metrics: .classic,
-        motion: .classic,
-        material: .classic
-    )
-}
-
 // MARK: - Poured Island
 
 extension IslandThemeTokens {
@@ -46,19 +33,5 @@ extension IslandThemeTokens {
         metrics: .poured,
         motion: .poured,
         material: .poured
-    )
-}
-
-// MARK: - Flight Deck
-
-extension IslandThemeTokens {
-    /// Flight Deck (avionics annunciator panel): a near-black cockpit ground lit
-    /// only by phosphor status colour, a tightly-cut flat panel with no vibrancy
-    /// or fillet, and a hard mechanical open/close snap.
-    static let flightDeck = IslandThemeTokens(
-        colors: .flightDeck,
-        metrics: .flightDeck,
-        motion: .flightDeck,
-        material: .flightDeck
     )
 }

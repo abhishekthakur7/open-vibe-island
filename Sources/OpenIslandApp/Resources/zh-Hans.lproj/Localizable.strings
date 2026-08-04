@@ -200,12 +200,8 @@
 "settings.appearance.theme.notSelected" = "未选择";
 
 /* Themes */
-"theme.classic.name" = "经典";
-"theme.classic.descriptor" = "最初的墨与纸风格灵动岛。";
 "theme.poured.name" = "流光岛";
 "theme.poured.descriptor" = "从刘海倾泻而出的液态玻璃。";
-"theme.flightDeck.name" = "飞行甲板";
-"theme.flightDeck.descriptor" = "航电警示灯面板。";
 "theme.halo.name" = "光环";
 "theme.halo.descriptor" = "纯黑虚空中流动的棱彩光边。";
 
@@ -240,65 +236,6 @@
 "island.startAgent" = "在终端中启动编码代理";
 "island.recentSessions" = "最近的会话将保留在这里，直到终端重新打开";
 "island.hint.installHooks" = "尚未安装任何代理 hook，会话不会触发事件 · 点击配置";
-
-/* Island Panel - Flight Deck theme (AB-312) */
-"island.flightDeck.annunciator.attn" = "注意";
-"island.flightDeck.annunciator.run" = "运行";
-"island.flightDeck.annunciator.done" = "完成";
-"island.flightDeck.annunciator.idle" = "空闲";
-"island.flightDeck.column.status" = "状态";
-"island.flightDeck.column.session" = "会话";
-"island.flightDeck.column.model" = "模型";
-"island.flightDeck.column.time" = "时间";
-"island.flightDeck.row.jump" = "跳转";
-"island.flightDeck.footer.bridgeLink" = "桥接链路";
-"island.flightDeck.footer.link" = "已连接";
-"island.flightDeck.footer.noLink" = "未连接";
-"island.flightDeck.footer.sessions" = "%lld 个会话";
-"island.flightDeck.hint.setup" = "配置";
-
-/* Island Panel - Flight Deck theme actionable surfaces (AB-314) */
-"island.flightDeck.approval.masterCaution" = "主警戒";
-"island.flightDeck.approval.masterWarning" = "主警告";
-"island.flightDeck.approval.permissionRequired" = "需要授权";
-"island.flightDeck.approval.held" = "已挂起";
-"island.flightDeck.approval.allow" = "允许";
-"island.flightDeck.approval.deny" = "拒绝";
-"island.flightDeck.question.kicker" = "问题";
-
-/* Island Panel - Flight Deck closed-pill wing labels + attention segment (AB-338) */
-"island.flightDeck.pill.standby" = "待命";
-/* ACK / ANSWER stay Latin EICAS placards in every locale (see AB-337 STATUS codes). */
-"island.flightDeck.pill.ack" = "ACK";
-"island.flightDeck.pill.answer" = "ANSWER";
-
-/* Island Panel - Flight Deck §4D row detail metagrid (AB-337) */
-"island.flightDeck.detail.agent" = "代理";
-"island.flightDeck.detail.model" = "模型";
-"island.flightDeck.detail.mode" = "模式";
-"island.flightDeck.detail.branch" = "分支";
-"island.flightDeck.detail.uptime" = "运行时长";
-"island.flightDeck.detail.terminal" = "终端";
-"island.flightDeck.detail.lastMessage" = "最新消息";
-
-/* Island Panel - Flight Deck §4G engine cluster + todo list (AB-339) */
-"island.flightDeck.engine.header" = "子代理";
-"island.flightDeck.engine.taskList" = "任务清单";
-/* Latin EICAS placard — `DONE` stays Latin in every locale (CJK-neutral tracking). */
-"island.flightDeck.engine.todoProgress" = "%1$lld / %2$lld DONE";
-"island.flightDeck.engine.todoDone" = "完成";
-"island.flightDeck.engine.todoDoing" = "进行中";
-"island.flightDeck.engine.todoPending" = "待处理";
-
-/* Island Panel - Flight Deck §4H completion donestats (AB-339) */
-"island.flightDeck.done.success" = "成功";
-"island.flightDeck.done.outcome" = "结果";
-"island.flightDeck.done.duration" = "时长";
-
-/* Island Panel - Flight Deck §4J empty state — ALL SYSTEMS NOMINAL (AB-339) */
-"island.flightDeck.empty.nominal" = "系统一切正常";
-"island.flightDeck.empty.copy" = "当前没有活动会话。Open Island 正在监视桥接——当有代理需要批准、提出问题或完成任务时，这里会亮起一盏灯。";
-"island.flightDeck.empty.monitoring" = "监视中";
 
 /* Island Panel - Poured Island 2.0 usage meters (AB-331) */
 "island.poured.usage.metersTitle" = "用量 · 显示重置时间";

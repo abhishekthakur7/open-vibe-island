@@ -2,13 +2,13 @@ import SwiftUI
 import OpenIslandCore
 
 private struct IslandThemeTokensKey: EnvironmentKey {
-    static let defaultValue: IslandThemeTokens = .classic
+    static let defaultValue: IslandThemeTokens = .poured
 }
 
 extension EnvironmentValues {
     /// Styling tokens for the island overlay.
     ///
-    /// Defaults to `.classic` — the look Open Island ships today — so a view
+    /// Defaults to `.poured` — the look Open Island ships today — so a view
     /// that reads this without an explicit injection renders unchanged.
     var islandTokens: IslandThemeTokens {
         get { self[IslandThemeTokensKey.self] }
@@ -120,10 +120,9 @@ extension EnvironmentValues {
     ///
     /// A theme's opened chrome can wire a status readout to this so it displays
     /// the truth of the bridge connection — a live socket vs a down one — rather
-    /// than a static string. Injected once by `IslandPanelView`; Flight Deck's
-    /// "BRIDGE LINK" footer is its first consumer (AB-312). Defaults to `false`
-    /// so a view that reads it without an explicit injection reads as "down"
-    /// rather than falsely "connected".
+    /// than a static string. Injected once by `IslandPanelView` (AB-312).
+    /// Defaults to `false` so a view that reads it without an explicit
+    /// injection reads as "down" rather than falsely "connected".
     var islandBridgeIsLive: Bool {
         get { self[IslandBridgeIsLiveKey.self] }
         set { self[IslandBridgeIsLiveKey.self] = newValue }

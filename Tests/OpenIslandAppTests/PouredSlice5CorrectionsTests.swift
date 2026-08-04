@@ -68,7 +68,7 @@ struct PouredSlice5CorrectionsTests {
 
         // The new case is additive: the three shipped styles are untouched.
         let markdown = try Self.source("Sources/OpenIslandApp/Views/LocalMarkdownText.swift")
-        for existing in ["case completionCard", "case flightDeckAssistant", "case haloAssistant"] {
+        for existing in ["case completionCard", "case haloAssistant"] {
             #expect(markdown.contains(existing))
         }
         #expect(markdown.contains("case pouredAssistant"))
@@ -771,7 +771,7 @@ struct PouredSlice5CorrectionsTests {
 
         // Neither is any theme without a cycle.
         model.pouredSpotlightRotationPhaseOverride = nil
-        model.islandThemeID = "classic"
+        model.islandThemeID = "halo"
         #expect(!model.pouredSpotlightRotationIsLive)
         #expect(model.pouredClosedRotationContentOpacity == 1)
 
@@ -799,7 +799,7 @@ struct PouredSlice5CorrectionsTests {
         #expect(bars.contains("var showsMiddleWaitBar: Bool = false"))
         for other in [
             "Sources/OpenIslandApp/Views/V6NotchContent.swift",
-            "Sources/OpenIslandApp/Views/Island/FlightDeckClosedPill.swift",
+            "Sources/OpenIslandApp/Views/Island/HaloClosedPill.swift",
             "Sources/OpenIslandApp/Theme/IslandTheme.swift",
         ] {
             #expect(!(try Self.source(other)).contains("showsMiddleWaitBar"))

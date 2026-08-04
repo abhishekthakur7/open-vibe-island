@@ -191,15 +191,14 @@ struct PouredSlice6UsageAndEmptyTests {
         #expect(!poured.contains("lang.t(\"island.noTerminals\")"))
         #expect(!poured.contains("lang.t(\"island.startAgent\")"))
 
-        // Classic still reads the shared pair; Halo keeps its own §J copy. Neither
-        // may pick up Poured's fork.
-        let classic = try Self.source("Sources/OpenIslandApp/Views/Island/IslandEmptyState.swift")
-        #expect(classic.contains("lang.t(\"island.noTerminals\")"))
-        #expect(classic.contains("lang.t(\"island.startAgent\")"))
+        // The shared protocol-default empty state still reads the shared pair;
+        // Halo keeps its own §J copy. Neither may pick up Poured's fork.
+        let sharedDefault = try Self.source("Sources/OpenIslandApp/Views/Island/IslandEmptyState.swift")
+        #expect(sharedDefault.contains("lang.t(\"island.noTerminals\")"))
+        #expect(sharedDefault.contains("lang.t(\"island.startAgent\")"))
         for shared in [
             "Sources/OpenIslandApp/Views/Island/IslandEmptyState.swift",
             "Sources/OpenIslandApp/Views/Island/HaloEmptyState.swift",
-            "Sources/OpenIslandApp/Views/Island/FlightDeckEmptyState.swift",
         ] {
             let text = try Self.source(shared)
             #expect(!text.contains("island.poured.empty."), "\(shared) picked up Poured's fork")

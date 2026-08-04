@@ -39,11 +39,10 @@ SUPPORTED_SCENARIOS = frozenset(
     }
 )
 
-THEMES = frozenset({"poured", "flightDeck", "halo"})
+THEMES = frozenset({"poured", "halo"})
 
 WIDTH_RANGES = {
     "poured": (610, 630),
-    "flightDeck": (566, 586),
     "halo": (610, 630),
 }
 
@@ -126,18 +125,12 @@ RELATIVE_AGE_PATTERN = re.compile(
 # offsets rendered one minute short (`18h 39m`) for all but the first instant
 # after load. `AppearancePreviewFixtures.countdownFloorPad` adds `+59s` to every
 # reset offset, so the rendered countdowns are now the board's own `2h 10m` /
-# `3d 4h` / `18h 40m` throughout a capture window. Only the provider title
-# differs per theme (Flight Deck uses the two-letter short title).
+# `3d 4h` / `18h 40m` throughout a capture window.
 EXPECTED_USAGE_METER_SEMANTICS = {
     "poured": (
         "Claude 5h 34%, resets in 2h 10m",
         "Claude 7d 78%, resets in 3d 4h",
         "Codex 7d · Pro 92%, resets in 18h 40m",
-    ),
-    "flightDeck": (
-        "Cl 5h 34%, resets in 2h 10m",
-        "Cl 7d 78%, resets in 3d 4h",
-        "Cx 7d · Pro 92%, resets in 18h 40m",
     ),
     "halo": (
         "Claude 5h 34%, resets in 2h 10m",
@@ -146,20 +139,14 @@ EXPECTED_USAGE_METER_SEMANTICS = {
     ),
 }
 
-FLIGHT_DECK_USAGE_GROUP_ENTRIES = (
-    "Cl 5h 34%, resets in 2h 10m · Cl 7d 78%, resets in 3d 4h",
-    "Cx 7d · Pro 92%, resets in 18h 40m",
-)
-
 MULTI_QUESTION_ACTION_LABELS = {
     "poured": "Submit & next",
-    "flightDeck": "Submit Answers",
     "halo": "Next",
 }
 
 # `StructuredQuestionPromptView` owns this once at the shared submit seam so
-# the themed Poured, Flight Deck, and Halo CTAs expose one unambiguous native
-# AXButton. Do not infer this control from visible copy or the legacy summary.
+# the themed Poured and Halo CTAs expose one unambiguous native AXButton. Do
+# not infer this control from visible copy or the legacy summary.
 MULTI_QUESTION_PRIMARY_ACTION_IDENTIFIER = "open-island.question.primary-action"
 MULTI_QUESTION_PRIMARY_ACTION_NAME_SOURCES = frozenset(
     {"AXTitle", "AXDescription"}
@@ -169,7 +156,6 @@ MULTI_QUESTION_PRIMARY_ACTION_NAME_SOURCES = frozenset(
 # preselection seam is not enabled, so every first-page action is disabled.
 MULTI_QUESTION_ACTION_ENABLED = {
     "poured": False,
-    "flightDeck": False,
     "halo": False,
 }
 
@@ -556,28 +542,6 @@ def assert_exact_normalized_entry(
         fail(f"{context} is missing exact normalized entry {expected!r}")
 
 
-def is_source_shaped_flight_deck_held(value: str) -> bool:
-    match = re.fullmatch(
-        r"HELD, (0|[1-9]\d*)m ([0-5]\d)s",
-        normalized_ax_entry(value),
-    )
-    if match is None:
-        return False
-    minutes, seconds = (int(part) for part in match.groups())
-    return minutes * 60 + seconds <= 24 * 60 * 60
-
-
-def assert_source_shaped_flight_deck_held(
-    haystack: set[str],
-    context: str,
-) -> None:
-    if not any(is_source_shaped_flight_deck_held(item) for item in haystack):
-        fail(
-            f"{context} is missing a source-shaped HELD duration "
-            "within the inclusive 24-hour ceiling"
-        )
-
-
 def assert_absent(haystack: set[str], needles: list[str], context: str) -> None:
     present = [needle for needle in needles if any(needle in item for item in haystack)]
     if present:
@@ -627,7 +591,6 @@ def require_show_all(button_labels: set[str]) -> None:
 def completion_jump_label(theme: str) -> str:
     return {
         "poured": "Jump to terminal",
-        "flightDeck": "Jump",
         "halo": "Jump · Ghostty",
     }[theme]
 
@@ -832,7 +795,7 @@ def main() -> None:
     ):
         raise SystemExit(
             "usage: validate-harness-artifacts.py "
-            "--theme poured|flightDeck|halo <report.json>"
+            "--theme poured|halo <report.json>"
         )
 
     theme = sys.argv[2]
@@ -981,22 +944,6 @@ def main() -> None:
                 "All quiet elsewhere · 7 idle",
                 "poured sessionList AX idle rollup",
             )
-        elif theme == "flightDeck":
-            if len(row_buttons) != 9:
-                fail(
-                    "flightDeck sessionList AX must expose exactly 9 "
-                    "session row buttons"
-                )
-            assert_exact_normalized_entry(
-                text_values,
-                "Sessions 0 Attn, 1 Run, 1 Done, 7 Idle",
-                "flightDeck sessionList AX annunciator rollup",
-            )
-            assert_exact_normalized_entry(
-                text_values,
-                "BRIDGE LINK, NO LINK, 9 SESSIONS",
-                "flightDeck sessionList AX bridge/count footer",
-            )
         else:
             if len(row_buttons) != 9:
                 fail(
@@ -1047,30 +994,6 @@ def main() -> None:
                 text_values,
                 effect,
                 "poured approvalCard AX effect",
-            )
-        elif theme == "flightDeck":
-            for expected, context in (
-                ("PERMISSION REQUIRED", "permission kicker"),
-                ("Opus 4.8 · feat/approval-flow", "model/branch identity"),
-                (f"$ {raw_command}", "command"),
-                (
-                    "Sources/OpenIslandApp/Views/SettingsView.swift",
-                    "affected path",
-                ),
-            ):
-                assert_exact_normalized_entry(
-                    text_values,
-                    expected,
-                    f"flightDeck approvalCard AX {context}",
-                )
-            assert_source_shaped_flight_deck_held(
-                text_values,
-                "flightDeck approvalCard AX held count-up",
-            )
-            assert_absent(
-                text_values,
-                [effect, "Auto-collapses in"],
-                "flightDeck approvalCard Poured-only copy",
             )
         else:
             for expected, context in (
@@ -1211,30 +1134,6 @@ def main() -> None:
                     expected,
                     f"poured diffApprovalCard AX {context}",
                 )
-        elif theme == "flightDeck":
-            for expected, context in (
-                ("PERMISSION REQUIRED", "permission kicker"),
-                ("Opus 4.8 · main", "model/branch identity"),
-                (summary, "summary"),
-                ("AGENTS.md", "affected path"),
-                ("UPDATED", "diff header"),
-                ("+3", "added count"),
-                ("−2", "removed count"),
-            ):
-                assert_exact_normalized_entry(
-                    text_values,
-                    expected,
-                    f"flightDeck diffApprovalCard AX {context}",
-                )
-            assert_source_shaped_flight_deck_held(
-                text_values,
-                "flightDeck diffApprovalCard AX held count-up",
-            )
-            assert_absent(
-                text_values,
-                [countdown, "Tool permission requested", "Approve file edit"],
-                "flightDeck diffApprovalCard foreign-theme copy",
-            )
         else:
             for expected, context in (
                 ("Approve file edit", "title"),
@@ -1313,32 +1212,6 @@ def main() -> None:
                 )
             if "Jump to Codex to approve" not in button_labels:
                 fail("poured codexApprovalCard AX is missing its exact terminal CTA")
-        elif theme == "flightDeck":
-            for expected, context in (
-                ("PERMISSION REQUIRED", "permission kicker"),
-                ("$ git push origin main", "command"),
-                ("~/Developer/open-vibe-island", "affected path"),
-                (poured_note, "terminal note"),
-            ):
-                assert_exact_normalized_entry(
-                    text_values,
-                    expected,
-                    f"flightDeck codexApprovalCard AX {context}",
-                )
-            assert_source_shaped_flight_deck_held(
-                text_values,
-                "flightDeck codexApprovalCard AX held count-up",
-            )
-            if "Jump to Codex" not in button_labels:
-                fail(
-                    "flightDeck codexApprovalCard AX is missing its exact "
-                    "terminal CTA"
-                )
-            assert_absent(
-                text_values,
-                [countdown, summary, "Tool permission requested", halo_note],
-                "flightDeck codexApprovalCard foreign-theme copy",
-            )
         else:
             for expected, context in (
                 ("Approval waiting", "title"),
@@ -1416,12 +1289,8 @@ def main() -> None:
         )
         if selected_session(report).get("summary") != "Stopped mid-refactor before the extraction finished.":
             fail("completedInterrupted selected-session summary is incorrect")
-        expected_outcome = (
-            "INTERRUPTED" if theme == "flightDeck" else "Interrupted"
-        )
-        foreign_outcome = (
-            "Interrupted" if theme == "flightDeck" else "INTERRUPTED"
-        )
+        expected_outcome = "Interrupted"
+        foreign_outcome = "INTERRUPTED"
         assert_exact_normalized_entry(
             text_values,
             expected_outcome,
@@ -1453,8 +1322,8 @@ def main() -> None:
         require_actionable_surface(report, "fixture-completed-failed", "completionCard")
         if selected_session(report).get("summary") != "Build failed: 2 errors in BridgeServer.swift.":
             fail("completedFailed selected-session summary is incorrect")
-        expected_outcome = "FAILED" if theme == "flightDeck" else "Failed"
-        foreign_outcome = "Failed" if theme == "flightDeck" else "FAILED"
+        expected_outcome = "Failed"
+        foreign_outcome = "FAILED"
         assert_exact_normalized_entry(
             text_values,
             expected_outcome,
@@ -1613,30 +1482,11 @@ def main() -> None:
             fail(f"expected usageMeters to use sessionList surface, got {island_surface!r}")
         if report.get("sessionCount") != 9 or report.get("liveSessionCount") != 9:
             fail("usageMeters must report exactly 9 sessions and 9 live sessions")
-        if theme == "flightDeck":
-            meter_entries = collect_ax_labels_for_role(ax_tree, "AXUnknown")
-            for semantic in EXPECTED_USAGE_METER_SEMANTICS[theme]:
-                if not any(semantic in entry for entry in meter_entries):
-                    fail(
-                        "usageMeters AX is missing full per-meter semantic "
-                        f"{semantic!r}"
-                    )
-            require_usage_meter_entries(
-                ax_tree,
-                FLIGHT_DECK_USAGE_GROUP_ENTRIES,
-                "Flight Deck usageMeters AX",
-            )
-            assert_absent(
-                meter_entries,
-                ["Claude 5h 34%", "Claude 7d 78%", "Codex 7d · Pro 92%"],
-                "Flight Deck usageMeters AX",
-            )
-        else:
-            require_usage_meter_entries(
-                ax_tree,
-                EXPECTED_USAGE_METER_SEMANTICS[theme],
-                f"{theme} usageMeters AX full per-meter semantic",
-            )
+        require_usage_meter_entries(
+            ax_tree,
+            EXPECTED_USAGE_METER_SEMANTICS[theme],
+            f"{theme} usageMeters AX full per-meter semantic",
+        )
 
     elif scenario == "emptyState":
         if notch_status != "opened":
@@ -1654,8 +1504,8 @@ def main() -> None:
         if theme == "poured":
             # Slice 6 (§J) forked the Poured empty state off the shared copy:
             # the "All quiet" title, its own subtitle sentence, and the
-            # deterministic hooks-coverage pill. The other themes keep their own
-            # copy and are asserted in their own branches below.
+            # deterministic hooks-coverage pill. Halo keeps its own copy and is
+            # asserted in its own branch below.
             rendered_empty_state_values = collect_ax_values_for_role(
                 ax_tree, "AXStaticText"
             )
@@ -1676,40 +1526,6 @@ def main() -> None:
                     rendered_empty_state_values,
                     copy,
                     f"poured emptyState AX {context}",
-                )
-        elif theme == "flightDeck":
-            # The live capture renders FlightDeckEmptyState's copy as
-            # AXStaticText.value nodes. Do not accept the derived accessibility
-            # summary, labels, buttons, or values exposed by other AX roles:
-            # those are not proof that this empty-state copy was rendered.
-            rendered_empty_state_values = collect_ax_values_for_role(
-                ax_tree, "AXStaticText"
-            )
-            assert_exact_normalized_entry(
-                rendered_empty_state_values,
-                "ALL SYSTEMS NOMINAL",
-                "flightDeck emptyState AX uppercase heading",
-            )
-            assert_exact_normalized_entry(
-                rendered_empty_state_values,
-                "No active sessions. Open Island is watching the bridge — the moment an agent needs approval, asks a question, or finishes, a lamp lights here.",
-                "flightDeck emptyState AX exact description",
-            )
-            telemetry_options = (
-                "BRIDGE LINK · MONITORING · 0 SESSIONS",
-                "BRIDGE LINK · NO LINK · 0 SESSIONS",
-            )
-            normalized_telemetry_options = {
-                normalized_ax_entry(option) for option in telemetry_options
-            }
-            if not any(
-                normalized_ax_entry(value) in normalized_telemetry_options
-                for value in rendered_empty_state_values
-            ):
-                fail(
-                    "flightDeck emptyState AX bridge telemetry is missing exact "
-                    "BRIDGE LINK · MONITORING · 0 SESSIONS or "
-                    "BRIDGE LINK · NO LINK · 0 SESSIONS"
                 )
         else:
             for copy in (

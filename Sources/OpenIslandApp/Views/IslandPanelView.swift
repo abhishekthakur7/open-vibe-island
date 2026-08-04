@@ -3586,15 +3586,12 @@ struct StructuredQuestionPromptView: View {
 
     /// The question sentence's font. Poured/Halo already define a
     /// `questionText` role (`PouredTypography.swift:203`, `HaloTheme.swift:85`);
-    /// Flight Deck's is authored fresh (`FlightDeckTheme.swift`, this phase)
-    /// since it had none of the four roles below. Classic
-    /// keep the exact literal this view has always rendered, so they stay
-    /// byte-identical.
+    /// everything else keeps the exact literal this view has always
+    /// rendered, so it stays byte-identical.
     private var questionTextFont: Font {
         switch theme.id {
         case "poured": return PouredType.Role.questionText.font
         case "halo": return .system(size: HaloTypography.questionTextSize, weight: .medium)
-        case "flightDeck": return FlightDeckTypography.questionText
         default: return .system(size: 12, weight: .medium)
         }
     }
@@ -3641,7 +3638,6 @@ struct StructuredQuestionPromptView: View {
         switch theme.id {
         case "poured": return PouredType.Role.optionLabel.font
         case "halo": return .system(size: HaloTypography.optionLabelSize, weight: .semibold)
-        case "flightDeck": return FlightDeckTypography.optionLabel
         default: return .system(size: 12.2, weight: .medium)
         }
     }
@@ -3652,7 +3648,6 @@ struct StructuredQuestionPromptView: View {
         switch theme.id {
         case "poured": return PouredType.Role.optionDesc.font
         case "halo": return .system(size: HaloTypography.optionDescSize, weight: .regular)
-        case "flightDeck": return FlightDeckTypography.optionDesc
         default: return .system(size: 10.5)
         }
     }
@@ -3678,7 +3673,6 @@ struct StructuredQuestionPromptView: View {
         switch theme.id {
         case "poured": return PouredType.Role.optionNumber.font
         case "halo": return .system(size: HaloTypography.optionNumberSize, weight: .bold).monospacedDigit()
-        case "flightDeck": return FlightDeckTypography.optionNumber
         default: return .system(size: 10.5, weight: .semibold, design: .monospaced)
         }
     }
@@ -3689,7 +3683,7 @@ struct StructuredQuestionPromptView: View {
     /// literal `10/.bold` stays for every theme.
     private var multiQuestionHeaderColor: Color {
         switch theme.id {
-        case "poured", "halo", "flightDeck":
+        case "poured", "halo":
             return tokens.colors.surfaceText.opacity(tokens.colors.secondaryTextOpacity)
         default:
             return .white.opacity(0.5)
@@ -3997,11 +3991,7 @@ struct StructuredQuestionPromptView: View {
     ///
     /// F1b: on Poured/Halo the call site only invokes this when `isSelected`
     /// (`selectionMarkerAlwaysVisible == false`), so the unconditional ring
-    /// below only ever renders selected there. Flight Deck keeps it
-    /// unconditional by design (`02-flight-deck.html:560`, a persistent hollow
-    /// `.check`) but swaps the *shape* — its board (`:64-68`) draws a chamfered
-    /// octagon, not a circle, so `shape` (multi vs single select) is ignored
-    /// for Flight Deck and `FlightDeckChamferedRectangle` always wins.
+    /// below only ever renders selected there.
     @ViewBuilder
     private func selectionMarker(
         shape: QuestionPromptFormat.MarkerShape,
@@ -4019,11 +4009,6 @@ struct StructuredQuestionPromptView: View {
                 Image(systemName: "checkmark")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(tint)
-            } else if theme.id == "flightDeck" {
-                let chamfered = FlightDeckChamferedRectangle(chamfer: 3)
-                chamfered
-                    .fill(isSelected ? tint : Color.clear)
-                    .overlay(chamfered.strokeBorder(isSelected ? Color.clear : tint.opacity(0.5), lineWidth: 1.2))
             } else {
                 switch shape {
                 case .square(let cornerRadius):

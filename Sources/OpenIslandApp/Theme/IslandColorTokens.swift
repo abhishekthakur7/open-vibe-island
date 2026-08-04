@@ -10,8 +10,8 @@ import OpenIslandCore
 ///
 /// Nothing consumes these yet — later tickets route views through the token
 /// layer one region at a time, and the legacy constants stay in place until
-/// their last call site is migrated. `IslandThemeTokensTests` pins every
-/// `classic` value against the live constant so drift in either direction
+/// their last call site is migrated. `IslandThemeTokensTests` pins each
+/// theme's values against the live constant so drift in either direction
 /// fails the build.
 struct IslandColorTokens: Equatable, Sendable {
 
@@ -158,58 +158,27 @@ extension IslandColorTokens {
     }
 }
 
-// MARK: - Classic
+// MARK: - Poured Island
 
 extension IslandColorTokens {
-    /// Today's shipping palette, expressed as literals so the token layer is
-    /// self-contained once the legacy constants are retired.
-    static let classic = IslandColorTokens(
-        surfaceInk: classicInk,
-        paper: classicPaper,
+    /// Poured Island's cool liquid-glass identity: a blue-black ink under the
+    /// frosted slab and a cool near-white for glyphs and labels. The vivid
+    /// status tints are the ones the overlay has always shipped — they already
+    /// read cleanly on a dark surface — while the neutral surface tones go cool
+    /// to match the glass. Hairlines are a touch stronger so dividers survive
+    /// the added translucency.
+    static let poured = IslandColorTokens(
+        surfaceInk: pouredInk,
+        paper: pouredPaper,
         surfaceText: .white,
         statusRunning: Color(red: 110.0 / 255.0, green: 167.0 / 255.0, blue: 255.0 / 255.0),
         statusCompleted: Color(red: 111.0 / 255.0, green: 185.0 / 255.0, blue: 130.0 / 255.0),
         statusWaitingForApproval: Color(red: 244.0 / 255.0, green: 164.0 / 255.0, blue: 164.0 / 255.0),
         statusWaitingForAnswer: Color(red: 255.0 / 255.0, green: 213.0 / 255.0, blue: 138.0 / 255.0),
         statusWaitingAggregate: Color(red: 231.0 / 255.0, green: 167.0 / 255.0, blue: 98.0 / 255.0),
-        statusWarning: classicWarning,
-        statusInterrupted: classicWarning,
+        statusWarning: pouredWarning,
+        statusInterrupted: pouredWarning,
         statusFailed: Color(red: 0.86, green: 0.32, blue: 0.32),
-        statusIdle: classicPaper.opacity(0.35),
-        statusInactive: classicPaper.opacity(0.38),
-        secondaryTextOpacity: 0.55,
-        tertiaryTextOpacity: 0.48,
-        increasedContrastTextBoost: 0.24,
-        hairlineOpacity: 0.055,
-        hairlineOpacityIncreasedContrast: 0.22
-    )
-
-    private static let classicInk = Color(red: 0x0d / 255.0, green: 0x0d / 255.0, blue: 0x0f / 255.0)
-    private static let classicPaper = Color(red: 0xf1 / 255.0, green: 0xea / 255.0, blue: 0xd9 / 255.0)
-    private static let classicWarning = Color(red: 0.85, green: 0.55, blue: 0.15)
-}
-
-// MARK: - Poured Island
-
-extension IslandColorTokens {
-    /// Poured Island's cool liquid-glass identity: a blue-black ink under the
-    /// frosted slab and a cool near-white for glyphs and labels. The vivid
-    /// status tints are shared with Classic — they already read cleanly on a
-    /// dark surface and keep the two themes' status semantics identical — while
-    /// the neutral surface tones go cool to match the glass. Hairlines are a
-    /// touch stronger so dividers survive the added translucency.
-    static let poured = IslandColorTokens(
-        surfaceInk: pouredInk,
-        paper: pouredPaper,
-        surfaceText: .white,
-        statusRunning: classic.statusRunning,
-        statusCompleted: classic.statusCompleted,
-        statusWaitingForApproval: classic.statusWaitingForApproval,
-        statusWaitingForAnswer: classic.statusWaitingForAnswer,
-        statusWaitingAggregate: classic.statusWaitingAggregate,
-        statusWarning: classic.statusWarning,
-        statusInterrupted: classic.statusInterrupted,
-        statusFailed: classic.statusFailed,
         statusIdle: pouredPaper.opacity(0.35),
         statusInactive: pouredPaper.opacity(0.38),
         secondaryTextOpacity: 0.6,
@@ -221,56 +190,5 @@ extension IslandColorTokens {
 
     private static let pouredInk = Color(red: 0x0b / 255.0, green: 0x0e / 255.0, blue: 0x16 / 255.0)
     private static let pouredPaper = Color(red: 0xf2 / 255.0, green: 0xf5 / 255.0, blue: 0xfb / 255.0)
-}
-
-// MARK: - Flight Deck
-
-extension IslandColorTokens {
-    /// Flight Deck (avionics annunciator panel): an EICAS-style cockpit readout
-    /// on a near-black instrument ground, lit only by phosphor status colour. The
-    /// palette is the four the design language allows — a **cyan-green nominal**
-    /// (a session actively working), a **muted blue complete** (a finished
-    /// session, held apart from "live" the way an EICAS advisory sits below a
-    /// green status), an **amber caution** for the softer waiting / interrupted
-    /// states, and a **dim grey idle** — plus one **warning red** the annunciator
-    /// vocabulary always carries for the loudest states (a blocked permission
-    /// request and a failure). The semantic amber / red / green always win: agent
-    /// brand colour never tints a status light, so identity reads as the neutral
-    /// square mark and never competes with the caution/warning hierarchy. The
-    /// legend ink is a cool light grey; hairlines are strong because the panel's
-    /// bezels and rules are load-bearing hardware, not decoration.
-    static let flightDeck = IslandColorTokens(
-        surfaceInk: flightDeckInk,
-        paper: flightDeckPaper,
-        surfaceText: .white,
-        statusRunning: flightDeckNominal,
-        statusCompleted: flightDeckComplete,
-        statusWaitingForApproval: flightDeckWarning,
-        statusWaitingForAnswer: flightDeckCaution,
-        statusWaitingAggregate: flightDeckCaution,
-        statusWarning: flightDeckCaution,
-        statusInterrupted: flightDeckCaution,
-        statusFailed: flightDeckWarning,
-        statusIdle: flightDeckPaper.opacity(0.30),
-        statusInactive: flightDeckPaper.opacity(0.26),
-        secondaryTextOpacity: 0.6,
-        tertiaryTextOpacity: 0.5,
-        increasedContrastTextBoost: 0.24,
-        hairlineOpacity: 0.13,
-        hairlineOpacityIncreasedContrast: 0.32
-    )
-
-    /// Near-black cockpit ground with a faint cool cast, dark enough that the
-    /// phosphor lights read as self-lit against unlit hardware.
-    private static let flightDeckInk = Color(red: 0x08 / 255.0, green: 0x09 / 255.0, blue: 0x0a / 255.0)
-    /// Cool light-grey legend ink for uppercase micro-labels and glyphs.
-    private static let flightDeckPaper = Color(red: 0xd4 / 255.0, green: 0xda / 255.0, blue: 0xd6 / 255.0)
-    /// Cyan-green nominal — a session actively working ("live").
-    private static let flightDeckNominal = Color(red: 74.0 / 255.0, green: 201.0 / 255.0, blue: 158.0 / 255.0)
-    /// Muted blue complete — a finished session, an advisory below "live".
-    private static let flightDeckComplete = Color(red: 99.0 / 255.0, green: 146.0 / 255.0, blue: 196.0 / 255.0)
-    /// Amber caution — the softer waiting / interrupted states.
-    private static let flightDeckCaution = Color(red: 230.0 / 255.0, green: 170.0 / 255.0, blue: 66.0 / 255.0)
-    /// Warning red — a blocked permission request and a failure outcome.
-    private static let flightDeckWarning = Color(red: 224.0 / 255.0, green: 74.0 / 255.0, blue: 66.0 / 255.0)
+    private static let pouredWarning = Color(red: 0.85, green: 0.55, blue: 0.15)
 }

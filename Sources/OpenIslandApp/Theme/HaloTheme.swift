@@ -9,7 +9,7 @@ import OpenIslandCore
 /// layer deliberately carries no typography (themes swap whole slot views), so
 /// this enum is Halo's own scale, kept in one place so every Halo view draws
 /// from the same roles and the ≥10pt floor is enforceable in one spot
-/// (`HaloThemeTests`). It mirrors `FlightDeckTypography`.
+/// (`HaloThemeTests`).
 ///
 /// **The mono/sans split (SPEC §2 numeral rule).** Halo is a *sans* face —
 /// `.system(design: .default)` — everywhere the reader *reads* prose. Mono
@@ -216,7 +216,7 @@ enum HaloTypography {
     // MARK: Baked font constants (overlay remediation F19)
 
     /// The nest-header caption's font (`.nest-h` — SPEC-halo.md:264: 10 / sans /
-    /// **700** / 0.09em UPPER), mirroring `FlightDeckTypography.count`: a single
+    /// **700** / 0.09em UPPER): a single
     /// built constant both call sites (`HaloSessionRow.swift:622,1102`) construct
     /// from, instead of each hand-reconstructing `weight:` + `.tracking(...)` —
     /// the raw-size-only shape that let the two sites drift apart (`:1102`
@@ -232,10 +232,9 @@ enum HaloTypography {
 /// The shared `IslandColorTokens` models only *semantic status slots*. Halo's
 /// living prismatic edge needs partner hues (violet, magenta) for its two
 /// gradient states, plus three usage thresholds, plus two faint washes — none of
-/// which are expressible as status tints. They live here, theme-local, mirroring
-/// how `FlightDeckSurfaces` keeps their theme paint outside the
-/// token struct. Every value is pinned to the SPEC hex by 8-bit component
-/// equality in `HaloThemeTests`.
+/// which are expressible as status tints. They live here, theme-local, keeping
+/// Halo's own paint outside the shared token struct. Every value is pinned to
+/// the SPEC hex by 8-bit component equality in `HaloThemeTests`.
 ///
 /// **Discipline note (brief §7):** the edge-light is **never** brand-colored —
 /// agent identity in Halo is an achromatic monogram. These accents partner the
@@ -341,8 +340,8 @@ enum HaloMetrics {
 ///
 /// These are the leaf periods for the animated edge-light and liveness glyphs —
 /// NOT in `IslandMotionTokens`, which models only open/close/pop/unmount as in
-/// every shipped theme. They live here exactly as Poured / Flight Deck keep their
-/// leaf periods, pinned by `HaloThemeTests`. The edge-light engine (T22) and the
+/// every shipped theme. They live here exactly as Poured keeps its own leaf
+/// periods, pinned by `HaloThemeTests`. The edge-light engine (T22) and the
 /// closed pill / rows (T23–T25) consume them; each maps to a §K motion.
 enum HaloMotion {
     /// Working edge orbit — `from` 0→360° / 6s linear (monotonic, not a sine).
@@ -544,9 +543,8 @@ enum HaloSessionRowFormat {
     /// three engines read `0m 42s` / `1m 15s` / `0m 08s`. Minutes are **not** rolled
     /// into hours — a long subagent stays an honest tabular count the column can
     /// still align (`90m 00s`) — and a negative interval (a clock nudge) clamps to
-    /// `0m 00s` rather than printing a `-`. This is the same idiom Flight Deck's
-    /// `engineElapsedLabel` pins, so the two themes read one span the same way; kept
-    /// pure so `HaloThemeTests` can pin the fixture readouts without rendering.
+    /// `0m 00s` rather than printing a `-`. Kept pure so `HaloThemeTests` can pin
+    /// the fixture readouts without rendering.
     static func subagentElapsedLabel(seconds: Int) -> String {
         let clamped = max(0, seconds)
         return String(format: "%dm %02ds", clamped / 60, clamped % 60)
@@ -601,10 +599,10 @@ enum HaloSessionRowFormat {
 }
 
 /// Pure, view-free format rules for the Halo permission / question **hero**
-/// (§5E/§5F · mockup `.hero`). Split out — like `HaloSessionRowFormat` and
-/// `FlightDeckApprovalFormat` — so the AC-bearing decisions (which keycap a button
-/// prints, the ring / glow params, the claude-vs-codex capability fork, the T10
-/// command-token palette) are unit-testable without rendering a SwiftUI view.
+/// (§5E/§5F · mockup `.hero`). Split out — like `HaloSessionRowFormat` — so the
+/// AC-bearing decisions (which keycap a button prints, the ring / glow params,
+/// the claude-vs-codex capability fork, the T10 command-token palette) are
+/// unit-testable without rendering a SwiftUI view.
 ///
 /// **Keycaps track real handlers.** The in-app approval shortcuts (⌘Y / ⌘⇧Y / ⌘N)
 /// are the ones `OverlayPanelController` actually registers, so the buttons print
@@ -741,10 +739,10 @@ enum HaloHeroFormat {
 
     /// The in-app card shortcuts, each paired with the **real** glyphs the
     /// registered `OverlayPanelController.handleOverlayKeyDown` fires
-    /// (⌘Y / ⌘⇧Y / ⌘N / ⌘J). Mirrors `FlightDeckApprovalFormat.Shortcut`, plus
-    /// `jump` — N3 registered ⌘J against the presented card's jump action
-    /// (`handleJumpShortcut`), so the Codex hero's mockup keycap is now a case of
-    /// this enum like any other rather than a view-local literal.
+    /// (⌘Y / ⌘⇧Y / ⌘N / ⌘J), plus `jump` — N3 registered ⌘J against the
+    /// presented card's jump action (`handleJumpShortcut`), so the Codex hero's
+    /// mockup keycap is now a case of this enum like any other rather than a
+    /// view-local literal.
     enum Shortcut: CaseIterable {
         case allowOnce, alwaysAllow, deny, jump
 
@@ -985,9 +983,8 @@ struct HaloQuestionPageInfoKey: PreferenceKey {
 extension IslandColorTokens {
     /// Halo's colour axis: a pure-black OLED void whose only chrome is the living
     /// prismatic edge-light. `surfaceInk` is **#000000** — darker than every
-    /// shipped ink (`flightDeckInk #08090A` was the previous floor) — and the text
-    /// ramp is white at opacity on that void. The status tints map each state to
-    /// its *primary* edge hue.
+    /// other theme's ink — and the text ramp is white at opacity on that void.
+    /// The status tints map each state to its *primary* edge hue.
     ///
     /// **Contrast correction (SPEC §1a / §0.4):** the mockup's tertiary text was
     /// white @ 0.42, which is only 3.9:1 on pure black (< 4.5:1). It is corrected
@@ -1023,7 +1020,7 @@ extension IslandColorTokens {
     private static let haloAmber = Color(red: 0xFF / 255.0, green: 0xB1 / 255.0, blue: 0x4D / 255.0)
     /// Question — softer (`--qgold #FFCF7A`).
     private static let haloQGold = Color(red: 0xFF / 255.0, green: 0xCF / 255.0, blue: 0x7A / 255.0)
-    /// Bypass / interrupted amber (`--warn #E6AA42`, = `flightDeckCaution`).
+    /// Bypass / interrupted amber (`--warn #E6AA42`).
     private static let haloWarn = Color(red: 0xE6 / 255.0, green: 0xAA / 255.0, blue: 0x42 / 255.0)
     /// Static dim red for a failure (`--red #E0596C`).
     private static let haloRed = Color(red: 0xE0 / 255.0, green: 0x59 / 255.0, blue: 0x6C / 255.0)
@@ -1137,10 +1134,6 @@ extension IslandThemeTokens {
 /// directly); this final slice completes the heroes and flips the registration.
 struct HaloTheme: IslandTheme {
 
-    /// Interim delegate for any shared slot Halo does not itself restyle. Every
-    /// `// PART 2 · T2x` comment below marks a delegation a later slice removed.
-    private let interim = ClassicTheme()
-
     // MARK: Identity
 
     let id = "halo"
@@ -1162,7 +1155,7 @@ struct HaloTheme: IslandTheme {
     /// Rows are near-chromeless, but the actionable-row **rail carries a glow** and
     /// the **status dot a bloom** (blur) that bleed outside the row silhouette; a
     /// `.drawingGroup()` off-screen render would flatten/clip both to row bounds
-    /// (the same reason Poured / Flight Deck are unsafe). The animated *panel* edge
+    /// (the same reason Poured is unsafe). The animated *panel* edge
     /// is on the surface shape, not the row, so it does not bear on this flag — the
     /// row's own luminous bleed settles it at `false`.
     let rowIsDrawingGroupSafe = false
@@ -1174,10 +1167,10 @@ struct HaloTheme: IslandTheme {
 
     // MARK: Geometry strategy
 
-    /// Halo reuses Classic's balanced matrix (so the pill width math + morph frame
-    /// are unchanged — the same move Flight Deck made) but overrides
+    /// Halo reuses the shared `V6RightSlotView` balanced matrix (so the pill
+    /// width math + morph frame are unchanged) but overrides
     /// `cellGeometry` to `(6, 3.5, 3)` so each cell renders as a **bloomed light
-    /// circle** (radius = cell / 2). Pinned by `HaloThemeTests`; Classic's
+    /// circle** (radius = cell / 2). Pinned by `HaloThemeTests`;
     /// `AgentsGridLayoutTests` are untouched.
     var agentsGridGeometry: IslandAgentsGridGeometry {
         IslandAgentsGridGeometry(
@@ -1254,7 +1247,8 @@ struct HaloTheme: IslandTheme {
         return AnyView(HaloPillIndicatorGlyph(indicator: indicator, tokens: tokens, box: size))
     }
 
-    // MARK: Slot factories (interim — delegated to Classic until T22–T25)
+    // MARK: Slot factories (restyled across T22–T25; the notification card
+    // builds the shared `IslandNotificationCard` directly, exactly like Poured)
 
     /// The closed pill (AB-342 · T23 · SPEC §5A · mockup §A/§G′/§I′): wings via
     /// `HStack`, the six ambient states A1–A6, liveness/dot/outcome pairings, and
@@ -1486,9 +1480,9 @@ struct HaloTheme: IslandTheme {
     /// buckets + tinted dots), "Needs you"-first section headers, inter-row
     /// 8%-white hairlines + white@.026 hover wash, and the quiet `N sessions · M
     /// need you` footer with its passive `Grouped by …` caption. The row slot is
-    /// the AB-344 seam: rows still route through `sessionRow` above (Classic's
-    /// flat row today), so once T24 pt3 lands the void Halo row it drops straight
-    /// into the scaffold with no change here.
+    /// the AB-344 seam: rows route through `sessionRow` above, so once T24 pt3
+    /// lands the void Halo row it drops straight into the scaffold with no
+    /// change here.
     func sessionList(
         sessions: [AgentSession],
         sections: [IslandSessionSection],
@@ -1542,21 +1536,23 @@ struct HaloTheme: IslandTheme {
         onPointerExited: @escaping () -> Void,
         onMeasuredHeight: @escaping (CGFloat) -> Void
     ) -> AnyView {
-        interim.notificationCard(
-            session: session,
-            isInteractive: isInteractive,
-            stateIndicator: stateIndicator,
-            completedStaleThreshold: completedStaleThreshold,
-            sideInset: sideInset,
-            totalSessionCount: totalSessionCount,
-            lang: lang,
-            keyboardCoordinator: keyboardCoordinator,
-            pulseClock: pulseClock,
-            makeActions: makeActions,
-            onShowAll: onShowAll,
-            onPointerInside: onPointerInside,
-            onPointerExited: onPointerExited,
-            onMeasuredHeight: onMeasuredHeight
+        AnyView(
+            IslandNotificationCard(
+                session: session,
+                isInteractive: isInteractive,
+                stateIndicator: stateIndicator,
+                completedStaleThreshold: completedStaleThreshold,
+                sideInset: sideInset,
+                totalSessionCount: totalSessionCount,
+                lang: lang,
+                keyboardCoordinator: keyboardCoordinator,
+                pulseClock: pulseClock,
+                makeActions: makeActions,
+                onShowAll: onShowAll,
+                onPointerInside: onPointerInside,
+                onPointerExited: onPointerExited,
+                onMeasuredHeight: onMeasuredHeight
+            )
         )
     }
 

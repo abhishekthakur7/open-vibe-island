@@ -11,7 +11,6 @@ import SwiftUI
 struct LocalMarkdownText: View {
     enum Style {
         case completionCard
-        case flightDeckAssistant
         /// Halo `.assistant` (G-69): 12.5 / line-height 1.55 at `--t2`, with inline
         /// `code` runs on their own `white@.07` chip in `#c8d2e6` ink at 11pt.
         case haloAssistant
@@ -28,8 +27,6 @@ struct LocalMarkdownText: View {
             switch self {
             case .completionCard:
                 .system(size: 13.5, weight: .medium)
-            case .flightDeckAssistant:
-                .system(size: FlightDeckTypography.assistantSize, weight: .regular)
             case .haloAssistant:
                 .system(size: HaloTypography.assistantSize, weight: .regular)
             case .pouredAssistant:
@@ -41,8 +38,6 @@ struct LocalMarkdownText: View {
             switch self {
             case .completionCard:
                 .system(size: 12.5, weight: .regular, design: .monospaced)
-            case .flightDeckAssistant:
-                .system(size: FlightDeckTypography.assistantSize - 1, weight: .regular, design: .monospaced)
             case .haloAssistant:
                 .system(size: HaloTypography.assistantInlineCodeSize, weight: .regular, design: .monospaced)
             case .pouredAssistant:
@@ -53,7 +48,6 @@ struct LocalMarkdownText: View {
         fileprivate var blockSpacing: CGFloat {
             switch self {
             case .completionCard: 7
-            case .flightDeckAssistant: 6
             case .haloAssistant: 6
             // `.assistant ul{margin:6px 0 2px}` — the board's own block gap.
             case .pouredAssistant: 6
@@ -65,7 +59,6 @@ struct LocalMarkdownText: View {
         fileprivate var bodyOpacity: Double {
             switch self {
             case .completionCard: 0.88
-            case .flightDeckAssistant: 0.9
             case .haloAssistant: 0.63
             // `.assistant{color:rgba(242,245,251,.66)}` (`:433`).
             case .pouredAssistant: 0.66
@@ -217,7 +210,7 @@ struct LocalMarkdownText: View {
             .font(font ?? style.font)
             .lineSpacing(style.lineSpacing)
             .foregroundStyle(colors.surfaceText.opacity(style.bodyOpacity))
-            .tint(style == .flightDeckAssistant ? colors.statusRunning : .blue)
+            .tint(.blue)
             .textSelection(.enabled)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)

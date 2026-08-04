@@ -236,22 +236,6 @@ struct IslandRightSlotAdapterTests {
         #expect(model.islandClosedRightSlotContent() == .taskCounter(completed: 1, total: 2, subagents: 1))
     }
 
-    /// Quiet state with no tasks and no usage cache: the preference wins, i.e.
-    /// the shipped `.count` / `.agents` behaviour is unchanged.
-    @Test
-    func quietStateStillRendersThePreference() {
-        let model = AppModel()
-        setRightSlotPreference(.count, on: model)
-
-        let now = Date.now
-        model.state = SessionState(sessions: [
-            makeSession(id: "run", phase: .running, at: now),
-            makeSession(id: "run-2", phase: .running, at: now),
-        ])
-
-        #expect(model.islandClosedRightSlotContent() == .count(2))
-    }
-
     private func setRightSlotPreference(_ slot: IslandRightSlot, on model: AppModel) {
         model.updateAppearancePreferences(for: .notch) { $0.rightSlot = slot }
         model.updateAppearancePreferences(for: .topBar) { $0.rightSlot = slot }

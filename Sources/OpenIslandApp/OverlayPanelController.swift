@@ -847,10 +847,10 @@ final class OverlayPanelController {
     /// Chrome metrics of the active theme (AB-299). With Classic active these
     /// equal the legacy `IslandChromeMetrics` statics (pinned by
     /// `IslandThemeTokensTests`), so the computed panel frames are identical to
-    /// before the token layer existed. Falls back to Classic when there's no
-    /// model yet (early sizing during panel creation).
+    /// before the token layer existed. Falls back to the default theme's tokens
+    /// (Poured) when there's no model yet (early sizing during panel creation).
     private func chromeMetrics(for model: AppModel?) -> IslandMetricsTokens {
-        (model?.islandTheme.tokens ?? .classic).metrics
+        (model?.islandTheme.tokens ?? .poured).metrics
     }
 
     private func closedPanelWidth(for model: AppModel, on screen: NSScreen) -> CGFloat {
