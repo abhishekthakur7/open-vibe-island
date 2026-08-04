@@ -3078,7 +3078,6 @@ private struct PouredApprovalCard: View {
     /// The accent wash over the frosted slab. Under Reduce Transparency the wash
     /// sits on an opaque ink base so the card never relies on the glass showing
     /// through to stay legible (AB-303).
-    @ViewBuilder
     private var cardFill: some View {
         let shape = RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
         // Reduce Transparency floors the translucent well on opaque `surfaceInk`

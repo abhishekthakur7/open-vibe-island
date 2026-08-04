@@ -101,7 +101,7 @@ final class SessionDiscoveryCoordinator {
         guard dataLifecycleMaintenanceTask == nil else { return }
         dataLifecycleMaintenanceTask = Task { [weak self] in
             while !Task.isCancelled {
-                await self?.pruneExpiredLocalData()
+                self?.pruneExpiredLocalData()
                 try? await Task.sleep(for: .seconds(21_600))
             }
         }

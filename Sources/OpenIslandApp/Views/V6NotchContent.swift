@@ -153,7 +153,7 @@ struct V6RightSlotView: View {
     /// tile would be a wall of unlabeled shapes to VoiceOver. Collapsed into
     /// one aggregate label ("2 running, 1 waiting for input") instead, the
     /// same "grouped summary" shape used for session rows.
-    static func agentsGridAccessibilitySummary(for cells: [AgentGridCell], lang: LanguageManager) -> String {
+    nonisolated static func agentsGridAccessibilitySummary(for cells: [AgentGridCell], lang: LanguageManager) -> String {
         var running = 0
         var waiting = 0
         var idle = 0
@@ -179,7 +179,7 @@ struct V6RightSlotView: View {
     /// padded beyond the raw text measurement so the pill always reserves
     /// enough room for the `.fixedSize()` content to render on one line,
     /// without HStack compression forcing a wrap.
-    static func intrinsicWidth(of content: IslandRightSlotContent) -> CGFloat {
+    nonisolated static func intrinsicWidth(of content: IslandRightSlotContent) -> CGFloat {
         switch content {
         case .count, .attentionCount, .taskCounter, .usage:
             // All four render as the "×N" badge today, so they share its width
@@ -196,7 +196,7 @@ struct V6RightSlotView: View {
     }
 
     /// Width of the "×N" badge for an N-digit number.
-    static func countBadgeWidth(_ n: Int) -> CGFloat {
+    nonisolated static func countBadgeWidth(_ n: Int) -> CGFloat {
         let digits = Double(max(1, String(n).count))
         // "×" + digits at 11pt mono ≈ 7.2pt/char.
         return CGFloat(14.4 + max(0.0, digits - 1.0) * 7.2)
@@ -209,7 +209,7 @@ struct V6RightSlotView: View {
     // For n >= 10 the AppModel caps the list at 7 sessions + 1 overflow cell,
     // which lays out as [4,4] — so balancedRows(8) is what actually renders
     // for all high-count cases in production.
-    static func balancedRows(_ n: Int) -> [Int] {
+    nonisolated static func balancedRows(_ n: Int) -> [Int] {
         switch n {
         case ..<1: return []
         case 1: return [1]
@@ -227,7 +227,7 @@ struct V6RightSlotView: View {
 
     /// Cell size shrinks when the matrix has 3 rows so total height still
     /// fits inside the pill's internal vertical budget (~20pt).
-    static func cellGeometry(rowCount: Int) -> (cell: CGFloat, gap: CGFloat, radius: CGFloat) {
+    nonisolated static func cellGeometry(rowCount: Int) -> (cell: CGFloat, gap: CGFloat, radius: CGFloat) {
         if rowCount >= 3 { return (cell: 6, gap: 1.5, radius: 1.0) }
         return (cell: 8, gap: 2, radius: 1.5)
     }

@@ -137,6 +137,13 @@ struct DarwinBridgeKeychainAccessBuilder: BridgeKeychainAccessBuilding {
     }
 
     func makeAccess() throws -> CFTypeRef {
+        // `SecTrustedApplicationCreateFromPath` / `SecAccessCreate` are deprecated
+        // (SecKeychain, 10.10) but retained deliberately: they build the
+        // trusted-application ACL that lets both the app and the signed helper
+        // read the shared bridge secret without a password prompt. The modern
+        // replacement — keychain access groups — keys off a Team-ID prefix this
+        // local-only, ad-hoc-signed build does not have, so it is not an option
+        // here. The APIs remain functional on current macOS.
         let urls = trustedURLs ?? Self.defaultTrustedURLs()
         guard urls.count >= 2 else { throw BridgeTransportError.bootstrapUnavailable }
         var applications: [SecTrustedApplication] = []

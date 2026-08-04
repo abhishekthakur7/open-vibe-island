@@ -1048,7 +1048,7 @@ struct HaloUsageFilamentLead: View {
     @Environment(\.islandTokens) private var tokens
 
     /// Gap between the arc and the label (mockup `.wing{gap:5px}`).
-    static let arcLabelGap: CGFloat = 5
+    nonisolated static let arcLabelGap: CGFloat = 5
 
     /// Threshold tint — crit `≥90`, warn `70…90`, else fine. Computed from the
     /// value so a fixture at any percent reads truthfully, though in production the
@@ -1066,7 +1066,7 @@ struct HaloUsageFilamentLead: View {
     ///
     /// Pure so `HaloClosedPillTests` can pin the number the layout reserves, and
     /// so the panel's morph-frame width and the pill's own frame read one value.
-    static func estimatedWidth(percent: Int, providerTitle: String) -> CGFloat {
+    nonisolated static func estimatedWidth(percent: Int, providerTitle: String) -> CGFloat {
         let text = "\(providerTitle) \(percent)%"
         let label = CGFloat(Double(text.count) * 7.7 + 2)
         return HaloUsageMetrics.pillFilament + arcLabelGap + label
@@ -1129,7 +1129,7 @@ struct HaloUsageCountdown: View {
     /// shared `UsageCountdownFormatter` grammar emits (`18h 59m` / `23h 59m`, 7
     /// characters at 11pt tabular sans) plus a point of slack. Used only to
     /// top up the `.external` reservation — see `HaloClosedPillWings`.
-    static let reservedWidth: CGFloat = 48
+    nonisolated static let reservedWidth: CGFloat = 48
 
     /// The board's third token: the countdown when there is one, else the
     /// window label the payload has always carried. Pure, so the copy is
