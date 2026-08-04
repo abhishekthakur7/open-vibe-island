@@ -42,7 +42,7 @@ public struct OpenCodePluginInstallerManifest: Equatable, Codable, Sendable {
 public final class OpenCodePluginInstallationManager: @unchecked Sendable {
     private static let managerID = "opencode-plugin"
     public static let pluginFileName = "open-island.js"
-    public static let bundledPluginDigest = "b5615b6b5268c660d307bfee2e1cd5db1eaa13ec1ace5cb8eb686571d934f02f"
+    public static let bundledPluginDigest = "aec0e723e9826ba64ca6deb0647b9fa4cf06ea64e9796746b0273dbf7408dd3b"
     private static let bundledPluginArtifactID = "resource:Contents/Resources/open-island-opencode.js"
     private static let bundledPluginArtifactVersion = 1
     private static let bundledPluginTemplateVersion = "1"

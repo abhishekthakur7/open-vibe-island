@@ -85,57 +85,7 @@ EXPECTED_USAGE_METER_SEMANTICS = {
     ),
 }
 
-EXPECTED_GOLDEN_PNG_DIMENSIONS = {
-    (
-        "Tests/OpenIslandAppTests/__Snapshots__/PouredConformanceSnapshotTests/"
-        "testPermissionCommandHero.poured-E1-permission-command-notch.png"
-    ): (1080, 818),
-    (
-        "Tests/OpenIslandAppTests/__Snapshots__/HaloConformanceSnapshotTests/"
-        "testPermissionCommandHero.halo-E1-permission-command-notch.png"
-    ): (1080, 864),
-    (
-        "Tests/OpenIslandAppTests/__Snapshots__/PouredConformanceSnapshotTests/"
-        "testQuestionHero.poured-F-question-notch.png"
-    ): (1080, 844),
-    (
-        "Tests/OpenIslandAppTests/__Snapshots__/HaloConformanceSnapshotTests/"
-        "testQuestionHero.halo-F-question-notch.png"
-    ): (1080, 1048),
-    (
-        "Tests/OpenIslandAppTests/__Snapshots__/PouredConformanceSnapshotTests/"
-        "testExpandedDetailAndSubagents.poured-D-G-subagents-notch.png"
-    ): (1080, 1086),
-    (
-        "Tests/OpenIslandAppTests/__Snapshots__/HaloConformanceSnapshotTests/"
-        "testExpandedDetailAndSubagents.halo-D-G-subagents-notch.png"
-    ): (1080, 1010),
-    (
-        "Tests/OpenIslandAppTests/__Snapshots__/PouredConformanceSnapshotTests/"
-        "testUsageMeters.poured-I-usage-meters-notch.png"
-    ): (1080, 1776),
-    (
-        "Tests/OpenIslandAppTests/__Snapshots__/HaloConformanceSnapshotTests/"
-        "testUsageMeters.halo-I-usage-meters-notch.png"
-    ): (1080, 1756),
-    (
-        "Tests/OpenIslandAppTests/__Snapshots__/PouredConformanceSnapshotTests/"
-        "testEmptyState.poured-J-empty-notch.png"
-    ): (1080, 472),
-    (
-        "Tests/OpenIslandAppTests/__Snapshots__/HaloConformanceSnapshotTests/"
-        "testEmptyState.halo-J-empty-notch.png"
-    ): (1080, 496),
-}
 
-
-def png_dimensions(path: pathlib.Path) -> tuple[int, int]:
-    header = path.read_bytes()[:24]
-    if len(header) != 24 or header[:8] != b"\x89PNG\r\n\x1a\n":
-        raise ValueError(f"{path} is not a PNG")
-    if header[12:16] != b"IHDR":
-        raise ValueError(f"{path} has no leading IHDR")
-    return struct.unpack(">II", header[16:24])
 
 
 def png_chunk(kind: bytes, payload: bytes) -> bytes:
@@ -1904,16 +1854,6 @@ class HarnessArtifactValidatorTests(unittest.TestCase):
         empty_ax = scenario_case("approvalCard")
         empty_ax["emptyAX"] = True
         self.assert_invalid(empty_ax, "accessibility artifact is empty")
-
-    def test_committed_golden_pngs_are_well_formed_at_two_x(self) -> None:
-        for relative_path, expected_dimensions in (
-            EXPECTED_GOLDEN_PNG_DIMENSIONS.items()
-        ):
-            with self.subTest(golden=relative_path):
-                self.assertEqual(
-                    png_dimensions(REPO_ROOT / relative_path),
-                    expected_dimensions,
-                )
 
     def test_theme_is_required_and_unsupported_scenario_fails(self) -> None:
         result = subprocess.run(

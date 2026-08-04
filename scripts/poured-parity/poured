@@ -1,5 +1,0 @@
-#!/bin/sh
-set -eu
-REPO_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
-export PYTHONPATH="$REPO_ROOT${PYTHONPATH:+:$PYTHONPATH}"
-exec python3 -m tools.poured_parity.cli "$@"

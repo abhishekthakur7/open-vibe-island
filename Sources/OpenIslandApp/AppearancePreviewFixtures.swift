@@ -476,7 +476,7 @@ enum AppearancePreviewFixtures {
                     ClaudeTaskInfo(id: "trio-task-2", title: "Audit the changelog", status: .completed),
                     ClaudeTaskInfo(id: "trio-task-3", title: "Verify notarization", status: .inProgress),
                     ClaudeTaskInfo(id: "trio-task-4", title: "Draft the release notes", status: .pending),
-                    ClaudeTaskInfo(id: "trio-task-5", title: "Publish the appcast", status: .pending),
+                    ClaudeTaskInfo(id: "trio-task-5", title: "Publish the release build", status: .pending),
                 ]
             )
         )

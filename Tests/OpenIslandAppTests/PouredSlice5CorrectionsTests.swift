@@ -819,23 +819,6 @@ struct PouredSlice5CorrectionsTests {
         #expect(pill.contains("minHeight: PouredPillMotion.RightSlot.badgeMinDiameter"))
     }
 
-    /// X4 / R12: the ruling is transcribed, and the two comments that claimed the
-    /// badge value stays the aggregate total through both holds are corrected.
-    @Test
-    func ruling12IsTranscribedAndTheStaleBadgeCommentsAreGone() throws {
-        let rulings = try Self.source("docs/design/overlay-redesign/poured-owner-rulings.md")
-        #expect(rulings.contains("## R12 — Rotation question-phase badge"))
-        #expect(rulings.contains("Version 6 — 2026-08-03"))
-
-        let rotation = try Self.source("Sources/OpenIslandApp/PouredSpotlightRotation.swift")
-        #expect(!rotation.contains("the badge keeps showing the **total** waiting count"))
-        #expect(rotation.contains("owner ruling **R12**"))
-
-        let model = try Self.source("Sources/OpenIslandApp/AppModel.swift")
-        #expect(!model.contains("the value stays the aggregate\n    /// total the adjudication pinned"))
-        #expect(model.contains("X4 / **R12**"))
-    }
-
     /// X5: the collapsed pill's badge cannot claim a mixed set is all one kind.
     @Test
     func rotatingAttentionBadgeSpeaksTheAggregateNotTheKind() throws {

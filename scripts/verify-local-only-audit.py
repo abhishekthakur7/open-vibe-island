@@ -385,6 +385,10 @@ def main() -> int:
         if path.is_file() and path.suffix in {".swift", ".plist", ".entitlements"}
     )
     for path in round_3_audit_files:
+        # A deleted doc carries no forbidden surface; skip it the way the
+        # Round 2 sweep below already does instead of raising FileNotFoundError.
+        if not path.exists():
+            continue
         if ROUND_3_FORBIDDEN_PATTERN.search(path.read_text(errors="ignore")):
             fail(errors, f"forbidden Round 3 updater/distribution surface: {path.relative_to(ROOT)}")
 

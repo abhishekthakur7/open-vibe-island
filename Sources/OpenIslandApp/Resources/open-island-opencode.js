@@ -1,19 +1,12 @@
 // Open Island plugin for OpenCode
 // Bridges OpenCode events to the Open Island desktop app via Unix socket.
 // Install: copy to ~/.config/opencode/plugins/open-island.js
-import { appendFileSync, existsSync } from "fs";
-import { homedir } from "os";
+import { existsSync } from "fs";
 import { spawnSync } from "child_process";
 
-// Debug logging is OFF by default. When enabled via OPEN_ISLAND_DEBUG, it writes to the
-// user-owned app-support directory (not world-readable /tmp), because it can contain
-// prompt text, tool inputs, and bash command patterns.
-const DEBUG_ENABLED = !!process.env.OPEN_ISLAND_DEBUG;
-const DEBUG_LOG = `${process.env.HOME || homedir()}/Library/Application Support/OpenIsland/opencode-debug.log`;
-function debugLog(msg) {
-  if (!DEBUG_ENABLED) return;
-  try { appendFileSync(DEBUG_LOG, `[${new Date().toISOString()}] ${msg}\n`); } catch {}
-}
+// This plugin never writes to disk. Event payloads carry prompt text, tool
+// inputs and bash command patterns, so there is deliberately no debug log and
+// no environment switch that can turn one on.
 
 // OpenCode never speaks the bridge protocol directly. The fixed bundled helper
 // owns the signed hook-event-submit role and the Keychain bootstrap material.
@@ -267,11 +260,7 @@ export default async () => {
   return {
     "event": async ({ event }) => {
       try {
-        debugLog(`EVENT: ${event.type} | props: ${JSON.stringify(event.properties || {}).slice(0, 300)}`);
         const mapped = mapEvent(event);
-        if (mapped) {
-          debugLog(`MAPPED: ${mapped.openCodeHook.hook_event_name} sid=${mapped.openCodeHook.session_id}`);
-        }
         if (!mapped) return;
 
         // Every event uses the local Unix bridge. The former loopback reply
