@@ -60,6 +60,37 @@ public struct ManagedHookProvenance: Codable, Equatable, Sendable {
         self.generation = generation
     }
 
+    /// How exclusively Open Island owns the bytes of a target file.
+    ///
+    /// This selects the correct whole-file invariant.  It is not a relaxation
+    /// knob: a `.shared` caller must still prove ownership with
+    /// `managedEntryDigest` recomputed from the target's current content.
+    public enum TargetOwnership: Sendable, Equatable {
+        /// Open Island created the file and is its only writer — manifests, the
+        /// bundled helper, generated plugin and script files.  Every byte is
+        /// ours, so `postMutationDigest` equality is a valid tamper check.
+        case exclusive
+        /// A host-tool configuration Open Island appends entries to and shares
+        /// with its owner and other integrations — `hooks.json`,
+        /// `settings.json`, `config.toml`, `opencode.json`.  Co-tenants
+        /// legitimately add their own entries and re-serialize the whole file
+        /// with a different key order or escaping, so whole-file equality
+        /// measures co-tenancy rather than ownership and must not be used.
+        case shared
+    }
+
+    /// Whether this record's `managedEntryDigest` identifies `expected`.
+    ///
+    /// Records written before the entry digest was scoped to the managed
+    /// entries stored the digest of the entire target file, which cannot be
+    /// re-derived once a co-tenant edits that file.  Such a record is
+    /// recognized by its entry digest being its whole-file digest, and is
+    /// satisfied by the caller's separate proof that the exact managed entries
+    /// are present — the same evidence the digest was standing in for.
+    public func identifiesManagedEntries(_ expected: String) -> Bool {
+        managedEntryDigest == expected || managedEntryDigest == postMutationDigest
+    }
+
     public static func sidecarURL(for targetURL: URL) -> URL {
         targetURL.deletingLastPathComponent()
             .appendingPathComponent(".\(targetURL.lastPathComponent).open-island-provenance.json")
@@ -68,9 +99,14 @@ public struct ManagedHookProvenance: Codable, Equatable, Sendable {
     /// Returns nil when no provenance exists.  A present but malformed,
     /// foreign, stale, or tampered sidecar is an ambiguity, never an excuse to
     /// overwrite it.
+    ///
+    /// `ownership` defaults to `.exclusive` so an unconsidered call site keeps
+    /// the strictest check.  Pass `.shared` only for a target whose caller
+    /// verifies `managedEntryDigest` against the current content.
     public static func loadVerified(
         for targetURL: URL,
         managerID: String,
+        ownership: TargetOwnership = .exclusive,
         fileManager: FileManager = .default
     ) throws -> ManagedHookProvenance? {
         let sidecar = sidecarURL(for: targetURL)
@@ -90,8 +126,10 @@ public struct ManagedHookProvenance: Codable, Equatable, Sendable {
               !record.postMutationDigest.isEmpty,
               record.backupPath == ManagedHookBackupLifecycle.backupURL(for: targetURL).standardizedFileURL.path,
               !record.generation.isEmpty,
+              // The target must still exist and be readable under either
+              // ownership: a record pointing at nothing proves nothing.
               let digest = try? ManagedHookFileSystem.digest(ofFile: targetURL),
-              digest == record.postMutationDigest
+              ownership == .shared || digest == record.postMutationDigest
         else { throw ManagedHookFileSystemError.ambiguous(sidecar.path) }
         return record
     }
@@ -124,9 +162,10 @@ public struct ManagedHookProvenance: Codable, Equatable, Sendable {
     public static func removeVerified(
         for targetURL: URL,
         managerID: String,
+        ownership: TargetOwnership = .exclusive,
         fileManager: FileManager = .default
     ) throws {
-        guard let _ = try loadVerified(for: targetURL, managerID: managerID, fileManager: fileManager) else { return }
+        guard let _ = try loadVerified(for: targetURL, managerID: managerID, ownership: ownership, fileManager: fileManager) else { return }
         let sidecar = sidecarURL(for: targetURL)
         try ManagedHookFileSystem.remove(sidecar, expectedDigest: try ManagedHookFileSystem.digest(ofFile: sidecar))
     }

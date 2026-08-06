@@ -261,8 +261,8 @@ public final class CodexHookInstallationManager: @unchecked Sendable {
               let manifest = decodeManifest(manifestData),
               manifest.hookCommand == command,
               case let .exact(entryDigest: hooksEntryDigest) = state,
-              let hooksProvenance = try ManagedHookProvenance.loadVerified(for: urls.hooks, managerID: Self.managerID, fileManager: fileManager),
-              let manifestProvenance = try ManagedHookProvenance.loadVerified(for: urls.manifest, managerID: Self.managerID, fileManager: fileManager),
+              let hooksProvenance = try ManagedHookProvenance.loadVerified(for: urls.hooks, managerID: Self.managerID, ownership: .shared, fileManager: fileManager),
+              let manifestProvenance = try ManagedHookProvenance.loadVerified(for: urls.manifest, managerID: Self.managerID, ownership: .exclusive, fileManager: fileManager),
               hooksProvenance.managedEntryDigest == hooksEntryDigest,
               manifestProvenance.managedEntryDigest == ManagedHookFileSystem.digest(of: manifestData),
               try backupIdentityMatches(hooksProvenance, target: urls.hooks),
@@ -273,7 +273,7 @@ public final class CodexHookInstallationManager: @unchecked Sendable {
 
         if manifest.enabledCodexHooksFeature {
             guard let configData,
-                  let configProvenance = try ManagedHookProvenance.loadVerified(for: urls.config, managerID: Self.managerID, fileManager: fileManager),
+                  let configProvenance = try ManagedHookProvenance.loadVerified(for: urls.config, managerID: Self.managerID, ownership: .shared, fileManager: fileManager),
                   configProvenance.managedEntryDigest == CodexHookInstaller.managedFeatureEntryDigest(in: String(decoding: configData, as: UTF8.self)),
                   try backupIdentityMatches(configProvenance, target: urls.config),
                   try artifactIdentityMatches(configProvenance)
@@ -329,8 +329,13 @@ public final class CodexHookInstallationManager: @unchecked Sendable {
             pathExists(ManagedHookBackupLifecycle.metadataURL(for: target))
     }
 
+    /// `config.toml` and `hooks.json` belong to Codex; the manifest is ours.
+    private func ownership(of target: URL) -> ManagedHookProvenance.TargetOwnership {
+        target == targetURLs().manifest ? .exclusive : .shared
+    }
+
     private func requireVerifiedProvenance(for target: URL) throws -> ManagedHookProvenance {
-        guard let provenance = try ManagedHookProvenance.loadVerified(for: target, managerID: Self.managerID, fileManager: fileManager) else {
+        guard let provenance = try ManagedHookProvenance.loadVerified(for: target, managerID: Self.managerID, ownership: ownership(of: target), fileManager: fileManager) else {
             throw ManagedHookFileSystemError.ambiguous(target.path)
         }
         guard try backupIdentityMatches(provenance, target: target), try artifactIdentityMatches(provenance) else {

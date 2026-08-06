@@ -166,18 +166,19 @@ public final class OpenCodePluginInstallationManager: @unchecked Sendable {
         if pluginData == nil, !hasSidecar, !references.contains(expected), !references.contains(where: isManagedLookingReference) {
             return baseStatus(pluginPresent: false, registered: false, outcome: .unowned)
         }
-        guard let configData, let pluginData,
+        guard configData != nil, let pluginData,
               references.filter({ $0 == expected }).count == 1,
               !references.contains(where: { $0 != expected && isManagedLookingReference($0) }),
-              let configProvenance = try ManagedHookProvenance.loadVerified(for: configURL, managerID: Self.managerID, fileManager: fileManager),
-              let pluginProvenance = try ManagedHookProvenance.loadVerified(for: pluginFileURL, managerID: Self.managerID, fileManager: fileManager),
+              let configProvenance = try ManagedHookProvenance.loadVerified(for: configURL, managerID: Self.managerID, ownership: .shared, fileManager: fileManager),
+              let pluginProvenance = try ManagedHookProvenance.loadVerified(for: pluginFileURL, managerID: Self.managerID, ownership: .exclusive, fileManager: fileManager),
               configProvenance.managedEntryDigest == referenceDigest(expected),
               pluginProvenance.managedEntryDigest == ManagedHookFileSystem.digest(of: pluginData),
               pluginProvenance.managedEntryDigest == Self.bundledPluginDigest,
               try backupIdentityMatches(configProvenance, target: configURL),
               try backupIdentityMatches(pluginProvenance, target: pluginFileURL),
-              artifactIdentityMatches(configProvenance), artifactIdentityMatches(pluginProvenance),
-              ManagedHookFileSystem.digest(of: configData) == configProvenance.postMutationDigest
+              artifactIdentityMatches(configProvenance), artifactIdentityMatches(pluginProvenance)
+              // `opencode.json` is shared: the single exact managed reference
+              // above is the ownership proof, not the whole file's bytes.
         else { throw ManagedHookFileSystemError.ambiguous(pluginFileURL.path) }
         return baseStatus(pluginPresent: true, registered: true, outcome: .exactManaged)
     }
@@ -315,8 +316,13 @@ public final class OpenCodePluginInstallationManager: @unchecked Sendable {
         return !hasBackup && !hasMetadata
     }
 
+    /// `opencode.json` belongs to OpenCode; the plugin file is ours.
+    private func ownership(of target: URL) -> ManagedHookProvenance.TargetOwnership {
+        target == configURL ? .shared : .exclusive
+    }
+
     private func requireVerifiedProvenance(for target: URL) throws -> ManagedHookProvenance {
-        guard let provenance = try ManagedHookProvenance.loadVerified(for: target, managerID: Self.managerID, fileManager: fileManager),
+        guard let provenance = try ManagedHookProvenance.loadVerified(for: target, managerID: Self.managerID, ownership: ownership(of: target), fileManager: fileManager),
               artifactIdentityMatches(provenance), try backupIdentityMatches(provenance, target: target) else {
             throw ManagedHookFileSystemError.ambiguous(target.path)
         }

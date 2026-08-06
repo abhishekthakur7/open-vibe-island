@@ -128,7 +128,7 @@ public final class GeminiHookInstallationManager: @unchecked Sendable {
         let command = GeminiHookInstaller.hookCommand(for: managedHooksBinaryURL.path)
         guard manifest.hookCommand == command,
               case let .exact(entryDigest: entryDigest) = try GeminiHookInstaller.managedSettingsState(existingData: settingsData, hookCommand: command),
-              settingsRecord.managedEntryDigest == entryDigest else {
+              settingsRecord.identifiesManagedEntries(entryDigest) else {
             throw ManagedHookFileSystemError.ambiguous(urls.settings.path)
         }
         let mutation = try GeminiHookInstaller.uninstallSettingsJSON(existingData: settingsData, managedCommand: command)
@@ -167,10 +167,10 @@ public final class GeminiHookInstallationManager: @unchecked Sendable {
         guard let manifestData,
               let manifest = decodeManifest(manifestData), manifest.hookCommand == command,
               case let .exact(entryDigest: settingsEntryDigest) = state,
-              let settingsRecord = try ManagedHookProvenance.loadVerified(for: urls.settings, managerID: Self.managerID, fileManager: fileManager),
-              let manifestRecord = try ManagedHookProvenance.loadVerified(for: urls.manifest, managerID: Self.managerID, fileManager: fileManager),
+              let settingsRecord = try ManagedHookProvenance.loadVerified(for: urls.settings, managerID: Self.managerID, ownership: .shared, fileManager: fileManager),
+              let manifestRecord = try ManagedHookProvenance.loadVerified(for: urls.manifest, managerID: Self.managerID, ownership: .exclusive, fileManager: fileManager),
               settingsRecord.formatVersion == Self.formatVersion, manifestRecord.formatVersion == Self.formatVersion,
-              settingsRecord.managedEntryDigest == settingsEntryDigest,
+              settingsRecord.identifiesManagedEntries(settingsEntryDigest),
               manifestRecord.managedEntryDigest == ManagedHookFileSystem.digest(of: manifestData),
               try backupIdentityMatches(settingsRecord, target: urls.settings),
               try backupIdentityMatches(manifestRecord, target: urls.manifest),
@@ -239,8 +239,13 @@ public final class GeminiHookInstallationManager: @unchecked Sendable {
     private func pathExists(_ url: URL) throws -> Bool { try ManagedHookFileSystem.existsNoFollow(url) }
     private func backupExists(for target: URL) throws -> Bool { try pathExists(ManagedHookBackupLifecycle.backupURL(for: target)) || pathExists(ManagedHookBackupLifecycle.metadataURL(for: target)) }
 
+    /// `settings.json` belongs to Gemini; the manifest is ours.
+    private func ownership(of target: URL) -> ManagedHookProvenance.TargetOwnership {
+        target == targetURLs().manifest ? .exclusive : .shared
+    }
+
     private func requireVerifiedProvenance(for target: URL) throws -> ManagedHookProvenance {
-        guard let record = try ManagedHookProvenance.loadVerified(for: target, managerID: Self.managerID, fileManager: fileManager), record.formatVersion == Self.formatVersion,
+        guard let record = try ManagedHookProvenance.loadVerified(for: target, managerID: Self.managerID, ownership: ownership(of: target), fileManager: fileManager), record.formatVersion == Self.formatVersion,
               try backupIdentityMatches(record, target: target), try artifactIdentityMatches(record) else {
             throw ManagedHookFileSystemError.ambiguous(target.path)
         }
@@ -287,7 +292,7 @@ public final class GeminiHookInstallationManager: @unchecked Sendable {
             // The helper was replaced just above: the old sidecar's helper
             // digest is intentionally stale, while all target evidence must
             // remain exact before its artifact identity may be refreshed.
-            guard let record = try ManagedHookProvenance.loadVerified(for: target, managerID: Self.managerID, fileManager: fileManager),
+            guard let record = try ManagedHookProvenance.loadVerified(for: target, managerID: Self.managerID, ownership: ownership(of: target), fileManager: fileManager),
                   record.formatVersion == Self.formatVersion,
                   try backupIdentityMatches(record, target: target) else {
                 throw ManagedHookFileSystemError.ambiguous(target.path)

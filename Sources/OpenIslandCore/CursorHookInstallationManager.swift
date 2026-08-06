@@ -170,8 +170,8 @@ public final class CursorHookInstallationManager: @unchecked Sendable {
         guard let manifestData,
               let manifest = decodeManifest(manifestData), manifest.hookCommand == command,
               case let .exact(entryDigest: hooksEntryDigest) = state,
-              let hooksRecord = try ManagedHookProvenance.loadVerified(for: urls.hooks, managerID: Self.managerID, fileManager: fileManager),
-              let manifestRecord = try ManagedHookProvenance.loadVerified(for: urls.manifest, managerID: Self.managerID, fileManager: fileManager),
+              let hooksRecord = try ManagedHookProvenance.loadVerified(for: urls.hooks, managerID: Self.managerID, ownership: .shared, fileManager: fileManager),
+              let manifestRecord = try ManagedHookProvenance.loadVerified(for: urls.manifest, managerID: Self.managerID, ownership: .exclusive, fileManager: fileManager),
               hooksRecord.formatVersion == Self.formatVersion, manifestRecord.formatVersion == Self.formatVersion,
               hooksRecord.managedEntryDigest == hooksEntryDigest,
               manifestRecord.managedEntryDigest == ManagedHookFileSystem.digest(of: manifestData),
@@ -242,8 +242,13 @@ public final class CursorHookInstallationManager: @unchecked Sendable {
     private func pathExists(_ url: URL) throws -> Bool { try ManagedHookFileSystem.existsNoFollow(url) }
     private func backupExists(for target: URL) throws -> Bool { try pathExists(ManagedHookBackupLifecycle.backupURL(for: target)) || pathExists(ManagedHookBackupLifecycle.metadataURL(for: target)) }
 
+    /// `hooks.json` belongs to Cursor; the manifest is ours.
+    private func ownership(of target: URL) -> ManagedHookProvenance.TargetOwnership {
+        target == targetURLs().manifest ? .exclusive : .shared
+    }
+
     private func requireVerifiedProvenance(for target: URL) throws -> ManagedHookProvenance {
-        guard let record = try ManagedHookProvenance.loadVerified(for: target, managerID: Self.managerID, fileManager: fileManager), record.formatVersion == Self.formatVersion,
+        guard let record = try ManagedHookProvenance.loadVerified(for: target, managerID: Self.managerID, ownership: ownership(of: target), fileManager: fileManager), record.formatVersion == Self.formatVersion,
               try backupIdentityMatches(record, target: target), try artifactIdentityMatches(record) else {
             throw ManagedHookFileSystemError.ambiguous(target.path)
         }
@@ -291,7 +296,7 @@ public final class CursorHookInstallationManager: @unchecked Sendable {
             // digest intentionally no longer matches. Its target, sidecar,
             // format, and backup identity must still verify before metadata
             // can be refreshed.
-            guard let record = try ManagedHookProvenance.loadVerified(for: target, managerID: Self.managerID, fileManager: fileManager),
+            guard let record = try ManagedHookProvenance.loadVerified(for: target, managerID: Self.managerID, ownership: ownership(of: target), fileManager: fileManager),
                   record.formatVersion == Self.formatVersion,
                   try backupIdentityMatches(record, target: target) else {
                 throw ManagedHookFileSystemError.ambiguous(target.path)

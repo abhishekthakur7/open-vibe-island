@@ -131,11 +131,31 @@ public enum GeminiHookInstaller {
         guard let existingData else { return .none }
         let root = try loadRootObject(from: existingData)
         let canonical = try installSettingsJSON(existingData: existingData, hookCommand: hookCommand).contents
-        if canonical == existingData {
-            return .exact(entryDigest: ManagedHookFileSystem.digest(of: existingData))
+        // Compare content, not raw bytes: a co-tenant re-serializing
+        // settings.json or appending its own group after ours changes byte
+        // layout and group order without changing a managed entry.
+        let canonicalRoot = try loadRootObject(from: canonical)
+        if try ManagedHookSettingsComparison.orderInsensitiveForm(canonicalRoot)
+            == ManagedHookSettingsComparison.orderInsensitiveForm(root) {
+            return .exact(entryDigest: managedEntriesDigest(hookCommand: hookCommand))
         }
         let hooks = root["hooks"] as? [String: Any] ?? [:]
         return containsManagedLookingHook(in: hooks) ? .managedLooking : .none
+    }
+
+    /// Identifies the managed entries alone, so unrelated co-tenant keys and
+    /// hook groups cannot invalidate a recorded ownership digest.
+    public static func managedEntriesDigest(hookCommand: String) -> String {
+        let entries = Dictionary(uniqueKeysWithValues: eventSpecs.map { spec in
+            (spec.name, managedGroup(matcher: spec.matcher, hookCommand: hookCommand))
+        })
+        return ManagedHookFileSystem.digest(of: canonicalJSONData(entries))
+    }
+
+    private static func canonicalJSONData(_ object: Any) -> Data {
+        // Built from JSON-compatible values above; a failure would be a
+        // programming error, not an untrusted-data path.
+        (try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])) ?? Data()
     }
 
     private static func loadRootObject(from data: Data?) throws -> [String: Any] {

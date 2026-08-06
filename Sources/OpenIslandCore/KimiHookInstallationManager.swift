@@ -174,8 +174,8 @@ public final class KimiHookInstallationManager: @unchecked Sendable {
         guard let manifestData,
               let manifest = decodeManifest(manifestData), manifest.hookCommand == command,
               case let .exact(entryDigest: entryDigest) = state,
-              let configRecord = try ManagedHookProvenance.loadVerified(for: urls.config, managerID: Self.managerID, fileManager: fileManager),
-              let manifestRecord = try ManagedHookProvenance.loadVerified(for: urls.manifest, managerID: Self.managerID, fileManager: fileManager),
+              let configRecord = try ManagedHookProvenance.loadVerified(for: urls.config, managerID: Self.managerID, ownership: .shared, fileManager: fileManager),
+              let manifestRecord = try ManagedHookProvenance.loadVerified(for: urls.manifest, managerID: Self.managerID, ownership: .exclusive, fileManager: fileManager),
               configRecord.formatVersion == Self.formatVersion, manifestRecord.formatVersion == Self.formatVersion,
               configRecord.managedEntryDigest == entryDigest,
               manifestRecord.managedEntryDigest == ManagedHookFileSystem.digest(of: manifestData),
@@ -211,8 +211,10 @@ public final class KimiHookInstallationManager: @unchecked Sendable {
     private func sidecar(for target: URL) -> URL { ManagedHookProvenance.sidecarURL(for: target) }
     private func pathExists(_ url: URL) throws -> Bool { try ManagedHookFileSystem.existsNoFollow(url) }
     private func backupExists(for target: URL) throws -> Bool { try pathExists(ManagedHookBackupLifecycle.backupURL(for: target)) || pathExists(ManagedHookBackupLifecycle.metadataURL(for: target)) }
+    /// `config.toml` belongs to Kimi; the manifest is ours.
+    private func ownership(of target: URL) -> ManagedHookProvenance.TargetOwnership { target == targetURLs().manifest ? .exclusive : .shared }
     private func requireVerifiedProvenance(for target: URL) throws -> ManagedHookProvenance {
-        guard let record = try ManagedHookProvenance.loadVerified(for: target, managerID: Self.managerID, fileManager: fileManager), record.formatVersion == Self.formatVersion, try backupIdentityMatches(record, target: target), try artifactIdentityMatches(record) else { throw ManagedHookFileSystemError.ambiguous(target.path) }; return record
+        guard let record = try ManagedHookProvenance.loadVerified(for: target, managerID: Self.managerID, ownership: ownership(of: target), fileManager: fileManager), record.formatVersion == Self.formatVersion, try backupIdentityMatches(record, target: target), try artifactIdentityMatches(record) else { throw ManagedHookFileSystemError.ambiguous(target.path) }; return record
     }
     private func backupIdentityMatches(_ record: ManagedHookProvenance, target: URL) throws -> Bool {
         let backup = ManagedHookBackupLifecycle.backupURL(for: target), metadata = ManagedHookBackupLifecycle.metadataURL(for: target)
@@ -233,7 +235,7 @@ public final class KimiHookInstallationManager: @unchecked Sendable {
     private func provenanceNeedsArtifactRefresh(urls: TargetURLs, artifact: VerifiedBundledHookArtifact) throws -> Bool { try [urls.config, urls.manifest].contains { target in let record = try requireVerifiedProvenance(for: target); return record.artifactID != artifact.entry.artifactID || record.artifactVersion != artifact.entry.version || record.artifactSHA256 != artifact.entry.sha256 || record.artifactTemplateVersion != artifact.entry.templateVersion } }
     private func refreshArtifactProvenance(urls: TargetURLs, artifact: VerifiedBundledHookArtifact) throws {
         for target in [urls.config, urls.manifest] {
-            guard let record = try ManagedHookProvenance.loadVerified(for: target, managerID: Self.managerID, fileManager: fileManager), record.formatVersion == Self.formatVersion, try backupIdentityMatches(record, target: target) else { throw ManagedHookFileSystemError.ambiguous(target.path) }
+            guard let record = try ManagedHookProvenance.loadVerified(for: target, managerID: Self.managerID, ownership: ownership(of: target), fileManager: fileManager), record.formatVersion == Self.formatVersion, try backupIdentityMatches(record, target: target) else { throw ManagedHookFileSystemError.ambiguous(target.path) }
             try recordProvenance(target: target, entryDigest: record.managedEntryDigest, preDigest: record.preMutationDigest, postData: try requireData(at: target), artifact: artifact)
         }
     }

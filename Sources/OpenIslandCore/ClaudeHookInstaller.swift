@@ -170,10 +170,31 @@ public enum ClaudeHookInstaller {
         let root = try loadRootObject(from: existingData)
         let hooks = root["hooks"] as? [String: Any] ?? [:]
         let canonical = try installSettingsJSON(existingData: existingData, hookCommand: hookCommand).contents
-        if canonical == existingData {
-            return .exact(entryDigest: ManagedHookFileSystem.digest(of: existingData))
+        // Compare content, not raw bytes.  Claude Code and other co-tenants
+        // rewrite settings.json with their own serializer and append their own
+        // groups after ours, changing byte layout and group order without
+        // changing a single managed entry.
+        let canonicalRoot = try loadRootObject(from: canonical)
+        if try ManagedHookSettingsComparison.orderInsensitiveForm(canonicalRoot)
+            == ManagedHookSettingsComparison.orderInsensitiveForm(root) {
+            return .exact(entryDigest: managedEntriesDigest(hookCommand: hookCommand))
         }
         return containsManagedLookingHook(in: hooks, source: source) ? .managedLooking : .none
+    }
+
+    /// Identifies the managed entries alone, so unrelated co-tenant keys and
+    /// hook groups cannot invalidate a recorded ownership digest.
+    public static func managedEntriesDigest(hookCommand: String) -> String {
+        let entries = Dictionary(uniqueKeysWithValues: eventSpecs.map { spec in
+            (spec.name, managedGroup(matcher: spec.matcher, timeout: spec.timeout, hookCommand: hookCommand))
+        })
+        return ManagedHookFileSystem.digest(of: canonicalJSONData(entries))
+    }
+
+    private static func canonicalJSONData(_ object: Any) -> Data {
+        // Built from JSON-compatible values above; a failure would be a
+        // programming error, not an untrusted-data path.
+        (try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])) ?? Data()
     }
 
     private static func loadRootObject(from data: Data?) throws -> [String: Any] {
